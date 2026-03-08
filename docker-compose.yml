@@ -1,0 +1,16 @@
+services:
+  crew614:
+    build: .
+    container_name: crew614
+    restart: unless-stopped
+    ports:
+      - "3614:3614"
+    volumes:
+      - crew614_data:/app/data
+    environment:
+      - PORT=3614
+      - ADMIN_PIN=614
+      - DATA_DIR=/app/data
+
+volumes:
+  crew614_data:
