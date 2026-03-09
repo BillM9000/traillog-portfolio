@@ -42,8 +42,13 @@ export function AuthProvider({ children }) {
     setAdventureMemberships([]);
   }, []);
 
-  const updateProfile = useCallback(async (user_type, parent_email) => {
-    await api.updateProfile(user_type, parent_email);
+  const updateProfile = useCallback(async (data) => {
+    if (typeof data === "string") {
+      // Legacy: updateProfile(user_type, parent_email)
+      await api.updateProfile({ user_type: data, parent_email: arguments[1] });
+    } else {
+      await api.updateProfile(data);
+    }
     await refresh();
   }, [refresh]);
 

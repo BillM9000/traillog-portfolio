@@ -88,7 +88,7 @@ export default function App() {
 
 function MainView({ user, troopId, adventureId, memberships, approvedTroops, isAdmin, onSwitchTroop, onBackToAdventures, onLogout, onRefresh }) {
   const { theme } = useTheme();
-  const { adventure, members, skills, itinerary, trekDate, loading: advLoading, refreshAll, refreshMembers, updateMemberLocally } = useAdventure();
+  const { adventure, members, skills, itinerary, trekDate, trekDates, achievements, loading: advLoading, refreshAll, refreshMembers, updateMemberLocally } = useAdventure();
 
   const [troopMembers, setTroopMembers] = useState([]);
   const [troop, setTroop] = useState(null);
@@ -297,11 +297,12 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
     <div style={{ fontFamily: fontBody, background: theme.bg, color: theme.text, minHeight: "100vh", userSelect: "none" }}>
       <Header
         user={user} troop={troop} adventure={adventure} members={members} analysis={analysis}
-        trekDate={trekDate} saving={saving} isAdmin={isAdmin} approvedTroops={approvedTroops}
+        trekDate={trekDate} trekDates={trekDates} saving={saving} isAdmin={isAdmin} approvedTroops={approvedTroops}
         onSwitchTroop={onSwitchTroop}
         onBackToAdventures={onBackToAdventures}
         onLogout={onLogout}
         onAdminClick={() => setShowAdmin(true)}
+        onRefreshAuth={onRefresh}
       />
 
       <MemberBar
@@ -309,6 +310,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
         pendingMembers={pendingMembers} isAdmin={isAdmin} currentUserId={user.id}
         onConfirmDelete={setConfirmDelete}
         onApproveMember={approveMemberFn} onDenyMember={denyMemberFn}
+        achievements={achievements}
       />
 
       {/* Tabs */}
@@ -328,16 +330,17 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
       <div style={{ padding: "14px 18px", overflowX: "auto" }}>
         {view === "calendar" && (
           <Calendar members={members} active={active} months={months} analysis={analysis}
-            onToggleDate={toggleDate} onBulkSelect={bulkSelect} onClearAll={clearAll} />
+            trekDates={trekDates} onToggleDate={toggleDate} onBulkSelect={bulkSelect} onClearAll={clearAll} />
         )}
         {view === "results" && <Results members={members} analysis={analysis} />}
         {view === "skills" && (
           <Skills members={members} active={active} skills={skills} analysis={analysis}
             isAdmin={isAdmin} onToggleSkill={toggleSkill} onAddSkill={addNewSkill} onRemoveSkill={removeSkillItem}
             adventureId={adventureId} updateMemberLocally={updateMemberLocally}
+            achievements={achievements}
           />
         )}
-        {view === "itinerary" && <Itinerary adventureId={adventureId} />}
+        {view === "itinerary" && <Itinerary adventureId={adventureId} adventure={adventure} />}
         {view === "gear" && <GearList troopId={troopId} adventureId={adventureId} members={members} active={active} setActive={setActive} updateMemberLocally={updateMemberLocally} />}
       </div>
 

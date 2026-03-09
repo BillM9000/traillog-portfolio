@@ -38,6 +38,133 @@ export async function sendJoinRequestEmail(adminEmail, adminName, requesterName,
   });
 }
 
+export async function sendParentNotificationEmail(parentEmail, scoutName, troopName) {
+  const t = getTransporter();
+  if (!t) return console.log(`[email skip] Parent notification for ${parentEmail} (no SMTP configured)`);
+
+  await t.sendMail({
+    from: `"TrekSync" <${process.env.SMTP_USER}>`,
+    to: parentEmail,
+    subject: `${scoutName} has requested to join ${troopName}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:500px">
+        <h2 style="color:#2d3830">Your scout requested to join a troop</h2>
+        <p><strong>${scoutName}</strong> has requested to join <strong>${troopName}</strong> on TrekSync, a Scouting America high adventure preparation platform.</p>
+        <p>A troop leader will review and approve the request. You listed as the parent/guardian contact for this scout.</p>
+        <p>You can view the platform here:</p>
+        <p><a href="${process.env.APP_URL || "https://treksync.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrekSync</a></p>
+        <p style="color:#888;font-size:13px">If you were not expecting this, please contact your troop leader.</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendInvitationEmail(toEmail, inviterName, troopName, adventureName, inviteUrl) {
+  const t = getTransporter();
+  if (!t) return console.log(`[email skip] Invitation to ${toEmail} (no SMTP configured)`);
+
+  await t.sendMail({
+    from: `"TrekSync" <${process.env.SMTP_USER}>`,
+    to: toEmail,
+    subject: `You're invited to join ${adventureName || troopName} on TrekSync!`,
+    html: `
+      <div style="font-family:sans-serif;max-width:500px">
+        <h2 style="color:#2d3830">You're invited! 🏔️</h2>
+        <p><strong>${inviterName}</strong> has invited you to join <strong>${adventureName || troopName}</strong> on TrekSync — a platform to help your crew prepare for high adventure.</p>
+        <p>Click below to accept the invitation and join the crew:</p>
+        <p><a href="${inviteUrl}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Accept Invitation</a></p>
+        <p style="color:#888;font-size:13px">You'll sign in with your Google account. If you weren't expecting this, you can ignore this email.</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendMemberApprovedEmail(toEmail, memberName, troopName) {
+  const t = getTransporter();
+  if (!t) return console.log(`[email skip] Approval for ${toEmail} (no SMTP configured)`);
+
+  await t.sendMail({
+    from: `"TrekSync" <${process.env.SMTP_USER}>`,
+    to: toEmail,
+    subject: `Welcome to ${troopName}!`,
+    html: `
+      <div style="font-family:sans-serif;max-width:500px">
+        <h2 style="color:#2d3830">You're in! 🎉</h2>
+        <p>Hey <strong>${memberName}</strong>, your request to join <strong>${troopName}</strong> has been approved!</p>
+        <p>Log in to start coordinating with your crew:</p>
+        <p><a href="${process.env.APP_URL || "https://treksync.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrekSync</a></p>
+      </div>
+    `,
+  });
+}
+
+export async function sendMemberDeniedEmail(toEmail, memberName, troopName) {
+  const t = getTransporter();
+  if (!t) return console.log(`[email skip] Denial for ${toEmail} (no SMTP configured)`);
+
+  await t.sendMail({
+    from: `"TrekSync" <${process.env.SMTP_USER}>`,
+    to: toEmail,
+    subject: `Update on your ${troopName} request`,
+    html: `
+      <div style="font-family:sans-serif;max-width:500px">
+        <h2 style="color:#2d3830">Request update</h2>
+        <p>Hey <strong>${memberName}</strong>, your request to join <strong>${troopName}</strong> was not approved at this time.</p>
+        <p>If you think this was a mistake, please contact your troop leader directly.</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendDateChangedEmail(toEmail, memberName, adventureName, changes) {
+  const t = getTransporter();
+  if (!t) return console.log(`[email skip] Date change for ${toEmail} (no SMTP configured)`);
+
+  await t.sendMail({
+    from: `"TrekSync" <${process.env.SMTP_USER}>`,
+    to: toEmail,
+    subject: `Trek dates updated for ${adventureName}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:500px">
+        <h2 style="color:#2d3830">Trek dates updated 📅</h2>
+        <p>Hey <strong>${memberName}</strong>, the trek dates for <strong>${adventureName}</strong> have been updated.</p>
+        <p>${changes}</p>
+        <p>Check the latest details:</p>
+        <p><a href="${process.env.APP_URL || "https://treksync.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrekSync</a></p>
+      </div>
+    `,
+  });
+}
+
+export async function sendBadgeEarnedEmail(toEmail, memberName, badgeName, adventureName) {
+  const t = getTransporter();
+  if (!t) return console.log(`[email skip] Badge earned for ${toEmail} (no SMTP configured)`);
+
+  const badges = {
+    gear_ready: { icon: "🎒", title: "Gear Ready" },
+    trail_medic: { icon: "🏥", title: "Trail Medic" },
+    admin_pro: { icon: "📋", title: "Admin Pro" },
+    training_complete: { icon: "🥾", title: "Training Complete" },
+    fully_prepared: { icon: "⭐", title: "Fully Prepared" },
+  };
+  const badge = badges[badgeName] || { icon: "🏆", title: badgeName };
+
+  await t.sendMail({
+    from: `"TrekSync" <${process.env.SMTP_USER}>`,
+    to: toEmail,
+    subject: `${badge.icon} You earned the ${badge.title} badge!`,
+    html: `
+      <div style="font-family:sans-serif;max-width:500px;text-align:center">
+        <div style="font-size:48px;margin:20px 0">${badge.icon}</div>
+        <h2 style="color:#2d3830">${badge.title}!</h2>
+        <p>Way to go, <strong>${memberName}</strong>! You've earned the <strong>${badge.title}</strong> badge for <strong>${adventureName}</strong>.</p>
+        <p style="color:#4a7a55;font-weight:bold;font-size:14px">"A Scout is Prepared"</p>
+        <p><a href="${process.env.APP_URL || "https://treksync.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">View Your Badges</a></p>
+      </div>
+    `,
+  });
+}
+
 export async function sendVerificationEmail(toEmail, token) {
   const t = getTransporter();
   if (!t) return console.log(`[email skip] Verification for ${toEmail} (no SMTP configured)`);

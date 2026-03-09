@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useMemo } from "react";
 import { api } from "../api";
 
 const AdventureContext = createContext(null);
@@ -8,6 +8,7 @@ export function AdventureProvider({ adventureId, children }) {
   const [members, setMembers] = useState([]);
   const [skills, setSkills] = useState([]);
   const [itinerary, setItinerary] = useState(null);
+  const [achievements, setAchievements] = useState({ badges: [], milestones: [] });
   const [loading, setLoading] = useState(true);
 
   const refreshAdventure = useCallback(async () => {
@@ -42,33 +43,64 @@ export function AdventureProvider({ adventureId, children }) {
     }
   }, [adventureId]);
 
-  const refreshAll = useCallback(async () => {
-    await Promise.all([refreshAdventure(), refreshMembers(), refreshSkills()]);
-  }, [refreshAdventure, refreshMembers, refreshSkills]);
+  const refreshAchievements = useCallback(async () => {
+    if (!adventureId) return;
+    try {
+      setAchievements(await api.getAchievements(adventureId));
+    } catch (e) {
+      console.error("Failed to load achievements:", e);
+    }
+  }, [adventureId]);
 
-  // Initial load — only show loading spinner on first mount
+  const refreshAll = useCallback(async () => {
+    await Promise.all([refreshAdventure(), refreshMembers(), refreshSkills(), refreshAchievements()]);
+  }, [refreshAdventure, refreshMembers, refreshSkills, refreshAchievements]);
+
+  // Initial load
   useEffect(() => {
     if (!adventureId) return;
     let cancelled = false;
     setLoading(true);
-    Promise.all([refreshAdventure(), refreshMembers(), refreshSkills()])
+    Promise.all([refreshAdventure(), refreshMembers(), refreshSkills(), refreshAchievements()])
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [adventureId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Trek date from adventure
-  const trekDate = adventure?.trek_date ? new Date(adventure.trek_date + "T00:00:00") : null;
+  // Smart trek dates from adventure
+  const trekDates = useMemo(() => {
+    if (!adventure) return null;
+    const parse = (d) => d ? new Date(d + "T00:00:00") : null;
+    return {
+      depart: parse(adventure.depart_date),
+      arrive: parse(adventure.arrive_date),
+      return: parse(adventure.return_date),
+      home: parse(adventure.home_date),
+      // Legacy compat
+      trek: parse(adventure.trek_date || adventure.arrive_date),
+    };
+  }, [adventure]);
+
+  // Legacy compat
+  const trekDate = trekDates?.trek || null;
 
   // Optimistic update — patch a single member in-place without re-fetching
   const updateMemberLocally = useCallback((userId, patch) => {
-    setMembers(prev => prev.map(m => m.user_id === userId ? { ...m, ...patch } : m));
+    setMembers(prev => prev.map(m => {
+      if (m.is_manual) return m.id === userId ? { ...m, ...patch } : m;
+      return m.user_id === userId ? { ...m, ...patch } : m;
+    }));
   }, []);
+
+  // Trekking vs support members
+  const trekkingMembers = useMemo(() => members.filter(m => m.participation === "trekking"), [members]);
+  const supportMembers = useMemo(() => members.filter(m => m.participation === "support"), [members]);
 
   return (
     <AdventureContext.Provider value={{
-      adventure, members, skills, itinerary, trekDate, loading,
+      adventure, members, skills, itinerary, trekDate, trekDates, loading,
+      achievements, trekkingMembers, supportMembers,
       adventureId,
-      refreshAdventure, refreshMembers, refreshSkills, refreshAll,
+      refreshAdventure, refreshMembers, refreshSkills, refreshAchievements, refreshAll,
       updateMemberLocally,
     }}>
       {children}

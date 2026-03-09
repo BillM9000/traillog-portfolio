@@ -79,16 +79,19 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS adventure_members (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     adventure_id INTEGER NOT NULL REFERENCES adventures(id),
-    user_id INTEGER NOT NULL REFERENCES users(id),
+    user_id INTEGER REFERENCES users(id),
     role TEXT NOT NULL DEFAULT 'member',
+    participation TEXT NOT NULL DEFAULT 'trekking',
+    linked_to INTEGER REFERENCES users(id),
+    is_manual INTEGER NOT NULL DEFAULT 0,
+    manual_name TEXT,
     color_bg TEXT NOT NULL,
     dates TEXT NOT NULL DEFAULT '[]',
     skills TEXT NOT NULL DEFAULT '[]',
     gear TEXT NOT NULL DEFAULT '[]',
     medical TEXT NOT NULL DEFAULT '[]',
     admin_tasks TEXT NOT NULL DEFAULT '[]',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(adventure_id, user_id)
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
   CREATE TABLE IF NOT EXISTS skills (
@@ -126,10 +129,38 @@ db.exec(`
     expired INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_sessions_expired ON sessions(expired);
+
+  CREATE TABLE IF NOT EXISTS invitations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    troop_id INTEGER NOT NULL REFERENCES troops(id),
+    adventure_id INTEGER REFERENCES adventures(id),
+    email TEXT NOT NULL,
+    invited_by INTEGER NOT NULL REFERENCES users(id),
+    status TEXT NOT NULL DEFAULT 'pending',
+    token TEXT NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS achievements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    adventure_id INTEGER NOT NULL REFERENCES adventures(id),
+    user_id INTEGER REFERENCES users(id),
+    badge_type TEXT NOT NULL,
+    earned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(adventure_id, user_id, badge_type)
+  );
+
+  CREATE TABLE IF NOT EXISTS crew_milestones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    adventure_id INTEGER NOT NULL REFERENCES adventures(id),
+    milestone_type TEXT NOT NULL,
+    reached_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(adventure_id, milestone_type)
+  );
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 1;
+const CURRENT_SCHEMA_VERSION = 2;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -168,6 +199,23 @@ function migrate() {
     if (itin) {
       db.prepare("UPDATE itineraries SET route_data = ?, global_info = ?, default_skills = ? WHERE id = '12-20'")
         .run(JSON.stringify(ROUTE_DATA_12_20), JSON.stringify(GLOBAL_INFO_12_20), JSON.stringify(DEFAULT_SKILLS_12_20));
+    }
+
+    // ── v2 migration: trek dates, participation, linking, manual members ──
+    if (version < 2) {
+      // Add 4 date columns to adventures
+      tryAlter("ALTER TABLE adventures ADD COLUMN depart_date TEXT");
+      tryAlter("ALTER TABLE adventures ADD COLUMN arrive_date TEXT");
+      tryAlter("ALTER TABLE adventures ADD COLUMN return_date TEXT");
+      tryAlter("ALTER TABLE adventures ADD COLUMN home_date TEXT");
+      // Migrate existing trek_date → arrive_date
+      db.prepare("UPDATE adventures SET arrive_date = trek_date WHERE trek_date IS NOT NULL AND arrive_date IS NULL").run();
+
+      // Add participation, linking, manual member columns to adventure_members
+      tryAlter("ALTER TABLE adventure_members ADD COLUMN participation TEXT NOT NULL DEFAULT 'trekking'");
+      tryAlter("ALTER TABLE adventure_members ADD COLUMN linked_to INTEGER REFERENCES users(id)");
+      tryAlter("ALTER TABLE adventure_members ADD COLUMN is_manual INTEGER NOT NULL DEFAULT 0");
+      tryAlter("ALTER TABLE adventure_members ADD COLUMN manual_name TEXT");
     }
 
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
@@ -531,8 +579,15 @@ export function createUser({ google_id, email, password_hash, name, avatar_url, 
   return { id: result.lastInsertRowid, google_id, email: email.toLowerCase(), name, avatar_url, email_verified: email_verified || 0, user_type: null, parent_email: null };
 }
 
-export function updateUserProfile(id, { user_type, parent_email }) {
-  db.prepare("UPDATE users SET user_type = ?, parent_email = ? WHERE id = ?").run(user_type, parent_email || null, id);
+export function updateUserProfile(id, { name, user_type, parent_email }) {
+  const sets = [];
+  const vals = [];
+  if (name !== undefined) { sets.push("name = ?"); vals.push(name); }
+  if (user_type !== undefined) { sets.push("user_type = ?"); vals.push(user_type); }
+  if (parent_email !== undefined) { sets.push("parent_email = ?"); vals.push(parent_email || null); }
+  if (sets.length === 0) return;
+  vals.push(id);
+  db.prepare(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
 }
 
 export function verifyUserEmail(token) {
@@ -689,10 +744,10 @@ export function getAdventure(id) {
   return r || null;
 }
 
-export function createAdventure({ troop_id, name, description, trek_date, itinerary_id, created_by }) {
+export function createAdventure({ troop_id, name, description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id, created_by }) {
   const result = db.prepare(
-    "INSERT INTO adventures (troop_id, name, description, trek_date, itinerary_id, status, created_by) VALUES (?, ?, ?, ?, ?, 'active', ?)"
-  ).run(troop_id, name, description || "", trek_date || null, itinerary_id || null, created_by);
+    "INSERT INTO adventures (troop_id, name, description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)"
+  ).run(troop_id, name, description || "", trek_date || arrive_date || null, depart_date || null, arrive_date || null, return_date || null, home_date || null, itinerary_id || null, created_by);
   const advId = result.lastInsertRowid;
 
   // Add creator as admin member
@@ -714,15 +769,19 @@ export function createAdventure({ troop_id, name, description, trek_date, itiner
     }
   }
 
-  return { id: advId, troop_id, name, description: description || "", trek_date, itinerary_id, status: "active" };
+  return { id: advId, troop_id, name, description: description || "", trek_date: trek_date || arrive_date, depart_date, arrive_date, return_date, home_date, itinerary_id, status: "active" };
 }
 
-export function updateAdventure(id, { name, description, trek_date, status }) {
+export function updateAdventure(id, { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status }) {
   const sets = [];
   const vals = [];
   if (name !== undefined) { sets.push("name = ?"); vals.push(name); }
   if (description !== undefined) { sets.push("description = ?"); vals.push(description); }
   if (trek_date !== undefined) { sets.push("trek_date = ?"); vals.push(trek_date); }
+  if (depart_date !== undefined) { sets.push("depart_date = ?"); vals.push(depart_date); }
+  if (arrive_date !== undefined) { sets.push("arrive_date = ?"); vals.push(arrive_date); }
+  if (return_date !== undefined) { sets.push("return_date = ?"); vals.push(return_date); }
+  if (home_date !== undefined) { sets.push("home_date = ?"); vals.push(home_date); }
   if (status !== undefined) { sets.push("status = ?"); vals.push(status); }
   if (sets.length === 0) return;
   vals.push(id);
@@ -730,6 +789,9 @@ export function updateAdventure(id, { name, description, trek_date, status }) {
 }
 
 export function deleteAdventure(id) {
+  db.prepare("DELETE FROM achievements WHERE adventure_id = ?").run(id);
+  db.prepare("DELETE FROM crew_milestones WHERE adventure_id = ?").run(id);
+  db.prepare("DELETE FROM invitations WHERE adventure_id = ?").run(id);
   db.prepare("DELETE FROM adventure_members WHERE adventure_id = ?").run(id);
   db.prepare("DELETE FROM skills WHERE adventure_id = ?").run(id);
   db.prepare("DELETE FROM adventures WHERE id = ?").run(id);
@@ -738,25 +800,37 @@ export function deleteAdventure(id) {
 // ── Adventure Member Queries ──
 
 export function getAdventureMembers(adventureId) {
-  const rows = db.prepare(`
+  // Get account-based members
+  const accountRows = db.prepare(`
     SELECT am.*, u.name, u.email, u.avatar_url, u.user_type
     FROM adventure_members am JOIN users u ON am.user_id = u.id
-    WHERE am.adventure_id = ? ORDER BY am.id
+    WHERE am.adventure_id = ? AND am.is_manual = 0 ORDER BY am.id
   `).all(adventureId);
-  return rows.map(r => ({
+  // Get manual members (no user account)
+  const manualRows = db.prepare(`
+    SELECT am.* FROM adventure_members am
+    WHERE am.adventure_id = ? AND am.is_manual = 1 ORDER BY am.id
+  `).all(adventureId);
+  const mapRow = r => ({
     id: r.id, adventure_id: r.adventure_id, user_id: r.user_id,
-    name: r.name, email: r.email, avatar_url: r.avatar_url, user_type: r.user_type,
-    role: r.role, color: { bg: r.color_bg },
+    name: r.is_manual ? r.manual_name : r.name,
+    email: r.email || null, avatar_url: r.avatar_url || null,
+    user_type: r.is_manual ? "scout" : r.user_type,
+    role: r.role, participation: r.participation || "trekking",
+    linked_to: r.linked_to || null, is_manual: !!r.is_manual,
+    color: { bg: r.color_bg },
     dates: JSON.parse(r.dates), skills: JSON.parse(r.skills),
     gear: JSON.parse(r.gear), medical: JSON.parse(r.medical), admin_tasks: JSON.parse(r.admin_tasks),
-  }));
+  });
+  return [...accountRows.map(mapRow), ...manualRows.map(mapRow)];
 }
 
 export function getAdventureMember(adventureId, userId) {
   const r = db.prepare("SELECT * FROM adventure_members WHERE adventure_id = ? AND user_id = ?").get(adventureId, userId);
   if (!r) return null;
   return {
-    ...r, color: { bg: r.color_bg },
+    ...r, color: { bg: r.color_bg }, participation: r.participation || "trekking",
+    linked_to: r.linked_to || null, is_manual: !!r.is_manual,
     dates: JSON.parse(r.dates), skills: JSON.parse(r.skills),
     gear: JSON.parse(r.gear), medical: JSON.parse(r.medical), admin_tasks: JSON.parse(r.admin_tasks),
   };
@@ -870,6 +944,96 @@ export function getSetting(key) {
 
 export function setSetting(key, value) {
   db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)").run(key, value);
+}
+
+// ── Invitation Queries ──
+
+export function createInvitation({ troop_id, adventure_id, email, invited_by, token }) {
+  const result = db.prepare(
+    "INSERT INTO invitations (troop_id, adventure_id, email, invited_by, token) VALUES (?, ?, ?, ?, ?)"
+  ).run(troop_id, adventure_id || null, email.toLowerCase(), invited_by, token);
+  return { id: result.lastInsertRowid, troop_id, adventure_id, email: email.toLowerCase(), status: "pending", token };
+}
+
+export function getInvitationByToken(token) {
+  return db.prepare("SELECT * FROM invitations WHERE token = ?").get(token) || null;
+}
+
+export function getInvitations(adventureId) {
+  return db.prepare(`
+    SELECT i.*, u.name as invited_by_name
+    FROM invitations i JOIN users u ON i.invited_by = u.id
+    WHERE i.adventure_id = ? ORDER BY i.created_at DESC
+  `).all(adventureId);
+}
+
+export function updateInvitationStatus(id, status) {
+  db.prepare("UPDATE invitations SET status = ? WHERE id = ?").run(status, id);
+}
+
+export function getInvitationsByEmail(email) {
+  return db.prepare("SELECT * FROM invitations WHERE email = ? AND status = 'pending'").all(email.toLowerCase());
+}
+
+// ── Member Role & Participation ──
+
+export function updateAdventureMemberRole(adventureId, userId, role) {
+  db.prepare("UPDATE adventure_members SET role = ? WHERE adventure_id = ? AND user_id = ?")
+    .run(role, adventureId, userId);
+}
+
+export function updateAdventureMemberParticipation(adventureId, userId, participation) {
+  db.prepare("UPDATE adventure_members SET participation = ? WHERE adventure_id = ? AND user_id = ?")
+    .run(participation, adventureId, userId);
+}
+
+export function linkMember(adventureId, supportUserId, scoutUserId) {
+  db.prepare("UPDATE adventure_members SET linked_to = ? WHERE adventure_id = ? AND user_id = ?")
+    .run(scoutUserId, adventureId, supportUserId);
+}
+
+// ── Manual Members ──
+
+export function addManualMember(adventureId, name) {
+  const existingCount = db.prepare("SELECT COUNT(*) as c FROM adventure_members WHERE adventure_id = ?").get(adventureId).c;
+  const color = COLORS[existingCount % COLORS.length];
+  const result = db.prepare(
+    "INSERT INTO adventure_members (adventure_id, user_id, role, is_manual, manual_name, color_bg, participation) VALUES (?, NULL, 'member', 1, ?, ?, 'trekking')"
+  ).run(adventureId, name, color);
+  return { id: result.lastInsertRowid, name, color: { bg: color }, is_manual: true };
+}
+
+export function removeManualMember(adventureId, memberId) {
+  db.prepare("DELETE FROM adventure_members WHERE adventure_id = ? AND id = ? AND is_manual = 1").run(adventureId, memberId);
+}
+
+// ── Achievement & Milestone Queries ──
+
+export function earnBadge(adventureId, userId, badgeType) {
+  try {
+    db.prepare("INSERT OR IGNORE INTO achievements (adventure_id, user_id, badge_type) VALUES (?, ?, ?)")
+      .run(adventureId, userId, badgeType);
+    return true;
+  } catch { return false; }
+}
+
+export function getBadges(adventureId, userId) {
+  if (userId) {
+    return db.prepare("SELECT * FROM achievements WHERE adventure_id = ? AND user_id = ?").all(adventureId, userId);
+  }
+  return db.prepare("SELECT * FROM achievements WHERE adventure_id = ?").all(adventureId);
+}
+
+export function getCrewMilestones(adventureId) {
+  return db.prepare("SELECT * FROM crew_milestones WHERE adventure_id = ? ORDER BY reached_at").all(adventureId);
+}
+
+export function addCrewMilestone(adventureId, milestoneType) {
+  try {
+    db.prepare("INSERT OR IGNORE INTO crew_milestones (adventure_id, milestone_type) VALUES (?, ?)")
+      .run(adventureId, milestoneType);
+    return true;
+  } catch { return false; }
 }
 
 // ── Session Store ──

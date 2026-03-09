@@ -9,7 +9,7 @@ export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack
   const [adventures, setAdventures] = useState([]);
   const [itineraries, setItineraries] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ name: "", trek_date: "", itinerary_id: "" });
+  const [form, setForm] = useState({ name: "", depart_date: "", arrive_date: "", return_date: "", home_date: "", itinerary_id: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [fetching, setFetching] = useState(true);
@@ -104,7 +104,7 @@ export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack
                   <div style={{ fontSize: 14, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>{a.name}</div>
                   <div style={{ fontSize: 11, color: theme.textDim, marginTop: 2 }}>
                     {a.itinerary_id && `Itinerary ${a.itinerary_id}`}
-                    {a.trek_date && ` \u2022 ${a.trek_date}`}
+                    {(a.arrive_date || a.trek_date) && ` \u2022 ${a.arrive_date || a.trek_date}`}
                   </div>
                 </div>
                 <span style={{ fontSize: 18, color: theme.textDimmer }}>›</span>
@@ -127,8 +127,24 @@ export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack
             <form onSubmit={handleCreate}>
               <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
                 placeholder="Adventure name (e.g. Philmont 2026)" style={inputStyle} required />
-              <input value={form.trek_date} onChange={e => setForm({ ...form, trek_date: e.target.value })}
-                type="date" style={inputStyle} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
+                <div>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>Depart Home</label>
+                  <input value={form.depart_date} onChange={e => setForm({ ...form, depart_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>Arrive Philmont</label>
+                  <input value={form.arrive_date} onChange={e => setForm({ ...form, arrive_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>Depart Philmont</label>
+                  <input value={form.return_date} onChange={e => setForm({ ...form, return_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>Return Home</label>
+                  <input value={form.home_date} onChange={e => setForm({ ...form, home_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+                </div>
+              </div>
               <select value={form.itinerary_id} onChange={e => setForm({ ...form, itinerary_id: e.target.value })}
                 style={{ ...inputStyle, color: form.itinerary_id ? theme.text : theme.textDim }}>
                 <option value="">Select itinerary...</option>

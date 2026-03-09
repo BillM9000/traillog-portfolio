@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
-import { fontBody, fontDisplay, card, cardTitle } from "../utils/theme";
+import { fontBody, fontDisplay, card, cardTitle, memberTypeBadge } from "../utils/theme";
 
 const CATEGORIES = [
   { id: "all", label: "All" },
@@ -62,22 +62,26 @@ export default function GearList({ troopId, adventureId, members, active, setAct
   const pColors = PRIORITY_COLORS[mode] || PRIORITY_COLORS.dark;
 
   // Per-member gear completion
+  const trekkingMembers = useMemo(() => members ? members.filter(m => m.participation === "trekking") : [], [members]);
+  const supportMembers = useMemo(() => members ? members.filter(m => m.participation === "support") : [], [members]);
+
   const memberGearStats = useMemo(() => {
     if (!members || members.length === 0) return [];
     return members.map(m => {
       const checked = (m.gear || []).length;
       const total = items.length;
-      return { name: m.name, color: m.color, checked, total, pct: total > 0 ? Math.round((checked / total) * 100) : 0 };
+      return { name: m.name, color: m.color, checked, total, pct: total > 0 ? Math.round((checked / total) * 100) : 0, userType: m.user_type || (m.is_manual ? "scout" : ""), participation: m.participation };
     });
   }, [members, items]);
 
-  // Crew-wide gear %
+  // Crew-wide gear % (trekking members only)
   const crewGearPct = useMemo(() => {
-    if (!members || members.length === 0 || items.length === 0) return 0;
-    const total = items.length * members.length;
-    const done = members.reduce((sum, m) => sum + (m.gear || []).length, 0);
+    const countMembers = trekkingMembers.length > 0 ? trekkingMembers : (members || []);
+    if (countMembers.length === 0 || items.length === 0) return 0;
+    const total = items.length * countMembers.length;
+    const done = countMembers.reduce((sum, m) => sum + (m.gear || []).length, 0);
     return Math.round((done / total) * 100);
-  }, [members, items]);
+  }, [members, trekkingMembers, items]);
 
   const toggleGear = async (itemId) => {
     if (active === null || !adventureId || !am) return;
@@ -101,8 +105,11 @@ export default function GearList({ troopId, adventureId, members, active, setAct
       <div style={card(theme)}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
           <div style={cardTitle(theme)}>Gear Checklist</div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: crewGearPct >= 80 ? theme.accent : crewGearPct >= 50 ? theme.gold : theme.danger }}>
-            Crew: {crewGearPct}%
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: crewGearPct >= 80 ? theme.accent : crewGearPct >= 50 ? theme.gold : theme.danger }}>
+              Crew: {crewGearPct}%
+            </div>
+            {supportMembers.length > 0 && <div style={{ fontSize: 9, color: theme.textDimmer }}>trekking only</div>}
           </div>
         </div>
 
@@ -111,7 +118,8 @@ export default function GearList({ troopId, adventureId, members, active, setAct
           <div style={{ marginBottom: 10 }}>
             {memberGearStats.map((m, idx) => (
               <div key={m.name} onClick={() => setActive && setActive(idx)} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, cursor: "pointer", borderRadius: 5, padding: "3px 6px", background: active === idx ? theme.accentBg : "transparent", border: active === idx ? `1.5px solid ${theme.borderAccent}` : "1.5px solid transparent", transition: "all .15s" }}>
-                <span style={{ fontSize: 10, color: active === idx ? theme.accent : m.color.bg, fontWeight: 700, width: 70, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
+                <span style={{ fontSize: 10, color: active === idx ? theme.accent : m.color?.bg || theme.accent, fontWeight: 700, width: 70, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
+                <span style={memberTypeBadge(theme, m.userType)}>{m.userType === "adult" ? "A" : "S"}</span>
                 <div style={{ flex: 1, height: 5, borderRadius: 3, background: theme.progressBg, overflow: "hidden" }}>
                   <div style={{ height: "100%", width: `${m.pct}%`, borderRadius: 3, background: m.pct >= 80 ? theme.accent : m.pct >= 50 ? theme.gold : theme.danger, transition: "width .3s" }} />
                 </div>
@@ -201,7 +209,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
               <div style={{ display: "flex", gap: 8, marginTop: 2 }}>
                 <span style={{ fontSize: 10, color: theme.textDimmest }}>{item.category}</span>
                 {ownCount > 0 && (
-                  <span style={{ fontSize: 10, color: theme.accent }}>{ownCount}/{members?.length || 0} have this</span>
+                  <span style={{ fontSize: 10, color: theme.accent }}>{ownCount}/{trekkingMembers.length || members?.length || 0} have this</span>
                 )}
               </div>
             </div>

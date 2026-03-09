@@ -1,5 +1,6 @@
 import express from "express";
 import session from "express-session";
+import crypto from "crypto";
 import passport, { hashPassword, generateVerificationToken } from "./auth.js";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -14,10 +15,18 @@ import {
   getAdventureMembers, getAdventureMember, addAdventureMember, removeAdventureMember,
   updateAdventureMemberDates, updateAdventureMemberSkills,
   updateAdventureMemberGear, updateAdventureMemberMedical, updateAdventureMemberAdmin,
+  updateAdventureMemberRole, updateAdventureMemberParticipation, linkMember,
+  addManualMember, removeManualMember,
   getAdventureSkills, addAdventureSkill, removeAdventureSkill,
+  createInvitation, getInvitationByToken, getInvitations, updateInvitationStatus, getInvitationsByEmail,
+  earnBadge, getBadges, getCrewMilestones, addCrewMilestone,
   getItineraries, getItinerary, getGearItems, getSetting, setSetting,
 } from "./db.js";
-import { sendJoinRequestEmail, sendVerificationEmail } from "./email.js";
+import {
+  sendJoinRequestEmail, sendParentNotificationEmail, sendVerificationEmail,
+  sendInvitationEmail, sendMemberApprovedEmail, sendMemberDeniedEmail,
+  sendDateChangedEmail, sendBadgeEarnedEmail,
+} from "./email.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -117,7 +126,17 @@ app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "em
 
 app.get("/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/?error=auth" }),
-  (req, res) => res.redirect("/")
+  (req, res) => {
+    // Check for pending invitation token
+    if (req.session.pendingInviteToken) {
+      const invitation = getInvitationByToken(req.session.pendingInviteToken);
+      if (invitation && invitation.status === "pending") {
+        processInvitation(req.user, invitation);
+      }
+      delete req.session.pendingInviteToken;
+    }
+    res.redirect("/");
+  }
 );
 
 app.post("/api/auth/signup", (req, res) => {
@@ -168,10 +187,10 @@ app.get("/api/auth/me", (req, res) => {
 
 app.put("/api/auth/profile", requireAuth, (req, res) => {
   try {
-    const { user_type, parent_email } = req.body;
-    if (!["adult", "scout"].includes(user_type)) return res.status(400).json({ error: "user_type must be 'adult' or 'scout'" });
+    const { name, user_type, parent_email } = req.body;
+    if (user_type && !["adult", "scout"].includes(user_type)) return res.status(400).json({ error: "user_type must be 'adult' or 'scout'" });
     if (user_type === "scout" && !parent_email?.trim()) return res.status(400).json({ error: "Scouts must provide parent/guardian email" });
-    updateUserProfile(req.user.id, { user_type, parent_email });
+    updateUserProfile(req.user.id, { name: name?.trim(), user_type, parent_email });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -247,6 +266,12 @@ app.post("/api/troops/:troopId/join", requireAuth, (req, res) => {
         .catch(e => console.error("Join notification failed:", e));
     });
 
+    // Notify parent/guardian if scout has parent_email
+    if (user.user_type === "scout" && user.parent_email) {
+      sendParentNotificationEmail(user.parent_email, user.name, troop.name)
+        .catch(e => console.error("Parent notification failed:", e));
+    }
+
     res.status(201).json({ ok: true, status: "pending" });
   } catch (e) {
     if (e.message.includes("UNIQUE")) return res.status(409).json({ error: "Already requested" });
@@ -268,6 +293,12 @@ app.get("/api/troops/:troopId/members", requireAuth, requireTroopMember(), (req,
 app.put("/api/troops/:troopId/members/:userId/approve", requireAuth, requireTroopAdmin, (req, res) => {
   try {
     approveTroopMember(parseInt(req.params.troopId), parseInt(req.params.userId));
+    const user = findUserById(parseInt(req.params.userId));
+    const troop = getTroop(parseInt(req.params.troopId));
+    if (user?.email) {
+      sendMemberApprovedEmail(user.email, user.name, troop.name)
+        .catch(e => console.error("Approval email failed:", e));
+    }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -275,6 +306,12 @@ app.put("/api/troops/:troopId/members/:userId/approve", requireAuth, requireTroo
 app.put("/api/troops/:troopId/members/:userId/deny", requireAuth, requireTroopAdmin, (req, res) => {
   try {
     denyTroopMember(parseInt(req.params.troopId), parseInt(req.params.userId));
+    const user = findUserById(parseInt(req.params.userId));
+    const troop = getTroop(parseInt(req.params.troopId));
+    if (user?.email) {
+      sendMemberDeniedEmail(user.email, user.name, troop.name)
+        .catch(e => console.error("Denial email failed:", e));
+    }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -342,11 +379,11 @@ app.get("/api/troops/:troopId/adventures", requireAuth, requireTroopMember(), (r
 // Create adventure
 app.post("/api/troops/:troopId/adventures", requireAuth, requireTroopAdmin, (req, res) => {
   try {
-    const { name, description, trek_date, itinerary_id } = req.body;
+    const { name, description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Adventure name required" });
     const adventure = createAdventure({
       troop_id: parseInt(req.params.troopId),
-      name: name.trim(), description, trek_date, itinerary_id,
+      name: name.trim(), description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id,
       created_by: req.user.id,
     });
     res.status(201).json(adventure);
@@ -365,8 +402,31 @@ app.get("/api/adventures/:adventureId", requireAuth, requireAdventureMember, (re
 // Update adventure
 app.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req, res) => {
   try {
-    const { name, description, trek_date, status } = req.body;
-    updateAdventure(parseInt(req.params.adventureId), { name, description, trek_date, status });
+    const adventureId = parseInt(req.params.adventureId);
+    const { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status, itinerary_id } = req.body;
+    const oldAdv = getAdventure(adventureId);
+    updateAdventure(adventureId, { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status, itinerary_id });
+
+    // Send date change emails if any date changed
+    const dateFields = ["depart_date", "arrive_date", "return_date", "home_date"];
+    const changes = [];
+    const labels = { depart_date: "Depart Home", arrive_date: "Arrive at Philmont", return_date: "Depart Philmont", home_date: "Return Home" };
+    for (const f of dateFields) {
+      if (req.body[f] !== undefined && req.body[f] !== oldAdv[f]) {
+        changes.push(`<strong>${labels[f]}:</strong> ${oldAdv[f] || "not set"} → ${req.body[f] || "removed"}`);
+      }
+    }
+    if (changes.length > 0) {
+      const members = getAdventureMembers(adventureId);
+      const changeSummary = changes.join("<br>");
+      members.forEach(m => {
+        if (m.email && !m.is_manual) {
+          sendDateChangedEmail(m.email, m.name, oldAdv.name, changeSummary)
+            .catch(e => console.error("Date change email failed:", e));
+        }
+      });
+    }
+
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -526,6 +586,262 @@ app.put("/api/admin/settings", requireAuth, (req, res) => {
   try {
     Object.entries(req.body).forEach(([k, v]) => setSetting(k, v));
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ═══════════════════════════════════════════
+// INVITATION ROUTES
+// ═══════════════════════════════════════════
+
+function processInvitation(user, invitation) {
+  try {
+    // Auto-join troop if not already a member
+    const troopMember = getTroopMember(invitation.troop_id, user.id);
+    if (!troopMember) {
+      requestJoinTroop(user.id, invitation.troop_id);
+      approveTroopMember(invitation.troop_id, user.id);
+    } else if (troopMember.status === "pending") {
+      approveTroopMember(invitation.troop_id, user.id);
+    }
+    // Auto-join adventure if specified
+    if (invitation.adventure_id) {
+      const advMember = getAdventureMember(invitation.adventure_id, user.id);
+      if (!advMember) {
+        addAdventureMember(invitation.adventure_id, user.id, "member");
+      }
+    }
+    updateInvitationStatus(invitation.id, "accepted");
+  } catch (e) {
+    console.error("processInvitation error:", e);
+  }
+}
+
+// Send invitation email
+app.post("/api/adventures/:adventureId/invitations", requireAuth, requireAdventureAdmin, (req, res) => {
+  try {
+    const adventureId = parseInt(req.params.adventureId);
+    const { email } = req.body;
+    if (!email?.trim()) return res.status(400).json({ error: "Email required" });
+    const adv = getAdventure(adventureId);
+    if (!adv) return res.status(404).json({ error: "Adventure not found" });
+    const troop = getTroop(adv.troop_id);
+    const token = crypto.randomUUID();
+    createInvitation({ troop_id: adv.troop_id, adventure_id: adventureId, email: email.trim(), invited_by: req.user.id, token });
+    const inviteUrl = `${process.env.APP_URL || "https://treksync.gracezero.ai"}/invite/${token}`;
+    sendInvitationEmail(email.trim(), req.user.name, troop.name, adv.name, inviteUrl)
+      .catch(e => console.error("Invitation email failed:", e));
+    res.status(201).json({ ok: true, token });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// List invitations for an adventure
+app.get("/api/adventures/:adventureId/invitations", requireAuth, requireAdventureAdmin, (req, res) => {
+  try { res.json(getInvitations(parseInt(req.params.adventureId))); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Accept invitation (browser visits this link from email)
+app.get("/api/invitations/:token", (req, res) => {
+  try {
+    const invitation = getInvitationByToken(req.params.token);
+    if (!invitation) return res.redirect("/?error=invalid-invite");
+    if (invitation.status !== "pending") return res.redirect("/?error=invite-used");
+    // If user is logged in, process immediately
+    if (req.isAuthenticated()) {
+      processInvitation(req.user, invitation);
+      return res.redirect("/");
+    }
+    // Store token in session, redirect to OAuth
+    req.session.pendingInviteToken = req.params.token;
+    res.redirect("/auth/google");
+  } catch (e) { res.redirect("/?error=invite-error"); }
+});
+
+// ═══════════════════════════════════════════
+// ADVENTURE MEMBER MANAGEMENT ROUTES
+// ═══════════════════════════════════════════
+
+// Update member role (promote/demote)
+app.put("/api/adventures/:adventureId/members/:userId/role", requireAuth, requireAdventureAdmin, (req, res) => {
+  try {
+    const { role } = req.body;
+    if (!["admin", "member"].includes(role)) return res.status(400).json({ error: "role must be 'admin' or 'member'" });
+    updateAdventureMemberRole(parseInt(req.params.adventureId), parseInt(req.params.userId), role);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Update member user_type (admin can change adult <-> scout)
+app.put("/api/adventures/:adventureId/members/:userId/user-type", requireAuth, requireAdventureAdmin, (req, res) => {
+  try {
+    const { user_type } = req.body;
+    if (!["adult", "scout"].includes(user_type)) return res.status(400).json({ error: "user_type must be 'adult' or 'scout'" });
+    updateUserProfile(parseInt(req.params.userId), { user_type });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Update member participation type
+app.put("/api/adventures/:adventureId/members/:userId/participation", requireAuth, requireAdventureAdmin, (req, res) => {
+  try {
+    const { participation } = req.body;
+    if (!["trekking", "support"].includes(participation)) return res.status(400).json({ error: "participation must be 'trekking' or 'support'" });
+    updateAdventureMemberParticipation(parseInt(req.params.adventureId), parseInt(req.params.userId), participation);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Link support adult to scout
+app.put("/api/adventures/:adventureId/members/:userId/link", requireAuth, requireAdventureAdmin, (req, res) => {
+  try {
+    const { linked_to } = req.body;
+    linkMember(parseInt(req.params.adventureId), parseInt(req.params.userId), linked_to || null);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Add manual member (scout without account)
+app.post("/api/adventures/:adventureId/manual-members", requireAuth, requireAdventureAdmin, (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: "Name required" });
+    const member = addManualMember(parseInt(req.params.adventureId), name.trim());
+    res.status(201).json(member);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Remove manual member
+app.delete("/api/adventures/:adventureId/manual-members/:memberId", requireAuth, requireAdventureAdmin, (req, res) => {
+  try {
+    removeManualMember(parseInt(req.params.memberId));
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ═══════════════════════════════════════════
+// ACHIEVEMENTS & MILESTONES ROUTES
+// ═══════════════════════════════════════════
+
+// Get badges + milestones for an adventure
+app.get("/api/adventures/:adventureId/achievements", requireAuth, requireAdventureMember, (req, res) => {
+  try {
+    const adventureId = parseInt(req.params.adventureId);
+    const badges = getBadges(adventureId);
+    const milestones = getCrewMilestones(adventureId);
+    res.json({ badges, milestones });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Check and award badges/milestones after readiness changes
+app.post("/api/adventures/:adventureId/check-milestones", requireAuth, requireAdventureMember, (req, res) => {
+  try {
+    const adventureId = parseInt(req.params.adventureId);
+    const members = getAdventureMembers(adventureId);
+    const adv = getAdventure(adventureId);
+    const skills = getAdventureSkills(adventureId);
+    const newBadges = [];
+    const newMilestones = [];
+
+    // Categorize skills
+    const trainingSkills = skills.filter(s => s.category === "training");
+    const medicalSkills = skills.filter(s => s.category === "medical");
+    const adminSkills = skills.filter(s => s.category === "admin");
+    const gearItems = getGearItems();
+
+    // Check each trekking member for individual badges
+    const trekkingMembers = members.filter(m => m.participation === "trekking" && !m.is_manual);
+    for (const m of trekkingMembers) {
+      const memberSkills = m.skills || [];
+      const memberGear = m.gear || [];
+      const memberMedical = m.medical || [];
+      const memberAdmin = m.admin_tasks || [];
+
+      const checks = [
+        { badge: "training_complete", total: trainingSkills.length, done: trainingSkills.filter(s => memberSkills.includes(s.id)).length },
+        { badge: "gear_ready", total: gearItems.length, done: gearItems.filter(g => memberGear.includes(g.id)).length },
+        { badge: "trail_medic", total: medicalSkills.length, done: medicalSkills.filter(s => memberMedical.includes(s.id)).length },
+        { badge: "admin_pro", total: adminSkills.length, done: adminSkills.filter(s => memberAdmin.includes(s.id)).length },
+      ];
+
+      for (const { badge, total, done } of checks) {
+        if (total > 0 && done >= total) {
+          const earned = earnBadge(adventureId, m.user_id, badge);
+          if (earned) {
+            newBadges.push({ user_id: m.user_id, name: m.name, badge });
+            if (m.email) {
+              sendBadgeEarnedEmail(m.email, m.name, badge, adv.name)
+                .catch(e => console.error("Badge email failed:", e));
+            }
+          }
+        }
+      }
+
+      // Fully prepared = all 4 categories complete
+      const allDone = checks.every(c => c.total === 0 || c.done >= c.total);
+      if (allDone && checks.some(c => c.total > 0)) {
+        const earned = earnBadge(adventureId, m.user_id, "fully_prepared");
+        if (earned) {
+          newBadges.push({ user_id: m.user_id, name: m.name, badge: "fully_prepared" });
+          if (m.email) {
+            sendBadgeEarnedEmail(m.email, m.name, "fully_prepared", adv.name)
+              .catch(e => console.error("Badge email failed:", e));
+          }
+        }
+      }
+    }
+
+    // Check crew milestones (overall readiness %)
+    if (trekkingMembers.length > 0) {
+      const totalSkillCount = trainingSkills.length + medicalSkills.length + adminSkills.length + gearItems.length;
+      if (totalSkillCount > 0) {
+        let totalDone = 0;
+        let totalPossible = 0;
+        for (const m of trekkingMembers) {
+          const ms = m.skills || [];
+          const mg = m.gear || [];
+          const mm = m.medical || [];
+          const ma = m.admin_tasks || [];
+          totalDone += trainingSkills.filter(s => ms.includes(s.id)).length;
+          totalDone += gearItems.filter(g => mg.includes(g.id)).length;
+          totalDone += medicalSkills.filter(s => mm.includes(s.id)).length;
+          totalDone += adminSkills.filter(s => ma.includes(s.id)).length;
+          totalPossible += totalSkillCount;
+        }
+        const pct = Math.round((totalDone / totalPossible) * 100);
+        const thresholds = [
+          { pct: 25, type: "crew_25" }, { pct: 50, type: "crew_50" },
+          { pct: 75, type: "crew_75" }, { pct: 100, type: "crew_100" },
+        ];
+        for (const t of thresholds) {
+          if (pct >= t.pct) {
+            const added = addCrewMilestone(adventureId, t.type);
+            if (added) newMilestones.push(t.type);
+          }
+        }
+
+        // Category-specific crew milestones
+        const catChecks = [
+          { type: "all_training", items: trainingSkills, field: "skills" },
+          { type: "all_medical", items: medicalSkills, field: "medical" },
+          { type: "all_admin", items: adminSkills, field: "admin_tasks" },
+          { type: "all_gear", items: gearItems, field: "gear" },
+        ];
+        for (const cc of catChecks) {
+          if (cc.items.length > 0) {
+            const allComplete = trekkingMembers.every(m => {
+              const arr = m[cc.field] || [];
+              return cc.items.every(i => arr.includes(i.id));
+            });
+            if (allComplete) {
+              const added = addCrewMilestone(adventureId, cc.type);
+              if (added) newMilestones.push(cc.type);
+            }
+          }
+        }
+      }
+    }
+
+    res.json({ newBadges, newMilestones });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

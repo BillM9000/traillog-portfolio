@@ -51,6 +51,49 @@ export const toolbarBtn = (t, variant) => ({
   fontWeight: 600,
   cursor: "pointer",
   fontFamily: fontBody,
-  background: variant === "primary" ? t.accent : t.bgAlt,
-  color: variant === "primary" ? "#fff" : t.textDim,
+  background: variant === "primary" ? t.accent : variant === "danger" ? "#c0392b" : t.bgAlt,
+  color: variant === "primary" || variant === "danger" ? "#fff" : t.textDim,
 });
+
+// Member type badges
+export const memberTypeBadge = (t, type) => ({
+  display: "inline-block",
+  padding: "1px 5px",
+  borderRadius: 4,
+  fontSize: 9,
+  fontWeight: 700,
+  letterSpacing: 0.3,
+  background: type === "adult" ? "#3a6fa0" : "#4a7a55",
+  color: "#fff",
+  marginLeft: 3,
+});
+
+export const participationBadge = (t, participation) => ({
+  display: "inline-block",
+  padding: "1px 5px",
+  borderRadius: 4,
+  fontSize: 9,
+  fontWeight: 600,
+  background: participation === "support" ? "#8a6d3b" : "transparent",
+  color: participation === "support" ? "#fff" : t.textMuted,
+  border: participation === "support" ? "none" : `1px solid ${t.borderLight}`,
+  marginLeft: 3,
+});
+
+// Trail badge definitions
+export const TRAIL_BADGES = {
+  gear_ready: { icon: "🎒", title: "Gear Ready" },
+  trail_medic: { icon: "🏥", title: "Trail Medic" },
+  admin_pro: { icon: "📋", title: "Admin Pro" },
+  training_complete: { icon: "🥾", title: "Training Complete" },
+  fully_prepared: { icon: "⭐", title: "Fully Prepared" },
+};
+
+// Crew journey milestones with Scout Law values
+export const JOURNEY_WAYPOINTS = [
+  { pct: 0, name: "Trailhead", message: "The journey begins — every step counts" },
+  { pct: 25, name: "Base Camp", message: "A Scout is Trustworthy — your crew is building a foundation" },
+  { pct: 50, name: "Timber Ridge", message: "A Scout is Prepared — halfway to the summit" },
+  { pct: 75, name: "Eagle Point", message: "A Scout is Brave — the peak is in sight" },
+  { pct: 100, name: "Summit!", message: "A Scout is Cheerful — your crew is ready for adventure!" },
+];

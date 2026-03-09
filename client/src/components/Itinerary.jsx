@@ -2,12 +2,14 @@ import { useState, useEffect } from "react";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { card, cardTitle, fontDisplay, fontBody } from "../utils/theme";
+import PrintCheatSheet from "./PrintCheatSheet";
 
-export default function Itinerary({ adventureId }) {
+export default function Itinerary({ adventureId, adventure }) {
   const { theme, mode } = useTheme();
   const [itin, setItin] = useState(null);
   const [expanded, setExpanded] = useState(new Set());
   const [typeFilter, setTypeFilter] = useState(null);
+  const [showPrint, setShowPrint] = useState(false);
 
   useEffect(() => {
     if (!adventureId) return;
@@ -62,6 +64,7 @@ export default function Itinerary({ adventureId }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
           <div style={cardTitle(theme)}>{itin.name} Quick Reference</div>
           <div style={{ display: "flex", gap: 4 }}>
+            <button onClick={() => setShowPrint(true)} style={{ ...tinyBtn(theme), background: theme.accent, color: "#fff", border: `1px solid ${theme.accent}` }}>Print</button>
             <button onClick={expandAll} style={tinyBtn(theme)}>Expand All</button>
             <button onClick={collapseAll} style={tinyBtn(theme)}>Collapse</button>
           </div>
@@ -287,6 +290,10 @@ export default function Itinerary({ adventureId }) {
             </div>
           ))}
         </div>
+      )}
+
+      {showPrint && (
+        <PrintCheatSheet adventure={adventure} itinerary={itin} onClose={() => setShowPrint(false)} />
       )}
     </div>
   );
