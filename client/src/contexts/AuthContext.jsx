@@ -42,10 +42,10 @@ export function AuthProvider({ children }) {
     setAdventureMemberships([]);
   }, []);
 
-  const updateProfile = useCallback(async (data) => {
+  const updateProfile = useCallback(async (data, ...rest) => {
     if (typeof data === "string") {
-      // Legacy: updateProfile(user_type, parent_email)
-      await api.updateProfile({ user_type: data, parent_email: arguments[1] });
+      // Legacy: updateProfile(user_type, parent_email, parent_email_2)
+      await api.updateProfile({ user_type: data, parent_email: rest[0], parent_email_2: rest[1] || null });
     } else {
       await api.updateProfile(data);
     }

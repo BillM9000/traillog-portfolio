@@ -220,9 +220,10 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
                         </div>
                       )}
                     </div>
-                    <div style={{
+                    <div onClick={(e) => { e.stopPropagation(); cat.toggle(s.id); }} style={{
                       width: 18, height: 18, borderRadius: 4, border: `2px solid ${chk ? theme.accent : theme.borderLight}`,
                       display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: theme.accent, flexShrink: 0,
+                      cursor: active !== null ? "pointer" : "default",
                     }}>{chk && "\u2713"}</div>
                     {isAdmin && !s.isDefault && (
                       confirmDeleteSkill === s.id ? (

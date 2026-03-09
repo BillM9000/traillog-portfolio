@@ -2,10 +2,11 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAuth } from "./contexts/AuthContext";
 import { useTheme } from "./contexts/ThemeContext";
 import { AdventureProvider, useAdventure } from "./contexts/AdventureContext";
+import { useToast } from "./contexts/ToastContext";
 import { api } from "./api";
 import { DAYS_FULL } from "./utils/constants";
 import { getMonthsRange, daysInMonth, dateKey, parseDateKey, dayOfWeek, isPast } from "./utils/dates";
-import { fontBody } from "./utils/theme";
+import { fontBody, fontDisplay } from "./utils/theme";
 
 import LoginPage from "./components/LoginPage";
 import ProfileSetup from "./components/ProfileSetup";
@@ -28,6 +29,7 @@ export default function App() {
   // ── Navigation state ──
   const [troopId, setTroopId] = useState(null);
   const [adventureId, setAdventureId] = useState(null);
+  const [wentBack, setWentBack] = useState(false);
 
   // Auto-select first approved troop
   useEffect(() => {
@@ -60,9 +62,10 @@ export default function App() {
         user={user}
         troop={{ id: troopId, name: currentMembership?.troop_name || "Troop" }}
         isAdmin={isAdmin}
-        onSelect={setAdventureId}
-        onBack={() => { setTroopId(null); }}
+        onSelect={(id) => { setAdventureId(id); setWentBack(false); }}
+        onBack={() => { setTroopId(null); setWentBack(false); }}
         onLogout={logout}
+        skipAutoSelect={wentBack}
       />
     );
   }
@@ -78,7 +81,8 @@ export default function App() {
         approvedTroops={approvedTroops}
         isAdmin={isAdmin}
         onSwitchTroop={(id) => { setTroopId(id); setAdventureId(null); }}
-        onBackToAdventures={() => setAdventureId(null)}
+        onBackToAdventures={() => { setAdventureId(null); setWentBack(true); }}
+        onSelectAdventure={(id) => setAdventureId(id)}
         onLogout={logout}
         onRefresh={refresh}
       />
@@ -86,8 +90,9 @@ export default function App() {
   );
 }
 
-function MainView({ user, troopId, adventureId, memberships, approvedTroops, isAdmin, onSwitchTroop, onBackToAdventures, onLogout, onRefresh }) {
+function MainView({ user, troopId, adventureId, memberships, approvedTroops, isAdmin, onSwitchTroop, onBackToAdventures, onSelectAdventure, onLogout, onRefresh }) {
   const { theme } = useTheme();
+  const { addToast } = useToast();
   const { adventure, members, skills, itinerary, trekDate, trekDates, achievements, loading: advLoading, refreshAll, refreshMembers, updateMemberLocally } = useAdventure();
 
   const [troopMembers, setTroopMembers] = useState([]);
@@ -277,6 +282,13 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
     } catch (e) { console.error(e); }
   }, [troopId]);
 
+  const requestLinkFn = useCallback(async (scoutUserId) => {
+    try {
+      await api.createLinkRequest(adventureId, scoutUserId);
+      addToast("Link request sent! Admin will review.", "success");
+    } catch (e) { addToast(e.message || "Failed to send request", "error"); }
+  }, [adventureId, addToast]);
+
   if (advLoading) {
     return (
       <div style={{ minHeight: "100vh", background: theme.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -303,31 +315,42 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
         onLogout={onLogout}
         onAdminClick={() => setShowAdmin(true)}
         onRefreshAuth={onRefresh}
+        achievements={achievements}
       />
 
       <MemberBar
         members={members} active={active} setActive={setActive}
         pendingMembers={pendingMembers} isAdmin={isAdmin} currentUserId={user.id}
         onConfirmDelete={setConfirmDelete}
+        onRemoveManual={async (memberId) => {
+          try { await api.removeManualMember(adventureId, memberId); refreshMembers(); } catch (e) { console.error(e); }
+        }}
         onApproveMember={approveMemberFn} onDenyMember={denyMemberFn}
         achievements={achievements}
+        onRequestLink={requestLinkFn}
       />
 
-      {/* Tabs */}
-      <div style={{ padding: "10px 18px 0" }}>
-        <div style={{ display: "flex", gap: 2, background: theme.bgTab, borderRadius: 8, padding: 3 }}>
+      {/* CTA Banner */}
+      <CTABanner members={members} active={active} setView={setView} theme={theme} />
+
+      {/* Tabs — Pill Navigation */}
+      <div style={{ padding: "0 16px", marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
           {tabs.map(([k, l]) => (
             <button key={k} onClick={() => setView(k)} style={{
-              flex: 1, padding: "7px 0", textAlign: "center", fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: "pointer",
-              background: view === k ? theme.bgTabActive : "transparent", color: view === k ? "#fff" : theme.textDimmer,
-              border: "none", fontFamily: fontBody, transition: "all .2s",
+              padding: "8px 16px", borderRadius: 20, border: "none", cursor: "pointer",
+              fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", fontFamily: fontBody,
+              background: view === k ? theme.pillActiveBg : theme.pillInactiveBg,
+              color: view === k ? theme.pillActiveText : theme.pillInactiveText,
+              boxShadow: view === k ? "0 2px 8px rgba(58,77,42,0.25)" : "none",
+              transition: "all 0.25s ease",
             }}>{l}</button>
           ))}
         </div>
       </div>
 
       {/* View content */}
-      <div style={{ padding: "14px 18px", overflowX: "auto" }}>
+      <div style={{ padding: "0 16px 18px 16px", overflowX: "auto" }}>
         {view === "calendar" && (
           <Calendar members={members} active={active} months={months} analysis={analysis}
             trekDates={trekDates} onToggleDate={toggleDate} onBulkSelect={bulkSelect} onClearAll={clearAll} />
@@ -361,8 +384,61 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
           adventureMembers={members}
           onClose={() => setShowAdmin(false)}
           onRefresh={() => { refreshAll(); api.getTroop(troopId).then(setTroop).catch(console.error); }}
+          onSelectAdventure={onSelectAdventure}
         />
       )}
+    </div>
+  );
+}
+
+// CTA Banner — shows highest-priority action for active member
+function CTABanner({ members, active, setView, theme }) {
+  const am = active !== null ? members[active] : null;
+  if (!am) return null;
+
+  const items = [];
+  if ((am.dates || []).length === 0) {
+    items.push({ emoji: "\u{1F97E}", title: "No training dates set yet", desc: "Coordinate with your crew to plan group hikes \u2192", tab: "calendar" });
+  }
+  const gearDone = (am.gear || []).length;
+  if (gearDone === 0) {
+    items.push({ emoji: "\u{1F392}", title: "Gear checklist not started", desc: "Review and check off your gear items \u2192", tab: "gear" });
+  }
+  const skillsDone = (am.skills || []).length;
+  if (skillsDone === 0) {
+    items.push({ emoji: "\u{1F4CB}", title: "Readiness skills incomplete", desc: "Complete your readiness checklist \u2192", tab: "skills" });
+  }
+
+  if (items.length === 0) return null;
+  const item = items[0]; // Show highest priority
+
+  return (
+    <div
+      onClick={() => setView(item.tab)}
+      style={{
+        margin: "44px 16px 12px 16px",
+        background: `linear-gradient(135deg, ${theme.urgencyBg} 0%, ${theme.urgencyBgEnd || theme.urgencyBg} 100%)`,
+        border: `1.5px solid ${theme.borderAmber || theme.urgency}`,
+        borderRadius: 14, padding: "14px 16px",
+        display: "flex", alignItems: "center", gap: 12,
+        cursor: "pointer", transition: "transform 0.15s ease",
+      }}
+    >
+      <div style={{
+        width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+        background: theme.urgency, display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 18,
+      }}>
+        {item.emoji}
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: theme.name === "dark" ? theme.urgency : "#8B5E1A", fontFamily: fontDisplay }}>
+          {item.title}
+        </div>
+        <div style={{ fontSize: 12, color: theme.name === "dark" ? theme.textMuted : "#A67C3D", marginTop: 2, fontFamily: fontBody }}>
+          {item.desc}
+        </div>
+      </div>
     </div>
   );
 }

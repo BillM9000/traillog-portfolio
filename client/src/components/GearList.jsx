@@ -24,14 +24,14 @@ const PRIORITIES = [
 
 const PRIORITY_COLORS = {
   dark: {
-    essential: { bg: "#3d2020", color: "#d08060", border: "#5a3030" },
-    recommended: { bg: "#2a3020", color: "#90b060", border: "#3d4a30" },
-    optional: { bg: "#202a30", color: "#6090b0", border: "#2a3d50" },
+    essential: { bg: "#3A2418", color: "#E8A84C", border: "#6B5420" },
+    recommended: { bg: "#2A3620", color: "#B8CC9A", border: "#3A4D2A" },
+    optional: { bg: "#252B1F", color: "#8B8478", border: "#4A4D40" },
   },
   light: {
-    essential: { bg: "#fde8e0", color: "#b04020", border: "#e0a090" },
-    recommended: { bg: "#e8f0e0", color: "#4a7a30", border: "#b0d090" },
-    optional: { bg: "#e0eaf0", color: "#3060a0", border: "#90b0d0" },
+    essential: { bg: "#FFF3E0", color: "#C47A2A", border: "#E8C896" },
+    recommended: { bg: "#D4E4B8", color: "#3A4D2A", border: "#B8CC9A" },
+    optional: { bg: "#F3F0E8", color: "#6B5D4D", border: "#DDD6C8" },
   },
 };
 
@@ -119,7 +119,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
             {memberGearStats.map((m, idx) => (
               <div key={m.name} onClick={() => setActive && setActive(idx)} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, cursor: "pointer", borderRadius: 5, padding: "3px 6px", background: active === idx ? theme.accentBg : "transparent", border: active === idx ? `1.5px solid ${theme.borderAccent}` : "1.5px solid transparent", transition: "all .15s" }}>
                 <span style={{ fontSize: 10, color: active === idx ? theme.accent : m.color?.bg || theme.accent, fontWeight: 700, width: 70, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
-                <span style={memberTypeBadge(theme, m.userType)}>{m.userType === "adult" ? "A" : "S"}</span>
+                <span style={memberTypeBadge(theme, m.userType)}>{m.userType === "adult" ? "Adult" : "Scout"}</span>
                 <div style={{ flex: 1, height: 5, borderRadius: 3, background: theme.progressBg, overflow: "hidden" }}>
                   <div style={{ height: "100%", width: `${m.pct}%`, borderRadius: 3, background: m.pct >= 80 ? theme.accent : m.pct >= 50 ? theme.gold : theme.danger, transition: "width .3s" }} />
                 </div>
@@ -153,8 +153,8 @@ export default function GearList({ troopId, adventureId, members, active, setAct
             <button key={c.id} onClick={() => setCategory(c.id)} style={{
               padding: "3px 9px", borderRadius: 5, border: "none", fontSize: 10, fontWeight: 600,
               cursor: "pointer", fontFamily: fontBody,
-              background: category === c.id ? theme.bgTabActive : theme.bgTab,
-              color: category === c.id ? "#fff" : theme.textDimmer,
+              background: category === c.id ? theme.pillActiveBg : theme.pillInactiveBg,
+              color: category === c.id ? theme.pillActiveText : theme.pillInactiveText,
             }}>{c.label}</button>
           ))}
         </div>
@@ -165,8 +165,8 @@ export default function GearList({ troopId, adventureId, members, active, setAct
             <button key={p.id} onClick={() => setPriority(p.id)} style={{
               padding: "3px 9px", borderRadius: 5, border: "none", fontSize: 10, fontWeight: 600,
               cursor: "pointer", fontFamily: fontBody,
-              background: priority === p.id ? theme.bgTabActive : theme.bgTab,
-              color: priority === p.id ? "#fff" : theme.textDimmer,
+              background: priority === p.id ? theme.pillActiveBg : theme.pillInactiveBg,
+              color: priority === p.id ? theme.pillActiveText : theme.pillInactiveText,
             }}>{p.label}</button>
           ))}
         </div>

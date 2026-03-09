@@ -1,29 +1,29 @@
-// Font families
-export const fontBody = "'Instrument Sans','DM Sans',system-ui,sans-serif";
-export const fontDisplay = "'Playfair Display',Georgia,serif";
+// Font families — TrailLog brand
+export const fontBody = "'DM Sans','Helvetica',sans-serif";
+export const fontDisplay = "'Source Serif 4',Georgia,serif";
 
 // Theme-aware style helpers
 export const card = (t) => ({
   background: t.bgCard,
-  borderRadius: 9,
-  padding: 12,
-  marginBottom: 8,
+  borderRadius: 14,
+  padding: 16,
+  marginBottom: 10,
   border: `1px solid ${t.border}`,
   boxShadow: t.shadow,
 });
 
 export const cardTitle = (t) => ({
-  fontSize: 13,
-  fontWeight: 700,
+  fontSize: 15,
+  fontWeight: 800,
   color: t.heading,
-  marginBottom: 7,
+  marginBottom: 8,
   fontFamily: fontDisplay,
 });
 
 export const badge = (t, bg) => ({
   display: "inline-block",
-  padding: "2px 7px",
-  borderRadius: 9,
+  padding: "2px 8px",
+  borderRadius: 10,
   fontSize: 10,
   fontWeight: 600,
   background: bg || t.accentBg,
@@ -33,67 +33,70 @@ export const badge = (t, bg) => ({
 
 export const tag = (t, bg) => ({
   display: "inline-block",
-  padding: "2px 6px",
-  borderRadius: 4,
-  fontSize: 9,
+  padding: "3px 8px",
+  borderRadius: 8,
+  fontSize: 10,
   fontWeight: 600,
   background: bg || t.bgAlt,
   color: t.textMuted,
-  marginRight: 2,
+  marginRight: 3,
   marginBottom: 2,
 });
 
 export const toolbarBtn = (t, variant) => ({
-  padding: "4px 9px",
-  borderRadius: 5,
-  border: `1px solid ${t.borderLight}`,
-  fontSize: 10,
+  padding: "7px 14px",
+  borderRadius: 8,
+  border: `1.5px solid ${t.borderLight}`,
+  fontSize: 12,
   fontWeight: 600,
   cursor: "pointer",
   fontFamily: fontBody,
-  background: variant === "primary" ? t.accent : variant === "danger" ? "#c0392b" : t.bgAlt,
+  background: variant === "primary" ? t.forestDeep : variant === "danger" ? "#c0392b" : t.bgAlt,
   color: variant === "primary" || variant === "danger" ? "#fff" : t.textDim,
+  transition: "all 0.2s ease",
 });
 
 // Member type badges
 export const memberTypeBadge = (t, type) => ({
   display: "inline-block",
-  padding: "1px 5px",
-  borderRadius: 4,
+  padding: "2px 6px",
+  borderRadius: 6,
   fontSize: 9,
   fontWeight: 700,
   letterSpacing: 0.3,
-  background: type === "adult" ? "#3a6fa0" : "#4a7a55",
+  background: type === "adult" ? "#5B7A3A" : type === "scout" ? "#8B6E4E" : "#8B7D6B",
   color: "#fff",
-  marginLeft: 3,
+  marginLeft: 4,
 });
 
 export const participationBadge = (t, participation) => ({
   display: "inline-block",
-  padding: "1px 5px",
-  borderRadius: 4,
+  padding: "2px 6px",
+  borderRadius: 6,
   fontSize: 9,
   fontWeight: 600,
   background: participation === "support" ? "#8a6d3b" : "transparent",
   color: participation === "support" ? "#fff" : t.textMuted,
   border: participation === "support" ? "none" : `1px solid ${t.borderLight}`,
-  marginLeft: 3,
+  marginLeft: 4,
 });
 
 // Trail badge definitions
 export const TRAIL_BADGES = {
-  gear_ready: { icon: "🎒", title: "Gear Ready" },
-  trail_medic: { icon: "🏥", title: "Trail Medic" },
-  admin_pro: { icon: "📋", title: "Admin Pro" },
-  training_complete: { icon: "🥾", title: "Training Complete" },
-  fully_prepared: { icon: "⭐", title: "Fully Prepared" },
+  gear_ready: { icon: "\u{1F392}", title: "Gear Ready" },
+  trail_medic: { icon: "\u{1F3E5}", title: "Trail Medic" },
+  admin_pro: { icon: "\u{1F4CB}", title: "Admin Pro" },
+  training_complete: { icon: "\u{1F97E}", title: "Training Complete" },
+  fully_prepared: { icon: "\u2B50", title: "Fully Prepared" },
 };
 
 // Crew journey milestones with Scout Law values
 export const JOURNEY_WAYPOINTS = [
-  { pct: 0, name: "Trailhead", message: "The journey begins — every step counts" },
-  { pct: 25, name: "Base Camp", message: "A Scout is Trustworthy — your crew is building a foundation" },
-  { pct: 50, name: "Timber Ridge", message: "A Scout is Prepared — halfway to the summit" },
-  { pct: 75, name: "Eagle Point", message: "A Scout is Brave — the peak is in sight" },
-  { pct: 100, name: "Summit!", message: "A Scout is Cheerful — your crew is ready for adventure!" },
+  { pct: 0, name: "Trailhead", message: "The journey begins \u2014 every step counts" },
+  { pct: 25, name: "Base Camp", message: "A Scout is Trustworthy \u2014 your crew is building a foundation" },
+  { pct: 50, name: "Timber Ridge", message: "A Scout is Prepared \u2014 halfway to the summit" },
+  { pct: 75, name: "Eagle Point", message: "A Scout is Brave \u2014 the peak is in sight" },
+  { pct: 100, name: "Summit!", message: "A Scout is Cheerful \u2014 your crew is ready for adventure!" },
 ];
+
+// ProgressRing and MiniBar components are in components/ProgressWidgets.jsx

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { DAYS_ABBR, MONTH_NAMES } from "../utils/constants";
 import { daysInMonth, dateKey, dayOfWeek, isPast } from "../utils/dates";
 import { useTheme } from "../contexts/ThemeContext";
-import { toolbarBtn } from "../utils/theme";
+import { toolbarBtn, fontBody, fontDisplay } from "../utils/theme";
 
 export default function Calendar({ members, active, months, analysis, onToggleDate, onBulkSelect, onClearAll, trekDates }) {
   const dragRef = useRef({ active: false, mode: null });
@@ -55,10 +55,10 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
 
   return (
     <div>
-      <div style={{ padding: "10px 12px", background: theme.accentBg, borderRadius: 8, border: `1px solid ${theme.borderAccent}`, marginBottom: 10, boxShadow: theme.shadow }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: theme.accent }}>Training Hike Coordinator</div>
-        <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>
-          Mark dates your crew can train together. The heatmap shows where schedules overlap so you can plan group training hikes.
+      <div style={{ padding: "16px 18px", background: theme.bgCard, borderRadius: 14, border: `1px solid ${theme.border}`, marginBottom: 12, boxShadow: theme.shadow }}>
+        <div style={{ fontSize: 16, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay }}>Training Hike Coordinator</div>
+        <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 4, lineHeight: 1.5, fontFamily: fontBody }}>
+          Mark dates you can train. The heatmap shows where schedules overlap so you can plan group hikes.
         </div>
       </div>
 
@@ -115,11 +115,11 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
                   let bg, color, borderStyle;
                   if (blocked) {
                     if (trekType === "adventure") {
-                      bg = mode === "dark" ? "#2a3d2e" : "#d4e8d8";
-                      color = mode === "dark" ? "#7aba7a" : "#2a5a30";
+                      bg = mode === "dark" ? "#2A3620" : "#D4E4B8";
+                      color = mode === "dark" ? "#B8CC9A" : "#3A4D2A";
                     } else {
-                      bg = mode === "dark" ? "#3a3520" : "#f0e8d0";
-                      color = mode === "dark" ? "#d4aa6a" : "#8a6d3b";
+                      bg = mode === "dark" ? "#2E2618" : "#FFF3E0";
+                      color = mode === "dark" ? "#E8A84C" : "#C47A2A";
                     }
                     borderStyle = "1.5px solid transparent";
                   } else if (sel) {

@@ -19,6 +19,7 @@ db.exec(`
     avatar_url TEXT,
     user_type TEXT,
     parent_email TEXT,
+    parent_email_2 TEXT,
     email_verified INTEGER NOT NULL DEFAULT 0,
     verification_token TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -157,10 +158,22 @@ db.exec(`
     reached_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(adventure_id, milestone_type)
   );
+
+  CREATE TABLE IF NOT EXISTS link_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    adventure_id INTEGER NOT NULL REFERENCES adventures(id),
+    requester_id INTEGER NOT NULL REFERENCES users(id),
+    scout_id INTEGER NOT NULL REFERENCES users(id),
+    status TEXT NOT NULL DEFAULT 'pending',
+    reviewed_by INTEGER REFERENCES users(id),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    resolved_at DATETIME,
+    UNIQUE(adventure_id, requester_id, scout_id)
+  );
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 3;
+const CURRENT_SCHEMA_VERSION = 4;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -247,6 +260,24 @@ function migrate() {
       }
       db.exec("DROP TABLE adventure_members");
       db.exec("ALTER TABLE adventure_members_new RENAME TO adventure_members");
+    }
+
+    // ── v4 migration: parent_email_2, link_requests table ──
+    if (version < 4) {
+      tryAlter("ALTER TABLE users ADD COLUMN parent_email_2 TEXT");
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS link_requests (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          adventure_id INTEGER NOT NULL REFERENCES adventures(id),
+          requester_id INTEGER NOT NULL REFERENCES users(id),
+          scout_id INTEGER NOT NULL REFERENCES users(id),
+          status TEXT NOT NULL DEFAULT 'pending',
+          reviewed_by INTEGER REFERENCES users(id),
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          resolved_at DATETIME,
+          UNIQUE(adventure_id, requester_id, scout_id)
+        )
+      `);
     }
 
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
@@ -610,12 +641,13 @@ export function createUser({ google_id, email, password_hash, name, avatar_url, 
   return { id: result.lastInsertRowid, google_id, email: email.toLowerCase(), name, avatar_url, email_verified: email_verified || 0, user_type: null, parent_email: null };
 }
 
-export function updateUserProfile(id, { name, user_type, parent_email }) {
+export function updateUserProfile(id, { name, user_type, parent_email, parent_email_2 }) {
   const sets = [];
   const vals = [];
   if (name !== undefined) { sets.push("name = ?"); vals.push(name); }
   if (user_type !== undefined) { sets.push("user_type = ?"); vals.push(user_type); }
   if (parent_email !== undefined) { sets.push("parent_email = ?"); vals.push(parent_email || null); }
+  if (parent_email_2 !== undefined) { sets.push("parent_email_2 = ?"); vals.push(parent_email_2 || null); }
   if (sets.length === 0) return;
   vals.push(id);
   db.prepare(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
@@ -820,6 +852,7 @@ export function updateAdventure(id, { name, description, trek_date, depart_date,
 }
 
 export function deleteAdventure(id) {
+  db.prepare("DELETE FROM link_requests WHERE adventure_id = ?").run(id);
   db.prepare("DELETE FROM achievements WHERE adventure_id = ?").run(id);
   db.prepare("DELETE FROM crew_milestones WHERE adventure_id = ?").run(id);
   db.prepare("DELETE FROM invitations WHERE adventure_id = ?").run(id);
@@ -1065,6 +1098,94 @@ export function addCrewMilestone(adventureId, milestoneType) {
       .run(adventureId, milestoneType);
     return true;
   } catch { return false; }
+}
+
+// ── Parent-Scout Auto-Linking ──
+
+export function autoLinkAdult(adventureId, adultUserId) {
+  const adultUser = findUserById(adultUserId);
+  if (!adultUser || adultUser.user_type !== "adult") return null;
+  // Find scouts in this adventure whose parent_email matches the adult's login email
+  const match = db.prepare(`
+    SELECT am.user_id FROM adventure_members am
+    JOIN users u ON am.user_id = u.id
+    WHERE am.adventure_id = ? AND u.user_type = 'scout' AND am.is_manual = 0
+    AND (LOWER(u.parent_email) = ? OR LOWER(u.parent_email_2) = ?)
+    LIMIT 1
+  `).get(adventureId, adultUser.email.toLowerCase(), adultUser.email.toLowerCase());
+  if (match) {
+    db.prepare("UPDATE adventure_members SET linked_to = ? WHERE adventure_id = ? AND user_id = ?")
+      .run(match.user_id, adventureId, adultUserId);
+    return match.user_id;
+  }
+  return null;
+}
+
+export function autoLinkScout(adventureId, scoutUserId) {
+  const scoutUser = findUserById(scoutUserId);
+  if (!scoutUser || scoutUser.user_type !== "scout") return null;
+  const parentEmails = [scoutUser.parent_email, scoutUser.parent_email_2]
+    .filter(Boolean).map(e => e.toLowerCase());
+  if (parentEmails.length === 0) return null;
+  // Find unlinked adults in this adventure whose email matches a parent email
+  const placeholders = parentEmails.map(() => "?").join(", ");
+  const match = db.prepare(`
+    SELECT am.user_id FROM adventure_members am
+    JOIN users u ON am.user_id = u.id
+    WHERE am.adventure_id = ? AND u.user_type = 'adult' AND am.is_manual = 0
+    AND am.linked_to IS NULL AND LOWER(u.email) IN (${placeholders})
+    LIMIT 1
+  `).get(adventureId, ...parentEmails);
+  if (match) {
+    db.prepare("UPDATE adventure_members SET linked_to = ? WHERE adventure_id = ? AND user_id = ?")
+      .run(scoutUserId, adventureId, match.user_id);
+    return match.user_id;
+  }
+  return null;
+}
+
+// ── Link Requests ──
+
+export function createLinkRequest(adventureId, requesterId, scoutId) {
+  const result = db.prepare(
+    "INSERT OR IGNORE INTO link_requests (adventure_id, requester_id, scout_id) VALUES (?, ?, ?)"
+  ).run(adventureId, requesterId, scoutId);
+  return result.changes > 0 ? { id: result.lastInsertRowid } : null;
+}
+
+export function getLinkRequests(adventureId, status) {
+  const base = `
+    SELECT lr.*, u_req.name as requester_name, u_req.email as requester_email,
+           u_scout.name as scout_name
+    FROM link_requests lr
+    JOIN users u_req ON lr.requester_id = u_req.id
+    JOIN users u_scout ON lr.scout_id = u_scout.id
+    WHERE lr.adventure_id = ?`;
+  if (status) {
+    return db.prepare(base + " AND lr.status = ? ORDER BY lr.created_at DESC").all(adventureId, status);
+  }
+  return db.prepare(base + " ORDER BY lr.created_at DESC").all(adventureId);
+}
+
+export function getMyLinkRequests(adventureId, userId) {
+  return db.prepare(
+    "SELECT * FROM link_requests WHERE adventure_id = ? AND requester_id = ? ORDER BY created_at DESC"
+  ).all(adventureId, userId);
+}
+
+export function approveLinkRequest(requestId, reviewedBy) {
+  const req = db.prepare("SELECT * FROM link_requests WHERE id = ? AND status = 'pending'").get(requestId);
+  if (!req) return null;
+  db.prepare("UPDATE link_requests SET status = 'approved', reviewed_by = ?, resolved_at = CURRENT_TIMESTAMP WHERE id = ?")
+    .run(reviewedBy, requestId);
+  db.prepare("UPDATE adventure_members SET linked_to = ? WHERE adventure_id = ? AND user_id = ?")
+    .run(req.scout_id, req.adventure_id, req.requester_id);
+  return req;
+}
+
+export function denyLinkRequest(requestId, reviewedBy) {
+  db.prepare("UPDATE link_requests SET status = 'denied', reviewed_by = ?, resolved_at = CURRENT_TIMESTAMP WHERE id = ?")
+    .run(reviewedBy, requestId);
 }
 
 // ── Session Store ──

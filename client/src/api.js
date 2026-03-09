@@ -78,6 +78,12 @@ export const api = {
   sendInvitation: (advId, email) => request(`/adventures/${advId}/invitations`, { method: "POST", body: JSON.stringify({ email }) }),
   getInvitations: (advId) => request(`/adventures/${advId}/invitations`),
 
+  // Link Requests
+  getLinkRequests: (advId) => request(`/adventures/${advId}/link-requests`),
+  createLinkRequest: (advId, scout_id) => request(`/adventures/${advId}/link-requests`, { method: "POST", body: JSON.stringify({ scout_id }) }),
+  approveLinkRequest: (advId, requestId) => request(`/adventures/${advId}/link-requests/${requestId}/approve`, { method: "PUT" }),
+  denyLinkRequest: (advId, requestId) => request(`/adventures/${advId}/link-requests/${requestId}/deny`, { method: "PUT" }),
+
   // Achievements
   getAchievements: (advId) => request(`/adventures/${advId}/achievements`),
   checkMilestones: (advId) => request(`/adventures/${advId}/check-milestones`, { method: "POST" }),

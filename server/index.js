@@ -20,12 +20,14 @@ import {
   getAdventureSkills, addAdventureSkill, removeAdventureSkill,
   createInvitation, getInvitationByToken, getInvitations, updateInvitationStatus, getInvitationsByEmail,
   earnBadge, getBadges, getCrewMilestones, addCrewMilestone,
+  autoLinkAdult, autoLinkScout,
+  createLinkRequest, getLinkRequests, getMyLinkRequests, approveLinkRequest, denyLinkRequest,
   getItineraries, getItinerary, getGearItems, getSetting, setSetting,
 } from "./db.js";
 import {
   sendJoinRequestEmail, sendParentNotificationEmail, sendVerificationEmail,
   sendInvitationEmail, sendMemberApprovedEmail, sendMemberDeniedEmail,
-  sendDateChangedEmail, sendBadgeEarnedEmail,
+  sendDateChangedEmail, sendBadgeEarnedEmail, sendLinkRequestEmail,
 } from "./email.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -187,10 +189,10 @@ app.get("/api/auth/me", (req, res) => {
 
 app.put("/api/auth/profile", requireAuth, (req, res) => {
   try {
-    const { name, user_type, parent_email } = req.body;
+    const { name, user_type, parent_email, parent_email_2 } = req.body;
     if (user_type && !["adult", "scout"].includes(user_type)) return res.status(400).json({ error: "user_type must be 'adult' or 'scout'" });
     if (user_type === "scout" && !parent_email?.trim()) return res.status(400).json({ error: "Scouts must provide parent/guardian email" });
-    updateUserProfile(req.user.id, { name: name?.trim(), user_type, parent_email });
+    updateUserProfile(req.user.id, { name: name?.trim(), user_type, parent_email, parent_email_2: parent_email_2?.trim() || null });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -452,7 +454,12 @@ app.post("/api/adventures/:adventureId/members", requireAuth, requireAdventureAd
   try {
     const { user_id, role } = req.body;
     if (!user_id) return res.status(400).json({ error: "user_id required" });
-    addAdventureMember(parseInt(req.params.adventureId), user_id, role || "member");
+    const advId = parseInt(req.params.adventureId);
+    addAdventureMember(advId, user_id, role || "member");
+    // Auto-link parent-scout by email match
+    const addedUser = findUserById(user_id);
+    if (addedUser?.user_type === "adult") autoLinkAdult(advId, user_id);
+    else if (addedUser?.user_type === "scout") autoLinkScout(advId, user_id);
     res.status(201).json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -608,6 +615,9 @@ function processInvitation(user, invitation) {
       const advMember = getAdventureMember(invitation.adventure_id, user.id);
       if (!advMember) {
         addAdventureMember(invitation.adventure_id, user.id, "member");
+        // Auto-link parent-scout by email match
+        if (user.user_type === "adult") autoLinkAdult(invitation.adventure_id, user.id);
+        else if (user.user_type === "scout") autoLinkScout(invitation.adventure_id, user.id);
       }
     }
     updateInvitationStatus(invitation.id, "accepted");
@@ -691,11 +701,23 @@ app.put("/api/adventures/:adventureId/members/:userId/participation", requireAut
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Link support adult to scout
+// Link adult to scout (admin override — any adult, any scout)
 app.put("/api/adventures/:adventureId/members/:userId/link", requireAuth, requireAdventureAdmin, (req, res) => {
   try {
+    const adventureId = parseInt(req.params.adventureId);
+    const userId = parseInt(req.params.userId);
     const { linked_to } = req.body;
-    linkMember(parseInt(req.params.adventureId), parseInt(req.params.userId), linked_to || null);
+    // Validate: member being linked must be an adult
+    const memberUser = findUserById(userId);
+    if (memberUser?.user_type !== "adult") return res.status(400).json({ error: "Only adults can be linked to scouts" });
+    // Validate: target must be a scout in this adventure (or null to unlink)
+    if (linked_to) {
+      const targetMember = getAdventureMember(adventureId, linked_to);
+      if (!targetMember) return res.status(400).json({ error: "Target scout not in this adventure" });
+      const targetUser = findUserById(linked_to);
+      if (targetUser?.user_type !== "scout") return res.status(400).json({ error: "Can only link to scouts" });
+    }
+    linkMember(adventureId, userId, linked_to || null);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -713,7 +735,73 @@ app.post("/api/adventures/:adventureId/manual-members", requireAuth, requireAdve
 // Remove manual member
 app.delete("/api/adventures/:adventureId/manual-members/:memberId", requireAuth, requireAdventureAdmin, (req, res) => {
   try {
-    removeManualMember(parseInt(req.params.memberId));
+    removeManualMember(parseInt(req.params.adventureId), parseInt(req.params.memberId));
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ═══════════════════════════════════════════
+// PARENT-SCOUT LINK REQUESTS
+// ═══════════════════════════════════════════
+
+// Adult requests to link to a scout (admin approval required)
+app.post("/api/adventures/:adventureId/link-requests", requireAuth, requireAdventureMember, (req, res) => {
+  try {
+    const adventureId = parseInt(req.params.adventureId);
+    const { scout_id } = req.body;
+    // Must be an adult
+    const requester = findUserById(req.user.id);
+    if (requester?.user_type !== "adult") return res.status(400).json({ error: "Only adults can request to link to a scout" });
+    if (!scout_id) return res.status(400).json({ error: "scout_id required" });
+    // Target must be a scout in this adventure
+    const targetMember = getAdventureMember(adventureId, scout_id);
+    if (!targetMember) return res.status(400).json({ error: "Scout not found in this adventure" });
+    const targetUser = findUserById(scout_id);
+    if (targetUser?.user_type !== "scout") return res.status(400).json({ error: "Target must be a scout" });
+
+    const result = createLinkRequest(adventureId, req.user.id, scout_id);
+    if (!result) return res.status(409).json({ error: "Link request already exists" });
+
+    // Notify adventure admins
+    const members = getAdventureMembers(adventureId);
+    const admins = members.filter(m => m.role === "admin" && !m.is_manual);
+    const adv = getAdventure(adventureId);
+    admins.forEach(admin => {
+      if (admin.email) {
+        sendLinkRequestEmail(admin.email, admin.name, requester.name, targetUser.name, adv.name)
+          .catch(e => console.error("Link request email failed:", e));
+      }
+    });
+    res.status(201).json({ ok: true, id: result.id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Get link requests (admin: all, member: own only)
+app.get("/api/adventures/:adventureId/link-requests", requireAuth, requireAdventureMember, (req, res) => {
+  try {
+    const adventureId = parseInt(req.params.adventureId);
+    const member = getAdventureMember(adventureId, req.user.id);
+    if (member?.role === "admin") {
+      res.json(getLinkRequests(adventureId));
+    } else {
+      res.json(getMyLinkRequests(adventureId, req.user.id));
+    }
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Approve link request
+app.put("/api/adventures/:adventureId/link-requests/:requestId/approve", requireAuth, requireAdventureAdmin, (req, res) => {
+  try {
+    const result = approveLinkRequest(parseInt(req.params.requestId), req.user.id);
+    if (!result) return res.status(404).json({ error: "Pending request not found" });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Deny link request
+app.put("/api/adventures/:adventureId/link-requests/:requestId/deny", requireAuth, requireAdventureAdmin, (req, res) => {
+  try {
+    denyLinkRequest(parseInt(req.params.requestId), req.user.id);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

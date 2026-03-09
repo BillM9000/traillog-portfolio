@@ -165,6 +165,25 @@ export async function sendBadgeEarnedEmail(toEmail, memberName, badgeName, adven
   });
 }
 
+export async function sendLinkRequestEmail(adminEmail, adminName, adultName, scoutName, adventureName) {
+  const t = getTransporter();
+  if (!t) return console.log(`[email skip] Link request: ${adultName} → ${scoutName} (no SMTP configured)`);
+
+  await t.sendMail({
+    from: `"TrailLog" <${process.env.SMTP_USER}>`,
+    to: adminEmail,
+    subject: `Link request: ${adultName} wants to link to ${scoutName}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:500px">
+        <h2 style="color:#2d3830">Parent-Scout Link Request</h2>
+        <p><strong>${adultName}</strong> is requesting to be linked to <strong>${scoutName}</strong> in <strong>${adventureName}</strong>.</p>
+        <p>Log in to the Admin Panel to approve or deny this request.</p>
+        <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrailLog</a></p>
+      </div>
+    `,
+  });
+}
+
 export async function sendVerificationEmail(toEmail, token) {
   const t = getTransporter();
   if (!t) return console.log(`[email skip] Verification for ${toEmail} (no SMTP configured)`);

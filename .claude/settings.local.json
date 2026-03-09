@@ -10,7 +10,12 @@
       "Bash(export PATH=\"$PATH:/c/Program Files/GitHub CLI\")",
       "Bash(gh auth login --hostname github.com --git-protocol https --web)",
       "Bash(git init)",
-      "Bash(git add -A)"
+      "Bash(git add -A)",
+      "Bash(npm run build --prefix client)",
+      "Bash(tar czf /tmp/crew614-deploy.tar.gz --exclude=node_modules --exclude=.git --exclude=client/node_modules -C .. crew614/)",
+      "Bash(scp /tmp/crew614-deploy.tar.gz root@31.97.134.173:/tmp/)",
+      "Bash(ssh root@31.97.134.173 \"cd /opt && tar xzf /tmp/crew614-deploy.tar.gz && cd crew614 && docker compose build --no-cache && docker compose up -d\")",
+      "Bash(ssh root@31.97.134.173 \"docker logs crew614 2>&1 | tail -3\")"
     ]
   }
 }

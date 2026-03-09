@@ -4,7 +4,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { fontBody, fontDisplay, card, cardTitle } from "../utils/theme";
 import Logo from "./Logo";
 
-export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack, onLogout }) {
+export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack, onLogout, skipAutoSelect }) {
   const { theme } = useTheme();
   const [adventures, setAdventures] = useState([]);
   const [itineraries, setItineraries] = useState([]);
@@ -17,9 +17,9 @@ export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack
   useEffect(() => {
     api.getAdventures(troop.id).then(advs => {
       setAdventures(advs);
-      // Auto-enter if only 1 active adventure
+      // Auto-enter if only 1 active adventure (unless user explicitly navigated back)
       const active = advs.filter(a => a.status === "active");
-      if (active.length === 1) onSelect(active[0].id);
+      if (active.length === 1 && !skipAutoSelect) onSelect(active[0].id);
       setFetching(false);
     }).catch(() => setFetching(false));
   }, [troop.id]);
@@ -68,10 +68,10 @@ export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Logo size={36} />
           <div>
-            <h1 style={{ fontFamily: fontDisplay, fontSize: 20, fontWeight: 700, color: theme.heading, margin: 0 }}>
+            <h1 style={{ fontFamily: fontDisplay, fontSize: 20, fontWeight: 800, color: theme.heading, margin: 0 }}>
               {troop.name}
             </h1>
-            <div style={{ fontSize: 11, color: theme.textDim }}>Select an adventure</div>
+            <div style={{ fontSize: 11, color: theme.textDim, fontFamily: fontBody }}>Select an adventure</div>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
