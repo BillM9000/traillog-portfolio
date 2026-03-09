@@ -45,7 +45,7 @@ export default function LoginPage({ onLogin, onSignup }) {
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <Logo size={72} />
           <h1 style={{ fontFamily: fontDisplay, fontSize: 28, fontWeight: 700, color: "#d4c8a8", margin: 0, letterSpacing: "-0.5px" }}>
-            TrekSync
+            TrailLog
           </h1>
           <p style={{ fontSize: 13, color: "#6a7a6a", marginTop: 6 }}>
             Coordinate your crew's high adventure training

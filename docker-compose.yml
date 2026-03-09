@@ -14,20 +14,20 @@ services:
       - SESSION_SECRET=${SESSION_SECRET}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - GOOGLE_CALLBACK_URL=https://treksync.gracezero.ai/auth/google/callback
-      - APP_URL=https://treksync.gracezero.ai
+      - GOOGLE_CALLBACK_URL=https://traillog.gracezero.ai/auth/google/callback
+      - APP_URL=https://traillog.gracezero.ai
       - ADMIN_EMAIL=${ADMIN_EMAIL}
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASS=${SMTP_PASS}
     labels:
       - traefik.enable=true
       # HTTPS router
-      - traefik.http.routers.crew614.rule=Host(`treksync.gracezero.ai`)
+      - traefik.http.routers.crew614.rule=Host(`traillog.gracezero.ai`)
       - traefik.http.routers.crew614.entrypoints=websecure
       - traefik.http.routers.crew614.tls=true
       - traefik.http.routers.crew614.tls.certresolver=mytlschallenge
       # HTTP → HTTPS redirect
-      - traefik.http.routers.crew614-http.rule=Host(`treksync.gracezero.ai`)
+      - traefik.http.routers.crew614-http.rule=Host(`traillog.gracezero.ai`)
       - traefik.http.routers.crew614-http.entrypoints=web
       - traefik.http.routers.crew614-http.middlewares=crew614-redirect
       - traefik.http.middlewares.crew614-redirect.redirectscheme.scheme=https

@@ -56,7 +56,7 @@ export default function Lobby({ user, memberships, onRefresh, onLogout }) {
       <div style={{ padding: "18px 20px", borderBottom: `1px solid ${theme.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Logo size={36} />
-          <h1 style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: 700, color: theme.heading, margin: 0 }}>TrekSync</h1>
+          <h1 style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: 700, color: theme.heading, margin: 0 }}>TrailLog</h1>
           <div style={{ fontSize: 12, color: theme.textDim, marginTop: 2 }}>Welcome, {user.name}</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

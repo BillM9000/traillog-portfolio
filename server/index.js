@@ -627,7 +627,7 @@ app.post("/api/adventures/:adventureId/invitations", requireAuth, requireAdventu
     const troop = getTroop(adv.troop_id);
     const token = crypto.randomUUID();
     createInvitation({ troop_id: adv.troop_id, adventure_id: adventureId, email: email.trim(), invited_by: req.user.id, token });
-    const inviteUrl = `${process.env.APP_URL || "https://treksync.gracezero.ai"}/invite/${token}`;
+    const inviteUrl = `${process.env.APP_URL || "https://traillog.gracezero.ai"}/invite/${token}`;
     sendInvitationEmail(email.trim(), req.user.name, troop.name, adv.name, inviteUrl)
       .catch(e => console.error("Invitation email failed:", e));
     res.status(201).json({ ok: true, token });
@@ -851,5 +851,5 @@ app.get("*", (req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`TrekSync running on port ${PORT}`);
+  console.log(`TrailLog running on port ${PORT}`);
 });

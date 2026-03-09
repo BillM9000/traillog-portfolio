@@ -1,10 +1,10 @@
-# TrekSync Architecture
+# TrailLog Architecture
 
 ## System Overview
 
 ```
                         ┌─────────────────────────────────────┐
-                        │         treksync.gracezero.ai       │
+                        │         traillog.gracezero.ai       │
                         │          (Traefik + TLS)            │
                         └──────────────┬──────────────────────┘
                                        │ :443
