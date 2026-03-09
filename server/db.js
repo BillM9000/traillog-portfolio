@@ -160,7 +160,7 @@ db.exec(`
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 2;
+const CURRENT_SCHEMA_VERSION = 3;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -216,6 +216,37 @@ function migrate() {
       tryAlter("ALTER TABLE adventure_members ADD COLUMN linked_to INTEGER REFERENCES users(id)");
       tryAlter("ALTER TABLE adventure_members ADD COLUMN is_manual INTEGER NOT NULL DEFAULT 0");
       tryAlter("ALTER TABLE adventure_members ADD COLUMN manual_name TEXT");
+    }
+
+    // ── v3 migration: make user_id nullable for manual members ──
+    if (version < 3) {
+      // SQLite doesn't support ALTER COLUMN, so recreate the table
+      const hasData = db.prepare("SELECT COUNT(*) as c FROM adventure_members").get().c > 0;
+      db.exec(`
+        CREATE TABLE adventure_members_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          adventure_id INTEGER NOT NULL REFERENCES adventures(id),
+          user_id INTEGER REFERENCES users(id),
+          role TEXT NOT NULL DEFAULT 'member',
+          participation TEXT NOT NULL DEFAULT 'trekking',
+          linked_to INTEGER REFERENCES users(id),
+          is_manual INTEGER NOT NULL DEFAULT 0,
+          manual_name TEXT,
+          color_bg TEXT NOT NULL,
+          dates TEXT NOT NULL DEFAULT '[]',
+          skills TEXT NOT NULL DEFAULT '[]',
+          gear TEXT NOT NULL DEFAULT '[]',
+          medical TEXT NOT NULL DEFAULT '[]',
+          admin_tasks TEXT NOT NULL DEFAULT '[]',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      if (hasData) {
+        db.exec(`INSERT INTO adventure_members_new (id, adventure_id, user_id, role, participation, linked_to, is_manual, manual_name, color_bg, dates, skills, gear, medical, admin_tasks, created_at)
+          SELECT id, adventure_id, user_id, role, participation, linked_to, is_manual, manual_name, color_bg, dates, skills, gear, medical, admin_tasks, created_at FROM adventure_members`);
+      }
+      db.exec("DROP TABLE adventure_members");
+      db.exec("ALTER TABLE adventure_members_new RENAME TO adventure_members");
     }
 
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
