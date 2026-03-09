@@ -1,297 +1,366 @@
 # TrekSync Architecture
 
-Multi-troop SaaS platform for Scouting America high adventure trek preparation. Coordinates training schedules, gear readiness, itinerary planning, and crew readiness tracking.
-
-**Live:** https://treksync.gracezero.ai
-
----
-
 ## System Overview
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      Browser (SPA)                      │
-│  React 18 + Vite · Google OAuth · Context API           │
-└──────────────────────┬──────────────────────────────────┘
-                       │ HTTPS (Traefik TLS)
-┌──────────────────────▼──────────────────────────────────┐
-│                   VPS (Hostinger)                        │
-│  ┌─────────────────────────────────────────────────┐    │
-│  │  Docker: crew614 container                      │    │
-│  │  ┌─────────────────────┐  ┌──────────────────┐  │    │
-│  │  │  Express.js :3614   │  │  SQLite (WAL)    │  │    │
-│  │  │  Passport.js        │──│  /app/data/       │  │    │
-│  │  │  Static file serve  │  │  crew614.db      │  │    │
-│  │  └─────────────────────┘  └──────────────────┘  │    │
-│  └─────────────────────────────────────────────────┘    │
-│  Traefik reverse proxy · Auto TLS via Let's Encrypt     │
-└─────────────────────────────────────────────────────────┘
+                        ┌─────────────────────────────────────┐
+                        │         treksync.gracezero.ai       │
+                        │          (Traefik + TLS)            │
+                        └──────────────┬──────────────────────┘
+                                       │ :443
+                                       ▼
+                        ┌─────────────────────────────────────┐
+                        │       Docker: crew614 container     │
+                        │            Node 20 Alpine           │
+                        │              :3614                  │
+                        ├─────────────────────────────────────┤
+                        │                                     │
+                        │  ┌───────────┐    ┌──────────────┐  │
+                        │  │  Express   │    │  Vite-built  │  │
+                        │  │  API       │    │  React SPA   │  │
+                        │  │  Server    │    │  (static)    │  │
+                        │  └─────┬─────┘    └──────────────┘  │
+                        │        │                            │
+                        │  ┌─────▼─────────────────────────┐  │
+                        │  │  SQLite (WAL mode)            │  │
+                        │  │  Docker volume:               │  │
+                        │  │  crew614_crew614_data         │  │
+                        │  └───────────────────────────────┘  │
+                        └─────────────────────────────────────┘
+                                       │
+                        ┌──────────────┴──────────────────────┐
+                        │          External Services          │
+                        ├─────────────────────────────────────┤
+                        │  Google OAuth    │  Gmail SMTP      │
+                        │  (Passport.js)   │  (Nodemailer)    │
+                        └─────────────────────────────────────┘
 ```
 
 ## Data Model
 
 ```
-┌──────────┐     ┌──────────────┐     ┌─────────────────────┐
-│  users   │────<│ troop_members│>────│       troops         │
-│          │     │ (role,status)│     │ (name, description)  │
-└──────────┘     └──────────────┘     └──────────┬──────────┘
-     │                                           │
-     │           ┌──────────────────┐            │ 1:N
-     └──────────<│adventure_members │>───┌───────▼──────────┐
-                 │ dates (JSON)     │    │   adventures     │
-                 │ skills (JSON)    │    │ trek_date        │
-                 │ gear (JSON)      │    │ itinerary_id ──────> itineraries
-                 │ medical (JSON)   │    │ status           │
-                 │ admin_tasks(JSON)│    └──────────────────┘
-                 └──────────────────┘           │ 1:N
-                                        ┌──────▼──────┐
-                 ┌──────────────┐       │   skills    │
-                 │  gear_items  │       │ category    │
-                 │  priority    │       │ is_default  │
-                 │  category    │       └─────────────┘
-                 │  affiliate   │
-                 └──────────────┘
+┌─────────────────────┐
+│       users          │
+├─────────────────────┤
+│ id, google_id       │
+│ name, email, avatar │
+│ user_type ──────────┼──── "adult" | "scout"
+│ parent_email        │
+│ email_verified      │
+└────────┬────────────┘
+         │
+         │ user_id
+         ▼
+┌─────────────────────┐         ┌─────────────────────┐
+│   troop_members      │◄────────│       troops         │
+├─────────────────────┤  troop  ├─────────────────────┤
+│ user_id, troop_id   │  _id    │ id, name            │
+│ role (admin/member) │         │ description         │
+│ status (pending/    │         │ affiliate_tag       │
+│   approved/denied)  │         └──────────┬──────────┘
+└─────────────────────┘                    │
+                                           │ troop_id
+                                           ▼
+                                ┌─────────────────────┐
+                                │     adventures       │
+                                ├─────────────────────┤
+                                │ id, troop_id, name  │
+                                │ itinerary_id        │
+                                │ depart_date ────────┼── Day leave home
+                                │ arrive_date ────────┼── Day arrive Philmont
+                                │ return_date ────────┼── Day depart Philmont
+                                │ home_date ──────────┼── Day arrive home
+                                │ status (active/     │
+                                │   completed/archived│)
+                                └──────────┬──────────┘
+                                           │
+                          ┌────────────────┼────────────────┐
+                          │                │                │
+                          ▼                ▼                ▼
+               ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐
+               │ adventure_   │ │ adventure_   │ │  adventure_      │
+               │  members     │ │  skills      │ │  achievements    │
+               ├──────────────┤ ├──────────────┤ ├──────────────────┤
+               │ user_id      │ │ id, adv_id   │ │ id, adv_id       │
+               │ adventure_id │ │ name, desc   │ │ user_id, type    │
+               │ role ────────┼─┤ category     │ │ badge_type       │
+               │ participation│ └──────────────┘ │ awarded_at       │
+               │  (trekking/  │                  └──────────────────┘
+               │   support)   │
+               │ linked_to ───┼── FK to another member (support→scout)
+               │ is_manual    │
+               │ dates (JSON) │
+               │ skills (JSON)│
+               │ gear (JSON)  │
+               └──────────────┘
+                      │
+                      │ Also:
+                      ▼
+               ┌──────────────┐
+               │ invitations  │
+               ├──────────────┤
+               │ troop_id     │
+               │ adventure_id │
+               │ email, token │
+               │ invited_by   │
+               │ status       │
+               └──────────────┘
 ```
-
-**Key relationships:**
-- A **Troop** has many **Adventures** (Philmont, Sea Base, etc.)
-- Each Adventure has its own members, itinerary, skills, and readiness tracking
-- `adventure_members` stores per-member JSON arrays: `dates`, `skills`, `gear`, `medical`, `admin_tasks`
-- Skills are scoped to an adventure and categorized: `training`, `medical`, `admin`
-- Schema versioning via `platform_settings.schema_version`
-
-## Authentication Flow
-
-```
-Browser                    Server                   Google
-  │── GET /auth/google ──────>│                        │
-  │                           │── OAuth redirect ─────>│
-  │                           │<── code ───────────────│
-  │                           │── exchange code ──────>│
-  │                           │<── profile ────────────│
-  │<── session cookie ────────│  (find/create user)    │
-  │── GET /api/auth/me ──────>│                        │
-  │<── { user, memberships }──│                        │
-```
-
-- Google OAuth via Passport.js (`passport-google-oauth20`)
-- Express sessions stored in SQLite (`sessions` table)
-- Session cookie: 30-day TTL, httpOnly, secure in production, sameSite=lax
 
 ## Client Architecture
 
-### Navigation Flow
-
 ```
-LoginPage → ProfileSetup → Lobby → AdventurePicker → MainView
-                                                         │
-                                              ┌──────────┴──────────┐
-                                              │  Tabs:              │
-                                              │  Calendar │ Results │
-                                              │  Itinerary│ Gear    │
-                                              │  Readiness│         │
-                                              └───────────────────-─┘
-```
-
-### Component Tree
-
-```
-App
-├── LoginPage              Google OAuth sign-in
-├── ProfileSetup           User type (Scout/Adult) + parent email
-├── Lobby                  Troop search, join, create
-├── AdventurePicker        Select/create adventure within troop
-└── AdventureProvider      Context: members, skills, itinerary, adventure
-    └── MainView
-        ├── Header         Breadcrumb (Troop > Adventure), countdown, admin badge
-        ├── MemberBar      Color-coded member chips, selection, pending requests
-        ├── Tab Content
-        │   ├── Calendar   Training hike date coordination with drag-select
-        │   ├── Results    Best training windows from overlap analysis
-        │   ├── Itinerary  Enriched day cards (programs, water, warnings)
-        │   ├── GearList   Per-member gear checklist with completion %
-        │   └── Skills     Crew Readiness Dashboard (training/gear/medical/admin)
-        ├── AdminPanel     Modal: troop/adventure settings, member management
-        └── ConfirmModal   Generic confirmation dialog
-```
-
-### State Management
-
-Three React Contexts:
-- **AuthContext** — user session, troop memberships, login/logout
-- **ThemeContext** — dark/light mode toggle (light default), theme tokens
-- **AdventureContext** — active adventure data (members, skills, itinerary), polling (60s), optimistic updates
-
-Optimistic updates pattern:
-```
-User action → updateMemberLocally() → instant UI update
-           → debouncedSave() → API call (background)
-```
-
-## API Routes
-
-### Auth
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/auth/google` | Initiate Google OAuth |
-| GET | `/auth/google/callback` | OAuth callback |
-| GET | `/api/auth/me` | Current user + memberships |
-| POST | `/api/auth/logout` | Destroy session |
-| PUT | `/api/auth/profile` | Set user_type, parent_email |
-
-### Troops
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/api/troops` | Search troops |
-| POST | `/api/troops` | Create troop |
-| GET | `/api/troops/:id` | Get troop |
-| PUT | `/api/troops/:id` | Update troop (admin) |
-| POST | `/api/troops/:id/join` | Request to join |
-| GET | `/api/troops/:id/members` | List members |
-| PUT | `/api/troops/:id/members/:uid/approve` | Approve join request |
-
-### Adventures
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/api/troops/:troopId/adventures` | List adventures |
-| POST | `/api/troops/:troopId/adventures` | Create adventure |
-| GET | `/api/adventures/:id` | Get adventure |
-| PUT | `/api/adventures/:id` | Update adventure |
-| DELETE | `/api/adventures/:id` | Delete adventure |
-| GET | `/api/adventures/:id/members` | List adventure members |
-| POST | `/api/adventures/:id/members` | Add member to adventure |
-| DELETE | `/api/adventures/:id/members/:uid` | Remove member |
-| PUT | `/api/adventures/:id/members/:uid/dates` | Update availability dates |
-| PUT | `/api/adventures/:id/members/:uid/skills` | Update training skills |
-| PUT | `/api/adventures/:id/members/:uid/gear` | Update gear checklist |
-| PUT | `/api/adventures/:id/members/:uid/medical` | Update medical readiness |
-| PUT | `/api/adventures/:id/members/:uid/admin` | Update admin tasks |
-
-### Adventure Skills
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/api/adventures/:id/skills` | List skills (filterable by category) |
-| POST | `/api/adventures/:id/skills` | Add custom skill/checklist item |
-| DELETE | `/api/adventures/:id/skills/:skillId` | Remove custom skill |
-
-### Content
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/api/itineraries` | List available itineraries |
-| GET | `/api/itineraries/:id` | Get itinerary with enriched route data |
-| GET | `/api/gear` | Gear items (optional `?troop=` for affiliate links) |
-
-## Itinerary Data Structure
-
-Each itinerary day includes:
-```json
-{
-  "day": 5,
-  "camp": "Ute Gulch",
-  "elevation": 8200,
-  "miles": 8.2,
-  "gain": 1200,
-  "loss": 800,
-  "type": "Dry Camp",
-  "notes": "First dry camp — manage water carefully",
-  "showers": false,
-  "food_pickup": "Ute Gulch cantina",
-  "water_pitstop": "Ute Gulch spring",
-  "water_warning": "Dry camp — fill 4-6 liters",
-  "programs": [
-    { "name": "Western Lore", "type": "staffed", "description": "..." }
-  ],
-  "warnings": ["Burn zone — no shade", "Carry extra sunscreen"]
-}
+main.jsx
+  └─ ThemeProvider
+       └─ ToastProvider
+            └─ AuthProvider
+                 └─ App.jsx
+                      │
+                      ├── LoginPage          (unauthenticated)
+                      ├── ProfileSetup       (no user_type yet)
+                      ├── Lobby              (no approved troop)
+                      ├── AdventurePicker    (no adventure selected)
+                      │
+                      └── AdventureProvider  (adventure selected)
+                           └─ MainView
+                                ├── Header
+                                │    ├── Logo
+                                │    ├── Breadcrumb (troop > adventure)
+                                │    ├── Smart Countdown (useCountdown)
+                                │    └── Profile Dropdown
+                                │
+                                ├── MemberBar
+                                │    ├── Trekking Members (avatars + type badges)
+                                │    ├── Support Members (separate section)
+                                │    └── Trail Badge Icons
+                                │
+                                ├── Tab Bar
+                                │    ├── Training (Calendar)
+                                │    ├── Best Windows (Results)
+                                │    ├── Readiness (Skills)
+                                │    ├── Itinerary
+                                │    └── Gear
+                                │
+                                ├── [Calendar]
+                                │    ├── Month grids with availability heatmap
+                                │    ├── Trek date blocking (⛺ adventure / 🚐 travel)
+                                │    └── Bulk select / clear actions
+                                │
+                                ├── [Results]
+                                │    └── Best date windows analysis
+                                │
+                                ├── [Skills]
+                                │    ├── Journey Progress Trail (Scout Law waypoints)
+                                │    ├── Per-member progress dots
+                                │    └── Skill checklists (trekking-only readiness %)
+                                │
+                                ├── [Itinerary]
+                                │    ├── Day cards (expandable details)
+                                │    ├── Programs, water strategy, warnings
+                                │    └── Print button → PrintCheatSheet
+                                │
+                                ├── [GearList]
+                                │    ├── Per-member progress bars + type badges
+                                │    ├── Category/priority filters
+                                │    └── Crew % (trekking-only)
+                                │
+                                ├── AdminPanel (modal)
+                                │    ├── Adventure tab (dates, status, delete)
+                                │    ├── Members tab (role, type, participation,
+                                │    │    link, manual add, invite, remove)
+                                │    └── Troop tab (name, description)
+                                │
+                                └── ConfirmModal (generic)
 ```
 
-Global info includes: conservation project, Baldy summit guide, prohibited items, trailhead info.
-
-## Crew Readiness Dashboard
-
-Four tracked categories with per-member checkboxes:
-
-| Category | Field | Tracks |
-|----------|-------|--------|
-| Training | `skills` | Loaded hikes, water carry, bear bag, camp cooking, etc. |
-| Gear | `gear` | Items from gear_items table (essential/recommended/optional) |
-| Medical | `medical` | Health forms, BMI check, medications reviewed |
-| Admin | `admin_tasks` | Signed waivers, emergency contacts, travel booked |
-
-Overall crew readiness = average of 4 category percentages.
-
-## Deployment
+## React Contexts
 
 ```
-Local build → tar → SCP → Docker Compose rebuild on VPS
-
-1. npm run build --prefix client
-2. tar czf crew614-deploy.tar.gz (excluding node_modules, .git)
-3. scp to VPS:/tmp/
-4. On VPS: extract to /opt/crew614/, docker compose build --no-cache, up -d
+┌──────────────────────────────────────────────────────────┐
+│  ThemeContext                                             │
+│  ├── theme object (dark/light color tokens)              │
+│  ├── mode ("dark" | "light")                             │
+│  └── toggleTheme()                                       │
+├──────────────────────────────────────────────────────────┤
+│  ToastContext                                            │
+│  ├── addToast(message, type)                             │
+│  │    types: success | error | info | celebration        │
+│  └── removeToast(id)                                     │
+├──────────────────────────────────────────────────────────┤
+│  AuthContext                                             │
+│  ├── user, memberships, approvedTroops                   │
+│  ├── login(), signup(), logout()                         │
+│  ├── updateProfile({ name, user_type, parent_email })    │
+│  └── refresh()                                           │
+├──────────────────────────────────────────────────────────┤
+│  AdventureContext                                        │
+│  ├── adventure, members, skills, itinerary               │
+│  ├── trekDate (legacy), trekDates (4-field object)       │
+│  ├── achievements { badges, milestones }                 │
+│  ├── trekkingMembers, supportMembers                     │
+│  ├── updateMemberLocally(userId, patch)                  │
+│  └── refreshAdventure/Members/Skills/Achievements/All()  │
+└──────────────────────────────────────────────────────────┘
 ```
 
-- **Host:** Hostinger VPS (31.97.134.173)
-- **Reverse proxy:** Traefik with automatic Let's Encrypt TLS
-- **Container:** Node 20 Alpine, multi-stage build (Vite frontend + Express backend)
-- **Database:** SQLite with WAL mode, persisted in Docker named volume `crew614_crew614_data`
-- **Network:** `n8n_default` (shared Traefik network)
+## Server API Routes
 
-## Tech Stack
+```
+Auth:
+  GET  /auth/google                              → OAuth initiate
+  GET  /auth/google/callback                     → OAuth callback
+  GET  /auth/me                                  → Current user + memberships
+  POST /auth/logout                              → End session
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18, Vite, vanilla CSS-in-JS |
-| Backend | Express.js, Passport.js, better-sqlite3 |
-| Database | SQLite (WAL mode) |
-| Auth | Google OAuth 2.0 |
-| Container | Docker, multi-stage Alpine build |
-| Proxy | Traefik v2 + Let's Encrypt |
-| Email | Nodemailer (SMTP) |
+Profile:
+  PUT  /auth/profile                             → Update name/type/parent_email
+
+Troops:
+  GET  /api/troops                               → List troops
+  POST /api/troops                               → Create troop
+  PUT  /api/troops/:id                           → Update troop
+  GET  /api/troops/:id/members                   → List members
+  POST /api/troops/:id/join                      → Request to join
+  PUT  /api/troops/:id/members/:uid/approve      → Approve member
+  PUT  /api/troops/:id/members/:uid/deny         → Deny member
+
+Adventures:
+  GET  /api/troops/:id/adventures                → List adventures
+  POST /api/troops/:id/adventures                → Create adventure
+  PUT  /api/adventures/:id                       → Update (name, dates, status)
+  DELETE /api/adventures/:id                     → Delete adventure
+
+Adventure Members:
+  GET  /api/adventures/:id/members               → List members
+  POST /api/adventures/:id/members               → Add member
+  DELETE /api/adventures/:id/members/:uid         → Remove member
+  PUT  /api/adventures/:id/members/:uid/role      → Set admin/member
+  PUT  /api/adventures/:id/members/:uid/user-type → Set adult/scout
+  PUT  /api/adventures/:id/members/:uid/participation → Set trekking/support
+  PUT  /api/adventures/:id/members/:uid/link      → Link support→scout
+  POST /api/adventures/:id/manual-members         → Add manual member
+  DELETE /api/adventures/:id/manual-members/:mid  → Remove manual member
+
+Adventure Data:
+  PUT  /api/adventures/:id/members/:uid/dates    → Update availability
+  PUT  /api/adventures/:id/members/:uid/skills   → Update skills
+  PUT  /api/adventures/:id/members/:uid/gear     → Update gear
+
+Skills:
+  GET  /api/adventures/:id/skills                → List skills
+  POST /api/adventures/:id/skills                → Add skill
+  DELETE /api/adventures/:id/skills/:sid          → Remove skill
+
+Invitations:
+  POST /api/adventures/:id/invitations           → Send invite email
+  GET  /api/adventures/:id/invitations           → List invitations
+  GET  /api/invitations/:token                   → Accept invitation
+
+Achievements:
+  GET  /api/adventures/:id/achievements          → Get badges & milestones
+  POST /api/adventures/:id/check-milestones      → Auto-award badges
+
+Content:
+  GET  /api/itineraries                          → List itineraries
+  GET  /api/itineraries/:id                      → Get enriched itinerary
+  GET  /api/gear                                 → Get gear items
+```
 
 ## File Structure
 
 ```
 crew614/
 ├── server/
-│   ├── index.js          Express routes + middleware
-│   ├── db.js             Schema, migrations, seed data, DB functions
-│   ├── auth.js           Passport.js Google OAuth + local auth strategies
-│   ├── email.js          Nodemailer email service
+│   ├── index.js          Express app, all API routes, middleware
+│   ├── db.js             SQLite schema, migrations, all DB functions
+│   ├── auth.js           Passport.js Google OAuth strategy
+│   ├── email.js          Nodemailer templates (8 email types)
 │   └── package.json
+│
 ├── client/
+│   ├── src/
+│   │   ├── main.jsx              Entry point (providers wrap)
+│   │   ├── App.jsx               Auth gates, routing, MainView
+│   │   ├── api.js                Fetch wrapper, all API methods
+│   │   │
+│   │   ├── contexts/
+│   │   │   ├── AuthContext.jsx    User auth state
+│   │   │   ├── ThemeContext.jsx   Dark/light theme
+│   │   │   ├── AdventureContext.jsx  Adventure data + computed
+│   │   │   └── ToastContext.jsx   Toast notifications
+│   │   │
+│   │   ├── components/
+│   │   │   ├── LoginPage.jsx     Google OAuth login
+│   │   │   ├── ProfileSetup.jsx  First-time user type selection
+│   │   │   ├── Lobby.jsx         Troop join/pending screen
+│   │   │   ├── AdventurePicker.jsx  Adventure list/create
+│   │   │   ├── Header.jsx        Nav, countdown, profile
+│   │   │   ├── MemberBar.jsx     Crew avatars + badges
+│   │   │   ├── Calendar.jsx      Availability + trek blocking
+│   │   │   ├── Results.jsx       Best date windows
+│   │   │   ├── Skills.jsx        Readiness + journey trail
+│   │   │   ├── Itinerary.jsx     Route cards + details
+│   │   │   ├── GearList.jsx      Gear checklist + progress
+│   │   │   ├── AdminPanel.jsx    Full admin controls
+│   │   │   ├── PrintCheatSheet.jsx  Printable itinerary
+│   │   │   ├── ConfirmModal.jsx  Generic confirmation
+│   │   │   └── Logo.jsx          SVG logo component
+│   │   │
+│   │   ├── hooks/
+│   │   │   └── useCountdown.js   Phase-aware countdown
+│   │   │
+│   │   └── utils/
+│   │       ├── theme.js          Color tokens, badge helpers
+│   │       ├── dates.js          Date math utilities
+│   │       └── constants.js      Day names, etc.
+│   │
 │   ├── index.html
-│   ├── vite.config.js
-│   └── src/
-│       ├── App.jsx              Root component, tab routing, state orchestration
-│       ├── api.js               API client (fetch wrapper)
-│       ├── main.jsx             Entry point, context providers
-│       ├── contexts/
-│       │   ├── AuthContext.jsx       User session + memberships
-│       │   ├── ThemeContext.jsx      Dark/light mode
-│       │   └── AdventureContext.jsx  Adventure data + polling + optimistic updates
-│       ├── components/
-│       │   ├── LoginPage.jsx         Google OAuth sign-in
-│       │   ├── ProfileSetup.jsx      Scout/Adult selection
-│       │   ├── Lobby.jsx             Troop search/join/create
-│       │   ├── AdventurePicker.jsx   Adventure selection/creation
-│       │   ├── Header.jsx            Breadcrumb, countdown, theme toggle
-│       │   ├── MemberBar.jsx         Color-coded member chips
-│       │   ├── Calendar.jsx          Training hike date coordination
-│       │   ├── Results.jsx           Best training windows analysis
-│       │   ├── Itinerary.jsx         Enriched day cards
-│       │   ├── GearList.jsx          Per-member gear checklist
-│       │   ├── Skills.jsx            Crew Readiness Dashboard
-│       │   ├── AdminPanel.jsx        Settings modal (troop/adventure/members)
-│       │   ├── ConfirmModal.jsx      Generic confirmation dialog
-│       │   └── Logo.jsx              SVG logo
-│       ├── hooks/
-│       │   └── useCountdown.js       Trek date countdown timer
-│       └── utils/
-│           ├── constants.js          Day/month names
-│           ├── dates.js              Date utility functions
-│           └── theme.js              Theme tokens + style helpers
-├── Dockerfile            Multi-stage build
-├── docker-compose.yml    Production deployment config
+│   └── vite.config.js
+│
+├── Dockerfile            Multi-stage (build client → serve with Node)
+├── docker-compose.yml    Service config, volume, network
 └── ARCHITECTURE.md       This file
+```
+
+## Gamification System
+
+```
+Trail Badges (individual, auto-awarded):
+  🎒 gear_ready        → All gear items checked
+  🏥 trail_medic       → Medical/first-aid skills done
+  📋 admin_pro         → Admin paperwork complete
+  🥾 training_complete → All training skills done
+  ⭐ fully_prepared    → All of the above
+
+Journey Progress Trail (crew-wide):
+  ┌─────────┬────────────┬──────────────┬─────────────┬──────────┐
+  │ 0%      │ 25%        │ 50%          │ 75%         │ 100%     │
+  │Trailhead│ Base Camp  │ Timber Ridge │ Eagle Point │ Summit   │
+  │         │ Trustworthy│ Prepared     │ Brave       │ Cheerful │
+  └─────────┴────────────┴──────────────┴─────────────┴──────────┘
+  Progress = average readiness across all trekking members
+
+Smart Countdown Phases:
+  pre          → "Departure in X days"
+  travel_there → "Arriving in X days"
+  on_trek      → "Day X of Trek" (green banner)
+  travel_back  → "Home in X days"
+  complete     → "Welcome home!" (gold banner)
+```
+
+## Member Model
+
+```
+Each adventure member has:
+  ┌──────────────────────────────────────────┐
+  │ user_type:     "adult" | "scout"         │  ← from users table
+  │ role:          "admin" | "member"        │  ← adventure-scoped
+  │ participation: "trekking" | "support"    │  ← adventure-scoped
+  │ linked_to:     user_id | null            │  ← support adult → scout
+  │ is_manual:     0 | 1                     │  ← placeholder (no account)
+  └──────────────────────────────────────────┘
+
+  Admin can change ALL of these from the Admin Panel.
+  Readiness calculations only count trekking members.
+  Support members shown in separate section of MemberBar.
 ```
