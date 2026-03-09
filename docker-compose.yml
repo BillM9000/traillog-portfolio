@@ -4,13 +4,41 @@ services:
     container_name: crew614
     restart: unless-stopped
     ports:
-      - "3614:3614"
+      - "127.0.0.1:3614:3614"
     volumes:
       - crew614_data:/app/data
     environment:
       - PORT=3614
-      - ADMIN_PIN=614
+      - NODE_ENV=production
       - DATA_DIR=/app/data
+      - SESSION_SECRET=${SESSION_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_CALLBACK_URL=https://treksync.gracezero.ai/auth/google/callback
+      - APP_URL=https://treksync.gracezero.ai
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+    labels:
+      - traefik.enable=true
+      # HTTPS router
+      - traefik.http.routers.crew614.rule=Host(`treksync.gracezero.ai`)
+      - traefik.http.routers.crew614.entrypoints=websecure
+      - traefik.http.routers.crew614.tls=true
+      - traefik.http.routers.crew614.tls.certresolver=mytlschallenge
+      # HTTP → HTTPS redirect
+      - traefik.http.routers.crew614-http.rule=Host(`treksync.gracezero.ai`)
+      - traefik.http.routers.crew614-http.entrypoints=web
+      - traefik.http.routers.crew614-http.middlewares=crew614-redirect
+      - traefik.http.middlewares.crew614-redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.crew614-redirect.redirectscheme.permanent=true
+      - traefik.http.services.crew614.loadbalancer.server.port=3614
+    networks:
+      - n8n_default
 
 volumes:
   crew614_data:
+
+networks:
+  n8n_default:
+    external: true

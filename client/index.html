@@ -3,15 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Crew 614 Training Coordinator</title>
+    <title>TrekSync — High Adventure Training Coordinator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { background: #1a1f1c; font-family: 'Instrument Sans', 'DM Sans', system-ui, sans-serif; }
+      body { font-family: 'Instrument Sans', 'DM Sans', system-ui, sans-serif; transition: background 0.3s; }
     </style>
   </head>
   <body>
+    <script>document.body.style.background = localStorage.getItem('theme') === 'dark' ? '#1a1f1c' : '#f5f3ef';</script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

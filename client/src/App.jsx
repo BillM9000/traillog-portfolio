@@ -1,54 +1,124 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useAuth } from "./contexts/AuthContext";
+import { useTheme } from "./contexts/ThemeContext";
+import { AdventureProvider, useAdventure } from "./contexts/AdventureContext";
 import { api } from "./api";
 import { DAYS_FULL } from "./utils/constants";
 import { getMonthsRange, daysInMonth, dateKey, parseDateKey, dayOfWeek, isPast } from "./utils/dates";
 import { fontBody } from "./utils/theme";
 
+import LoginPage from "./components/LoginPage";
+import ProfileSetup from "./components/ProfileSetup";
+import Lobby from "./components/Lobby";
+import AdventurePicker from "./components/AdventurePicker";
 import Header from "./components/Header";
 import MemberBar from "./components/MemberBar";
 import Calendar from "./components/Calendar";
 import Results from "./components/Results";
 import Skills from "./components/Skills";
 import Itinerary from "./components/Itinerary";
-import AdminModal from "./components/AdminModal";
+import GearList from "./components/GearList";
 import ConfirmModal from "./components/ConfirmModal";
+import AdminPanel from "./components/AdminPanel";
 
 export default function App() {
-  const [members, setMembers] = useState([]);
-  const [skills, setSkills] = useState([]);
+  const { user, memberships, approvedTroops, loading, login, signup, logout, updateProfile, refresh } = useAuth();
+  const { theme } = useTheme();
+
+  // ── Navigation state ──
+  const [troopId, setTroopId] = useState(null);
+  const [adventureId, setAdventureId] = useState(null);
+
+  // Auto-select first approved troop
+  useEffect(() => {
+    if (approvedTroops.length > 0 && !troopId) {
+      setTroopId(approvedTroops[0].troop_id);
+    }
+  }, [approvedTroops, troopId]);
+
+  // ── Auth gates ──
+  if (loading) {
+    return (
+      <div style={{ minHeight: "100vh", background: theme.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ color: theme.textDim, fontSize: 14, fontFamily: fontBody }}>Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) return <LoginPage onLogin={login} onSignup={signup} />;
+  if (!user.user_type) return <ProfileSetup user={user} onComplete={updateProfile} />;
+  if (approvedTroops.length === 0) return <Lobby user={user} memberships={memberships} onRefresh={refresh} onLogout={logout} />;
+
+  // Find selected troop membership
+  const currentMembership = memberships.find(m => m.troop_id === troopId);
+  const isAdmin = currentMembership?.role === "admin";
+
+  // Adventure picker gate
+  if (!adventureId) {
+    return (
+      <AdventurePicker
+        user={user}
+        troop={{ id: troopId, name: currentMembership?.troop_name || "Troop" }}
+        isAdmin={isAdmin}
+        onSelect={setAdventureId}
+        onBack={() => { setTroopId(null); }}
+        onLogout={logout}
+      />
+    );
+  }
+
+  // Main app wrapped in AdventureProvider
+  return (
+    <AdventureProvider adventureId={adventureId}>
+      <MainView
+        user={user}
+        troopId={troopId}
+        adventureId={adventureId}
+        memberships={memberships}
+        approvedTroops={approvedTroops}
+        isAdmin={isAdmin}
+        onSwitchTroop={(id) => { setTroopId(id); setAdventureId(null); }}
+        onBackToAdventures={() => setAdventureId(null)}
+        onLogout={logout}
+        onRefresh={refresh}
+      />
+    </AdventureProvider>
+  );
+}
+
+function MainView({ user, troopId, adventureId, memberships, approvedTroops, isAdmin, onSwitchTroop, onBackToAdventures, onLogout, onRefresh }) {
+  const { theme } = useTheme();
+  const { adventure, members, skills, itinerary, trekDate, loading: advLoading, refreshAll, refreshMembers, updateMemberLocally } = useAdventure();
+
+  const [troopMembers, setTroopMembers] = useState([]);
+  const [troop, setTroop] = useState(null);
   const [active, setActive] = useState(null);
   const [view, setView] = useState("calendar");
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [showAdminLogin, setShowAdminLogin] = useState(false);
-  const [adminPin, setAdminPin] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [showAdmin, setShowAdmin] = useState(false);
   const [saving, setSaving] = useState(false);
   const saveTimer = useRef(null);
 
-  // ── Data fetching ──
-  const fetchData = useCallback(async () => {
-    try {
-      const [m, s] = await Promise.all([api.getMembers(), api.getSkills()]);
-      setMembers(m);
-      setSkills(s);
-    } catch (e) { console.error("Failed to load:", e); }
-  }, []);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
+  // Fetch troop data
   useEffect(() => {
-    const id = setInterval(fetchData, 15000);
-    return () => clearInterval(id);
-  }, [fetchData]);
+    if (!troopId) return;
+    api.getTroop(troopId).then(setTroop).catch(console.error);
+    api.getMembers(troopId).then(setTroopMembers).catch(console.error);
+  }, [troopId]);
 
-  // ── Computed ──
-  const months = useMemo(() => getMonthsRange(), []);
-  const allDateKeys = useMemo(() => {
-    const s = new Set();
-    months.forEach(({ year, month }) => {
-      for (let d = 1; d <= daysInMonth(year, month); d++) s.add(dateKey(year, month, d));
-    });
-    return [...s];
-  }, [months]);
+  // Periodic refresh
+  useEffect(() => {
+    if (!adventureId) return;
+    const id = setInterval(refreshAll, 60000);
+    return () => clearInterval(id);
+  }, [adventureId, refreshAll]);
+
+  // Auto-select current user
+  useEffect(() => {
+    if (!user || members.length === 0) return;
+    const myIdx = members.findIndex(m => m.user_id === user.id);
+    if (myIdx >= 0 && active === null) setActive(myIdx);
+  }, [user, members, active]);
 
   // ── Debounced saves ──
   const debouncedSave = useCallback((fn) => {
@@ -60,100 +130,16 @@ export default function App() {
     }, 500);
   }, []);
 
-  // ── Member actions ──
-  const addMember = useCallback(async (name) => {
-    if (!isAdmin) return;
-    try {
-      const member = await api.addMember(name, adminPin);
-      setMembers(p => [...p, member]);
-      setActive(members.length);
-    } catch (e) { console.error(e); }
-  }, [isAdmin, adminPin, members.length]);
-
-  const removeMember = useCallback(async (idx) => {
-    if (!isAdmin) return;
-    const m = members[idx];
-    try {
-      await api.removeMember(m.id, adminPin);
-      setMembers(p => p.filter((_, i) => i !== idx));
-      if (active === idx) setActive(null);
-      else if (active > idx) setActive(active - 1);
-      setConfirmDelete(null);
-    } catch (e) { console.error(e); }
-  }, [isAdmin, adminPin, members, active]);
-
-  // ── Date toggling ──
-  const toggleDate = useCallback((key, mode) => {
-    if (active === null) return;
-    setMembers(p => p.map((m, i) => {
-      if (i !== active) return m;
-      const has = m.dates.includes(key);
-      let newDates;
-      if (mode === "add" && !has) newDates = [...m.dates, key];
-      else if (mode === "remove" && has) newDates = m.dates.filter(d => d !== key);
-      else return m;
-      debouncedSave(() => api.updateDates(m.id, newDates));
-      return { ...m, dates: newDates };
-    }));
-  }, [active, debouncedSave]);
-
-  const bulkSelect = useCallback((type) => {
-    if (active === null) return;
-    setMembers(p => p.map((m, i) => {
-      if (i !== active) return m;
-      const nd = new Set(m.dates);
-      months.forEach(({ year, month }) => {
-        for (let d = 1; d <= daysInMonth(year, month); d++) {
-          if (isPast(year, month, d)) continue;
-          if (type === "all" || (type === "weekends" && (dayOfWeek(year, month, d) === 0 || dayOfWeek(year, month, d) === 6)))
-            nd.add(dateKey(year, month, d));
-        }
-      });
-      const newDates = [...nd];
-      debouncedSave(() => api.updateDates(m.id, newDates));
-      return { ...m, dates: newDates };
-    }));
-  }, [active, months, debouncedSave]);
-
-  const clearAll = useCallback(() => {
-    if (active === null) return;
-    setMembers(p => p.map((m, i) => {
-      if (i !== active) return m;
-      debouncedSave(() => api.updateDates(m.id, []));
-      return { ...m, dates: [] };
-    }));
-  }, [active, debouncedSave]);
-
-  // ── Skill toggling ──
-  const toggleSkill = useCallback((sid) => {
-    if (active === null) return;
-    setMembers(p => p.map((m, i) => {
-      if (i !== active) return m;
-      const has = (m.skills || []).includes(sid);
-      const newSkills = has ? m.skills.filter(s => s !== sid) : [...(m.skills || []), sid];
-      debouncedSave(() => api.updateSkills(m.id, newSkills));
-      return { ...m, skills: newSkills };
-    }));
-  }, [active, debouncedSave]);
-
-  const addNewSkill = useCallback(async (name, desc) => {
-    if (!isAdmin) return;
-    try {
-      const skill = await api.addSkill(name, desc, adminPin);
-      setSkills(p => [...p, skill]);
-    } catch (e) { console.error(e); }
-  }, [isAdmin, adminPin]);
-
-  const removeSkillItem = useCallback(async (sid) => {
-    if (!isAdmin) return;
-    try {
-      await api.removeSkill(sid, adminPin);
-      setSkills(p => p.filter(s => s.id !== sid));
-      setMembers(p => p.map(m => ({ ...m, skills: (m.skills || []).filter(s => s !== sid) })));
-    } catch (e) { console.error(e); }
-  }, [isAdmin, adminPin]);
-
   // ── Analysis engine ──
+  const months = useMemo(() => getMonthsRange(), []);
+  const allDateKeys = useMemo(() => {
+    const s = new Set();
+    months.forEach(({ year, month }) => {
+      for (let d = 1; d <= daysInMonth(year, month); d++) s.add(dateKey(year, month, d));
+    });
+    return [...s];
+  }, [months]);
+
   const analysis = useMemo(() => {
     if (members.length < 2) return { windows: [], bestDates: [], heatmap: {}, skillGap: [] };
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -162,8 +148,7 @@ export default function App() {
       if (parseDateKey(key) < today) return;
       const av = members.filter(m => m.dates.includes(key));
       if (av.length > 0) hm[key] = {
-        count: av.length,
-        pct: av.length / members.length,
+        count: av.length, pct: av.length / members.length,
         names: av.map(m => m.name),
         missing: members.filter(m => !m.dates.includes(key)).map(m => m.name),
       };
@@ -186,12 +171,13 @@ export default function App() {
       const wkBonus = w.dates.some(d => { const dd = parseDateKey(d.key); return dd.getDay() === 0 || dd.getDay() === 6; }) ? 20 : 0;
       w.score = cons.length * 1000 + w.length * 50 + wkBonus;
       w.missing = members.filter(m => !w.consistentNames.includes(m.name)).map(m => m.name);
-      w.suggestion = w.length >= 3 ? "Extended backpacking trip" : w.length >= 2 ? "Overnight shakedown" : "Day hike / skills session";
+      w.suggestion = w.length >= 5 ? "Multi-night trek" : w.length >= 3 ? "Extended backpacking" : w.length >= 2 ? "Overnight shakedown" : "Day hike";
     });
     wins.sort((a, b) => b.score - a.score);
     const bestDates = Object.entries(hm).map(([key, val]) => ({ key, ...val, dayName: DAYS_FULL[parseDateKey(key).getDay()] }))
       .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key)).slice(0, 15);
-    const skillGap = skills.map(s => ({
+    const trainingSkills = skills.filter(s => s.category === "training");
+    const skillGap = trainingSkills.map(s => ({
       ...s,
       completedBy: members.filter(m => (m.skills || []).includes(s.id)).map(m => m.name),
       remaining: members.filter(m => !(m.skills || []).includes(s.id)).map(m => m.name),
@@ -199,37 +185,139 @@ export default function App() {
     return { windows: wins.slice(0, 20), bestDates, heatmap: hm, skillGap };
   }, [members, allDateKeys, skills]);
 
-  // ── Render ──
+  // ── Member actions ──
+  const removeMember = useCallback(async (idx) => {
+    if (!isAdmin) return;
+    const m = members[idx];
+    try {
+      await api.removeAdventureMember(adventureId, m.user_id);
+      refreshMembers();
+      if (active === idx) setActive(null);
+      else if (active > idx) setActive(active - 1);
+      setConfirmDelete(null);
+    } catch (e) { console.error(e); }
+  }, [isAdmin, adventureId, members, active, refreshMembers]);
+
+  // ── Date toggling (adventure-scoped) ──
+  const toggleDate = useCallback((key, mode) => {
+    if (active === null) return;
+    const m = members[active];
+    const has = m.dates.includes(key);
+    let newDates;
+    if (mode === "add" && !has) newDates = [...m.dates, key];
+    else if (mode === "remove" && has) newDates = m.dates.filter(d => d !== key);
+    else return;
+    updateMemberLocally(m.user_id, { dates: newDates });
+    debouncedSave(() => api.updateAdventureDates(adventureId, m.user_id, newDates));
+  }, [active, members, adventureId, debouncedSave, updateMemberLocally]);
+
+  const bulkSelect = useCallback((type) => {
+    if (active === null) return;
+    const m = members[active];
+    const nd = new Set(m.dates);
+    months.forEach(({ year, month }) => {
+      for (let d = 1; d <= daysInMonth(year, month); d++) {
+        if (isPast(year, month, d)) continue;
+        if (type === "all" || (type === "weekends" && (dayOfWeek(year, month, d) === 0 || dayOfWeek(year, month, d) === 6)))
+          nd.add(dateKey(year, month, d));
+      }
+    });
+    const newDates = [...nd];
+    updateMemberLocally(m.user_id, { dates: newDates });
+    debouncedSave(() => api.updateAdventureDates(adventureId, m.user_id, newDates));
+  }, [active, members, months, adventureId, debouncedSave, updateMemberLocally]);
+
+  const clearAll = useCallback(() => {
+    if (active === null) return;
+    const m = members[active];
+    updateMemberLocally(m.user_id, { dates: [] });
+    debouncedSave(() => api.updateAdventureDates(adventureId, m.user_id, []));
+  }, [active, members, adventureId, debouncedSave, updateMemberLocally]);
+
+  // ── Skill toggling (adventure-scoped) ──
+  const toggleSkill = useCallback((sid) => {
+    if (active === null) return;
+    const m = members[active];
+    const has = (m.skills || []).includes(sid);
+    const newSkills = has ? m.skills.filter(s => s !== sid) : [...(m.skills || []), sid];
+    updateMemberLocally(m.user_id, { skills: newSkills });
+    debouncedSave(() => api.updateAdventureSkills(adventureId, m.user_id, newSkills));
+  }, [active, members, adventureId, debouncedSave, updateMemberLocally]);
+
+  const addNewSkill = useCallback(async (name, desc, category = "training") => {
+    if (!isAdmin) return;
+    try {
+      await api.addAdventureSkill(adventureId, name, desc, category);
+      await refreshAll();
+    } catch (e) { console.error(e); }
+  }, [isAdmin, adventureId, refreshAll]);
+
+  const removeSkillItem = useCallback(async (sid) => {
+    if (!isAdmin) return;
+    try {
+      await api.removeAdventureSkill(adventureId, sid);
+      refreshAll();
+    } catch (e) { console.error(e); }
+  }, [isAdmin, adventureId, refreshAll]);
+
+  // ── Pending members (from troop members list) ──
+  const pendingMembers = troopMembers.filter(m => m.status === "pending");
+
+  const approveMemberFn = useCallback(async (userId) => {
+    try {
+      await api.approveMember(troopId, userId);
+      api.getMembers(troopId).then(setTroopMembers).catch(console.error);
+    } catch (e) { console.error(e); }
+  }, [troopId]);
+
+  const denyMemberFn = useCallback(async (userId) => {
+    try {
+      await api.denyMember(troopId, userId);
+      api.getMembers(troopId).then(setTroopMembers).catch(console.error);
+    } catch (e) { console.error(e); }
+  }, [troopId]);
+
+  if (advLoading) {
+    return (
+      <div style={{ minHeight: "100vh", background: theme.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ color: theme.textDim, fontSize: 14, fontFamily: fontBody }}>Loading adventure...</div>
+      </div>
+    );
+  }
+
   const tabs = [
-    ["calendar", "Calendar"],
+    ["calendar", "Training"],
     ["results", "Best Windows"],
-    ["skills", "Skills"],
+    ["skills", "Readiness"],
     ["itinerary", "Itinerary"],
+    ["gear", "Gear"],
   ];
 
   return (
-    <div style={{ fontFamily: fontBody, background: "#1a1f1c", color: "#e8e4df", minHeight: "100vh", userSelect: "none" }}>
+    <div style={{ fontFamily: fontBody, background: theme.bg, color: theme.text, minHeight: "100vh", userSelect: "none" }}>
       <Header
-        members={members} analysis={analysis} saving={saving} isAdmin={isAdmin}
-        onAdminLogin={() => setShowAdminLogin(true)}
-        onAdminLogout={() => { setIsAdmin(false); setAdminPin(""); }}
+        user={user} troop={troop} adventure={adventure} members={members} analysis={analysis}
+        trekDate={trekDate} saving={saving} isAdmin={isAdmin} approvedTroops={approvedTroops}
+        onSwitchTroop={onSwitchTroop}
+        onBackToAdventures={onBackToAdventures}
+        onLogout={onLogout}
+        onAdminClick={() => setShowAdmin(true)}
       />
 
       <MemberBar
         members={members} active={active} setActive={setActive}
-        isAdmin={isAdmin} adminPin={adminPin}
-        onAddMember={addMember}
+        pendingMembers={pendingMembers} isAdmin={isAdmin} currentUserId={user.id}
         onConfirmDelete={setConfirmDelete}
-        onReset={async () => { if (confirm("Clear ALL data?")) { await api.reset(adminPin); fetchData(); setActive(null); } }}
+        onApproveMember={approveMemberFn} onDenyMember={denyMemberFn}
       />
 
       {/* Tabs */}
       <div style={{ padding: "10px 18px 0" }}>
-        <div style={{ display: "flex", gap: 2, background: "#1a2420", borderRadius: 8, padding: 3 }}>
+        <div style={{ display: "flex", gap: 2, background: theme.bgTab, borderRadius: 8, padding: 3 }}>
           {tabs.map(([k, l]) => (
             <button key={k} onClick={() => setView(k)} style={{
               flex: 1, padding: "7px 0", textAlign: "center", fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: "pointer",
-              background: view === k ? "#3d5a45" : "transparent", color: view === k ? "#e8e4df" : "#5a6a5a",
+              background: view === k ? theme.bgTabActive : "transparent", color: view === k ? "#fff" : theme.textDimmer,
               border: "none", fontFamily: fontBody, transition: "all .2s",
             }}>{l}</button>
           ))}
@@ -245,23 +333,31 @@ export default function App() {
         {view === "results" && <Results members={members} analysis={analysis} />}
         {view === "skills" && (
           <Skills members={members} active={active} skills={skills} analysis={analysis}
-            isAdmin={isAdmin} onToggleSkill={toggleSkill} onAddSkill={addNewSkill} onRemoveSkill={removeSkillItem} />
+            isAdmin={isAdmin} onToggleSkill={toggleSkill} onAddSkill={addNewSkill} onRemoveSkill={removeSkillItem}
+            adventureId={adventureId} updateMemberLocally={updateMemberLocally}
+          />
         )}
-        {view === "itinerary" && <Itinerary />}
+        {view === "itinerary" && <Itinerary adventureId={adventureId} />}
+        {view === "gear" && <GearList troopId={troopId} adventureId={adventureId} members={members} active={active} setActive={setActive} updateMemberLocally={updateMemberLocally} />}
       </div>
 
       {/* Modals */}
-      {showAdminLogin && (
-        <AdminModal
-          onSuccess={(pin) => { setIsAdmin(true); setAdminPin(pin); setShowAdminLogin(false); }}
-          onClose={() => setShowAdminLogin(false)}
-        />
-      )}
       {confirmDelete !== null && (
         <ConfirmModal
           memberName={members[confirmDelete]?.name}
           onConfirm={() => removeMember(confirmDelete)}
           onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {showAdmin && (
+        <AdminPanel
+          troop={troop}
+          adventure={adventure}
+          troopMembers={troopMembers}
+          adventureMembers={members}
+          onClose={() => setShowAdmin(false)}
+          onRefresh={() => { refreshAll(); api.getTroop(troopId).then(setTroop).catch(console.error); }}
         />
       )}
     </div>

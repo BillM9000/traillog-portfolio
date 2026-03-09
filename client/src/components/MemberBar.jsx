@@ -1,27 +1,14 @@
-import { useState } from "react";
+import { useTheme } from "../contexts/ThemeContext";
 import { fontBody } from "../utils/theme";
 
-export default function MemberBar({ members, active, setActive, isAdmin, adminPin, onAddMember, onConfirmDelete, onReset }) {
-  const [newName, setNewName] = useState("");
+export default function MemberBar({ members, active, setActive, pendingMembers, isAdmin, currentUserId, onConfirmDelete, onApproveMember, onDenyMember }) {
+  const { theme } = useTheme();
   const am = active !== null ? members[active] : null;
 
-  const handleAdd = async () => {
-    const name = newName.trim();
-    if (!name || members.find(m => m.name.toLowerCase() === name.toLowerCase())) return;
-    await onAddMember(name);
-    setNewName("");
-  };
-
   return (
-    <div style={{ background: "#212a24", borderBottom: "1px solid #2d3830", padding: "14px 18px" }}>
+    <div style={{ background: theme.bgAlt, borderBottom: `1px solid ${theme.border}`, padding: "14px 18px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "#6a7a6a", textTransform: "uppercase", letterSpacing: 1 }}>Crew</span>
-        <span style={{ flex: 1 }} />
-        {isAdmin && (
-          <button onClick={onReset} style={{ background: "#3a2020", border: "1px solid #5a3030", color: "#c08080", padding: "3px 8px", borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>
-            Reset All
-          </button>
-        )}
+        <span style={{ fontSize: 11, fontWeight: 700, color: theme.textDim, textTransform: "uppercase", letterSpacing: 1 }}>Crew</span>
       </div>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
@@ -32,42 +19,58 @@ export default function MemberBar({ members, active, setActive, isAdmin, adminPi
             border: active === i ? `1.5px solid ${m.color.bg}60` : "1.5px solid transparent",
             transition: "all .15s",
           }}>
-            <div style={{ width: 9, height: 9, borderRadius: "50%", background: m.color.bg }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#e0dcd6" }}>{m.name}</span>
-            <span style={{ fontSize: 10, color: "#6a7a6a" }}>{m.dates.length}d</span>
-            {isAdmin && (
+            {m.avatar_url ? (
+              <img src={m.avatar_url} alt="" style={{ width: 16, height: 16, borderRadius: "50%" }} />
+            ) : (
+              <div style={{ width: 9, height: 9, borderRadius: "50%", background: m.color.bg }} />
+            )}
+            <span style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>
+              {m.name}
+              {m.user_id === currentUserId && <span style={{ fontSize: 9, color: theme.accent }}> (you)</span>}
+            </span>
+            <span style={{ fontSize: 10, color: theme.textDim }}>{m.dates.length}d</span>
+            {isAdmin && m.user_id !== currentUserId && (
               <button onClick={e => { e.stopPropagation(); onConfirmDelete(i); }}
-                style={{ background: "none", border: "none", color: "#6a4040", fontSize: 13, cursor: "pointer", padding: 0, lineHeight: 1 }}
+                style={{ background: "none", border: "none", color: theme.danger, fontSize: 13, cursor: "pointer", padding: 0, lineHeight: 1 }}
                 title="Remove">
                 x
               </button>
             )}
           </div>
         ))}
-        {members.length === 0 && !isAdmin && (
-          <span style={{ fontSize: 12, color: "#5a6a5a", fontStyle: "italic" }}>
-            No members yet. Ask your crew admin to add everyone.
+        {members.length === 0 && (
+          <span style={{ fontSize: 12, color: theme.textDimmer, fontStyle: "italic" }}>
+            No approved members yet.
           </span>
         )}
       </div>
 
-      {isAdmin && (
-        <div style={{ display: "flex", gap: 6 }}>
-          <input
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleAdd()}
-            placeholder="Add parent name..."
-            style={{ flex: 1, padding: "7px 10px", borderRadius: 6, border: "1.5px solid #3d4a40", background: "#1a2420", color: "#e0dcd6", fontSize: 12, fontFamily: fontBody, outline: "none" }}
-          />
-          <button onClick={handleAdd} style={{ padding: "7px 14px", borderRadius: 6, border: "none", background: "#4a7a55", color: "#e8e4df", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>
-            Add
-          </button>
+      {/* Pending requests (admin only) */}
+      {isAdmin && pendingMembers.length > 0 && (
+        <div style={{ background: theme.name === "dark" ? "#2a2820" : "#faf5e8", border: `1px solid ${theme.gold}40`, borderRadius: 7, padding: "8px 10px", marginBottom: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: theme.gold, marginBottom: 5, textTransform: "uppercase", letterSpacing: 1 }}>
+            Pending Requests ({pendingMembers.length})
+          </div>
+          {pendingMembers.map(m => (
+            <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <span style={{ fontSize: 12, color: theme.text, flex: 1 }}>
+                {m.name} <span style={{ fontSize: 10, color: theme.textDim }}>({m.user_type || "unknown"})</span>
+              </span>
+              <button onClick={() => onApproveMember(m.user_id)}
+                style={{ fontSize: 10, fontWeight: 600, color: theme.accentLight, background: theme.accentBg, border: `1px solid ${theme.borderAccent}`, padding: "3px 10px", borderRadius: 5, cursor: "pointer", fontFamily: fontBody }}>
+                Approve
+              </button>
+              <button onClick={() => onDenyMember(m.user_id)}
+                style={{ fontSize: 10, fontWeight: 600, color: "#c08080", background: theme.name === "dark" ? "#3a2020" : "#fde8e8", border: "1px solid #5a3030", padding: "3px 10px", borderRadius: 5, cursor: "pointer", fontFamily: fontBody }}>
+                Deny
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
       {am && (
-        <div style={{ fontSize: 11, color: "#7a8a7a", marginTop: 6 }}>
+        <div style={{ fontSize: 11, color: theme.textDim, marginTop: 6 }}>
           Editing: <strong style={{ color: am.color.bg }}>{am.name}</strong> — click or drag dates
         </div>
       )}

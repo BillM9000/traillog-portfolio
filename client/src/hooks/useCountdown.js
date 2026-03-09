@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
-import { TRAVEL_DATE } from "../utils/constants";
 
-export function useCountdown() {
+export function useCountdown(trekDate) {
   const [countdown, setCountdown] = useState({});
 
   useEffect(() => {
+    if (!trekDate) { setCountdown({}); return; }
+    const target = trekDate instanceof Date ? trekDate : new Date(trekDate + "T00:00:00");
     const calc = () => {
       const now = new Date();
-      const diff = TRAVEL_DATE - now;
+      const diff = target - now;
       if (diff <= 0) {
         setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0, gone: true });
         return;
@@ -23,7 +24,7 @@ export function useCountdown() {
     calc();
     const id = setInterval(calc, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [trekDate]);
 
   return countdown;
 }
