@@ -116,17 +116,36 @@ function requireAdventureMember(req, res, next) {
 function requireAdventureAdmin(req, res, next) {
   const adventureId = parseInt(req.params.adventureId);
   const member = getAdventureMember(adventureId, req.user.id);
-  if (!member || member.role !== "admin") return res.status(403).json({ error: "Adventure admin access required" });
-  req.adventureMembership = member;
-  next();
+  // Adventure-level admin
+  if (member && member.role === "admin") {
+    req.adventureMembership = member;
+    return next();
+  }
+  // Fall through: troop admins can manage all adventures in their troop
+  const adventure = getAdventure(adventureId);
+  if (adventure) {
+    const troopMember = getTroopMember(adventure.troop_id, req.user.id);
+    if (troopMember && troopMember.role === "admin" && troopMember.status === "approved") {
+      req.adventureMembership = member; // may be null if not yet an adventure member
+      return next();
+    }
+  }
+  return res.status(403).json({ error: "Adventure admin access required" });
 }
 
 function requireAdventureSelfOrAdmin(req, res, next) {
   const adventureId = parseInt(req.params.adventureId);
   const targetUserId = parseInt(req.params.userId);
   if (req.user.id === targetUserId) return next();
+  // Adventure-level admin
   const member = getAdventureMember(adventureId, req.user.id);
   if (member?.role === "admin") return next();
+  // Fall through: troop admins can manage all adventure members
+  const adventure = getAdventure(adventureId);
+  if (adventure) {
+    const troopMember = getTroopMember(adventure.troop_id, req.user.id);
+    if (troopMember?.role === "admin" && troopMember.status === "approved") return next();
+  }
   res.status(403).json({ error: "Can only edit your own data" });
 }
 
@@ -467,7 +486,18 @@ app.post("/api/adventures/:adventureId/members", requireAuth, requireAdventureAd
     const { user_id, role } = req.body;
     if (!user_id) return res.status(400).json({ error: "user_id required" });
     const advId = parseInt(req.params.adventureId);
-    addAdventureMember(advId, user_id, role || "member");
+    // Auto-promote troop admins to adventure admin
+    let memberRole = role || "member";
+    if (memberRole === "member") {
+      const adventure = getAdventure(advId);
+      if (adventure) {
+        const troopMember = getTroopMember(adventure.troop_id, user_id);
+        if (troopMember?.role === "admin" && troopMember.status === "approved") {
+          memberRole = "admin";
+        }
+      }
+    }
+    addAdventureMember(advId, user_id, memberRole);
     // Auto-link parent-scout by email match
     const addedUser = findUserById(user_id);
     if (addedUser?.user_type === "adult") autoLinkAdult(advId, user_id);

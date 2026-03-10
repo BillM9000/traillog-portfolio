@@ -447,6 +447,7 @@ crew614/
 │   │   │
 │   │   └── utils/
 │   │       ├── theme.js          Color tokens, badge helpers
+│   │       ├── readiness.js      Shared readiness calculation (single source of truth)
 │   │       ├── dates.js          Date math utilities
 │   │       └── constants.js      Day names, etc.
 │   │
@@ -484,11 +485,11 @@ v6 → Added: affiliate_url on gear_product_options,
 
 ```
 Trail Badges (individual, auto-awarded):
-  gear_ready        → All gear items checked
-  trail_medic       → Medical/first-aid skills done
-  admin_pro         → Admin paperwork complete
-  training_complete → All training skills done
-  fully_prepared    → All of the above
+  🎒 gear_ready        → All gear items owned/packed
+  🏥 trail_medic       → All medical items completed
+  📋 admin_pro         → All admin tasks completed
+  🥾 training_complete → All training skills done
+  ⭐ fully_prepared    → All of the above
 
 Journey Progress Trail (crew-wide):
   ┌─────────┬────────────┬──────────────┬─────────────┬──────────┐
@@ -496,6 +497,17 @@ Journey Progress Trail (crew-wide):
   │Trailhead│ Base Camp  │ Timber Ridge │ Eagle Point │ Summit   │
   │         │ Trustworthy│ Prepared     │ Brave       │ Cheerful │
   └─────────┴────────────┴──────────────┴─────────────┴──────────┘
+
+Readiness Calculation (utils/readiness.js — single source of truth):
+  Crew readiness = average of 4 category %'s (trekking members only):
+    training % = (training skills done across all) / (total × member count)
+    gear %     = (gear items owned/packed from memberGearMap) / (catalog × count)
+    medical %  = (medical items done across all) / (total × member count)
+    admin %    = (admin tasks done across all) / (total × member count)
+    overall %  = (training + gear + medical + admin) / 4
+
+  Used by: Header, Skills, MemberBar, GearList (all reference same utility)
+  Gear data source: memberGearMap (AdventureContext), NOT m.gear (legacy)
 
 Smart Countdown Phases:
   pre          → "Departure in X days"

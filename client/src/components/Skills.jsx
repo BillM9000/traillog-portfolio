@@ -1,48 +1,34 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
+import { useAdventure } from "../contexts/AdventureContext";
 import { card, cardTitle, fontBody, fontDisplay, TRAIL_BADGES, JOURNEY_WAYPOINTS, memberTypeBadge } from "../utils/theme";
+import { computeCrewReadiness, computeMemberReadiness } from "../utils/readiness";
 
 export default function Skills({ members, active, skills, analysis, isAdmin, onToggleSkill, onAddSkill, onRemoveSkill, adventureId, updateMemberLocally, achievements }) {
   const { theme, mode } = useTheme();
+  const { gearCatalog, memberGearMap } = useAdventure();
   const [expandedCats, setExpandedCats] = useState(new Set(["training"]));
-  const [gearItems, setGearItems] = useState([]);
   const [newSkillName, setNewSkillName] = useState("");
   const [newSkillDesc, setNewSkillDesc] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [addCategory, setAddCategory] = useState("training");
   const [confirmDeleteSkill, setConfirmDeleteSkill] = useState(null);
+  const [showBadgeLegend, setShowBadgeLegend] = useState(false);
 
   const am = active !== null ? members[active] : null;
 
   // Only trekking members count for readiness
   const trekkingMembers = useMemo(() => members.filter(m => m.participation === "trekking"), [members]);
 
-  useEffect(() => {
-    api.getGear().then(setGearItems).catch(console.error);
-  }, []);
-
   const trainingSkills = useMemo(() => skills.filter(s => s.category === "training"), [skills]);
   const medicalSkills = useMemo(() => skills.filter(s => s.category === "medical"), [skills]);
   const adminSkills = useMemo(() => skills.filter(s => s.category === "admin"), [skills]);
 
-  const readiness = useMemo(() => {
-    if (trekkingMembers.length === 0) return { training: 0, gear: 0, medical: 0, admin: 0, overall: 0 };
-    const calc = (items, field) => {
-      if (items.length === 0) return 100;
-      const total = items.length * trekkingMembers.length;
-      const done = trekkingMembers.reduce((sum, m) => sum + (m[field] || []).filter(id => items.some(s => s.id === id)).length, 0);
-      return total > 0 ? Math.round((done / total) * 100) : 0;
-    };
-    const training = calc(trainingSkills, "skills");
-    const medical = calc(medicalSkills, "medical");
-    const admin = calc(adminSkills, "admin_tasks");
-    const gearTotal = gearItems.length * trekkingMembers.length;
-    const gearDone = trekkingMembers.reduce((sum, m) => sum + (m.gear || []).length, 0);
-    const gear = gearTotal > 0 ? Math.round((gearDone / gearTotal) * 100) : 0;
-    const overall = Math.round((training + gear + medical + admin) / 4);
-    return { training, gear, medical, admin, overall };
-  }, [trekkingMembers, trainingSkills, medicalSkills, adminSkills, gearItems]);
+  // Use shared readiness calculation (single source of truth)
+  const readiness = useMemo(() =>
+    computeCrewReadiness(members, skills, gearCatalog, memberGearMap),
+    [members, skills, gearCatalog, memberGearMap]);
 
   const toggleMedical = async (skillId) => {
     if (active === null || !adventureId) return;
@@ -123,11 +109,7 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
           {trekkingMembers.length > 1 && (
             <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
               {trekkingMembers.map(m => {
-                const mSkills = trainingSkills.length > 0 ? trainingSkills.filter(s => (m.skills || []).includes(s.id)).length / trainingSkills.length : 1;
-                const mGear = gearItems.length > 0 ? (m.gear || []).length / gearItems.length : 1;
-                const mMed = medicalSkills.length > 0 ? medicalSkills.filter(s => (m.medical || []).includes(s.id)).length / medicalSkills.length : 1;
-                const mAdm = adminSkills.length > 0 ? adminSkills.filter(s => (m.admin_tasks || []).includes(s.id)).length / adminSkills.length : 1;
-                const pct = Math.round(((mSkills + mGear + mMed + mAdm) / 4) * 100);
+                const pct = computeMemberReadiness(m, skills, gearCatalog, memberGearMap);
                 return (
                   <div key={m.user_id || m.id} title={`${m.name}: ${pct}%`} style={{ display: "flex", alignItems: "center", gap: 3 }}>
                     <div style={{ width: 8, height: 8, borderRadius: "50%", background: m.color?.bg || theme.accent }} />
@@ -139,6 +121,78 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
           )}
         </div>
       )}
+
+      {/* Trail Badge & Waypoint Legend */}
+      <div style={{ ...card(theme), marginBottom: 10 }}>
+        <div onClick={() => setShowBadgeLegend(!showBadgeLegend)} style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 14 }}>🏅</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>Trail Guide</span>
+            <span style={{ fontSize: 10, color: theme.textDimmer }}>badges & waypoints</span>
+          </div>
+          <span style={{ fontSize: 14, color: theme.textDimmer, transform: showBadgeLegend ? "rotate(90deg)" : "none", transition: "transform .2s" }}>›</span>
+        </div>
+
+        {showBadgeLegend && (
+          <div style={{ marginTop: 10 }}>
+            {/* Trail Badges */}
+            <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 6, fontFamily: fontBody }}>
+              Trail Badges — Earn by completing each category
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 12 }}>
+              {Object.entries(TRAIL_BADGES).map(([key, badge]) => {
+                const descriptions = {
+                  gear_ready: "All gear items owned or packed",
+                  trail_medic: "All medical items completed",
+                  admin_pro: "All admin tasks completed",
+                  training_complete: "All training skills completed",
+                  fully_prepared: "All 4 categories complete!",
+                };
+                return (
+                  <div key={key} style={{
+                    display: "flex", alignItems: "center", gap: 8, padding: "6px 8px",
+                    borderRadius: 8, background: theme.bgAlt, border: `1px solid ${theme.border}`,
+                  }}>
+                    <span style={{ fontSize: 16, flexShrink: 0 }}>{badge.icon}</span>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: theme.heading }}>{badge.title}</div>
+                      <div style={{ fontSize: 9, color: theme.textDimmer, lineHeight: 1.3 }}>{descriptions[key]}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Journey Waypoints */}
+            <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 6, fontFamily: fontBody }}>
+              Journey Waypoints — Crew readiness milestones
+            </div>
+            {JOURNEY_WAYPOINTS.map((wp, i) => (
+              <div key={wp.pct} style={{
+                display: "flex", alignItems: "center", gap: 8, padding: "4px 8px",
+                borderRadius: 6, marginBottom: 2,
+                background: readiness.overall >= wp.pct ? theme.accentBg : "transparent",
+                border: readiness.overall >= wp.pct ? `1px solid ${theme.borderAccent}` : `1px solid transparent`,
+              }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
+                  background: readiness.overall >= wp.pct ? theme.accent : theme.progressBg,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 9, fontWeight: 700, color: readiness.overall >= wp.pct ? "#fff" : theme.textDimmer,
+                }}>
+                  {wp.pct === 100 ? "⭐" : readiness.overall >= wp.pct ? "✓" : `${wp.pct}`}
+                </div>
+                <div>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: readiness.overall >= wp.pct ? theme.accentLight : theme.textMuted }}>{wp.pct}% — {wp.name}</span>
+                  <div style={{ fontSize: 9, color: theme.textDimmer, fontStyle: "italic" }}>{wp.message}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Overall readiness */}
       <div style={card(theme)}>

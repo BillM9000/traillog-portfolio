@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useCountdown } from "../hooks/useCountdown";
 import { useTheme } from "../contexts/ThemeContext";
+import { useAdventure } from "../contexts/AdventureContext";
 import { useToast } from "../contexts/ToastContext";
 import { api } from "../api";
 import { fontBody, fontDisplay, JOURNEY_WAYPOINTS } from "../utils/theme";
+import { computeCrewReadiness } from "../utils/readiness";
 import { ProgressRing } from "./ProgressWidgets";
 import Logo from "./Logo";
 
@@ -38,17 +40,10 @@ export default function Header({ user, troop, adventure, members, analysis, trek
     setSavingProfile(false);
   };
 
-  // Compute crew readiness for progress ring
+  // Compute crew readiness using shared calculation (single source of truth)
+  const { skills: advSkills, gearCatalog, memberGearMap } = useAdventure();
+  const crewReadiness = computeCrewReadiness(members, advSkills, gearCatalog, memberGearMap).overall;
   const trekkingMembers = members.filter(m => m.participation === "trekking");
-  const crewReadiness = trekkingMembers.length > 0
-    ? Math.round(trekkingMembers.reduce((sum, m) => {
-        const skillsDone = (m.skills || []).length;
-        const gearDone = (m.gear || []).length;
-        const total = skillsDone + gearDone;
-        const max = 20; // rough estimate — will normalize
-        return sum + Math.min(100, Math.round((total / Math.max(max, 1)) * 100));
-      }, 0) / trekkingMembers.length)
-    : 0;
 
   // Find current waypoint
   const currentWaypoint = JOURNEY_WAYPOINTS.reduce((best, wp) => crewReadiness >= wp.pct ? wp : best, JOURNEY_WAYPOINTS[0]);

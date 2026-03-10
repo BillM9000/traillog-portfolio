@@ -6,7 +6,7 @@ import { fontBody, fontDisplay, memberTypeBadge, participationBadge, toolbarBtn 
 import Logo from "./Logo";
 import ConfirmModal from "./ConfirmModal";
 
-export default function AdminPanel({ troop, adventure, troopMembers, adventureMembers, onClose, onRefresh, onSelectAdventure }) {
+export default function AdminPanel({ troop, adventure, troopMembers, adventureMembers, currentUserId, onClose, onRefresh, onSelectAdventure }) {
   const { theme } = useTheme();
   const { addToast } = useToast();
   const [tab, setTab] = useState("adventure");
@@ -310,7 +310,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                       </div>
                       {m.is_manual ? (
                         <button onClick={() => removeManual(m.id)} style={{ fontSize: 10, color: theme.danger, background: "none", border: `1px solid ${theme.danger}40`, padding: "2px 8px", borderRadius: 4, cursor: "pointer", fontFamily: fontBody }}>Remove</button>
-                      ) : m.role !== "admin" ? (
+                      ) : m.user_id !== currentUserId && m.role !== "admin" ? (
                         <button onClick={() => removeMemberFromAdventure(m.user_id)} style={{ fontSize: 10, color: theme.danger, background: "none", border: `1px solid ${theme.danger}40`, padding: "2px 8px", borderRadius: 4, cursor: "pointer", fontFamily: fontBody }}>Remove</button>
                       ) : null}
                     </div>

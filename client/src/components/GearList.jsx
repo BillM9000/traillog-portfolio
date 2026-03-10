@@ -365,20 +365,31 @@ export default function GearList({ troopId, adventureId, members, active, setAct
                     </div>
                   </div>
 
-                  {/* Status buttons on the right */}
+                  {/* Status buttons on the right — click to set, click again to uncheck */}
                   {am && (
                     <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
-                      {STATUS_OPTIONS.map(s => (
-                        <button key={s.value} onClick={(e) => { e.stopPropagation(); setGearStatus(item.id, s.value); }}
-                          style={{
-                            padding: "3px 6px", borderRadius: 4, border: "none", cursor: "pointer", fontSize: 9, fontWeight: 600,
-                            background: sel?.status === s.value ? s.color : theme.bgAlt, color: sel?.status === s.value ? "#fff" : theme.textDimmer,
-                            fontFamily: fontBody, transition: "all .12s",
+                      {STATUS_OPTIONS.map(s => {
+                        const isActive = sel?.status === s.value;
+                        return (
+                          <button key={s.value} onClick={(e) => {
+                            e.stopPropagation();
+                            if (isActive) {
+                              // Toggle off — uncheck
+                              (async () => { setSaving(true); try { await api.removeMemberGearItem(adventureId, am.user_id, item.id); await refreshMemberGear(); } catch(err) { console.error(err); } setSaving(false); })();
+                            } else {
+                              setGearStatus(item.id, s.value);
+                            }
                           }}
-                        >
-                          {s.icon}
-                        </button>
-                      ))}
+                            style={{
+                              padding: "3px 6px", borderRadius: 4, border: "none", cursor: "pointer", fontSize: 9, fontWeight: 600,
+                              background: isActive ? s.color : theme.bgAlt, color: isActive ? "#fff" : theme.textDimmer,
+                              fontFamily: fontBody, transition: "all .12s",
+                            }}
+                          >
+                            {s.icon}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

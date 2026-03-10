@@ -409,6 +409,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
           adventure={adventure}
           troopMembers={troopMembers}
           adventureMembers={members}
+          currentUserId={user.id}
           onClose={() => setShowAdmin(false)}
           onRefresh={() => { refreshAll(); api.getTroop(troopId).then(setTroop).catch(console.error); }}
           onSelectAdventure={onSelectAdventure}
