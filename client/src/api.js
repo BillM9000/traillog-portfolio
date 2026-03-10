@@ -92,6 +92,58 @@ export const api = {
   getItineraries: () => request("/itineraries"),
   getItinerary: (id) => request(`/itineraries/${id}`),
 
-  // Gear
+  // Gear (legacy)
   getGear: (troopId) => fetch(`${BASE}/gear${troopId ? `?troop=${troopId}` : ""}`, { credentials: "include" }).then(r => r.json()),
+
+  // Gear Catalog (v5)
+  getGearCatalog: (troopId) => request(`/gear-catalog${troopId ? `?troop=${troopId}` : ""}`),
+  getGearCategories: () => request("/gear-catalog/categories"),
+  getGearCatalogItem: (id) => request(`/gear-catalog/${id}`),
+
+  // Member Gear (adventure-scoped)
+  getAdventureGearAll: (advId) => request(`/adventures/${advId}/gear`),
+  getMemberGearItems: (advId, userId) => request(`/adventures/${advId}/members/${userId}/gear`),
+  updateMemberGearItem: (advId, userId, gearId, data) =>
+    request(`/adventures/${advId}/members/${userId}/gear-item/${gearId}`, { method: "PUT", body: JSON.stringify(data) }),
+  bulkSetMemberGear: (advId, userId, selections) =>
+    request(`/adventures/${advId}/members/${userId}/gear-bulk`, { method: "POST", body: JSON.stringify({ selections }) }),
+  removeMemberGearItem: (advId, userId, gearId) =>
+    request(`/adventures/${advId}/members/${userId}/gear-item/${gearId}`, { method: "DELETE" }),
+  getMemberPackWeight: (advId, userId) => request(`/adventures/${advId}/members/${userId}/pack-weight`),
+
+  // Gear Admin (global admin)
+  createGearCatalogItem: (data) => request("/gear-catalog", { method: "POST", body: JSON.stringify(data) }),
+  updateGearCatalogItem: (id, data) => request(`/gear-catalog/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteGearCatalogItem: (id) => request(`/gear-catalog/${id}`, { method: "DELETE" }),
+  reorderGearCatalog: (orderedIds) => request("/gear-catalog-reorder", { method: "PUT", body: JSON.stringify({ orderedIds }) }),
+  addProductOption: (gearId, data) => request(`/gear-catalog/${gearId}/options`, { method: "POST", body: JSON.stringify(data) }),
+  updateProductOption: (optId, data) => request(`/gear-catalog/options/${optId}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteProductOption: (optId) => request(`/gear-catalog/options/${optId}`, { method: "DELETE" }),
+
+  // Troop Gear Overrides
+  setTroopGearOverride: (troopId, gearId, hidden) =>
+    request(`/troops/${troopId}/gear-overrides/${gearId}`, { method: "PUT", body: JSON.stringify({ hidden }) }),
+  getTroopGearOverrides: (troopId) => request(`/troops/${troopId}/gear-overrides`),
+
+  // Troop Custom Gear
+  getTroopCustomGear: (troopId) => request(`/troops/${troopId}/custom-gear`),
+  addTroopCustomGear: (troopId, data) => request(`/troops/${troopId}/custom-gear`, { method: "POST", body: JSON.stringify(data) }),
+  updateTroopCustomGear: (troopId, id, data) => request(`/troops/${troopId}/custom-gear/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteTroopCustomGear: (troopId, id) => request(`/troops/${troopId}/custom-gear/${id}`, { method: "DELETE" }),
+
+  // AI Gear (premium)
+  aiWeightLookup: (productName) => request("/gear/ai/weight-lookup", { method: "POST", body: JSON.stringify({ product_name: productName }) }),
+  aiGearChat: (message, adventureId) => request("/gear/ai/chat", { method: "POST", body: JSON.stringify({ message, adventure_id: adventureId }) }),
+  getAIUsage: () => request("/gear/ai/usage"),
+
+  // Global Admin
+  getAdminTroops: () => request("/admin/troops"),
+  getAdminUsers: () => request("/admin/users"),
+  getAdminSettings: () => request("/admin/settings"),
+  updateAdminSetting: (key, value) => request("/admin/settings", { method: "PUT", body: JSON.stringify({ key, value }) }),
+  getAffiliateStats: () => request("/admin/affiliate-stats"),
+
+  // Affiliate tracking
+  trackAffiliateClick: (productOptionId, gearCatalogId, url) =>
+    request("/affiliate/click", { method: "POST", body: JSON.stringify({ product_option_id: productOptionId, gear_catalog_id: gearCatalogId, url }) }),
 };

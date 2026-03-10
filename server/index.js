@@ -23,6 +23,16 @@ import {
   autoLinkAdult, autoLinkScout,
   createLinkRequest, getLinkRequests, getMyLinkRequests, approveLinkRequest, denyLinkRequest,
   getItineraries, getItinerary, getGearItems, getSetting, setSetting,
+  // Gear System v5
+  getGearCatalog, getGearCatalogItem, getGearCategories,
+  getMemberGear, getAdventureMemberGearAll, upsertMemberGear, bulkSetMemberGear, removeMemberGearItem,
+  getMemberPackWeight,
+  createGearCatalogItem, updateGearCatalogItem, softDeleteGearCatalogItem, reorderGearCatalog,
+  addProductOption, updateProductOption, deleteProductOption,
+  setTroopGearOverride, getTroopGearOverrides,
+  getTroopCustomGear, addTroopCustomGear, updateTroopCustomGearItem, deleteTroopCustomGear,
+  logAIQuery, getAIUsage,
+  getAllTroopsAdmin, getAllUsersAdmin, getAllSettings, trackAffiliateClick, getAffiliateStats,
 } from "./db.js";
 import {
   sendJoinRequestEmail, sendParentNotificationEmail, sendVerificationEmail,
@@ -184,7 +194,9 @@ app.get("/api/auth/me", (req, res) => {
   const { password_hash, verification_token, ...safe } = req.user;
   const memberships = getUserMemberships(req.user.id);
   const adventureMemberships = getUserAdventureMemberships(req.user.id);
-  res.json({ user: safe, memberships, adventureMemberships });
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const is_global_admin = !!(adminEmail && req.user.email === adminEmail);
+  res.json({ user: { ...safe, is_global_admin }, memberships, adventureMemberships });
 });
 
 app.put("/api/auth/profile", requireAuth, (req, res) => {
@@ -545,7 +557,7 @@ app.delete("/api/adventures/:adventureId/skills/:skillId", requireAuth, requireA
 });
 
 // ═══════════════════════════════════════════
-// GEAR ROUTES
+// GEAR ROUTES (legacy — kept for backward compat)
 // ═══════════════════════════════════════════
 
 app.get("/api/gear", (req, res) => {
@@ -567,6 +579,282 @@ app.get("/api/gear", (req, res) => {
     }
     res.json(items);
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ═══════════════════════════════════════════
+// GEAR CATALOG ROUTES (v5)
+// ═══════════════════════════════════════════
+
+// Global admin middleware (platform owner)
+function requireGlobalAdmin(req, res, next) {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail || req.user.email !== adminEmail) {
+    return res.status(403).json({ error: "Platform admin only" });
+  }
+  next();
+}
+
+// Get full gear catalog (with product options and retailers)
+app.get("/api/gear-catalog", requireAuth, (req, res) => {
+  try {
+    const troopId = req.query.troop ? parseInt(req.query.troop) : null;
+    res.json(getGearCatalog(troopId));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Get gear categories with counts
+app.get("/api/gear-catalog/categories", requireAuth, (req, res) => {
+  try { res.json(getGearCategories()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Get single gear item with all details
+app.get("/api/gear-catalog/:id", requireAuth, (req, res) => {
+  try {
+    const item = getGearCatalogItem(parseInt(req.params.id));
+    if (!item) return res.status(404).json({ error: "Gear item not found" });
+    res.json(item);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Admin: Create gear item
+app.post("/api/gear-catalog", requireAuth, requireGlobalAdmin, (req, res) => {
+  try {
+    const item = createGearCatalogItem(req.body);
+    res.status(201).json(item);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Admin: Update gear item
+app.put("/api/gear-catalog/:id", requireAuth, requireGlobalAdmin, (req, res) => {
+  try {
+    updateGearCatalogItem(parseInt(req.params.id), req.body);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Admin: Soft-delete gear item
+app.delete("/api/gear-catalog/:id", requireAuth, requireGlobalAdmin, (req, res) => {
+  try {
+    softDeleteGearCatalogItem(parseInt(req.params.id));
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Admin: Reorder gear items
+app.put("/api/gear-catalog-reorder", requireAuth, requireGlobalAdmin, (req, res) => {
+  try {
+    const { orderedIds } = req.body;
+    if (!Array.isArray(orderedIds)) return res.status(400).json({ error: "orderedIds must be array" });
+    reorderGearCatalog(orderedIds);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Admin: Add product option to gear item
+app.post("/api/gear-catalog/:id/options", requireAuth, requireGlobalAdmin, (req, res) => {
+  try {
+    const option = addProductOption(parseInt(req.params.id), req.body);
+    res.status(201).json(option);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Admin: Update product option
+app.put("/api/gear-catalog/options/:optId", requireAuth, requireGlobalAdmin, (req, res) => {
+  try {
+    updateProductOption(parseInt(req.params.optId), req.body);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Admin: Delete product option
+app.delete("/api/gear-catalog/options/:optId", requireAuth, requireGlobalAdmin, (req, res) => {
+  try {
+    deleteProductOption(parseInt(req.params.optId));
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ═══════════════════════════════════════════
+// GLOBAL ADMIN ROUTES
+// ═══════════════════════════════════════════
+
+app.get("/api/admin/troops", requireAuth, requireGlobalAdmin, (req, res) => {
+  try { res.json(getAllTroopsAdmin()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/admin/users", requireAuth, requireGlobalAdmin, (req, res) => {
+  try { res.json(getAllUsersAdmin()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/admin/settings", requireAuth, requireGlobalAdmin, (req, res) => {
+  try { res.json(getAllSettings()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/admin/affiliate-stats", requireAuth, requireGlobalAdmin, (req, res) => {
+  try { res.json(getAffiliateStats()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post("/api/affiliate/click", requireAuth, (req, res) => {
+  try {
+    const { product_option_id, gear_catalog_id, url } = req.body;
+    if (!url) return res.status(400).json({ error: "url required" });
+    trackAffiliateClick(req.user.id, product_option_id, gear_catalog_id, url, req.headers.referer);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ═══════════════════════════════════════════
+// MEMBER GEAR ROUTES (adventure-scoped)
+// ═══════════════════════════════════════════
+
+// Get all member gear for an adventure
+app.get("/api/adventures/:adventureId/gear", requireAuth, requireAdventureMember, (req, res) => {
+  try {
+    res.json(getAdventureMemberGearAll(parseInt(req.params.adventureId)));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Get single member's gear selections
+app.get("/api/adventures/:adventureId/members/:userId/gear", requireAuth, requireAdventureMember, (req, res) => {
+  try {
+    res.json(getMemberGear(parseInt(req.params.adventureId), parseInt(req.params.userId)));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Update a single gear item selection for a member
+app.put("/api/adventures/:adventureId/members/:userId/gear-item/:gearId", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, (req, res) => {
+  try {
+    const id = upsertMemberGear(
+      parseInt(req.params.adventureId),
+      parseInt(req.params.userId),
+      parseInt(req.params.gearId),
+      req.body
+    );
+    res.json({ ok: true, id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Bulk set member gear (initial setup / quick-add)
+app.post("/api/adventures/:adventureId/members/:userId/gear-bulk", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, (req, res) => {
+  try {
+    const { selections } = req.body;
+    if (!Array.isArray(selections)) return res.status(400).json({ error: "selections must be array" });
+    bulkSetMemberGear(parseInt(req.params.adventureId), parseInt(req.params.userId), selections);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Remove a gear selection from a member
+app.delete("/api/adventures/:adventureId/members/:userId/gear-item/:gearId", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, (req, res) => {
+  try {
+    removeMemberGearItem(parseInt(req.params.adventureId), parseInt(req.params.userId), parseInt(req.params.gearId));
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Get pack weight breakdown for a member
+app.get("/api/adventures/:adventureId/members/:userId/pack-weight", requireAuth, requireAdventureMember, (req, res) => {
+  try {
+    res.json(getMemberPackWeight(parseInt(req.params.adventureId), parseInt(req.params.userId)));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ═══════════════════════════════════════════
+// TROOP GEAR OVERRIDES & CUSTOM GEAR
+// ═══════════════════════════════════════════
+
+// Troop admin: hide/show a global gear item
+app.put("/api/troops/:troopId/gear-overrides/:gearId", requireAuth, requireTroopAdmin, (req, res) => {
+  try {
+    const { hidden } = req.body;
+    setTroopGearOverride(parseInt(req.params.troopId), parseInt(req.params.gearId), hidden);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Troop admin: get overrides
+app.get("/api/troops/:troopId/gear-overrides", requireAuth, requireTroopAdmin, (req, res) => {
+  try { res.json(getTroopGearOverrides(parseInt(req.params.troopId))); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Troop admin: custom gear items
+app.get("/api/troops/:troopId/custom-gear", requireAuth, requireTroopMember(), (req, res) => {
+  try { res.json(getTroopCustomGear(parseInt(req.params.troopId))); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post("/api/troops/:troopId/custom-gear", requireAuth, requireTroopAdmin, (req, res) => {
+  try {
+    const item = addTroopCustomGear(parseInt(req.params.troopId), req.body);
+    res.status(201).json(item);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put("/api/troops/:troopId/custom-gear/:id", requireAuth, requireTroopAdmin, (req, res) => {
+  try {
+    updateTroopCustomGearItem(parseInt(req.params.id), req.body);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete("/api/troops/:troopId/custom-gear/:id", requireAuth, requireTroopAdmin, (req, res) => {
+  try {
+    deleteTroopCustomGear(parseInt(req.params.id));
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ═══════════════════════════════════════════
+// AI GEAR ROUTES (premium features)
+// ═══════════════════════════════════════════
+
+app.post("/api/gear/ai/weight-lookup", requireAuth, (req, res) => {
+  try {
+    // Premium check
+    const userMemberships = getUserMemberships(req.user.id);
+    const hasPremium = userMemberships.some(m => {
+      const troop = getTroop(m.troop_id);
+      return troop?.tier === "premium";
+    });
+    if (!hasPremium) return res.status(403).json({ error: "Premium feature", upgrade: true });
+    if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: "AI weight lookup not configured" });
+
+    // Stub: AI weight lookup will be implemented with Anthropic API
+    const { product_name } = req.body;
+    if (!product_name?.trim()) return res.status(400).json({ error: "product_name required" });
+    res.json({ product_name, estimated_weight_oz: null, confidence: "unavailable", source: "ai_lookup_pending" });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post("/api/gear/ai/chat", requireAuth, (req, res) => {
+  try {
+    const userMemberships = getUserMemberships(req.user.id);
+    const hasPremium = userMemberships.some(m => {
+      const troop = getTroop(m.troop_id);
+      return troop?.tier === "premium";
+    });
+    if (!hasPremium) return res.status(403).json({ error: "Premium feature", upgrade: true });
+    if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: "AI chatbot not configured" });
+
+    const { message, adventure_id } = req.body;
+    if (!message?.trim()) return res.status(400).json({ error: "message required" });
+
+    // Stub: AI chatbot will be implemented with Anthropic API
+    const response = "AI gear chatbot is being set up. Check back soon for personalized gear advice!";
+    logAIQuery(req.user.id, adventure_id, message, response, 0);
+    res.json({ response, tokens_used: 0 });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/gear/ai/usage", requireAuth, (req, res) => {
+  try { res.json(getAIUsage(req.user.id)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ═══════════════════════════════════════════
@@ -834,19 +1122,31 @@ app.post("/api/adventures/:adventureId/check-milestones", requireAuth, requireAd
     const trainingSkills = skills.filter(s => s.category === "training");
     const medicalSkills = skills.filter(s => s.category === "medical");
     const adminSkills = skills.filter(s => s.category === "admin");
-    const gearItems = getGearItems();
+
+    // Gear: use new gear_catalog (v5) with member_gear table
+    const gearCatalogItems = getGearCatalog();
+    const essentialGearCount = gearCatalogItems.filter(g => g.priority === "essential").length || gearCatalogItems.length;
+    const allMemberGear = getAdventureMemberGearAll(adventureId);
+    // Group member gear by user_id
+    const memberGearByUser = {};
+    for (const mg of allMemberGear) {
+      if (!memberGearByUser[mg.user_id]) memberGearByUser[mg.user_id] = [];
+      memberGearByUser[mg.user_id].push(mg);
+    }
 
     // Check each trekking member for individual badges
     const trekkingMembers = members.filter(m => m.participation === "trekking" && !m.is_manual);
     for (const m of trekkingMembers) {
       const memberSkills = m.skills || [];
-      const memberGear = m.gear || [];
       const memberMedical = m.medical || [];
       const memberAdmin = m.admin_tasks || [];
+      const memberGearItems = memberGearByUser[m.user_id] || [];
+      // Gear readiness: count items with status "owned" or "packed"
+      const gearDone = memberGearItems.filter(g => g.status === "owned" || g.status === "packed").length;
 
       const checks = [
         { badge: "training_complete", total: trainingSkills.length, done: trainingSkills.filter(s => memberSkills.includes(s.id)).length },
-        { badge: "gear_ready", total: gearItems.length, done: gearItems.filter(g => memberGear.includes(g.id)).length },
+        { badge: "gear_ready", total: essentialGearCount, done: gearDone },
         { badge: "trail_medic", total: medicalSkills.length, done: medicalSkills.filter(s => memberMedical.includes(s.id)).length },
         { badge: "admin_pro", total: adminSkills.length, done: adminSkills.filter(s => memberAdmin.includes(s.id)).length },
       ];
@@ -880,17 +1180,18 @@ app.post("/api/adventures/:adventureId/check-milestones", requireAuth, requireAd
 
     // Check crew milestones (overall readiness %)
     if (trekkingMembers.length > 0) {
-      const totalSkillCount = trainingSkills.length + medicalSkills.length + adminSkills.length + gearItems.length;
+      const totalSkillCount = trainingSkills.length + medicalSkills.length + adminSkills.length + essentialGearCount;
       if (totalSkillCount > 0) {
         let totalDone = 0;
         let totalPossible = 0;
         for (const m of trekkingMembers) {
           const ms = m.skills || [];
-          const mg = m.gear || [];
           const mm = m.medical || [];
           const ma = m.admin_tasks || [];
+          const mgItems = memberGearByUser[m.user_id] || [];
+          const mgDone = mgItems.filter(g => g.status === "owned" || g.status === "packed").length;
           totalDone += trainingSkills.filter(s => ms.includes(s.id)).length;
-          totalDone += gearItems.filter(g => mg.includes(g.id)).length;
+          totalDone += mgDone;
           totalDone += medicalSkills.filter(s => mm.includes(s.id)).length;
           totalDone += adminSkills.filter(s => ma.includes(s.id)).length;
           totalPossible += totalSkillCount;
@@ -912,7 +1213,6 @@ app.post("/api/adventures/:adventureId/check-milestones", requireAuth, requireAd
           { type: "all_training", items: trainingSkills, field: "skills" },
           { type: "all_medical", items: medicalSkills, field: "medical" },
           { type: "all_admin", items: adminSkills, field: "admin_tasks" },
-          { type: "all_gear", items: gearItems, field: "gear" },
         ];
         for (const cc of catChecks) {
           if (cc.items.length > 0) {
@@ -924,6 +1224,17 @@ app.post("/api/adventures/:adventureId/check-milestones", requireAuth, requireAd
               const added = addCrewMilestone(adventureId, cc.type);
               if (added) newMilestones.push(cc.type);
             }
+          }
+        }
+        // Gear crew milestone: all trekking members have all essential gear owned/packed
+        if (essentialGearCount > 0) {
+          const allGearComplete = trekkingMembers.every(m => {
+            const mgItems = memberGearByUser[m.user_id] || [];
+            return mgItems.filter(g => g.status === "owned" || g.status === "packed").length >= essentialGearCount;
+          });
+          if (allGearComplete) {
+            const added = addCrewMilestone(adventureId, "all_gear");
+            if (added) newMilestones.push("all_gear");
           }
         }
       }

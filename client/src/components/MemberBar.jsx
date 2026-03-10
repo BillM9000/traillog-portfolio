@@ -1,8 +1,10 @@
 import { useTheme } from "../contexts/ThemeContext";
+import { useAdventure } from "../contexts/AdventureContext";
 import { fontBody, fontDisplay, memberTypeBadge, TRAIL_BADGES } from "../utils/theme";
 
 export default function MemberBar({ members, active, setActive, pendingMembers, isAdmin, currentUserId, onConfirmDelete, onRemoveManual, onApproveMember, onDenyMember, achievements, onRequestLink }) {
   const { theme } = useTheme();
+  const { memberGearMap } = useAdventure();
   const am = active !== null ? members[active] : null;
 
   const trekkingMembers = members.filter(m => m.participation === "trekking");
@@ -23,10 +25,11 @@ export default function MemberBar({ members, active, setActive, pendingMembers, 
     const userBadges = badgesByUser[m.user_id] || [];
     const avatarBg = (m.user_type === "adult" || (!m.user_type && !m.is_manual)) ? "#5B7A3A" : "#8B6E4E";
 
-    // Simple readiness approximation
+    // Readiness approximation using new gear system
     const skillsDone = (m.skills || []).length;
-    const gearDone = (m.gear || []).length;
-    const readinessApprox = Math.min(100, Math.round(((skillsDone + gearDone) / 20) * 100));
+    const memberGearItems = memberGearMap[m.user_id] || [];
+    const gearDone = memberGearItems.filter(g => g.status === "owned" || g.status === "packed").length;
+    const readinessApprox = Math.min(100, Math.round(((skillsDone + gearDone) / 30) * 100));
 
     return (
       <div key={m.is_manual ? `m-${m.id}` : `u-${m.user_id}`} onClick={() => setActive(active === memberIdx ? null : memberIdx)} style={{

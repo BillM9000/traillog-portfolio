@@ -170,10 +170,108 @@ db.exec(`
     resolved_at DATETIME,
     UNIQUE(adventure_id, requester_id, scout_id)
   );
+
+  -- ══ Gear System v5 Tables ══
+
+  CREATE TABLE IF NOT EXISTS gear_catalog (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    subcategory TEXT,
+    description TEXT,
+    weight_oz REAL,
+    weight_class TEXT,
+    priority TEXT NOT NULL DEFAULT 'recommended',
+    price_tier TEXT,
+    msrp REAL,
+    rating_stars REAL,
+    rating_notes TEXT,
+    philmont_compliant INTEGER NOT NULL DEFAULT 1,
+    compliance_notes TEXT,
+    is_crew_shared INTEGER NOT NULL DEFAULT 0,
+    affiliate_priority TEXT DEFAULT 'Medium',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS gear_product_options (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    gear_catalog_id INTEGER NOT NULL REFERENCES gear_catalog(id) ON DELETE CASCADE,
+    tier TEXT NOT NULL,
+    star_rating INTEGER DEFAULT 3,
+    product_name TEXT NOT NULL,
+    brand TEXT,
+    price REAL,
+    weight_oz REAL,
+    notes TEXT,
+    is_ultralight_pick INTEGER NOT NULL DEFAULT 0,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    affiliate_url TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS affiliate_clicks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    product_option_id INTEGER REFERENCES gear_product_options(id),
+    gear_catalog_id INTEGER REFERENCES gear_catalog(id),
+    url TEXT NOT NULL,
+    referrer TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_affiliate_clicks_created ON affiliate_clicks(created_at);
+
+  CREATE TABLE IF NOT EXISTS member_gear (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    adventure_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    gear_catalog_id INTEGER NOT NULL REFERENCES gear_catalog(id),
+    status TEXT NOT NULL DEFAULT 'needed',
+    selected_option_id INTEGER REFERENCES gear_product_options(id),
+    custom_product_name TEXT,
+    custom_weight_oz REAL,
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(adventure_id, user_id, gear_catalog_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS gear_ai_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    adventure_id INTEGER,
+    query TEXT NOT NULL,
+    response TEXT NOT NULL,
+    tokens_used INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS troop_gear_overrides (
+    troop_id INTEGER NOT NULL REFERENCES troops(id),
+    gear_catalog_id INTEGER NOT NULL REFERENCES gear_catalog(id),
+    hidden INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (troop_id, gear_catalog_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS troop_custom_gear (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    troop_id INTEGER NOT NULL REFERENCES troops(id),
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    subcategory TEXT,
+    description TEXT,
+    weight_oz REAL,
+    priority TEXT NOT NULL DEFAULT 'recommended',
+    is_crew_shared INTEGER NOT NULL DEFAULT 0,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 4;
+const CURRENT_SCHEMA_VERSION = 6;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -278,6 +376,78 @@ function migrate() {
           UNIQUE(adventure_id, requester_id, scout_id)
         )
       `);
+    }
+
+    // ── v5 migration: gear system overhaul ──
+    if (version < 5) {
+      // Tables already created by initial schema DDL above.
+      // Seed gear catalog if empty (fresh DB or first v5 migration)
+      seedGearCatalog();
+
+      // Migrate old gear_items → member_gear: map old checkbox IDs to new gear_catalog
+      try {
+        const oldItems = db.prepare("SELECT * FROM gear_items ORDER BY sort_order").all();
+        if (oldItems.length > 0) {
+          const catalogItems = db.prepare("SELECT id, name FROM gear_catalog WHERE active = 1").all();
+          // Build name-match map: old gear_items.name → closest gear_catalog.id
+          const nameMap = {};
+          for (const old of oldItems) {
+            const oldLower = old.name.toLowerCase();
+            let best = null;
+            let bestScore = 0;
+            for (const cat of catalogItems) {
+              const catLower = cat.name.toLowerCase();
+              // Simple substring match scoring
+              if (catLower.includes(oldLower) || oldLower.includes(catLower)) {
+                const score = Math.min(oldLower.length, catLower.length);
+                if (score > bestScore) { bestScore = score; best = cat.id; }
+              } else {
+                // Word overlap scoring
+                const oldWords = oldLower.split(/\s+/);
+                const catWords = catLower.split(/\s+/);
+                const overlap = oldWords.filter(w => catWords.some(cw => cw.includes(w) || w.includes(cw))).length;
+                if (overlap > bestScore) { bestScore = overlap; best = cat.id; }
+              }
+            }
+            if (best) nameMap[old.id] = best;
+          }
+
+          // Migrate member gear selections
+          const membersWithGear = db.prepare("SELECT adventure_id, user_id, gear FROM adventure_members WHERE gear != '[]' AND gear IS NOT NULL").all();
+          const insertMemberGear = db.prepare(
+            "INSERT OR IGNORE INTO member_gear (adventure_id, user_id, gear_catalog_id, status) VALUES (?, ?, ?, 'owned')"
+          );
+          for (const m of membersWithGear) {
+            try {
+              const gearIds = JSON.parse(m.gear);
+              for (const oldId of gearIds) {
+                const newId = nameMap[oldId];
+                if (newId) insertMemberGear.run(m.adventure_id, m.user_id, newId);
+              }
+            } catch { /* skip malformed JSON */ }
+          }
+        }
+      } catch (e) {
+        console.log("v5 gear migration (old data mapping):", e.message);
+      }
+    }
+
+    // ── v6 migration: simplified gear + global admin ──
+    if (version < 6) {
+      tryAlter("ALTER TABLE gear_product_options ADD COLUMN affiliate_url TEXT");
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS affiliate_clicks (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          product_option_id INTEGER REFERENCES gear_product_options(id),
+          gear_catalog_id INTEGER REFERENCES gear_catalog(id),
+          url TEXT NOT NULL,
+          referrer TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_affiliate_clicks_created ON affiliate_clicks(created_at);
+      `);
+      seedGearCatalog();
     }
 
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
@@ -613,6 +783,119 @@ if (gearCount.c === 0) {
   ].forEach(g => insertGear.run(...g));
 }
 
+// ── Seed Gear Catalog (inline — no external file) ──
+function seedGearCatalog() {
+  const count = db.prepare("SELECT COUNT(*) as c FROM gear_catalog").get();
+  if (count.c > 0) return;
+
+  console.log("Seeding gear catalog...");
+  const S = [
+    // Pack & Carry
+    ["Backpacking Pack (65-75L)", "Pack & Carry", "Backpack", 52, "essential", 0, "Torso-fit suspension; adjustable hip belt mandatory"],
+    ["Pack Rain Cover", "Pack & Carry", "Pack Protection", 4, "essential", 0, "Essential for NM afternoon thunderstorms"],
+    ["Stuff Sacks / Compression Sacks", "Pack & Carry", "Organization", 6, "recommended", 0, "Keeps gear organized and compressible"],
+    ["Dry Bags (2-pack)", "Pack & Carry", "Waterproof Storage", 5, "essential", 0, "Electronics, maps, sleep systems must stay dry"],
+    ["Trekking Poles (pair)", "Pack & Carry", "Poles", 18, "recommended", 0, "Reduce knee impact on descent days"],
+    // Shelter
+    ["Backpacking Tent (2-3 person)", "Shelter", "Tent", 56, "essential", 1, "Crew-shared; freestanding preferred for rocky sites"],
+    ["Tent Footprint / Ground Cloth", "Shelter", "Tent Protection", 8, "recommended", 1, "Protects tent floor from rocks"],
+    ["Tent Stakes (set of 10)", "Shelter", "Hardware", 5, "essential", 1, "Y-beam aluminum recommended for rocky soil"],
+    ["Emergency Tarp", "Shelter", "Emergency", 12, "recommended", 1, "Rain shelter during meal breaks or tent failure"],
+    // Sleep System
+    ["Sleeping Bag (20°F rated)", "Sleep System", "Sleeping Bag", 40, "essential", 0, "NM altitude nights drop to 20-30°F"],
+    ["Sleeping Bag Liner", "Sleep System", "Liner", 8, "optional", 0, "Adds 5-15°F warmth; keeps bag clean"],
+    ["Sleeping Pad", "Sleep System", "Pad", 16, "essential", 0, "R-value 3+ for ground insulation at altitude"],
+    ["Backpacking Pillow", "Sleep System", "Pillow", 3, "optional", 0, "Worth every gram for 12-night trek"],
+    // Clothing
+    ["Base Layer Top (long sleeve)", "Clothing", "Base Layer", 6, "essential", 0, "Merino wool or synthetic; NO cotton"],
+    ["Base Layer Bottom (leggings)", "Clothing", "Base Layer", 5, "essential", 0, "Thermal base for cold mornings; doubles as sleep layer"],
+    ["Fleece Mid Layer / Jacket", "Clothing", "Insulation", 14, "essential", 0, "Versatile for 40-70°F daily swings"],
+    ["Insulating Puffy Jacket", "Clothing", "Insulation", 12, "essential", 0, "Down or synthetic for camp and summit"],
+    ["Rain Jacket (waterproof)", "Clothing", "Rain Gear", 12, "essential", 0, "Taped seams; mandatory Philmont packing list"],
+    ["Rain Pants (waterproof)", "Clothing", "Rain Gear", 8, "recommended", 0, "Side-zip for easy on/off over boots"],
+    ["Hiking Pants (convertible)", "Clothing", "Pants", 16, "essential", 0, "Zip-off legs; UPF 50+; no denim"],
+    ["Hiking Shirts (2-pack)", "Clothing", "Shirts", 6, "essential", 0, "Moisture-wicking, UPF 50+; no cotton"],
+    ["Merino Wool Hiking Socks (3-pair)", "Clothing", "Socks", 9, "essential", 0, "Blister prevention; #1 cause of early exit"],
+    ["Moisture-Wicking Underwear (3-pair)", "Clothing", "Underwear", 6, "essential", 0, "Synthetic or merino; anti-chafe"],
+    ["Sun Hat (wide-brim, UPF 50+)", "Clothing", "Headwear", 3, "essential", 0, "NM UV index hits 10-12 (extreme)"],
+    ["Warm Beanie Hat", "Clothing", "Headwear", 2, "recommended", 0, "Summit mornings can be below freezing"],
+    ["Lightweight Gloves", "Clothing", "Handwear", 2, "recommended", 0, "Liner gloves for cold summit crossings"],
+    ["Gaiters (trail or low)", "Clothing", "Gaiters", 4, "optional", 0, "Debris protection on dusty trails"],
+    // Footwear
+    ["Hiking Boots (mid-cut, waterproof)", "Footwear", "Boots", 40, "essential", 0, "Break in 50+ miles before arrival; ankle support required"],
+    ["Camp Shoes / Sandals", "Footwear", "Camp Footwear", 12, "recommended", 0, "Feet recovery critical on 12-day trek"],
+    ["Boot/Sock Liners", "Footwear", "Liners", 1, "optional", 0, "Thin liner under hiking sock reduces blisters"],
+    // Navigation
+    ["Topographic Map (Philmont)", "Navigation", "Maps", 3, "essential", 1, "Official topo provided at check-in; carry at all times"],
+    ["Baseplate Compass", "Navigation", "Compass", 2, "essential", 0, "BSA requirement; set NM declination before trek"],
+    ["Altimeter Watch", "Navigation", "Electronics", 2, "optional", 0, "Elevation tracking and weather prediction"],
+    ["Handheld GPS", "Navigation", "Electronics", 8, "optional", 1, "Backup navigation; inReach for emergency comms"],
+    // Hydration & Water Treatment
+    ["Water Bottles (1L x2)", "Hydration & Water", "Bottles", 10, "essential", 0, "2L minimum carry; wide-mouth for filter compatibility"],
+    ["Hydration Reservoir (2-3L)", "Hydration & Water", "Bladder", 6, "recommended", 0, "Hands-free hydration on trail"],
+    ["Water Filter / Purifier", "Hydration & Water", "Filtration", 3, "essential", 1, "ALL water must be treated; Sawyer Squeeze standard"],
+    ["Chemical Water Treatment (backup)", "Hydration & Water", "Treatment", 1, "recommended", 1, "Backup if filter fails or freezes"],
+    // Food & Cooking
+    ["Camp Stove (canister)", "Food & Cooking", "Stove", 3, "essential", 1, "Canister ONLY; white gas prohibited at Philmont"],
+    ["Fuel Canisters (isobutane, 100g x4)", "Food & Cooking", "Fuel", 28, "essential", 1, "Plan ~100g per 2 people per day at altitude"],
+    ["Cook Pot / Pot Set", "Food & Cooking", "Cookware", 8, "essential", 1, "2L minimum for crew; titanium or aluminum"],
+    ["Long-Handle Spork", "Food & Cooking", "Utensils", 1, "essential", 0, "Reaches bottom of freeze-dried pouches"],
+    ["Bear Bag / Ursack", "Food & Cooking", "Food Storage", 5, "essential", 1, "ALL scented items in bear storage nightly"],
+    ["Trash Compactor Bags (2-pack)", "Food & Cooking", "Waste", 2, "essential", 1, "Pack out ALL trash; LNT mandate"],
+    // Fire & Light
+    ["Headlamp (primary)", "Fire & Light", "Headlamp", 3, "essential", 0, "200+ lumens; red mode for night vision"],
+    ["Backup Headlamp", "Fire & Light", "Headlamp", 2, "recommended", 0, "12 days is long; headlamps fail"],
+    ["Extra Batteries (AA/AAA)", "Fire & Light", "Batteries", 8, "essential", 0, "Cold altitude drains batteries faster"],
+    ["Lighter / Waterproof Matches", "Fire & Light", "Fire Starting", 1, "essential", 0, "Stove ignition only; open fires prohibited most zones"],
+    ["Camp Lantern", "Fire & Light", "Lantern", 3, "optional", 1, "Solar inflatable or LED; crew-shared"],
+    // First Aid & Safety
+    ["Personal First Aid Kit", "First Aid & Safety", "First Aid", 16, "essential", 0, "Crew + personal kits; WFA training recommended"],
+    ["Blister Kit (dedicated)", "First Aid & Safety", "Blister Care", 3, "essential", 0, "#1 cause of Scout evacuation; Leukotape + moleskin"],
+    ["SAM Splint", "First Aid & Safety", "Emergency", 2, "recommended", 1, "Ankle/wrist sprains common on terrain"],
+    ["Emergency Whistle", "First Aid & Safety", "Safety", 1, "essential", 0, "3 blasts = distress; attach to shoulder strap"],
+    ["Emergency Bivy / Space Blanket", "First Aid & Safety", "Emergency", 3, "recommended", 0, "Hypothermia treatment; weighs almost nothing"],
+    ["PLB / Satellite Communicator", "First Aid & Safety", "Communication", 3, "optional", 1, "inReach Mini 2 recommended; zero cell service"],
+    // Hygiene & Leave No Trace
+    ["Trowel (LNT cat hole)", "Hygiene & LNT", "Sanitation", 1, "essential", 1, "6-inch cat holes, 200ft from water"],
+    ["WAG Bags", "Hygiene & LNT", "Sanitation", 2, "recommended", 0, "Required in some high-use Philmont zones"],
+    ["Biodegradable Soap", "Hygiene & LNT", "Hygiene", 2, "recommended", 1, "Use 200+ feet from water sources"],
+    ["Microfiber Towel", "Hygiene & LNT", "Hygiene", 3, "recommended", 0, "Quick-dry; hang on pack to dry while hiking"],
+    ["Toothbrush + Toothpaste (travel)", "Hygiene & LNT", "Dental", 1, "essential", 0, "Scented item — bear bag nightly"],
+    ["Hand Sanitizer (2oz)", "Hygiene & LNT", "Hygiene", 2, "essential", 0, "Before every meal; prevents GI illness"],
+    ["Sunscreen SPF 50+ (2oz)", "Hygiene & LNT", "Sun Protection", 2, "essential", 0, "Scented — bear bag; reapply every 2 hours"],
+    ["Lip Balm (SPF 30+)", "Hygiene & LNT", "Sun Protection", 0.5, "essential", 0, "Scented — bear bag; pack 2-3"],
+    ["Insect Repellent (DEET/Picaridin)", "Hygiene & LNT", "Bug Protection", 2, "recommended", 0, "Scented — bear bag; DEET degrades nylon"],
+    ["Toilet Paper (compressed)", "Hygiene & LNT", "Sanitation", 2, "essential", 0, "Pack out in ziplock; biodegradable preferred"],
+    // Sun & Weather Protection
+    ["Sunglasses (polarized, UV400)", "Sun & Weather", "Eye Protection", 1, "essential", 0, "UV400 mandatory; cheap glasses cause MORE damage"],
+    ["Buff / Neck Gaiter", "Sun & Weather", "Multi-Use", 1.5, "recommended", 0, "12 uses in one item; dust, sun, warmth"],
+    ["Trekking Umbrella", "Sun & Weather", "Sun/Rain", 10, "optional", 0, "Stow immediately during lightning"],
+    // Repair & Multi-tool
+    ["Knife / Multi-Tool", "Repair & Tools", "Tools", 4, "essential", 0, "BSA Totin' Chip required; folding blade"],
+    ["Duct Tape (compact roll)", "Repair & Tools", "Repair", 2, "essential", 0, "Wrap around trekking pole to save space"],
+    ["Tent Pole Repair Sleeve", "Repair & Tools", "Repair", 0.5, "recommended", 1, "Can save a $400 tent from abandonment"],
+    ["Paracord (50ft)", "Repair & Tools", "Cordage", 5, "essential", 1, "Bear bag hanging, guyline, emergency lashing"],
+    // Communication & Documentation
+    ["Waterproof Phone Case", "Communication", "Protection", 1, "recommended", 0, "Phone = emergency camera + offline maps"],
+    ["Portable Battery Bank", "Communication", "Power", 16, "recommended", 1, "10,000mAh = ~3 phone charges; rotating schedule"],
+    ["Trail Journal / Notebook", "Communication", "Documentation", 3, "optional", 0, "Rite in the Rain recommended; document your trek"],
+    ["Pencils (waterproof, 3-pack)", "Communication", "Documentation", 0.5, "optional", 0, "Pencils write in rain; pens fail in cold"],
+  ];
+
+  const insertItem = db.prepare(`
+    INSERT INTO gear_catalog (name, category, subcategory, description, weight_oz, priority, is_crew_shared, philmont_compliant, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+  `);
+  const seedAll = db.transaction(() => {
+    for (let i = 0; i < S.length; i++) {
+      const [name, cat, sub, wt, pri, crew, desc] = S[i];
+      insertItem.run(name, cat, sub, desc, wt, pri, crew, i + 1);
+    }
+  });
+  seedAll();
+  console.log(`Seeded ${S.length} gear catalog items`);
+}
+
 // ── Run migration after seed data constants are defined ──
 migrate();
 
@@ -852,6 +1135,7 @@ export function updateAdventure(id, { name, description, trek_date, depart_date,
 }
 
 export function deleteAdventure(id) {
+  db.prepare("DELETE FROM member_gear WHERE adventure_id = ?").run(id);
   db.prepare("DELETE FROM link_requests WHERE adventure_id = ?").run(id);
   db.prepare("DELETE FROM achievements WHERE adventure_id = ?").run(id);
   db.prepare("DELETE FROM crew_milestones WHERE adventure_id = ?").run(id);
@@ -1186,6 +1470,344 @@ export function approveLinkRequest(requestId, reviewedBy) {
 export function denyLinkRequest(requestId, reviewedBy) {
   db.prepare("UPDATE link_requests SET status = 'denied', reviewed_by = ?, resolved_at = CURRENT_TIMESTAMP WHERE id = ?")
     .run(reviewedBy, requestId);
+}
+
+// ══════════════════════════════════════════
+// GEAR CATALOG QUERIES
+// ══════════════════════════════════════════
+
+// ── Gear Catalog (read) ──
+
+export function getGearCatalog(troopId) {
+  const items = db.prepare("SELECT * FROM gear_catalog WHERE active = 1 ORDER BY sort_order").all();
+
+  const allOptions = db.prepare(`
+    SELECT gpo.* FROM gear_product_options gpo
+    JOIN gear_catalog gc ON gpo.gear_catalog_id = gc.id
+    WHERE gc.active = 1 ORDER BY gpo.sort_order
+  `).all();
+
+  const optionsByItem = {};
+  for (const opt of allOptions) {
+    if (!optionsByItem[opt.gear_catalog_id]) optionsByItem[opt.gear_catalog_id] = [];
+    optionsByItem[opt.gear_catalog_id].push(opt);
+  }
+
+  let hiddenIds = new Set();
+  if (troopId) {
+    const overrides = db.prepare("SELECT gear_catalog_id FROM troop_gear_overrides WHERE troop_id = ? AND hidden = 1").all(troopId);
+    hiddenIds = new Set(overrides.map(o => o.gear_catalog_id));
+  }
+
+  return items
+    .filter(item => !hiddenIds.has(item.id))
+    .map(item => ({ ...item, options: optionsByItem[item.id] || [] }));
+}
+
+export function getGearCatalogItem(id) {
+  const item = db.prepare("SELECT * FROM gear_catalog WHERE id = ?").get(id);
+  if (!item) return null;
+  const options = db.prepare("SELECT * FROM gear_product_options WHERE gear_catalog_id = ? ORDER BY sort_order").all(id);
+  return { ...item, options };
+}
+
+export function getGearCategories() {
+  return db.prepare(`
+    SELECT category, COUNT(*) as item_count
+    FROM gear_catalog WHERE active = 1
+    GROUP BY category ORDER BY MIN(sort_order)
+  `).all();
+}
+
+// ── Member Gear (adventure-scoped) ──
+
+export function getMemberGear(adventureId, userId) {
+  return db.prepare(`
+    SELECT mg.*, gc.name as gear_name, gc.category, gc.weight_oz as default_weight_oz,
+           gc.priority, gc.is_crew_shared, gc.philmont_compliant, gc.compliance_notes,
+           gpo.product_name as selected_product_name, gpo.weight_oz as selected_weight_oz,
+           gpo.brand as selected_brand, gpo.price as selected_price
+    FROM member_gear mg
+    JOIN gear_catalog gc ON mg.gear_catalog_id = gc.id
+    LEFT JOIN gear_product_options gpo ON mg.selected_option_id = gpo.id
+    WHERE mg.adventure_id = ? AND mg.user_id = ?
+    ORDER BY gc.sort_order
+  `).all(adventureId, userId);
+}
+
+export function getAdventureMemberGearAll(adventureId) {
+  return db.prepare(`
+    SELECT mg.*, gc.name as gear_name, gc.category, gc.weight_oz as default_weight_oz,
+           gc.priority, gc.is_crew_shared
+    FROM member_gear mg
+    JOIN gear_catalog gc ON mg.gear_catalog_id = gc.id
+    WHERE mg.adventure_id = ?
+    ORDER BY mg.user_id, gc.sort_order
+  `).all(adventureId);
+}
+
+export function upsertMemberGear(adventureId, userId, gearCatalogId, data) {
+  const existing = db.prepare(
+    "SELECT id FROM member_gear WHERE adventure_id = ? AND user_id = ? AND gear_catalog_id = ?"
+  ).get(adventureId, userId, gearCatalogId);
+
+  if (existing) {
+    const sets = [];
+    const vals = [];
+    if (data.status !== undefined) { sets.push("status = ?"); vals.push(data.status); }
+    if (data.selected_option_id !== undefined) { sets.push("selected_option_id = ?"); vals.push(data.selected_option_id); }
+    if (data.custom_product_name !== undefined) { sets.push("custom_product_name = ?"); vals.push(data.custom_product_name); }
+    if (data.custom_weight_oz !== undefined) { sets.push("custom_weight_oz = ?"); vals.push(data.custom_weight_oz); }
+    if (data.notes !== undefined) { sets.push("notes = ?"); vals.push(data.notes); }
+    if (sets.length > 0) {
+      sets.push("updated_at = CURRENT_TIMESTAMP");
+      vals.push(existing.id);
+      db.prepare(`UPDATE member_gear SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
+    }
+    return existing.id;
+  } else {
+    const result = db.prepare(
+      "INSERT INTO member_gear (adventure_id, user_id, gear_catalog_id, status, selected_option_id, custom_product_name, custom_weight_oz, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run(adventureId, userId, gearCatalogId, data.status || "needed", data.selected_option_id || null, data.custom_product_name || null, data.custom_weight_oz || null, data.notes || null);
+    return result.lastInsertRowid;
+  }
+}
+
+export function bulkSetMemberGear(adventureId, userId, gearSelections) {
+  const upsert = db.transaction(() => {
+    for (const sel of gearSelections) {
+      upsertMemberGear(adventureId, userId, sel.gear_catalog_id, sel);
+    }
+  });
+  upsert();
+}
+
+export function removeMemberGearItem(adventureId, userId, gearCatalogId) {
+  db.prepare("DELETE FROM member_gear WHERE adventure_id = ? AND user_id = ? AND gear_catalog_id = ?")
+    .run(adventureId, userId, gearCatalogId);
+}
+
+// ── Pack Weight Calculator ──
+
+export function getMemberPackWeight(adventureId, userId) {
+  const gear = db.prepare(`
+    SELECT mg.status, mg.custom_weight_oz,
+           gc.category, gc.weight_oz as default_weight_oz, gc.is_crew_shared,
+           gpo.weight_oz as option_weight_oz
+    FROM member_gear mg
+    JOIN gear_catalog gc ON mg.gear_catalog_id = gc.id
+    LEFT JOIN gear_product_options gpo ON mg.selected_option_id = gpo.id
+    WHERE mg.adventure_id = ? AND mg.user_id = ?
+  `).all(adventureId, userId);
+
+  const byCategory = {};
+  let totalOz = 0;
+
+  for (const g of gear) {
+    // Use custom weight > selected option weight > default catalog weight
+    const weight = g.custom_weight_oz || g.option_weight_oz || g.default_weight_oz || 0;
+    if (!byCategory[g.category]) byCategory[g.category] = { weight_oz: 0, count: 0 };
+    byCategory[g.category].weight_oz += weight;
+    byCategory[g.category].count += 1;
+    totalOz += weight;
+  }
+
+  const totalLbs = totalOz / 16;
+  // Estimates: food ~1.75 lbs/day × 12 days, water ~4.4 lbs (2L)
+  const foodLbs = 1.75 * 12;
+  const waterLbs = 4.4;
+  const grandTotalLbs = totalLbs + foodLbs + waterLbs;
+
+  return {
+    base_weight_oz: totalOz,
+    base_weight_lbs: Math.round(totalLbs * 10) / 10,
+    food_estimate_lbs: foodLbs,
+    water_lbs: waterLbs,
+    grand_total_lbs: Math.round(grandTotalLbs * 10) / 10,
+    by_category: byCategory,
+    item_count: gear.length,
+    philmont_limit_lbs: 50,
+    over_limit: grandTotalLbs > 50,
+  };
+}
+
+// ── Gear Admin (global admin CRUD) ──
+
+export function createGearCatalogItem(data) {
+  const maxOrder = db.prepare("SELECT MAX(sort_order) as m FROM gear_catalog").get().m || 0;
+  const result = db.prepare(`
+    INSERT INTO gear_catalog (name, category, subcategory, description, weight_oz, weight_class, priority, price_tier, msrp, rating_stars, rating_notes, philmont_compliant, compliance_notes, is_crew_shared, affiliate_priority, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    data.name, data.category, data.subcategory || null, data.description || null,
+    data.weight_oz || null, data.weight_class || null, data.priority || "recommended",
+    data.price_tier || null, data.msrp || null, data.rating_stars || null, data.rating_notes || null,
+    data.philmont_compliant ?? 1, data.compliance_notes || null,
+    data.is_crew_shared || 0, data.affiliate_priority || "Medium", maxOrder + 1
+  );
+  return { id: result.lastInsertRowid, ...data };
+}
+
+export function updateGearCatalogItem(id, data) {
+  const sets = [];
+  const vals = [];
+  const fields = ["name", "category", "subcategory", "description", "weight_oz", "weight_class", "priority",
+    "price_tier", "msrp", "rating_stars", "rating_notes", "philmont_compliant", "compliance_notes",
+    "is_crew_shared", "affiliate_priority", "sort_order", "active"];
+  for (const f of fields) {
+    if (data[f] !== undefined) { sets.push(`${f} = ?`); vals.push(data[f]); }
+  }
+  if (sets.length === 0) return;
+  sets.push("updated_at = CURRENT_TIMESTAMP");
+  vals.push(id);
+  db.prepare(`UPDATE gear_catalog SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
+}
+
+export function softDeleteGearCatalogItem(id) {
+  db.prepare("UPDATE gear_catalog SET active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(id);
+}
+
+export function reorderGearCatalog(orderedIds) {
+  const stmt = db.prepare("UPDATE gear_catalog SET sort_order = ? WHERE id = ?");
+  const reorder = db.transaction(() => {
+    orderedIds.forEach((id, i) => stmt.run(i + 1, id));
+  });
+  reorder();
+}
+
+// ── Product Options Admin ──
+
+export function addProductOption(gearCatalogId, data) {
+  const maxOrder = db.prepare("SELECT MAX(sort_order) as m FROM gear_product_options WHERE gear_catalog_id = ?").get(gearCatalogId).m || 0;
+  const result = db.prepare(`
+    INSERT INTO gear_product_options (gear_catalog_id, tier, star_rating, product_name, brand, price, weight_oz, notes, is_ultralight_pick, sort_order, affiliate_url)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(gearCatalogId, data.tier, data.star_rating || 3, data.product_name, data.brand || null, data.price || null, data.weight_oz || null, data.notes || null, data.is_ultralight_pick || 0, maxOrder + 1, data.affiliate_url || null);
+  return { id: result.lastInsertRowid, ...data };
+}
+
+export function updateProductOption(optionId, data) {
+  const sets = [];
+  const vals = [];
+  const fields = ["tier", "star_rating", "product_name", "brand", "price", "weight_oz", "notes", "is_ultralight_pick", "sort_order", "affiliate_url"];
+  for (const f of fields) {
+    if (data[f] !== undefined) { sets.push(`${f} = ?`); vals.push(data[f]); }
+  }
+  if (sets.length === 0) return;
+  vals.push(optionId);
+  db.prepare(`UPDATE gear_product_options SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
+}
+
+export function deleteProductOption(optionId) {
+  db.prepare("UPDATE member_gear SET selected_option_id = NULL WHERE selected_option_id = ?").run(optionId);
+  db.prepare("DELETE FROM gear_product_options WHERE id = ?").run(optionId);
+}
+
+// ── Global Admin Queries ──
+
+export function getAllTroopsAdmin() {
+  return db.prepare(`
+    SELECT t.*,
+      (SELECT COUNT(*) FROM troop_members WHERE troop_id = t.id AND status = 'approved') as member_count,
+      (SELECT COUNT(*) FROM adventures WHERE troop_id = t.id) as adventure_count,
+      u.name as creator_name, u.email as creator_email
+    FROM troops t
+    LEFT JOIN users u ON t.created_by = u.id
+    ORDER BY t.created_at DESC
+  `).all();
+}
+
+export function getAllUsersAdmin() {
+  return db.prepare(`
+    SELECT u.id, u.email, u.name, u.user_type, u.created_at, u.email_verified,
+      (SELECT COUNT(*) FROM troop_members WHERE user_id = u.id AND status = 'approved') as troop_count
+    FROM users u ORDER BY u.created_at DESC
+  `).all();
+}
+
+export function getAllSettings() {
+  return db.prepare("SELECT * FROM platform_settings ORDER BY key").all();
+}
+
+export function trackAffiliateClick(userId, productOptionId, gearCatalogId, url, referrer) {
+  db.prepare(
+    "INSERT INTO affiliate_clicks (user_id, product_option_id, gear_catalog_id, url, referrer) VALUES (?, ?, ?, ?, ?)"
+  ).run(userId, productOptionId || null, gearCatalogId || null, url, referrer || null);
+}
+
+export function getAffiliateStats() {
+  const totalClicks = db.prepare("SELECT COUNT(*) as total FROM affiliate_clicks").get().total;
+  const clicksByProduct = db.prepare(`
+    SELECT gc.name as gear_name, gpo.product_name, COUNT(*) as clicks, MAX(ac.created_at) as last_click
+    FROM affiliate_clicks ac
+    LEFT JOIN gear_product_options gpo ON ac.product_option_id = gpo.id
+    LEFT JOIN gear_catalog gc ON ac.gear_catalog_id = gc.id
+    GROUP BY ac.product_option_id, ac.gear_catalog_id
+    ORDER BY clicks DESC LIMIT 50
+  `).all();
+  const clicksByDay = db.prepare(`
+    SELECT DATE(created_at) as day, COUNT(*) as clicks
+    FROM affiliate_clicks WHERE created_at >= DATE('now', '-30 days')
+    GROUP BY DATE(created_at) ORDER BY day
+  `).all();
+  return { totalClicks, clicksByProduct, clicksByDay };
+}
+
+// ── Troop Gear Overrides ──
+
+export function setTroopGearOverride(troopId, gearCatalogId, hidden) {
+  db.prepare(
+    "INSERT OR REPLACE INTO troop_gear_overrides (troop_id, gear_catalog_id, hidden) VALUES (?, ?, ?)"
+  ).run(troopId, gearCatalogId, hidden ? 1 : 0);
+}
+
+export function getTroopGearOverrides(troopId) {
+  return db.prepare("SELECT * FROM troop_gear_overrides WHERE troop_id = ?").all(troopId);
+}
+
+// ── Troop Custom Gear ──
+
+export function getTroopCustomGear(troopId) {
+  return db.prepare("SELECT * FROM troop_custom_gear WHERE troop_id = ? AND active = 1 ORDER BY sort_order").all(troopId);
+}
+
+export function addTroopCustomGear(troopId, data) {
+  const maxOrder = db.prepare("SELECT MAX(sort_order) as m FROM troop_custom_gear WHERE troop_id = ?").get(troopId).m || 0;
+  const result = db.prepare(`
+    INSERT INTO troop_custom_gear (troop_id, name, category, subcategory, description, weight_oz, priority, is_crew_shared, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(troopId, data.name, data.category, data.subcategory || null, data.description || null, data.weight_oz || null, data.priority || "recommended", data.is_crew_shared || 0, maxOrder + 1);
+  return { id: result.lastInsertRowid, troop_id: troopId, ...data };
+}
+
+export function updateTroopCustomGearItem(id, data) {
+  const sets = [];
+  const vals = [];
+  const fields = ["name", "category", "subcategory", "description", "weight_oz", "priority", "is_crew_shared", "sort_order", "active"];
+  for (const f of fields) {
+    if (data[f] !== undefined) { sets.push(`${f} = ?`); vals.push(data[f]); }
+  }
+  if (sets.length === 0) return;
+  vals.push(id);
+  db.prepare(`UPDATE troop_custom_gear SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
+}
+
+export function deleteTroopCustomGear(id) {
+  db.prepare("UPDATE troop_custom_gear SET active = 0 WHERE id = ?").run(id);
+}
+
+// ── AI Logs ──
+
+export function logAIQuery(userId, adventureId, query, response, tokensUsed) {
+  db.prepare("INSERT INTO gear_ai_logs (user_id, adventure_id, query, response, tokens_used) VALUES (?, ?, ?, ?, ?)")
+    .run(userId, adventureId || null, query, response, tokensUsed || 0);
+}
+
+export function getAIUsage(userId) {
+  return db.prepare(`
+    SELECT COUNT(*) as query_count, SUM(tokens_used) as total_tokens
+    FROM gear_ai_logs WHERE user_id = ?
+  `).get(userId);
 }
 
 // ── Session Store ──

@@ -19,6 +19,8 @@ import Results from "./components/Results";
 import Skills from "./components/Skills";
 import Itinerary from "./components/Itinerary";
 import GearList from "./components/GearList";
+import GearAIChat from "./components/GearAIChat";
+import GlobalAdmin from "./components/GlobalAdmin";
 import ConfirmModal from "./components/ConfirmModal";
 import AdminPanel from "./components/AdminPanel";
 
@@ -72,7 +74,7 @@ export default function App() {
 
   // Main app wrapped in AdventureProvider
   return (
-    <AdventureProvider adventureId={adventureId}>
+    <AdventureProvider adventureId={adventureId} troopId={troopId}>
       <MainView
         user={user}
         troopId={troopId}
@@ -101,8 +103,13 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
   const [view, setView] = useState("calendar");
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showGearAdmin, setShowGearAdmin] = useState(false);
+  const [showAIChat, setShowAIChat] = useState(false);
   const [saving, setSaving] = useState(false);
   const saveTimer = useRef(null);
+
+  // Check if current user is global admin (set by server in /api/auth/me)
+  const isGlobalAdmin = !!user?.is_global_admin;
 
   // Fetch troop data
   useEffect(() => {
@@ -364,7 +371,27 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
           />
         )}
         {view === "itinerary" && <Itinerary adventureId={adventureId} adventure={adventure} />}
-        {view === "gear" && <GearList troopId={troopId} adventureId={adventureId} members={members} active={active} setActive={setActive} updateMemberLocally={updateMemberLocally} />}
+        {view === "gear" && (
+          <div>
+            {/* Gear admin & AI chat buttons */}
+            {isAdmin && (
+              <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                <button onClick={() => setShowGearAdmin(true)} style={{
+                  padding: "6px 12px", borderRadius: 8, border: `1px solid ${theme.borderLight}`,
+                  background: theme.bgAlt, color: theme.textDim, fontSize: 11, fontWeight: 600,
+                  cursor: "pointer", fontFamily: fontBody,
+                }}>{isGlobalAdmin ? "🌐 Global Admin" : "⚙️ Gear Admin"}</button>
+                <button onClick={() => setShowAIChat(!showAIChat)} style={{
+                  padding: "6px 12px", borderRadius: 8, border: `1px solid ${theme.borderLight}`,
+                  background: showAIChat ? theme.accent : theme.bgAlt,
+                  color: showAIChat ? "#fff" : theme.textDim,
+                  fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
+                }}>🤖 AI Advisor</button>
+              </div>
+            )}
+            <GearList troopId={troopId} adventureId={adventureId} members={members} active={active} setActive={setActive} updateMemberLocally={updateMemberLocally} />
+          </div>
+        )}
       </div>
 
       {/* Modals */}
@@ -387,6 +414,18 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
           onSelectAdventure={onSelectAdventure}
         />
       )}
+
+      {showGearAdmin && (
+        <GlobalAdmin
+          isGlobalAdmin={isGlobalAdmin}
+          troopId={troopId}
+          onClose={() => { setShowGearAdmin(false); refreshAll(); }}
+        />
+      )}
+
+      {showAIChat && (
+        <GearAIChat adventureId={adventureId} onClose={() => setShowAIChat(false)} />
+      )}
     </div>
   );
 }
@@ -394,15 +433,18 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
 // CTA Banner — shows highest-priority action for active member
 function CTABanner({ members, active, setView, theme }) {
   const am = active !== null ? members[active] : null;
+  const { memberGearMap } = useAdventure();
   if (!am) return null;
 
   const items = [];
   if ((am.dates || []).length === 0) {
     items.push({ emoji: "\u{1F97E}", title: "No training dates set yet", desc: "Coordinate with your crew to plan group hikes \u2192", tab: "calendar" });
   }
-  const gearDone = (am.gear || []).length;
+  // Use new gear system — check memberGearMap
+  const memberGearItems = memberGearMap[am.user_id] || [];
+  const gearDone = memberGearItems.filter(g => g.status === "owned" || g.status === "packed").length;
   if (gearDone === 0) {
-    items.push({ emoji: "\u{1F392}", title: "Gear checklist not started", desc: "Review and check off your gear items \u2192", tab: "gear" });
+    items.push({ emoji: "\u{1F392}", title: "Gear checklist not started", desc: "Browse the catalog and start checking off gear \u2192", tab: "gear" });
   }
   const skillsDone = (am.skills || []).length;
   if (skillsDone === 0) {

@@ -3,12 +3,14 @@ import { api } from "../api";
 
 const AdventureContext = createContext(null);
 
-export function AdventureProvider({ adventureId, children }) {
+export function AdventureProvider({ adventureId, troopId, children }) {
   const [adventure, setAdventure] = useState(null);
   const [members, setMembers] = useState([]);
   const [skills, setSkills] = useState([]);
   const [itinerary, setItinerary] = useState(null);
   const [achievements, setAchievements] = useState({ badges: [], milestones: [] });
+  const [gearCatalog, setGearCatalog] = useState([]);
+  const [memberGearMap, setMemberGearMap] = useState({});
   const [loading, setLoading] = useState(true);
 
   const refreshAdventure = useCallback(async () => {
@@ -52,16 +54,41 @@ export function AdventureProvider({ adventureId, children }) {
     }
   }, [adventureId]);
 
+  const refreshGearCatalog = useCallback(async () => {
+    try {
+      const catalog = await api.getGearCatalog(troopId);
+      setGearCatalog(catalog);
+    } catch (e) {
+      console.error("Failed to load gear catalog:", e);
+    }
+  }, [troopId]);
+
+  const refreshMemberGear = useCallback(async () => {
+    if (!adventureId) return;
+    try {
+      const allGear = await api.getAdventureGearAll(adventureId);
+      // Group by user_id
+      const map = {};
+      for (const g of allGear) {
+        if (!map[g.user_id]) map[g.user_id] = [];
+        map[g.user_id].push(g);
+      }
+      setMemberGearMap(map);
+    } catch (e) {
+      console.error("Failed to load member gear:", e);
+    }
+  }, [adventureId]);
+
   const refreshAll = useCallback(async () => {
-    await Promise.all([refreshAdventure(), refreshMembers(), refreshSkills(), refreshAchievements()]);
-  }, [refreshAdventure, refreshMembers, refreshSkills, refreshAchievements]);
+    await Promise.all([refreshAdventure(), refreshMembers(), refreshSkills(), refreshAchievements(), refreshGearCatalog(), refreshMemberGear()]);
+  }, [refreshAdventure, refreshMembers, refreshSkills, refreshAchievements, refreshGearCatalog, refreshMemberGear]);
 
   // Initial load
   useEffect(() => {
     if (!adventureId) return;
     let cancelled = false;
     setLoading(true);
-    Promise.all([refreshAdventure(), refreshMembers(), refreshSkills(), refreshAchievements()])
+    Promise.all([refreshAdventure(), refreshMembers(), refreshSkills(), refreshAchievements(), refreshGearCatalog(), refreshMemberGear()])
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [adventureId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -99,8 +126,10 @@ export function AdventureProvider({ adventureId, children }) {
     <AdventureContext.Provider value={{
       adventure, members, skills, itinerary, trekDate, trekDates, loading,
       achievements, trekkingMembers, supportMembers,
-      adventureId,
-      refreshAdventure, refreshMembers, refreshSkills, refreshAchievements, refreshAll,
+      adventureId, troopId,
+      gearCatalog, memberGearMap,
+      refreshAdventure, refreshMembers, refreshSkills, refreshAchievements,
+      refreshGearCatalog, refreshMemberGear, refreshAll,
       updateMemberLocally,
     }}>
       {children}
