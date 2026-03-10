@@ -3,6 +3,11 @@ services:
     build: .
     container_name: crew614
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     ports:
       - "127.0.0.1:3614:3614"
     volumes:

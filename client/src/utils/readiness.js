@@ -27,7 +27,7 @@ export function computeCrewReadiness(members, skills, gearCatalog, memberGearMap
   const adminSkills    = skills.filter(s => s.category === "admin");
 
   const pct = (items, field) => {
-    if (items.length === 0) return 100; // no items = 100 %
+    if (items.length === 0) return 0; // no items defined = not ready yet
     const total = items.length * trekking.length;
     const done  = trekking.reduce((sum, m) =>
       sum + (m[field] || []).filter(id => items.some(s => s.id === id)).length, 0);
@@ -66,7 +66,7 @@ export function computeMemberReadiness(member, skills, gearCatalog, memberGearMa
   const adminSkills    = skills.filter(s => s.category === "admin");
 
   const pct = (items, field) => {
-    if (items.length === 0) return 100;
+    if (items.length === 0) return 0; // no items defined = not ready yet
     const done = (member[field] || []).filter(id => items.some(s => s.id === id)).length;
     return Math.round((done / items.length) * 100);
   };
@@ -79,7 +79,7 @@ export function computeMemberReadiness(member, skills, gearCatalog, memberGearMa
   const gearDone  = gearItems.filter(g => g.status === "owned" || g.status === "packed").length;
   const gear = gearCatalog.length > 0
     ? Math.round((gearDone / gearCatalog.length) * 100)
-    : 100;
+    : 0;
 
   return Math.round((training + gear + medical + admin) / 4);
 }

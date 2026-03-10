@@ -1,5 +1,11 @@
 import nodemailer from "nodemailer";
 
+// HTML-escape user-controlled values to prevent XSS in email templates
+function esc(str) {
+  if (!str) return "";
+  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 let transporter = null;
 
 function getTransporter() {
@@ -20,7 +26,7 @@ export async function sendJoinRequestEmail(adminEmail, adminName, requesterName,
   if (!t) return console.log(`[email skip] Join request: ${requesterName} → ${troopName} (no SMTP configured)`);
 
   const scoutLine = requesterType === "scout" && parentEmail
-    ? `<p><strong>Parent/Guardian email:</strong> ${parentEmail}</p>`
+    ? `<p><strong>Parent/Guardian email:</strong> ${esc(parentEmail)}</p>`
     : "";
 
   await t.sendMail({
@@ -29,7 +35,7 @@ export async function sendJoinRequestEmail(adminEmail, adminName, requesterName,
     subject: `${requesterName} wants to join ${troopName}`,
     html: `
       <div style="font-family:sans-serif;max-width:500px">
-        <h2 style="color:#2d3830">${requesterName} (${requesterType || "unknown"}) wants to join ${troopName}</h2>
+        <h2 style="color:#2d3830">${esc(requesterName)} (${esc(requesterType) || "unknown"}) wants to join ${esc(troopName)}</h2>
         ${scoutLine}
         <p>Log in to approve or deny this request:</p>
         <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="color:#4a7a55;font-weight:bold">Open TrailLog</a></p>
@@ -49,7 +55,7 @@ export async function sendParentNotificationEmail(parentEmail, scoutName, troopN
     html: `
       <div style="font-family:sans-serif;max-width:500px">
         <h2 style="color:#2d3830">Your scout requested to join a troop</h2>
-        <p><strong>${scoutName}</strong> has requested to join <strong>${troopName}</strong> on TrailLog, a Scouting America high adventure preparation platform.</p>
+        <p><strong>${esc(scoutName)}</strong> has requested to join <strong>${esc(troopName)}</strong> on TrailLog, a Scouting America high adventure preparation platform.</p>
         <p>A troop leader will review and approve the request. You listed as the parent/guardian contact for this scout.</p>
         <p>You can view the platform here:</p>
         <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrailLog</a></p>
@@ -70,9 +76,9 @@ export async function sendInvitationEmail(toEmail, inviterName, troopName, adven
     html: `
       <div style="font-family:sans-serif;max-width:500px">
         <h2 style="color:#2d3830">You're invited! 🏔️</h2>
-        <p><strong>${inviterName}</strong> has invited you to join <strong>${adventureName || troopName}</strong> on TrailLog — a platform to help your crew prepare for high adventure.</p>
+        <p><strong>${esc(inviterName)}</strong> has invited you to join <strong>${esc(adventureName || troopName)}</strong> on TrailLog — a platform to help your crew prepare for high adventure.</p>
         <p>Click below to accept the invitation and join the crew:</p>
-        <p><a href="${inviteUrl}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Accept Invitation</a></p>
+        <p><a href="${esc(inviteUrl)}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Accept Invitation</a></p>
         <p style="color:#888;font-size:13px">You'll sign in with your Google account. If you weren't expecting this, you can ignore this email.</p>
       </div>
     `,
@@ -90,7 +96,7 @@ export async function sendMemberApprovedEmail(toEmail, memberName, troopName) {
     html: `
       <div style="font-family:sans-serif;max-width:500px">
         <h2 style="color:#2d3830">You're in! 🎉</h2>
-        <p>Hey <strong>${memberName}</strong>, your request to join <strong>${troopName}</strong> has been approved!</p>
+        <p>Hey <strong>${esc(memberName)}</strong>, your request to join <strong>${esc(troopName)}</strong> has been approved!</p>
         <p>Log in to start coordinating with your crew:</p>
         <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrailLog</a></p>
       </div>
@@ -109,7 +115,7 @@ export async function sendMemberDeniedEmail(toEmail, memberName, troopName) {
     html: `
       <div style="font-family:sans-serif;max-width:500px">
         <h2 style="color:#2d3830">Request update</h2>
-        <p>Hey <strong>${memberName}</strong>, your request to join <strong>${troopName}</strong> was not approved at this time.</p>
+        <p>Hey <strong>${esc(memberName)}</strong>, your request to join <strong>${esc(troopName)}</strong> was not approved at this time.</p>
         <p>If you think this was a mistake, please contact your troop leader directly.</p>
       </div>
     `,
@@ -127,7 +133,7 @@ export async function sendDateChangedEmail(toEmail, memberName, adventureName, c
     html: `
       <div style="font-family:sans-serif;max-width:500px">
         <h2 style="color:#2d3830">Trek dates updated 📅</h2>
-        <p>Hey <strong>${memberName}</strong>, the trek dates for <strong>${adventureName}</strong> have been updated.</p>
+        <p>Hey <strong>${esc(memberName)}</strong>, the trek dates for <strong>${esc(adventureName)}</strong> have been updated.</p>
         <p>${changes}</p>
         <p>Check the latest details:</p>
         <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrailLog</a></p>
@@ -157,7 +163,7 @@ export async function sendBadgeEarnedEmail(toEmail, memberName, badgeName, adven
       <div style="font-family:sans-serif;max-width:500px;text-align:center">
         <div style="font-size:48px;margin:20px 0">${badge.icon}</div>
         <h2 style="color:#2d3830">${badge.title}!</h2>
-        <p>Way to go, <strong>${memberName}</strong>! You've earned the <strong>${badge.title}</strong> badge for <strong>${adventureName}</strong>.</p>
+        <p>Way to go, <strong>${esc(memberName)}</strong>! You've earned the <strong>${esc(badge.title)}</strong> badge for <strong>${esc(adventureName)}</strong>.</p>
         <p style="color:#4a7a55;font-weight:bold;font-size:14px">"A Scout is Prepared"</p>
         <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">View Your Badges</a></p>
       </div>
@@ -176,7 +182,7 @@ export async function sendLinkRequestEmail(adminEmail, adminName, adultName, sco
     html: `
       <div style="font-family:sans-serif;max-width:500px">
         <h2 style="color:#2d3830">Parent-Scout Link Request</h2>
-        <p><strong>${adultName}</strong> is requesting to be linked to <strong>${scoutName}</strong> in <strong>${adventureName}</strong>.</p>
+        <p><strong>${esc(adultName)}</strong> is requesting to be linked to <strong>${esc(scoutName)}</strong> in <strong>${esc(adventureName)}</strong>.</p>
         <p>Log in to the Admin Panel to approve or deny this request.</p>
         <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrailLog</a></p>
       </div>

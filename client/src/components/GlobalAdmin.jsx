@@ -20,8 +20,10 @@ export default function GlobalAdmin({ isGlobalAdmin, troopId, onClose }) {
 
   // Global admin state
   const [troops, setTroops] = useState([]);
+  const [troopsLoaded, setTroopsLoaded] = useState(false);
   const [users, setUsers] = useState([]);
   const [settings, setSettings] = useState([]);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [affiliateStats, setAffiliateStats] = useState(null);
 
   const refreshCatalog = useCallback(async () => {
@@ -51,19 +53,19 @@ export default function GlobalAdmin({ isGlobalAdmin, troopId, onClose }) {
   // Load global admin data on tab switch
   useEffect(() => {
     if (!isGlobalAdmin) return;
-    if (tab === "troops" && troops.length === 0) {
-      api.getAdminTroops().then(setTroops).catch(console.error);
+    if (tab === "troops" && !troopsLoaded) {
+      api.getAdminTroops().then(d => { setTroops(d); setTroopsLoaded(true); }).catch(console.error);
     }
     if (tab === "users" && users.length === 0) {
       api.getAdminUsers().then(setUsers).catch(console.error);
     }
-    if (tab === "settings" && settings.length === 0) {
-      api.getAdminSettings().then(setSettings).catch(console.error);
+    if (tab === "settings" && !settingsLoaded) {
+      api.getAdminSettings().then(d => { setSettings(d); setSettingsLoaded(true); }).catch(console.error);
     }
     if (tab === "affiliate" && !affiliateStats) {
       api.getAffiliateStats().then(setAffiliateStats).catch(console.error);
     }
-  }, [tab, isGlobalAdmin, troops.length, users.length, settings.length, affiliateStats]);
+  }, [tab, isGlobalAdmin, troopsLoaded, users.length, settingsLoaded, affiliateStats]);
 
   const filteredCatalog = catalog.filter(item => {
     if (!search.trim()) return true;
@@ -83,7 +85,7 @@ export default function GlobalAdmin({ isGlobalAdmin, troopId, onClose }) {
   if (isGlobalAdmin) {
     tabs.push(["catalog", "Gear Catalog"], ["troops", "Troop Overview"], ["affiliate", "Affiliate"], ["settings", "Settings"]);
   }
-  tabs.push(["troop", "Troop Overrides"]);
+  if (troopId) tabs.push(["troop", "Troop Overrides"]);
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.5)", overflowY: "auto" }}>
@@ -120,7 +122,7 @@ export default function GlobalAdmin({ isGlobalAdmin, troopId, onClose }) {
 
           {/* ── Troop Overview Tab ── */}
           {tab === "troops" && isGlobalAdmin && (
-            <TroopsTab troops={troops} theme={theme} />
+            <TroopsTab troops={troops} loaded={troopsLoaded} theme={theme} />
           )}
 
           {/* ── Affiliate Analytics Tab ── */}
@@ -130,7 +132,7 @@ export default function GlobalAdmin({ isGlobalAdmin, troopId, onClose }) {
 
           {/* ── Platform Settings Tab ── */}
           {tab === "settings" && isGlobalAdmin && (
-            <SettingsTab settings={settings} setSettings={setSettings} theme={theme} addToast={addToast} />
+            <SettingsTab settings={settings} loaded={settingsLoaded} setSettings={setSettings} theme={theme} addToast={addToast} />
           )}
 
           {/* ── Troop Overrides Tab ── */}
@@ -241,9 +243,12 @@ function CatalogTab({ catalog, grouped, search, setSearch, theme, addToast, refr
 }
 
 // ─── Troop Overview Tab ───
-function TroopsTab({ troops, theme }) {
-  if (troops.length === 0) {
+function TroopsTab({ troops, loaded, theme }) {
+  if (!loaded) {
     return <div style={{ fontSize: 12, color: theme.textDimmer, fontStyle: "italic" }}>Loading troops...</div>;
+  }
+  if (troops.length === 0) {
+    return <div style={{ fontSize: 12, color: theme.textDimmer, fontStyle: "italic" }}>No troops registered yet.</div>;
   }
   return (
     <div>
@@ -252,7 +257,7 @@ function TroopsTab({ troops, theme }) {
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, fontFamily: fontBody }}>
           <thead>
             <tr style={{ borderBottom: `2px solid ${theme.borderLight}` }}>
-              {["Troop", "Members", "Adventures", "Tier", "Creator", "Created"].map(h => (
+              {["Troop", "Council", "Members", "Adventures", "Tier", "Visibility", "Creator", "Created"].map(h => (
                 <th key={h} style={{ textAlign: "left", padding: "6px 8px", fontSize: 10, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>{h}</th>
               ))}
             </tr>
@@ -260,11 +265,15 @@ function TroopsTab({ troops, theme }) {
           <tbody>
             {troops.map(t => (
               <tr key={t.id} style={{ borderBottom: `1px solid ${theme.borderLight}` }}>
-                <td style={{ padding: "6px 8px", fontWeight: 600, color: theme.text }}>{t.name}</td>
+                <td style={{ padding: "6px 8px", fontWeight: 600, color: theme.text }}>{t.name}{t.location ? ` · ${t.location}` : ""}</td>
+                <td style={{ padding: "6px 8px", color: theme.textMuted, fontSize: 10 }}>{t.council || "—"}</td>
                 <td style={{ padding: "6px 8px", color: theme.textMuted }}>{t.member_count}</td>
                 <td style={{ padding: "6px 8px", color: theme.textMuted }}>{t.adventure_count}</td>
                 <td style={{ padding: "6px 8px" }}>
                   <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 3, background: theme.accentBg, color: theme.accent, fontWeight: 600 }}>{t.tier || "free"}</span>
+                </td>
+                <td style={{ padding: "6px 8px" }}>
+                  <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 3, fontWeight: 600, background: t.is_public ? theme.accentBg : `${theme.warn}20`, color: t.is_public ? theme.accent : theme.warn }}>{t.is_public ? "Public" : "Private"}</span>
                 </td>
                 <td style={{ padding: "6px 8px", color: theme.textDimmer, fontSize: 10 }}>{t.creator_name || "—"}</td>
                 <td style={{ padding: "6px 8px", color: theme.textDimmer, fontSize: 10 }}>{t.created_at ? new Date(t.created_at).toLocaleDateString() : "—"}</td>
@@ -338,7 +347,7 @@ function StatCard({ label, value, theme }) {
 }
 
 // ─── Platform Settings Tab ───
-function SettingsTab({ settings, setSettings, theme, addToast }) {
+function SettingsTab({ settings, loaded, setSettings, theme, addToast }) {
   const [editKey, setEditKey] = useState(null);
   const [editValue, setEditValue] = useState("");
 
@@ -353,8 +362,11 @@ function SettingsTab({ settings, setSettings, theme, addToast }) {
     }
   };
 
-  if (settings.length === 0) {
+  if (!loaded) {
     return <div style={{ fontSize: 12, color: theme.textDimmer, fontStyle: "italic" }}>Loading settings...</div>;
+  }
+  if (settings.length === 0) {
+    return <div style={{ fontSize: 12, color: theme.textDimmer, fontStyle: "italic" }}>No settings found.</div>;
   }
 
   return (

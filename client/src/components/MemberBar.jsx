@@ -76,6 +76,7 @@ export default function MemberBar({ members, active, setActive, pendingMembers, 
           </div>
           <div style={{ fontSize: 12, color: theme.textDim, marginTop: 2, fontFamily: fontBody }}>
             {m.is_manual ? "Manual" : (m.user_type === "adult" ? "Adult" : "Scout")}
+            {m.role === "admin" && " \u00B7 Admin"}
             {m.participation === "support" && " \u00B7 Support"}
             {m.user_type === "adult" && m.linked_to && (() => { const linked = members.find(x => x.user_id === m.linked_to); return linked ? ` \u00B7 Parent of ${linked.name}` : ""; })()}
             {(m.dates || []).length > 0 && ` \u00B7 ${(m.dates || []).length} date${(m.dates || []).length === 1 ? "" : "s"}`}

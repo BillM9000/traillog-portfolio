@@ -4,7 +4,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { fontBody, fontDisplay, card, cardTitle } from "../utils/theme";
 import Logo from "./Logo";
 
-export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack, onLogout, skipAutoSelect }) {
+export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack, onLogout, skipAutoSelect, isGlobalAdmin, onGlobalAdminClick }) {
   const { theme } = useTheme();
   const [adventures, setAdventures] = useState([]);
   const [itineraries, setItineraries] = useState([]);
@@ -71,6 +71,11 @@ export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack
             <h1 style={{ fontFamily: fontDisplay, fontSize: 20, fontWeight: 800, color: theme.heading, margin: 0 }}>
               {troop.name}
             </h1>
+            {troop.council && (
+              <div style={{ fontSize: 11, color: theme.textMuted, fontFamily: fontBody }}>
+                {[troop.council, troop.location].filter(Boolean).join(" · ")}
+              </div>
+            )}
             <div style={{ fontSize: 11, color: theme.textDim, fontFamily: fontBody }}>Select an adventure</div>
           </div>
         </div>
@@ -79,6 +84,12 @@ export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack
             fontSize: 11, color: theme.accent, background: "none", border: `1px solid ${theme.borderAccent}`,
             padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontFamily: fontBody, fontWeight: 600,
           }}>Back</button>
+          {isGlobalAdmin && (
+            <button onClick={onGlobalAdminClick} style={{
+              fontSize: 11, color: theme.accent, background: "none", border: `1px solid ${theme.accent}40`,
+              padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontFamily: fontBody, fontWeight: 600,
+            }}>🌐 Platform Admin</button>
+          )}
           <button onClick={onLogout} style={{
             fontSize: 11, color: theme.warn, background: "none", border: `1px solid ${theme.warnBg}`,
             padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontFamily: fontBody, fontWeight: 600,

@@ -271,7 +271,7 @@ db.exec(`
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 6;
+const CURRENT_SCHEMA_VERSION = 7;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -450,11 +450,35 @@ function migrate() {
       seedGearCatalog();
     }
 
+    // ── v7 migration: troop council, location, visibility ──
+    if (version < 7) {
+      tryAlter("ALTER TABLE troops ADD COLUMN council TEXT");
+      tryAlter("ALTER TABLE troops ADD COLUMN location TEXT NOT NULL DEFAULT ''");
+      tryAlter("ALTER TABLE troops ADD COLUMN is_public INTEGER NOT NULL DEFAULT 1");
+    }
+
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
   });
 
   runMigration();
   console.log(`Migrated schema to version ${CURRENT_SCHEMA_VERSION}`);
+}
+
+// Ensure performance indexes exist (idempotent, runs every startup regardless of schema version)
+function ensureIndexes() {
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_adventure_members_adventure ON adventure_members(adventure_id);
+    CREATE INDEX IF NOT EXISTS idx_adventure_members_user ON adventure_members(user_id);
+    CREATE INDEX IF NOT EXISTS idx_troop_members_troop ON troop_members(troop_id);
+    CREATE INDEX IF NOT EXISTS idx_troop_members_user ON troop_members(user_id);
+    CREATE INDEX IF NOT EXISTS idx_member_gear_adventure_user ON member_gear(adventure_id, user_id);
+    CREATE INDEX IF NOT EXISTS idx_skills_adventure ON skills(adventure_id);
+    CREATE INDEX IF NOT EXISTS idx_invitations_adventure ON invitations(adventure_id);
+    CREATE INDEX IF NOT EXISTS idx_invitations_token ON invitations(token);
+    CREATE INDEX IF NOT EXISTS idx_achievements_adventure ON achievements(adventure_id);
+    CREATE INDEX IF NOT EXISTS idx_link_requests_adventure ON link_requests(adventure_id);
+  `);
+  console.log("Performance indexes ensured");
 }
 
 // ── Colors ──
@@ -898,6 +922,7 @@ function seedGearCatalog() {
 
 // ── Run migration after seed data constants are defined ──
 migrate();
+ensureIndexes();
 
 // ══════════════════════════════════════════
 // QUERY FUNCTIONS
@@ -947,6 +972,10 @@ export function bindGoogleProfile(userId, googleId, avatarUrl) {
   db.prepare("UPDATE users SET google_id = ?, avatar_url = ? WHERE id = ?").run(googleId, avatarUrl, userId);
 }
 
+export function updateUserNameAvatar(userId, name, avatarUrl) {
+  db.prepare("UPDATE users SET name = ?, avatar_url = ? WHERE id = ?").run(name, avatarUrl, userId);
+}
+
 // ── Itinerary Queries ──
 
 export function getItineraries() {
@@ -969,8 +998,14 @@ export function getItinerary(id) {
 
 // ── Troop Queries ──
 
-export function getTroops() {
-  return db.prepare("SELECT id, name, description, trek_date, itinerary_id, tier FROM troops ORDER BY id").all();
+export function getTroops(userId) {
+  return db.prepare(`
+    SELECT DISTINCT t.id, t.name, t.description, t.council, t.location, t.is_public, t.tier
+    FROM troops t
+    LEFT JOIN troop_members tm ON t.id = tm.troop_id AND tm.user_id = ? AND tm.status != 'denied'
+    WHERE t.is_public = 1 OR tm.user_id IS NOT NULL
+    ORDER BY t.id
+  `).all(userId);
 }
 
 export function getTroop(id) {
@@ -979,24 +1014,27 @@ export function getTroop(id) {
   return { ...r, itinerary_overrides: JSON.parse(r.itinerary_overrides) };
 }
 
-export function createTroop({ name, description, created_by }) {
+export function createTroop({ name, description, council, location, is_public, created_by }) {
   const result = db.prepare(
-    "INSERT INTO troops (name, description, created_by) VALUES (?, ?, ?)"
-  ).run(name, description || "", created_by);
+    "INSERT INTO troops (name, description, council, location, is_public, created_by) VALUES (?, ?, ?, ?, ?, ?)"
+  ).run(name, description || "", council || "", location || "", is_public !== undefined ? (is_public ? 1 : 0) : 1, created_by);
   const troopId = result.lastInsertRowid;
 
   const memberCount = db.prepare("SELECT COUNT(*) as c FROM troop_members WHERE troop_id = ?").get(troopId).c;
   db.prepare("INSERT INTO troop_members (user_id, troop_id, role, status, color_bg) VALUES (?, ?, 'admin', 'approved', ?)")
     .run(created_by, troopId, COLORS[memberCount % COLORS.length]);
 
-  return { id: troopId, name, description: description || "" };
+  return { id: troopId, name, description: description || "", council: council || "", location: location || "", is_public: is_public !== undefined ? (is_public ? 1 : 0) : 1 };
 }
 
-export function updateTroop(troopId, { name, description }) {
+export function updateTroop(troopId, { name, description, council, location, is_public }) {
   const sets = [];
   const vals = [];
   if (name !== undefined) { sets.push("name = ?"); vals.push(name); }
   if (description !== undefined) { sets.push("description = ?"); vals.push(description); }
+  if (council !== undefined) { sets.push("council = ?"); vals.push(council); }
+  if (location !== undefined) { sets.push("location = ?"); vals.push(location); }
+  if (is_public !== undefined) { sets.push("is_public = ?"); vals.push(is_public ? 1 : 0); }
   if (sets.length === 0) return;
   vals.push(troopId);
   db.prepare(`UPDATE troops SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
@@ -1029,7 +1067,8 @@ export function getTroopMember(troopId, userId) {
 
 export function getUserMemberships(userId) {
   return db.prepare(`
-    SELECT tm.troop_id, tm.role, tm.status, t.name as troop_name, t.trek_date, t.itinerary_id
+    SELECT tm.troop_id, tm.role, tm.status, t.name as troop_name, t.trek_date, t.itinerary_id,
+           t.council as troop_council, t.location as troop_location
     FROM troop_members tm JOIN troops t ON tm.troop_id = t.id WHERE tm.user_id = ?
   `).all(userId);
 }
@@ -1056,7 +1095,7 @@ export function approveTroopMember(troopId, userId) {
 }
 
 export function denyTroopMember(troopId, userId) {
-  db.prepare("UPDATE troop_members SET status = 'denied' WHERE troop_id = ? AND user_id = ?").run(troopId, userId);
+  db.prepare("DELETE FROM troop_members WHERE troop_id = ? AND user_id = ? AND status = 'pending'").run(troopId, userId);
 }
 
 export function removeTroopMember(troopId, userId) {
@@ -1118,7 +1157,7 @@ export function createAdventure({ troop_id, name, description, trek_date, depart
   return { id: advId, troop_id, name, description: description || "", trek_date: trek_date || arrive_date, depart_date, arrive_date, return_date, home_date, itinerary_id, status: "active" };
 }
 
-export function updateAdventure(id, { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status }) {
+export function updateAdventure(id, { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status, itinerary_id }) {
   const sets = [];
   const vals = [];
   if (name !== undefined) { sets.push("name = ?"); vals.push(name); }
@@ -1129,20 +1168,24 @@ export function updateAdventure(id, { name, description, trek_date, depart_date,
   if (return_date !== undefined) { sets.push("return_date = ?"); vals.push(return_date); }
   if (home_date !== undefined) { sets.push("home_date = ?"); vals.push(home_date); }
   if (status !== undefined) { sets.push("status = ?"); vals.push(status); }
+  if (itinerary_id !== undefined) { sets.push("itinerary_id = ?"); vals.push(itinerary_id); }
   if (sets.length === 0) return;
   vals.push(id);
   db.prepare(`UPDATE adventures SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
 }
 
 export function deleteAdventure(id) {
-  db.prepare("DELETE FROM member_gear WHERE adventure_id = ?").run(id);
-  db.prepare("DELETE FROM link_requests WHERE adventure_id = ?").run(id);
-  db.prepare("DELETE FROM achievements WHERE adventure_id = ?").run(id);
-  db.prepare("DELETE FROM crew_milestones WHERE adventure_id = ?").run(id);
-  db.prepare("DELETE FROM invitations WHERE adventure_id = ?").run(id);
-  db.prepare("DELETE FROM adventure_members WHERE adventure_id = ?").run(id);
-  db.prepare("DELETE FROM skills WHERE adventure_id = ?").run(id);
-  db.prepare("DELETE FROM adventures WHERE id = ?").run(id);
+  const run = db.transaction(() => {
+    db.prepare("DELETE FROM member_gear WHERE adventure_id = ?").run(id);
+    db.prepare("DELETE FROM link_requests WHERE adventure_id = ?").run(id);
+    db.prepare("DELETE FROM achievements WHERE adventure_id = ?").run(id);
+    db.prepare("DELETE FROM crew_milestones WHERE adventure_id = ?").run(id);
+    db.prepare("DELETE FROM invitations WHERE adventure_id = ?").run(id);
+    db.prepare("DELETE FROM adventure_members WHERE adventure_id = ?").run(id);
+    db.prepare("DELETE FROM skills WHERE adventure_id = ?").run(id);
+    db.prepare("DELETE FROM adventures WHERE id = ?").run(id);
+  });
+  run();
 }
 
 // ── Adventure Member Queries ──
@@ -1195,7 +1238,13 @@ export function addAdventureMember(adventureId, userId, role = "member") {
 }
 
 export function removeAdventureMember(adventureId, userId) {
-  db.prepare("DELETE FROM adventure_members WHERE adventure_id = ? AND user_id = ?").run(adventureId, userId);
+  const run = db.transaction(() => {
+    db.prepare("DELETE FROM member_gear WHERE adventure_id = ? AND user_id = ?").run(adventureId, userId);
+    db.prepare("DELETE FROM achievements WHERE adventure_id = ? AND user_id = ?").run(adventureId, userId);
+    db.prepare("DELETE FROM link_requests WHERE adventure_id = ? AND (requester_id = ? OR target_id = ?)").run(adventureId, userId, userId);
+    db.prepare("DELETE FROM adventure_members WHERE adventure_id = ? AND user_id = ?").run(adventureId, userId);
+  });
+  run();
 }
 
 export function updateAdventureMemberDates(adventureId, userId, dates) {
@@ -1780,7 +1829,7 @@ export function addTroopCustomGear(troopId, data) {
   return { id: result.lastInsertRowid, troop_id: troopId, ...data };
 }
 
-export function updateTroopCustomGearItem(id, data) {
+export function updateTroopCustomGearItem(troopId, id, data) {
   const sets = [];
   const vals = [];
   const fields = ["name", "category", "subcategory", "description", "weight_oz", "priority", "is_crew_shared", "sort_order", "active"];
@@ -1788,12 +1837,12 @@ export function updateTroopCustomGearItem(id, data) {
     if (data[f] !== undefined) { sets.push(`${f} = ?`); vals.push(data[f]); }
   }
   if (sets.length === 0) return;
-  vals.push(id);
-  db.prepare(`UPDATE troop_custom_gear SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
+  vals.push(id, troopId);
+  db.prepare(`UPDATE troop_custom_gear SET ${sets.join(", ")} WHERE id = ? AND troop_id = ?`).run(...vals);
 }
 
-export function deleteTroopCustomGear(id) {
-  db.prepare("UPDATE troop_custom_gear SET active = 0 WHERE id = ?").run(id);
+export function deleteTroopCustomGear(troopId, id) {
+  db.prepare("UPDATE troop_custom_gear SET active = 0 WHERE id = ? AND troop_id = ?").run(id, troopId);
 }
 
 // ── AI Logs ──
@@ -1839,7 +1888,13 @@ export function createSessionStore(session) {
       } catch (e) { cb?.(e); }
     }
   }
-  return new SqliteStore();
+  const store = new SqliteStore();
+  // GC: clean expired sessions every hour
+  setInterval(() => {
+    try { db.prepare("DELETE FROM sessions WHERE expired <= ?").run(Date.now()); }
+    catch (e) { console.error("Session GC error:", e.message); }
+  }, 60 * 60 * 1000);
+  return store;
 }
 
 export default db;

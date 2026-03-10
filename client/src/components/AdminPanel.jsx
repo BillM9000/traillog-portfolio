@@ -11,7 +11,10 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   const { addToast } = useToast();
   const [tab, setTab] = useState("adventure");
   const [troopName, setTroopName] = useState(troop?.name || "");
+  const [troopCouncil, setTroopCouncil] = useState(troop?.council || "");
+  const [troopLocation, setTroopLocation] = useState(troop?.location || "");
   const [troopDesc, setTroopDesc] = useState(troop?.description || "");
+  const [troopPublic, setTroopPublic] = useState(troop?.is_public !== 0);
   const [advName, setAdvName] = useState(adventure?.name || "");
   const [advDesc, setAdvDesc] = useState(adventure?.description || "");
   const [departDate, setDepartDate] = useState(adventure?.depart_date || "");
@@ -47,9 +50,10 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
 
   const saveTroop = async () => {
     if (!troopName.trim()) { addToast("Troop name is required", "error"); return; }
+    if (!troopCouncil.trim()) { addToast("Council is required", "error"); return; }
     setSaving(true);
     try {
-      await api.updateTroop(troop.id, { name: normalize(troopName), description: normalize(troopDesc) });
+      await api.updateTroop(troop.id, { name: normalize(troopName), council: normalize(troopCouncil), location: normalize(troopLocation), description: normalize(troopDesc), is_public: troopPublic });
       onRefresh(); addToast("Troop saved", "success");
     } catch (e) { addToast(e.message, "error"); }
     setSaving(false);
@@ -290,6 +294,21 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
 
           {tab === "members" && (
             <>
+              {/* Pending Troop Join Requests */}
+              {(troopMembers || []).filter(m => m.status === "pending").length > 0 && (
+                <div style={{ marginBottom: 14, padding: "10px 12px", background: theme.name === "dark" ? "#2a2820" : "#faf5e8", border: `1px solid ${theme.gold}40`, borderRadius: 8 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: theme.gold, textTransform: "uppercase", marginBottom: 6 }}>Pending Join Requests</div>
+                  {(troopMembers || []).filter(m => m.status === "pending").map(m => (
+                    <div key={m.user_id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 0", borderBottom: `1px solid ${theme.border}` }}>
+                      <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: theme.text, fontFamily: fontBody }}>{m.name}</span>
+                      <span style={memberTypeBadge(theme, m.user_type)}>{(m.user_type || "?").toUpperCase()}</span>
+                      <button onClick={async () => { try { await api.approveMember(troop.id, m.user_id); onRefresh(); addToast(`${m.name} approved`, "success"); } catch (e) { addToast(e.message, "error"); } }} style={{ fontSize: 10, fontWeight: 600, color: theme.accent, background: theme.accentBg, border: `1px solid ${theme.borderAccent}`, padding: "3px 10px", borderRadius: 6, cursor: "pointer", fontFamily: fontBody }}>Approve</button>
+                      <button onClick={async () => { try { await api.denyMember(troop.id, m.user_id); onRefresh(); addToast(`${m.name} denied`, "success"); } catch (e) { addToast(e.message, "error"); } }} style={{ fontSize: 10, fontWeight: 600, color: "#c08080", background: theme.name === "dark" ? "#3a2020" : "#fde8e8", border: "1px solid #5a3030", padding: "3px 10px", borderRadius: 6, cursor: "pointer", fontFamily: fontBody }}>Deny</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div style={{ fontSize: 11, fontWeight: 700, color: theme.heading, marginBottom: 8 }}>Adventure Members</div>
               {(adventureMembers || []).map(m => {
                 const key = m.is_manual ? `manual-${m.id}` : `user-${m.user_id}`;
@@ -400,8 +419,25 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
             <>
               <label style={labelStyle}>Troop Name</label>
               <input value={troopName} onChange={e => setTroopName(e.target.value)} style={inputStyle} />
+              <label style={labelStyle}>Council</label>
+              <input value={troopCouncil} onChange={e => setTroopCouncil(e.target.value)} style={inputStyle} placeholder="e.g. Northeast Illinois Council" />
+              <label style={labelStyle}>Location</label>
+              <input value={troopLocation} onChange={e => setTroopLocation(e.target.value)} style={inputStyle} placeholder="e.g. Barrington, IL" />
               <label style={labelStyle}>Description</label>
               <input value={troopDesc} onChange={e => setTroopDesc(e.target.value)} style={inputStyle} />
+
+              <label style={labelStyle}>Visibility</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <button type="button" onClick={() => setTroopPublic(!troopPublic)} style={{
+                  padding: "5px 14px", borderRadius: 6, border: "none", fontSize: 11, fontWeight: 600,
+                  cursor: "pointer", fontFamily: fontBody,
+                  background: troopPublic ? theme.accent : theme.textDimmer, color: "#fff",
+                }}>{troopPublic ? "Public" : "Private"}</button>
+                <span style={{ fontSize: 11, color: theme.textDim }}>
+                  {troopPublic ? "Searchable by parents and scouts" : "Invite-only — members must be invited by email"}
+                </span>
+              </div>
+
               <button onClick={saveTroop} disabled={saving} style={{ width: "100%", padding: "10px 0", borderRadius: 7, border: "none", background: theme.accent, color: "#fff", fontSize: 12, fontWeight: 600, cursor: saving ? "wait" : "pointer", fontFamily: fontBody, marginTop: 4 }}>
                 {saving ? "Saving..." : "Save Troop"}
               </button>

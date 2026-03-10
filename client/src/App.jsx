@@ -32,13 +32,16 @@ export default function App() {
   const [troopId, setTroopId] = useState(null);
   const [adventureId, setAdventureId] = useState(null);
   const [wentBack, setWentBack] = useState(false);
+  const [showLobby, setShowLobby] = useState(false);
+  const [showGlobalAdmin, setShowGlobalAdmin] = useState(false);
+  const isGlobalAdmin = !!user?.is_global_admin;
 
-  // Auto-select first approved troop
+  // Auto-select first approved troop (but not if user navigated to lobby)
   useEffect(() => {
-    if (approvedTroops.length > 0 && !troopId) {
+    if (approvedTroops.length > 0 && !troopId && !showLobby) {
       setTroopId(approvedTroops[0].troop_id);
     }
-  }, [approvedTroops, troopId]);
+  }, [approvedTroops, troopId, showLobby]);
 
   // ── Auth gates ──
   if (loading) {
@@ -51,7 +54,16 @@ export default function App() {
 
   if (!user) return <LoginPage onLogin={login} onSignup={signup} />;
   if (!user.user_type) return <ProfileSetup user={user} onComplete={updateProfile} />;
-  if (approvedTroops.length === 0) return <Lobby user={user} memberships={memberships} onRefresh={refresh} onLogout={logout} />;
+  if (approvedTroops.length === 0 || showLobby) return (
+    <>
+      <Lobby user={user} memberships={memberships} onRefresh={refresh} onLogout={logout}
+        isGlobalAdmin={isGlobalAdmin} onGlobalAdminClick={() => setShowGlobalAdmin(true)}
+        onEnterTroop={(id) => { setTroopId(id); setShowLobby(false); }} />
+      {showGlobalAdmin && (
+        <GlobalAdmin isGlobalAdmin={isGlobalAdmin} troopId={null} onClose={() => setShowGlobalAdmin(false)} />
+      )}
+    </>
+  );
 
   // Find selected troop membership
   const currentMembership = memberships.find(m => m.troop_id === troopId);
@@ -60,15 +72,22 @@ export default function App() {
   // Adventure picker gate
   if (!adventureId) {
     return (
-      <AdventurePicker
-        user={user}
-        troop={{ id: troopId, name: currentMembership?.troop_name || "Troop" }}
-        isAdmin={isAdmin}
-        onSelect={(id) => { setAdventureId(id); setWentBack(false); }}
-        onBack={() => { setTroopId(null); setWentBack(false); }}
-        onLogout={logout}
-        skipAutoSelect={wentBack}
-      />
+      <>
+        <AdventurePicker
+          user={user}
+          troop={{ id: troopId, name: currentMembership?.troop_name || "Troop", council: currentMembership?.troop_council, location: currentMembership?.troop_location }}
+          isAdmin={isAdmin}
+          onSelect={(id) => { setAdventureId(id); setWentBack(false); }}
+          onBack={() => { setTroopId(null); setShowLobby(true); setWentBack(false); }}
+          onLogout={logout}
+          skipAutoSelect={wentBack}
+          isGlobalAdmin={isGlobalAdmin}
+          onGlobalAdminClick={() => setShowGlobalAdmin(true)}
+        />
+        {showGlobalAdmin && (
+          <GlobalAdmin isGlobalAdmin={isGlobalAdmin} troopId={troopId} onClose={() => setShowGlobalAdmin(false)} />
+        )}
+      </>
     );
   }
 
@@ -141,6 +160,9 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
       setSaving(false);
     }, 500);
   }, []);
+
+  // Cleanup save timer on unmount
+  useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
 
   // ── Analysis engine ──
   const months = useMemo(() => getMonthsRange(), []);

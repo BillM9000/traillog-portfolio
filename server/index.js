@@ -1,5 +1,6 @@
 import express from "express";
 import session from "express-session";
+import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import passport, { hashPassword, generateVerificationToken } from "./auth.js";
 import { fileURLToPath } from "url";
@@ -44,13 +45,21 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3614;
 
+// Safe parseInt — returns null if invalid, lets routes return 400
+function parseId(val) { const n = parseInt(val); return isNaN(n) ? null : n; }
+
 app.set("trust proxy", 1);
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
+
+// ── Rate Limiting ──
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { error: "Too many attempts, please try again later" }, standardHeaders: true, legacyHeaders: false });
+const apiLimiter = rateLimit({ windowMs: 60 * 1000, max: 100, message: { error: "Too many requests" }, standardHeaders: true, legacyHeaders: false });
+app.use("/api/", apiLimiter);
 
 // ── Sessions ──
 app.use(session({
   store: createSessionStore(session),
-  secret: process.env.SESSION_SECRET || "dev-secret-change-in-production",
+  secret: process.env.SESSION_SECRET || (() => { if (process.env.NODE_ENV === "production") throw new Error("SESSION_SECRET required in production"); return "dev-secret-local-only"; })(),
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -76,7 +85,7 @@ function requireAuth(req, res, next) {
 
 function requireTroopMember(requiredStatus = "approved") {
   return (req, res, next) => {
-    const troopId = parseInt(req.params.troopId);
+    const troopId = parseId(req.params.troopId);
     const membership = getTroopMember(troopId, req.user.id);
     if (!membership || membership.status !== requiredStatus) {
       return res.status(403).json({ error: "Not an approved member of this troop" });
@@ -87,7 +96,7 @@ function requireTroopMember(requiredStatus = "approved") {
 }
 
 function requireTroopAdmin(req, res, next) {
-  const troopId = parseInt(req.params.troopId);
+  const troopId = parseId(req.params.troopId);
   const membership = getTroopMember(troopId, req.user.id);
   if (!membership || membership.role !== "admin" || membership.status !== "approved") {
     return res.status(403).json({ error: "Admin access required" });
@@ -97,8 +106,8 @@ function requireTroopAdmin(req, res, next) {
 }
 
 function requireSelfOrAdmin(req, res, next) {
-  const troopId = parseInt(req.params.troopId);
-  const targetUserId = parseInt(req.params.userId);
+  const troopId = parseId(req.params.troopId);
+  const targetUserId = parseId(req.params.userId);
   if (req.user.id === targetUserId) return next();
   const membership = getTroopMember(troopId, req.user.id);
   if (membership?.role === "admin" && membership.status === "approved") return next();
@@ -106,7 +115,7 @@ function requireSelfOrAdmin(req, res, next) {
 }
 
 function requireAdventureMember(req, res, next) {
-  const adventureId = parseInt(req.params.adventureId);
+  const adventureId = parseId(req.params.adventureId);
   const member = getAdventureMember(adventureId, req.user.id);
   if (!member) return res.status(403).json({ error: "Not a member of this adventure" });
   req.adventureMembership = member;
@@ -114,7 +123,7 @@ function requireAdventureMember(req, res, next) {
 }
 
 function requireAdventureAdmin(req, res, next) {
-  const adventureId = parseInt(req.params.adventureId);
+  const adventureId = parseId(req.params.adventureId);
   const member = getAdventureMember(adventureId, req.user.id);
   // Adventure-level admin
   if (member && member.role === "admin") {
@@ -134,8 +143,8 @@ function requireAdventureAdmin(req, res, next) {
 }
 
 function requireAdventureSelfOrAdmin(req, res, next) {
-  const adventureId = parseInt(req.params.adventureId);
-  const targetUserId = parseInt(req.params.userId);
+  const adventureId = parseId(req.params.adventureId);
+  const targetUserId = parseId(req.params.userId);
   if (req.user.id === targetUserId) return next();
   // Adventure-level admin
   const member = getAdventureMember(adventureId, req.user.id);
@@ -170,7 +179,7 @@ app.get("/auth/google/callback",
   }
 );
 
-app.post("/api/auth/signup", (req, res) => {
+app.post("/api/auth/signup", authLimiter, async (req, res) => {
   try {
     const { name, email, password } = req.body;
     if (!name?.trim() || !email?.trim() || !password || password.length < 6) {
@@ -180,8 +189,9 @@ app.post("/api/auth/signup", (req, res) => {
     if (existing) return res.status(409).json({ error: "Email already registered" });
 
     const token = generateVerificationToken();
+    const hash = await hashPassword(password);
     createUser({
-      email, name: name.trim(), password_hash: hashPassword(password),
+      email, name: name.trim(), password_hash: hash,
       email_verified: 0, verification_token: token,
     });
     sendVerificationEmail(email, token).catch(e => console.error("Verification email failed:", e));
@@ -189,7 +199,7 @@ app.post("/api/auth/signup", (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post("/api/auth/login", (req, res, next) => {
+app.post("/api/auth/login", authLimiter, (req, res, next) => {
   passport.authenticate("local", (err, user, info) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!user) return res.status(401).json({ error: info?.message || "Invalid credentials" });
@@ -236,14 +246,16 @@ app.post("/api/auth/logout", (req, res) => {
 // ITINERARY ROUTES
 // ═══════════════════════════════════════════
 
-app.get("/api/itineraries", (req, res) => {
+app.get("/api/itineraries", requireAuth, (req, res) => {
   try { res.json(getItineraries()); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get("/api/itineraries/:id", (req, res) => {
+app.get("/api/itineraries/:id", requireAuth, (req, res) => {
   try {
-    const itin = getItinerary(req.params.id);
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Invalid itinerary ID" });
+    const itin = getItinerary(id);
     if (!itin) return res.status(404).json({ error: "Itinerary not found" });
     res.json(itin);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -254,13 +266,13 @@ app.get("/api/itineraries/:id", (req, res) => {
 // ═══════════════════════════════════════════
 
 app.get("/api/troops", requireAuth, (req, res) => {
-  try { res.json(getTroops()); }
+  try { res.json(getTroops(req.user.id)); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get("/api/troops/:troopId", requireAuth, requireTroopMember(), (req, res) => {
   try {
-    const troop = getTroop(parseInt(req.params.troopId));
+    const troop = getTroop(parseId(req.params.troopId));
     if (!troop) return res.status(404).json({ error: "Troop not found" });
     res.json(troop);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -268,24 +280,26 @@ app.get("/api/troops/:troopId", requireAuth, requireTroopMember(), (req, res) =>
 
 app.post("/api/troops", requireAuth, (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, council, location, is_public } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Troop name required" });
-    const troop = createTroop({ name: name.trim(), description, created_by: req.user.id });
+    if (!council?.trim()) return res.status(400).json({ error: "Council is required" });
+    const troop = createTroop({ name: name.trim(), description, council: council.trim(), location: location?.trim(), is_public, created_by: req.user.id });
     res.status(201).json(troop);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.put("/api/troops/:troopId", requireAuth, requireTroopAdmin, (req, res) => {
   try {
-    const { name, description } = req.body;
-    updateTroop(parseInt(req.params.troopId), { name, description });
+    const { name, description, council, location, is_public } = req.body;
+    if (council !== undefined && !council?.trim()) return res.status(400).json({ error: "Council is required" });
+    updateTroop(parseId(req.params.troopId), { name, description, council, location, is_public });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post("/api/troops/:troopId/join", requireAuth, (req, res) => {
   try {
-    const troopId = parseInt(req.params.troopId);
+    const troopId = parseId(req.params.troopId);
     const existing = getTroopMember(troopId, req.user.id);
     if (existing) return res.status(409).json({ error: "Already requested or joined", status: existing.status });
 
@@ -319,15 +333,15 @@ app.post("/api/troops/:troopId/join", requireAuth, (req, res) => {
 app.get("/api/troops/:troopId/members", requireAuth, requireTroopMember(), (req, res) => {
   try {
     const status = req.membership.role === "admin" ? null : "approved";
-    res.json(getTroopMembers(parseInt(req.params.troopId), status));
+    res.json(getTroopMembers(parseId(req.params.troopId), status));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.put("/api/troops/:troopId/members/:userId/approve", requireAuth, requireTroopAdmin, (req, res) => {
   try {
-    approveTroopMember(parseInt(req.params.troopId), parseInt(req.params.userId));
-    const user = findUserById(parseInt(req.params.userId));
-    const troop = getTroop(parseInt(req.params.troopId));
+    approveTroopMember(parseId(req.params.troopId), parseId(req.params.userId));
+    const user = findUserById(parseId(req.params.userId));
+    const troop = getTroop(parseId(req.params.troopId));
     if (user?.email) {
       sendMemberApprovedEmail(user.email, user.name, troop.name)
         .catch(e => console.error("Approval email failed:", e));
@@ -338,9 +352,9 @@ app.put("/api/troops/:troopId/members/:userId/approve", requireAuth, requireTroo
 
 app.put("/api/troops/:troopId/members/:userId/deny", requireAuth, requireTroopAdmin, (req, res) => {
   try {
-    denyTroopMember(parseInt(req.params.troopId), parseInt(req.params.userId));
-    const user = findUserById(parseInt(req.params.userId));
-    const troop = getTroop(parseInt(req.params.troopId));
+    denyTroopMember(parseId(req.params.troopId), parseId(req.params.userId));
+    const user = findUserById(parseId(req.params.userId));
+    const troop = getTroop(parseId(req.params.troopId));
     if (user?.email) {
       sendMemberDeniedEmail(user.email, user.name, troop.name)
         .catch(e => console.error("Denial email failed:", e));
@@ -351,7 +365,7 @@ app.put("/api/troops/:troopId/members/:userId/deny", requireAuth, requireTroopAd
 
 app.delete("/api/troops/:troopId/members/:userId", requireAuth, requireTroopAdmin, (req, res) => {
   try {
-    removeTroopMember(parseInt(req.params.troopId), parseInt(req.params.userId));
+    removeTroopMember(parseId(req.params.troopId), parseId(req.params.userId));
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -360,7 +374,7 @@ app.put("/api/troops/:troopId/members/:userId/dates", requireAuth, requireTroopM
   try {
     const { dates } = req.body;
     if (!Array.isArray(dates)) return res.status(400).json({ error: "dates must be array" });
-    updateMemberDates(parseInt(req.params.troopId), parseInt(req.params.userId), dates);
+    updateMemberDates(parseId(req.params.troopId), parseId(req.params.userId), dates);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -369,7 +383,7 @@ app.put("/api/troops/:troopId/members/:userId/skills", requireAuth, requireTroop
   try {
     const { skills } = req.body;
     if (!Array.isArray(skills)) return res.status(400).json({ error: "skills must be array" });
-    updateMemberSkills(parseInt(req.params.troopId), parseInt(req.params.userId), skills);
+    updateMemberSkills(parseId(req.params.troopId), parseId(req.params.userId), skills);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -379,7 +393,7 @@ app.put("/api/troops/:troopId/members/:userId/skills", requireAuth, requireTroop
 // ═══════════════════════════════════════════
 
 app.get("/api/troops/:troopId/skills", requireAuth, requireTroopMember(), (req, res) => {
-  try { res.json(getTroopSkills(parseInt(req.params.troopId))); }
+  try { res.json(getTroopSkills(parseId(req.params.troopId))); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -387,13 +401,13 @@ app.post("/api/troops/:troopId/skills", requireAuth, requireTroopAdmin, (req, re
   try {
     const { name, desc } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Skill name required" });
-    res.status(201).json(addTroopSkill(parseInt(req.params.troopId), name, desc));
+    res.status(201).json(addTroopSkill(parseId(req.params.troopId), name, desc));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.delete("/api/troops/:troopId/skills/:skillId", requireAuth, requireTroopAdmin, (req, res) => {
   try {
-    const result = removeTroopSkill(parseInt(req.params.troopId), req.params.skillId);
+    const result = removeTroopSkill(parseId(req.params.troopId), req.params.skillId);
     if (result.error) return res.status(400).json(result);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -405,7 +419,7 @@ app.delete("/api/troops/:troopId/skills/:skillId", requireAuth, requireTroopAdmi
 
 // List adventures for a troop
 app.get("/api/troops/:troopId/adventures", requireAuth, requireTroopMember(), (req, res) => {
-  try { res.json(getAdventures(parseInt(req.params.troopId))); }
+  try { res.json(getAdventures(parseId(req.params.troopId))); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -415,7 +429,7 @@ app.post("/api/troops/:troopId/adventures", requireAuth, requireTroopAdmin, (req
     const { name, description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Adventure name required" });
     const adventure = createAdventure({
-      troop_id: parseInt(req.params.troopId),
+      troop_id: parseId(req.params.troopId),
       name: name.trim(), description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id,
       created_by: req.user.id,
     });
@@ -426,7 +440,7 @@ app.post("/api/troops/:troopId/adventures", requireAuth, requireTroopAdmin, (req
 // Get adventure detail
 app.get("/api/adventures/:adventureId", requireAuth, requireAdventureMember, (req, res) => {
   try {
-    const adv = getAdventure(parseInt(req.params.adventureId));
+    const adv = getAdventure(parseId(req.params.adventureId));
     if (!adv) return res.status(404).json({ error: "Adventure not found" });
     res.json(adv);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -435,7 +449,7 @@ app.get("/api/adventures/:adventureId", requireAuth, requireAdventureMember, (re
 // Update adventure
 app.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req, res) => {
   try {
-    const adventureId = parseInt(req.params.adventureId);
+    const adventureId = parseId(req.params.adventureId);
     const { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status, itinerary_id } = req.body;
     const oldAdv = getAdventure(adventureId);
     updateAdventure(adventureId, { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status, itinerary_id });
@@ -444,9 +458,10 @@ app.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req
     const dateFields = ["depart_date", "arrive_date", "return_date", "home_date"];
     const changes = [];
     const labels = { depart_date: "Depart Home", arrive_date: "Arrive at Philmont", return_date: "Depart Philmont", home_date: "Return Home" };
+    const safeDate = (v) => v ? String(v).replace(/[^0-9\-]/g, "") : null;
     for (const f of dateFields) {
       if (req.body[f] !== undefined && req.body[f] !== oldAdv[f]) {
-        changes.push(`<strong>${labels[f]}:</strong> ${oldAdv[f] || "not set"} → ${req.body[f] || "removed"}`);
+        changes.push(`<strong>${labels[f]}:</strong> ${safeDate(oldAdv[f]) || "not set"} → ${safeDate(req.body[f]) || "removed"}`);
       }
     }
     if (changes.length > 0) {
@@ -467,7 +482,7 @@ app.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req
 // Delete adventure
 app.delete("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req, res) => {
   try {
-    deleteAdventure(parseInt(req.params.adventureId));
+    deleteAdventure(parseId(req.params.adventureId));
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -477,7 +492,7 @@ app.delete("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (
 // ═══════════════════════════════════════════
 
 app.get("/api/adventures/:adventureId/members", requireAuth, requireAdventureMember, (req, res) => {
-  try { res.json(getAdventureMembers(parseInt(req.params.adventureId))); }
+  try { res.json(getAdventureMembers(parseId(req.params.adventureId))); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -485,7 +500,7 @@ app.post("/api/adventures/:adventureId/members", requireAuth, requireAdventureAd
   try {
     const { user_id, role } = req.body;
     if (!user_id) return res.status(400).json({ error: "user_id required" });
-    const advId = parseInt(req.params.adventureId);
+    const advId = parseId(req.params.adventureId);
     // Auto-promote troop admins to adventure admin
     let memberRole = role || "member";
     if (memberRole === "member") {
@@ -508,7 +523,7 @@ app.post("/api/adventures/:adventureId/members", requireAuth, requireAdventureAd
 
 app.delete("/api/adventures/:adventureId/members/:userId", requireAuth, requireAdventureAdmin, (req, res) => {
   try {
-    removeAdventureMember(parseInt(req.params.adventureId), parseInt(req.params.userId));
+    removeAdventureMember(parseId(req.params.adventureId), parseId(req.params.userId));
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -518,7 +533,7 @@ app.put("/api/adventures/:adventureId/members/:userId/dates", requireAuth, requi
   try {
     const { dates } = req.body;
     if (!Array.isArray(dates)) return res.status(400).json({ error: "dates must be array" });
-    updateAdventureMemberDates(parseInt(req.params.adventureId), parseInt(req.params.userId), dates);
+    updateAdventureMemberDates(parseId(req.params.adventureId), parseId(req.params.userId), dates);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -527,7 +542,7 @@ app.put("/api/adventures/:adventureId/members/:userId/skills", requireAuth, requ
   try {
     const { skills } = req.body;
     if (!Array.isArray(skills)) return res.status(400).json({ error: "skills must be array" });
-    updateAdventureMemberSkills(parseInt(req.params.adventureId), parseInt(req.params.userId), skills);
+    updateAdventureMemberSkills(parseId(req.params.adventureId), parseId(req.params.userId), skills);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -536,7 +551,7 @@ app.put("/api/adventures/:adventureId/members/:userId/gear", requireAuth, requir
   try {
     const { gear } = req.body;
     if (!Array.isArray(gear)) return res.status(400).json({ error: "gear must be array" });
-    updateAdventureMemberGear(parseInt(req.params.adventureId), parseInt(req.params.userId), gear);
+    updateAdventureMemberGear(parseId(req.params.adventureId), parseId(req.params.userId), gear);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -545,7 +560,7 @@ app.put("/api/adventures/:adventureId/members/:userId/medical", requireAuth, req
   try {
     const { medical } = req.body;
     if (!Array.isArray(medical)) return res.status(400).json({ error: "medical must be array" });
-    updateAdventureMemberMedical(parseInt(req.params.adventureId), parseInt(req.params.userId), medical);
+    updateAdventureMemberMedical(parseId(req.params.adventureId), parseId(req.params.userId), medical);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -554,7 +569,7 @@ app.put("/api/adventures/:adventureId/members/:userId/admin", requireAuth, requi
   try {
     const { admin_tasks } = req.body;
     if (!Array.isArray(admin_tasks)) return res.status(400).json({ error: "admin_tasks must be array" });
-    updateAdventureMemberAdmin(parseInt(req.params.adventureId), parseInt(req.params.userId), admin_tasks);
+    updateAdventureMemberAdmin(parseId(req.params.adventureId), parseId(req.params.userId), admin_tasks);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -566,7 +581,7 @@ app.put("/api/adventures/:adventureId/members/:userId/admin", requireAuth, requi
 app.get("/api/adventures/:adventureId/skills", requireAuth, requireAdventureMember, (req, res) => {
   try {
     const category = req.query.category || null;
-    res.json(getAdventureSkills(parseInt(req.params.adventureId), category));
+    res.json(getAdventureSkills(parseId(req.params.adventureId), category));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -574,13 +589,13 @@ app.post("/api/adventures/:adventureId/skills", requireAuth, requireAdventureAdm
   try {
     const { name, desc, category, icon } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Skill name required" });
-    res.status(201).json(addAdventureSkill(parseInt(req.params.adventureId), name, desc, category, icon));
+    res.status(201).json(addAdventureSkill(parseId(req.params.adventureId), name, desc, category, icon));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.delete("/api/adventures/:adventureId/skills/:skillId", requireAuth, requireAdventureAdmin, (req, res) => {
   try {
-    const result = removeAdventureSkill(parseInt(req.params.adventureId), req.params.skillId);
+    const result = removeAdventureSkill(parseId(req.params.adventureId), req.params.skillId);
     if (result.error) return res.status(400).json(result);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -590,12 +605,12 @@ app.delete("/api/adventures/:adventureId/skills/:skillId", requireAuth, requireA
 // GEAR ROUTES (legacy — kept for backward compat)
 // ═══════════════════════════════════════════
 
-app.get("/api/gear", (req, res) => {
+app.get("/api/gear", requireAuth, (req, res) => {
   try {
     const tags = req.query.tags ? req.query.tags.split(",") : null;
     const items = getGearItems(tags);
 
-    const troopId = req.query.troop ? parseInt(req.query.troop) : null;
+    const troopId = req.query.troop ? parseId(req.query.troop) : null;
     if (troopId) {
       const troop = getTroop(troopId);
       const tag = troop?.amazon_affiliate_tag || getSetting("amazon_affiliate_tag");
@@ -627,7 +642,7 @@ function requireGlobalAdmin(req, res, next) {
 // Get full gear catalog (with product options and retailers)
 app.get("/api/gear-catalog", requireAuth, (req, res) => {
   try {
-    const troopId = req.query.troop ? parseInt(req.query.troop) : null;
+    const troopId = req.query.troop ? parseId(req.query.troop) : null;
     res.json(getGearCatalog(troopId));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -641,7 +656,7 @@ app.get("/api/gear-catalog/categories", requireAuth, (req, res) => {
 // Get single gear item with all details
 app.get("/api/gear-catalog/:id", requireAuth, (req, res) => {
   try {
-    const item = getGearCatalogItem(parseInt(req.params.id));
+    const item = getGearCatalogItem(parseId(req.params.id));
     if (!item) return res.status(404).json({ error: "Gear item not found" });
     res.json(item);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -650,6 +665,8 @@ app.get("/api/gear-catalog/:id", requireAuth, (req, res) => {
 // Admin: Create gear item
 app.post("/api/gear-catalog", requireAuth, requireGlobalAdmin, (req, res) => {
   try {
+    if (!req.body.name?.trim()) return res.status(400).json({ error: "Gear item name is required" });
+    if (!req.body.category?.trim()) return res.status(400).json({ error: "Category is required" });
     const item = createGearCatalogItem(req.body);
     res.status(201).json(item);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -658,7 +675,7 @@ app.post("/api/gear-catalog", requireAuth, requireGlobalAdmin, (req, res) => {
 // Admin: Update gear item
 app.put("/api/gear-catalog/:id", requireAuth, requireGlobalAdmin, (req, res) => {
   try {
-    updateGearCatalogItem(parseInt(req.params.id), req.body);
+    updateGearCatalogItem(parseId(req.params.id), req.body);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -666,7 +683,7 @@ app.put("/api/gear-catalog/:id", requireAuth, requireGlobalAdmin, (req, res) => 
 // Admin: Soft-delete gear item
 app.delete("/api/gear-catalog/:id", requireAuth, requireGlobalAdmin, (req, res) => {
   try {
-    softDeleteGearCatalogItem(parseInt(req.params.id));
+    softDeleteGearCatalogItem(parseId(req.params.id));
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -684,7 +701,7 @@ app.put("/api/gear-catalog-reorder", requireAuth, requireGlobalAdmin, (req, res)
 // Admin: Add product option to gear item
 app.post("/api/gear-catalog/:id/options", requireAuth, requireGlobalAdmin, (req, res) => {
   try {
-    const option = addProductOption(parseInt(req.params.id), req.body);
+    const option = addProductOption(parseId(req.params.id), req.body);
     res.status(201).json(option);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -692,7 +709,7 @@ app.post("/api/gear-catalog/:id/options", requireAuth, requireGlobalAdmin, (req,
 // Admin: Update product option
 app.put("/api/gear-catalog/options/:optId", requireAuth, requireGlobalAdmin, (req, res) => {
   try {
-    updateProductOption(parseInt(req.params.optId), req.body);
+    updateProductOption(parseId(req.params.optId), req.body);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -700,7 +717,7 @@ app.put("/api/gear-catalog/options/:optId", requireAuth, requireGlobalAdmin, (re
 // Admin: Delete product option
 app.delete("/api/gear-catalog/options/:optId", requireAuth, requireGlobalAdmin, (req, res) => {
   try {
-    deleteProductOption(parseInt(req.params.optId));
+    deleteProductOption(parseId(req.params.optId));
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -745,14 +762,14 @@ app.post("/api/affiliate/click", requireAuth, (req, res) => {
 // Get all member gear for an adventure
 app.get("/api/adventures/:adventureId/gear", requireAuth, requireAdventureMember, (req, res) => {
   try {
-    res.json(getAdventureMemberGearAll(parseInt(req.params.adventureId)));
+    res.json(getAdventureMemberGearAll(parseId(req.params.adventureId)));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Get single member's gear selections
 app.get("/api/adventures/:adventureId/members/:userId/gear", requireAuth, requireAdventureMember, (req, res) => {
   try {
-    res.json(getMemberGear(parseInt(req.params.adventureId), parseInt(req.params.userId)));
+    res.json(getMemberGear(parseId(req.params.adventureId), parseId(req.params.userId)));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -760,9 +777,9 @@ app.get("/api/adventures/:adventureId/members/:userId/gear", requireAuth, requir
 app.put("/api/adventures/:adventureId/members/:userId/gear-item/:gearId", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, (req, res) => {
   try {
     const id = upsertMemberGear(
-      parseInt(req.params.adventureId),
-      parseInt(req.params.userId),
-      parseInt(req.params.gearId),
+      parseId(req.params.adventureId),
+      parseId(req.params.userId),
+      parseId(req.params.gearId),
       req.body
     );
     res.json({ ok: true, id });
@@ -774,7 +791,7 @@ app.post("/api/adventures/:adventureId/members/:userId/gear-bulk", requireAuth, 
   try {
     const { selections } = req.body;
     if (!Array.isArray(selections)) return res.status(400).json({ error: "selections must be array" });
-    bulkSetMemberGear(parseInt(req.params.adventureId), parseInt(req.params.userId), selections);
+    bulkSetMemberGear(parseId(req.params.adventureId), parseId(req.params.userId), selections);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -782,7 +799,7 @@ app.post("/api/adventures/:adventureId/members/:userId/gear-bulk", requireAuth, 
 // Remove a gear selection from a member
 app.delete("/api/adventures/:adventureId/members/:userId/gear-item/:gearId", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, (req, res) => {
   try {
-    removeMemberGearItem(parseInt(req.params.adventureId), parseInt(req.params.userId), parseInt(req.params.gearId));
+    removeMemberGearItem(parseId(req.params.adventureId), parseId(req.params.userId), parseId(req.params.gearId));
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -790,7 +807,7 @@ app.delete("/api/adventures/:adventureId/members/:userId/gear-item/:gearId", req
 // Get pack weight breakdown for a member
 app.get("/api/adventures/:adventureId/members/:userId/pack-weight", requireAuth, requireAdventureMember, (req, res) => {
   try {
-    res.json(getMemberPackWeight(parseInt(req.params.adventureId), parseInt(req.params.userId)));
+    res.json(getMemberPackWeight(parseId(req.params.adventureId), parseId(req.params.userId)));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -802,40 +819,40 @@ app.get("/api/adventures/:adventureId/members/:userId/pack-weight", requireAuth,
 app.put("/api/troops/:troopId/gear-overrides/:gearId", requireAuth, requireTroopAdmin, (req, res) => {
   try {
     const { hidden } = req.body;
-    setTroopGearOverride(parseInt(req.params.troopId), parseInt(req.params.gearId), hidden);
+    setTroopGearOverride(parseId(req.params.troopId), parseId(req.params.gearId), hidden);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Troop admin: get overrides
 app.get("/api/troops/:troopId/gear-overrides", requireAuth, requireTroopAdmin, (req, res) => {
-  try { res.json(getTroopGearOverrides(parseInt(req.params.troopId))); }
+  try { res.json(getTroopGearOverrides(parseId(req.params.troopId))); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Troop admin: custom gear items
 app.get("/api/troops/:troopId/custom-gear", requireAuth, requireTroopMember(), (req, res) => {
-  try { res.json(getTroopCustomGear(parseInt(req.params.troopId))); }
+  try { res.json(getTroopCustomGear(parseId(req.params.troopId))); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post("/api/troops/:troopId/custom-gear", requireAuth, requireTroopAdmin, (req, res) => {
   try {
-    const item = addTroopCustomGear(parseInt(req.params.troopId), req.body);
+    const item = addTroopCustomGear(parseId(req.params.troopId), req.body);
     res.status(201).json(item);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.put("/api/troops/:troopId/custom-gear/:id", requireAuth, requireTroopAdmin, (req, res) => {
   try {
-    updateTroopCustomGearItem(parseInt(req.params.id), req.body);
+    updateTroopCustomGearItem(parseId(req.params.troopId), parseId(req.params.id), req.body);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.delete("/api/troops/:troopId/custom-gear/:id", requireAuth, requireTroopAdmin, (req, res) => {
   try {
-    deleteTroopCustomGear(parseInt(req.params.id));
+    deleteTroopCustomGear(parseId(req.params.troopId), parseId(req.params.id));
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -895,7 +912,9 @@ app.put("/api/troops/:troopId/settings", requireAuth, requireTroopAdmin, (req, r
   try {
     const { amazon_affiliate_tag } = req.body;
     if (amazon_affiliate_tag !== undefined) {
-      updateTroopAffiliateTag(parseInt(req.params.troopId), amazon_affiliate_tag);
+      // Sanitize: Amazon tags are alphanumeric + hyphens only
+      const safeTag = amazon_affiliate_tag ? String(amazon_affiliate_tag).replace(/[^a-zA-Z0-9\-]/g, "") : "";
+      updateTroopAffiliateTag(parseId(req.params.troopId), safeTag);
     }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -905,11 +924,11 @@ app.put("/api/troops/:troopId/settings", requireAuth, requireTroopAdmin, (req, r
 // PLATFORM SETTINGS (super admin)
 // ═══════════════════════════════════════════
 
-app.put("/api/admin/settings", requireAuth, (req, res) => {
-  const adminEmail = process.env.ADMIN_EMAIL;
-  if (!adminEmail || req.user.email !== adminEmail) return res.status(403).json({ error: "Platform admin only" });
+app.put("/api/admin/settings", requireAuth, requireGlobalAdmin, (req, res) => {
   try {
-    Object.entries(req.body).forEach(([k, v]) => setSetting(k, v));
+    const { key, value } = req.body;
+    if (!key || typeof key !== "string") return res.status(400).json({ error: "key is required" });
+    setSetting(key, value);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -947,9 +966,9 @@ function processInvitation(user, invitation) {
 // Send invitation email
 app.post("/api/adventures/:adventureId/invitations", requireAuth, requireAdventureAdmin, (req, res) => {
   try {
-    const adventureId = parseInt(req.params.adventureId);
+    const adventureId = parseId(req.params.adventureId);
     const { email } = req.body;
-    if (!email?.trim()) return res.status(400).json({ error: "Email required" });
+    if (!email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return res.status(400).json({ error: "Valid email required" });
     const adv = getAdventure(adventureId);
     if (!adv) return res.status(404).json({ error: "Adventure not found" });
     const troop = getTroop(adv.troop_id);
@@ -964,7 +983,7 @@ app.post("/api/adventures/:adventureId/invitations", requireAuth, requireAdventu
 
 // List invitations for an adventure
 app.get("/api/adventures/:adventureId/invitations", requireAuth, requireAdventureAdmin, (req, res) => {
-  try { res.json(getInvitations(parseInt(req.params.adventureId))); }
+  try { res.json(getInvitations(parseId(req.params.adventureId))); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -994,7 +1013,7 @@ app.put("/api/adventures/:adventureId/members/:userId/role", requireAuth, requir
   try {
     const { role } = req.body;
     if (!["admin", "member"].includes(role)) return res.status(400).json({ error: "role must be 'admin' or 'member'" });
-    updateAdventureMemberRole(parseInt(req.params.adventureId), parseInt(req.params.userId), role);
+    updateAdventureMemberRole(parseId(req.params.adventureId), parseId(req.params.userId), role);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1004,7 +1023,7 @@ app.put("/api/adventures/:adventureId/members/:userId/user-type", requireAuth, r
   try {
     const { user_type } = req.body;
     if (!["adult", "scout"].includes(user_type)) return res.status(400).json({ error: "user_type must be 'adult' or 'scout'" });
-    updateUserProfile(parseInt(req.params.userId), { user_type });
+    updateUserProfile(parseId(req.params.userId), { user_type });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1014,7 +1033,7 @@ app.put("/api/adventures/:adventureId/members/:userId/participation", requireAut
   try {
     const { participation } = req.body;
     if (!["trekking", "support"].includes(participation)) return res.status(400).json({ error: "participation must be 'trekking' or 'support'" });
-    updateAdventureMemberParticipation(parseInt(req.params.adventureId), parseInt(req.params.userId), participation);
+    updateAdventureMemberParticipation(parseId(req.params.adventureId), parseId(req.params.userId), participation);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1022,8 +1041,8 @@ app.put("/api/adventures/:adventureId/members/:userId/participation", requireAut
 // Link adult to scout (admin override — any adult, any scout)
 app.put("/api/adventures/:adventureId/members/:userId/link", requireAuth, requireAdventureAdmin, (req, res) => {
   try {
-    const adventureId = parseInt(req.params.adventureId);
-    const userId = parseInt(req.params.userId);
+    const adventureId = parseId(req.params.adventureId);
+    const userId = parseId(req.params.userId);
     const { linked_to } = req.body;
     // Validate: member being linked must be an adult
     const memberUser = findUserById(userId);
@@ -1045,7 +1064,7 @@ app.post("/api/adventures/:adventureId/manual-members", requireAuth, requireAdve
   try {
     const { name } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Name required" });
-    const member = addManualMember(parseInt(req.params.adventureId), name.trim());
+    const member = addManualMember(parseId(req.params.adventureId), name.trim());
     res.status(201).json(member);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1053,7 +1072,7 @@ app.post("/api/adventures/:adventureId/manual-members", requireAuth, requireAdve
 // Remove manual member
 app.delete("/api/adventures/:adventureId/manual-members/:memberId", requireAuth, requireAdventureAdmin, (req, res) => {
   try {
-    removeManualMember(parseInt(req.params.adventureId), parseInt(req.params.memberId));
+    removeManualMember(parseId(req.params.adventureId), parseId(req.params.memberId));
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1065,7 +1084,7 @@ app.delete("/api/adventures/:adventureId/manual-members/:memberId", requireAuth,
 // Adult requests to link to a scout (admin approval required)
 app.post("/api/adventures/:adventureId/link-requests", requireAuth, requireAdventureMember, (req, res) => {
   try {
-    const adventureId = parseInt(req.params.adventureId);
+    const adventureId = parseId(req.params.adventureId);
     const { scout_id } = req.body;
     // Must be an adult
     const requester = findUserById(req.user.id);
@@ -1097,7 +1116,7 @@ app.post("/api/adventures/:adventureId/link-requests", requireAuth, requireAdven
 // Get link requests (admin: all, member: own only)
 app.get("/api/adventures/:adventureId/link-requests", requireAuth, requireAdventureMember, (req, res) => {
   try {
-    const adventureId = parseInt(req.params.adventureId);
+    const adventureId = parseId(req.params.adventureId);
     const member = getAdventureMember(adventureId, req.user.id);
     if (member?.role === "admin") {
       res.json(getLinkRequests(adventureId));
@@ -1110,7 +1129,7 @@ app.get("/api/adventures/:adventureId/link-requests", requireAuth, requireAdvent
 // Approve link request
 app.put("/api/adventures/:adventureId/link-requests/:requestId/approve", requireAuth, requireAdventureAdmin, (req, res) => {
   try {
-    const result = approveLinkRequest(parseInt(req.params.requestId), req.user.id);
+    const result = approveLinkRequest(parseId(req.params.requestId), req.user.id);
     if (!result) return res.status(404).json({ error: "Pending request not found" });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -1119,7 +1138,7 @@ app.put("/api/adventures/:adventureId/link-requests/:requestId/approve", require
 // Deny link request
 app.put("/api/adventures/:adventureId/link-requests/:requestId/deny", requireAuth, requireAdventureAdmin, (req, res) => {
   try {
-    denyLinkRequest(parseInt(req.params.requestId), req.user.id);
+    denyLinkRequest(parseId(req.params.requestId), req.user.id);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1131,7 +1150,7 @@ app.put("/api/adventures/:adventureId/link-requests/:requestId/deny", requireAut
 // Get badges + milestones for an adventure
 app.get("/api/adventures/:adventureId/achievements", requireAuth, requireAdventureMember, (req, res) => {
   try {
-    const adventureId = parseInt(req.params.adventureId);
+    const adventureId = parseId(req.params.adventureId);
     const badges = getBadges(adventureId);
     const milestones = getCrewMilestones(adventureId);
     res.json({ badges, milestones });
@@ -1141,7 +1160,7 @@ app.get("/api/adventures/:adventureId/achievements", requireAuth, requireAdventu
 // Check and award badges/milestones after readiness changes
 app.post("/api/adventures/:adventureId/check-milestones", requireAuth, requireAdventureMember, (req, res) => {
   try {
-    const adventureId = parseInt(req.params.adventureId);
+    const adventureId = parseId(req.params.adventureId);
     const members = getAdventureMembers(adventureId);
     const adv = getAdventure(adventureId);
     const skills = getAdventureSkills(adventureId);
@@ -1272,6 +1291,12 @@ app.post("/api/adventures/:adventureId/check-milestones", requireAuth, requireAd
 
     res.json({ newBadges, newMilestones });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Health check (no auth — for uptime monitoring)
+const startedAt = new Date().toISOString();
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", version: "1.0.0", started: startedAt, uptime: Math.floor(process.uptime()) });
 });
 
 // SPA fallback
