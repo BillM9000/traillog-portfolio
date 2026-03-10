@@ -1,4 +1,5 @@
 import express from "express";
+import helmet from "helmet";
 import session from "express-session";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
@@ -48,8 +49,32 @@ const PORT = process.env.PORT || 3614;
 // Safe parseInt — returns null if invalid, lets routes return 400
 function parseId(val) { const n = parseInt(val); return isNaN(n) ? null : n; }
 
+// Safe error response — hides internal details in production
+function safeError(res, e, status = 500) {
+  console.error(e);
+  res.status(status).json({ error: process.env.NODE_ENV === "production" ? "Something went wrong" : e.message });
+}
+
 app.set("trust proxy", 1);
 app.use(express.json({ limit: "1mb" }));
+
+// ── Security Headers ──
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https://*.googleusercontent.com"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
 
 // ── Rate Limiting ──
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { error: "Too many attempts, please try again later" }, standardHeaders: true, legacyHeaders: false });
@@ -182,8 +207,8 @@ app.get("/auth/google/callback",
 app.post("/api/auth/signup", authLimiter, async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    if (!name?.trim() || !email?.trim() || !password || password.length < 6) {
-      return res.status(400).json({ error: "Name, email, and password (6+ chars) required" });
+    if (!name?.trim() || !email?.trim() || !password || password.length < 8) {
+      return res.status(400).json({ error: "Name, email, and password (8+ chars) required" });
     }
     const existing = findUserByEmail(email);
     if (existing) return res.status(409).json({ error: "Email already registered" });
@@ -196,16 +221,16 @@ app.post("/api/auth/signup", authLimiter, async (req, res) => {
     });
     sendVerificationEmail(email, token).catch(e => console.error("Verification email failed:", e));
     res.status(201).json({ ok: true, message: "Check your email to verify your account" });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.post("/api/auth/login", authLimiter, (req, res, next) => {
   passport.authenticate("local", (err, user, info) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return safeError(res, err);
     if (!user) return res.status(401).json({ error: info?.message || "Invalid credentials" });
     if (!user.email_verified) return res.status(403).json({ error: "Please verify your email first" });
     req.logIn(user, (err) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return safeError(res, err);
       const { password_hash, verification_token, ...safe } = user;
       res.json(safe);
     });
@@ -235,7 +260,7 @@ app.put("/api/auth/profile", requireAuth, (req, res) => {
     if (user_type === "scout" && !parent_email?.trim()) return res.status(400).json({ error: "Scouts must provide parent/guardian email" });
     updateUserProfile(req.user.id, { name: name?.trim(), user_type, parent_email, parent_email_2: parent_email_2?.trim() || null });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.post("/api/auth/logout", (req, res) => {
@@ -248,7 +273,7 @@ app.post("/api/auth/logout", (req, res) => {
 
 app.get("/api/itineraries", requireAuth, (req, res) => {
   try { res.json(getItineraries()); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { safeError(res, e); }
 });
 
 app.get("/api/itineraries/:id", requireAuth, (req, res) => {
@@ -258,7 +283,7 @@ app.get("/api/itineraries/:id", requireAuth, (req, res) => {
     const itin = getItinerary(id);
     if (!itin) return res.status(404).json({ error: "Itinerary not found" });
     res.json(itin);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // ═══════════════════════════════════════════
@@ -267,7 +292,7 @@ app.get("/api/itineraries/:id", requireAuth, (req, res) => {
 
 app.get("/api/troops", requireAuth, (req, res) => {
   try { res.json(getTroops(req.user.id)); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { safeError(res, e); }
 });
 
 app.get("/api/troops/:troopId", requireAuth, requireTroopMember(), (req, res) => {
@@ -275,7 +300,7 @@ app.get("/api/troops/:troopId", requireAuth, requireTroopMember(), (req, res) =>
     const troop = getTroop(parseId(req.params.troopId));
     if (!troop) return res.status(404).json({ error: "Troop not found" });
     res.json(troop);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.post("/api/troops", requireAuth, (req, res) => {
@@ -285,7 +310,7 @@ app.post("/api/troops", requireAuth, (req, res) => {
     if (!council?.trim()) return res.status(400).json({ error: "Council is required" });
     const troop = createTroop({ name: name.trim(), description, council: council.trim(), location: location?.trim(), is_public, created_by: req.user.id });
     res.status(201).json(troop);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.put("/api/troops/:troopId", requireAuth, requireTroopAdmin, (req, res) => {
@@ -294,7 +319,7 @@ app.put("/api/troops/:troopId", requireAuth, requireTroopAdmin, (req, res) => {
     if (council !== undefined && !council?.trim()) return res.status(400).json({ error: "Council is required" });
     updateTroop(parseId(req.params.troopId), { name, description, council, location, is_public });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.post("/api/troops/:troopId/join", requireAuth, (req, res) => {
@@ -322,7 +347,7 @@ app.post("/api/troops/:troopId/join", requireAuth, (req, res) => {
     res.status(201).json({ ok: true, status: "pending" });
   } catch (e) {
     if (e.message.includes("UNIQUE")) return res.status(409).json({ error: "Already requested" });
-    res.status(500).json({ error: e.message });
+    safeError(res, e);
   }
 });
 
@@ -334,7 +359,7 @@ app.get("/api/troops/:troopId/members", requireAuth, requireTroopMember(), (req,
   try {
     const status = req.membership.role === "admin" ? null : "approved";
     res.json(getTroopMembers(parseId(req.params.troopId), status));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.put("/api/troops/:troopId/members/:userId/approve", requireAuth, requireTroopAdmin, (req, res) => {
@@ -347,7 +372,7 @@ app.put("/api/troops/:troopId/members/:userId/approve", requireAuth, requireTroo
         .catch(e => console.error("Approval email failed:", e));
     }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.put("/api/troops/:troopId/members/:userId/deny", requireAuth, requireTroopAdmin, (req, res) => {
@@ -360,14 +385,14 @@ app.put("/api/troops/:troopId/members/:userId/deny", requireAuth, requireTroopAd
         .catch(e => console.error("Denial email failed:", e));
     }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.delete("/api/troops/:troopId/members/:userId", requireAuth, requireTroopAdmin, (req, res) => {
   try {
     removeTroopMember(parseId(req.params.troopId), parseId(req.params.userId));
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.put("/api/troops/:troopId/members/:userId/dates", requireAuth, requireTroopMember(), requireSelfOrAdmin, (req, res) => {
@@ -376,7 +401,7 @@ app.put("/api/troops/:troopId/members/:userId/dates", requireAuth, requireTroopM
     if (!Array.isArray(dates)) return res.status(400).json({ error: "dates must be array" });
     updateMemberDates(parseId(req.params.troopId), parseId(req.params.userId), dates);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.put("/api/troops/:troopId/members/:userId/skills", requireAuth, requireTroopMember(), requireSelfOrAdmin, (req, res) => {
@@ -385,7 +410,7 @@ app.put("/api/troops/:troopId/members/:userId/skills", requireAuth, requireTroop
     if (!Array.isArray(skills)) return res.status(400).json({ error: "skills must be array" });
     updateMemberSkills(parseId(req.params.troopId), parseId(req.params.userId), skills);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // ═══════════════════════════════════════════
@@ -394,7 +419,7 @@ app.put("/api/troops/:troopId/members/:userId/skills", requireAuth, requireTroop
 
 app.get("/api/troops/:troopId/skills", requireAuth, requireTroopMember(), (req, res) => {
   try { res.json(getTroopSkills(parseId(req.params.troopId))); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { safeError(res, e); }
 });
 
 app.post("/api/troops/:troopId/skills", requireAuth, requireTroopAdmin, (req, res) => {
@@ -402,7 +427,7 @@ app.post("/api/troops/:troopId/skills", requireAuth, requireTroopAdmin, (req, re
     const { name, desc } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Skill name required" });
     res.status(201).json(addTroopSkill(parseId(req.params.troopId), name, desc));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.delete("/api/troops/:troopId/skills/:skillId", requireAuth, requireTroopAdmin, (req, res) => {
@@ -410,7 +435,7 @@ app.delete("/api/troops/:troopId/skills/:skillId", requireAuth, requireTroopAdmi
     const result = removeTroopSkill(parseId(req.params.troopId), req.params.skillId);
     if (result.error) return res.status(400).json(result);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // ═══════════════════════════════════════════
@@ -420,7 +445,7 @@ app.delete("/api/troops/:troopId/skills/:skillId", requireAuth, requireTroopAdmi
 // List adventures for a troop
 app.get("/api/troops/:troopId/adventures", requireAuth, requireTroopMember(), (req, res) => {
   try { res.json(getAdventures(parseId(req.params.troopId))); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { safeError(res, e); }
 });
 
 // Create adventure
@@ -434,7 +459,7 @@ app.post("/api/troops/:troopId/adventures", requireAuth, requireTroopAdmin, (req
       created_by: req.user.id,
     });
     res.status(201).json(adventure);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Get adventure detail
@@ -443,7 +468,7 @@ app.get("/api/adventures/:adventureId", requireAuth, requireAdventureMember, (re
     const adv = getAdventure(parseId(req.params.adventureId));
     if (!adv) return res.status(404).json({ error: "Adventure not found" });
     res.json(adv);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Update adventure
@@ -476,7 +501,7 @@ app.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req
     }
 
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Delete adventure
@@ -484,7 +509,7 @@ app.delete("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (
   try {
     deleteAdventure(parseId(req.params.adventureId));
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // ═══════════════════════════════════════════
@@ -493,7 +518,7 @@ app.delete("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (
 
 app.get("/api/adventures/:adventureId/members", requireAuth, requireAdventureMember, (req, res) => {
   try { res.json(getAdventureMembers(parseId(req.params.adventureId))); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { safeError(res, e); }
 });
 
 app.post("/api/adventures/:adventureId/members", requireAuth, requireAdventureAdmin, (req, res) => {
@@ -518,14 +543,14 @@ app.post("/api/adventures/:adventureId/members", requireAuth, requireAdventureAd
     if (addedUser?.user_type === "adult") autoLinkAdult(advId, user_id);
     else if (addedUser?.user_type === "scout") autoLinkScout(advId, user_id);
     res.status(201).json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.delete("/api/adventures/:adventureId/members/:userId", requireAuth, requireAdventureAdmin, (req, res) => {
   try {
     removeAdventureMember(parseId(req.params.adventureId), parseId(req.params.userId));
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Update adventure member data (dates, skills, gear, medical, admin)
@@ -535,7 +560,7 @@ app.put("/api/adventures/:adventureId/members/:userId/dates", requireAuth, requi
     if (!Array.isArray(dates)) return res.status(400).json({ error: "dates must be array" });
     updateAdventureMemberDates(parseId(req.params.adventureId), parseId(req.params.userId), dates);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.put("/api/adventures/:adventureId/members/:userId/skills", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, (req, res) => {
@@ -544,7 +569,7 @@ app.put("/api/adventures/:adventureId/members/:userId/skills", requireAuth, requ
     if (!Array.isArray(skills)) return res.status(400).json({ error: "skills must be array" });
     updateAdventureMemberSkills(parseId(req.params.adventureId), parseId(req.params.userId), skills);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.put("/api/adventures/:adventureId/members/:userId/gear", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, (req, res) => {
@@ -553,7 +578,7 @@ app.put("/api/adventures/:adventureId/members/:userId/gear", requireAuth, requir
     if (!Array.isArray(gear)) return res.status(400).json({ error: "gear must be array" });
     updateAdventureMemberGear(parseId(req.params.adventureId), parseId(req.params.userId), gear);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.put("/api/adventures/:adventureId/members/:userId/medical", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, (req, res) => {
@@ -562,7 +587,7 @@ app.put("/api/adventures/:adventureId/members/:userId/medical", requireAuth, req
     if (!Array.isArray(medical)) return res.status(400).json({ error: "medical must be array" });
     updateAdventureMemberMedical(parseId(req.params.adventureId), parseId(req.params.userId), medical);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.put("/api/adventures/:adventureId/members/:userId/admin", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, (req, res) => {
@@ -571,7 +596,7 @@ app.put("/api/adventures/:adventureId/members/:userId/admin", requireAuth, requi
     if (!Array.isArray(admin_tasks)) return res.status(400).json({ error: "admin_tasks must be array" });
     updateAdventureMemberAdmin(parseId(req.params.adventureId), parseId(req.params.userId), admin_tasks);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // ═══════════════════════════════════════════
@@ -582,7 +607,7 @@ app.get("/api/adventures/:adventureId/skills", requireAuth, requireAdventureMemb
   try {
     const category = req.query.category || null;
     res.json(getAdventureSkills(parseId(req.params.adventureId), category));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.post("/api/adventures/:adventureId/skills", requireAuth, requireAdventureAdmin, (req, res) => {
@@ -590,7 +615,7 @@ app.post("/api/adventures/:adventureId/skills", requireAuth, requireAdventureAdm
     const { name, desc, category, icon } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Skill name required" });
     res.status(201).json(addAdventureSkill(parseId(req.params.adventureId), name, desc, category, icon));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.delete("/api/adventures/:adventureId/skills/:skillId", requireAuth, requireAdventureAdmin, (req, res) => {
@@ -598,7 +623,7 @@ app.delete("/api/adventures/:adventureId/skills/:skillId", requireAuth, requireA
     const result = removeAdventureSkill(parseId(req.params.adventureId), req.params.skillId);
     if (result.error) return res.status(400).json(result);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // ═══════════════════════════════════════════
@@ -623,7 +648,7 @@ app.get("/api/gear", requireAuth, (req, res) => {
       }
     }
     res.json(items);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // ═══════════════════════════════════════════
@@ -644,13 +669,13 @@ app.get("/api/gear-catalog", requireAuth, (req, res) => {
   try {
     const troopId = req.query.troop ? parseId(req.query.troop) : null;
     res.json(getGearCatalog(troopId));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Get gear categories with counts
 app.get("/api/gear-catalog/categories", requireAuth, (req, res) => {
   try { res.json(getGearCategories()); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { safeError(res, e); }
 });
 
 // Get single gear item with all details
@@ -659,7 +684,7 @@ app.get("/api/gear-catalog/:id", requireAuth, (req, res) => {
     const item = getGearCatalogItem(parseId(req.params.id));
     if (!item) return res.status(404).json({ error: "Gear item not found" });
     res.json(item);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Admin: Create gear item
@@ -669,7 +694,7 @@ app.post("/api/gear-catalog", requireAuth, requireGlobalAdmin, (req, res) => {
     if (!req.body.category?.trim()) return res.status(400).json({ error: "Category is required" });
     const item = createGearCatalogItem(req.body);
     res.status(201).json(item);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Admin: Update gear item
@@ -677,7 +702,7 @@ app.put("/api/gear-catalog/:id", requireAuth, requireGlobalAdmin, (req, res) => 
   try {
     updateGearCatalogItem(parseId(req.params.id), req.body);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Admin: Soft-delete gear item
@@ -685,7 +710,7 @@ app.delete("/api/gear-catalog/:id", requireAuth, requireGlobalAdmin, (req, res) 
   try {
     softDeleteGearCatalogItem(parseId(req.params.id));
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Admin: Reorder gear items
@@ -695,7 +720,7 @@ app.put("/api/gear-catalog-reorder", requireAuth, requireGlobalAdmin, (req, res)
     if (!Array.isArray(orderedIds)) return res.status(400).json({ error: "orderedIds must be array" });
     reorderGearCatalog(orderedIds);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Admin: Add product option to gear item
@@ -703,7 +728,7 @@ app.post("/api/gear-catalog/:id/options", requireAuth, requireGlobalAdmin, (req,
   try {
     const option = addProductOption(parseId(req.params.id), req.body);
     res.status(201).json(option);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Admin: Update product option
@@ -711,7 +736,7 @@ app.put("/api/gear-catalog/options/:optId", requireAuth, requireGlobalAdmin, (re
   try {
     updateProductOption(parseId(req.params.optId), req.body);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Admin: Delete product option
@@ -719,7 +744,7 @@ app.delete("/api/gear-catalog/options/:optId", requireAuth, requireGlobalAdmin, 
   try {
     deleteProductOption(parseId(req.params.optId));
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // ═══════════════════════════════════════════
@@ -728,22 +753,22 @@ app.delete("/api/gear-catalog/options/:optId", requireAuth, requireGlobalAdmin, 
 
 app.get("/api/admin/troops", requireAuth, requireGlobalAdmin, (req, res) => {
   try { res.json(getAllTroopsAdmin()); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { safeError(res, e); }
 });
 
 app.get("/api/admin/users", requireAuth, requireGlobalAdmin, (req, res) => {
   try { res.json(getAllUsersAdmin()); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { safeError(res, e); }
 });
 
 app.get("/api/admin/settings", requireAuth, requireGlobalAdmin, (req, res) => {
   try { res.json(getAllSettings()); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { safeError(res, e); }
 });
 
 app.get("/api/admin/affiliate-stats", requireAuth, requireGlobalAdmin, (req, res) => {
   try { res.json(getAffiliateStats()); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { safeError(res, e); }
 });
 
 app.post("/api/affiliate/click", requireAuth, (req, res) => {
@@ -752,7 +777,7 @@ app.post("/api/affiliate/click", requireAuth, (req, res) => {
     if (!url) return res.status(400).json({ error: "url required" });
     trackAffiliateClick(req.user.id, product_option_id, gear_catalog_id, url, req.headers.referer);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // ═══════════════════════════════════════════
@@ -763,14 +788,14 @@ app.post("/api/affiliate/click", requireAuth, (req, res) => {
 app.get("/api/adventures/:adventureId/gear", requireAuth, requireAdventureMember, (req, res) => {
   try {
     res.json(getAdventureMemberGearAll(parseId(req.params.adventureId)));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Get single member's gear selections
 app.get("/api/adventures/:adventureId/members/:userId/gear", requireAuth, requireAdventureMember, (req, res) => {
   try {
     res.json(getMemberGear(parseId(req.params.adventureId), parseId(req.params.userId)));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Update a single gear item selection for a member
@@ -783,7 +808,7 @@ app.put("/api/adventures/:adventureId/members/:userId/gear-item/:gearId", requir
       req.body
     );
     res.json({ ok: true, id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Bulk set member gear (initial setup / quick-add)
@@ -793,7 +818,7 @@ app.post("/api/adventures/:adventureId/members/:userId/gear-bulk", requireAuth, 
     if (!Array.isArray(selections)) return res.status(400).json({ error: "selections must be array" });
     bulkSetMemberGear(parseId(req.params.adventureId), parseId(req.params.userId), selections);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Remove a gear selection from a member
@@ -801,14 +826,14 @@ app.delete("/api/adventures/:adventureId/members/:userId/gear-item/:gearId", req
   try {
     removeMemberGearItem(parseId(req.params.adventureId), parseId(req.params.userId), parseId(req.params.gearId));
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Get pack weight breakdown for a member
 app.get("/api/adventures/:adventureId/members/:userId/pack-weight", requireAuth, requireAdventureMember, (req, res) => {
   try {
     res.json(getMemberPackWeight(parseId(req.params.adventureId), parseId(req.params.userId)));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // ═══════════════════════════════════════════
@@ -821,40 +846,40 @@ app.put("/api/troops/:troopId/gear-overrides/:gearId", requireAuth, requireTroop
     const { hidden } = req.body;
     setTroopGearOverride(parseId(req.params.troopId), parseId(req.params.gearId), hidden);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Troop admin: get overrides
 app.get("/api/troops/:troopId/gear-overrides", requireAuth, requireTroopAdmin, (req, res) => {
   try { res.json(getTroopGearOverrides(parseId(req.params.troopId))); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { safeError(res, e); }
 });
 
 // Troop admin: custom gear items
 app.get("/api/troops/:troopId/custom-gear", requireAuth, requireTroopMember(), (req, res) => {
   try { res.json(getTroopCustomGear(parseId(req.params.troopId))); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { safeError(res, e); }
 });
 
 app.post("/api/troops/:troopId/custom-gear", requireAuth, requireTroopAdmin, (req, res) => {
   try {
     const item = addTroopCustomGear(parseId(req.params.troopId), req.body);
     res.status(201).json(item);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.put("/api/troops/:troopId/custom-gear/:id", requireAuth, requireTroopAdmin, (req, res) => {
   try {
     updateTroopCustomGearItem(parseId(req.params.troopId), parseId(req.params.id), req.body);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.delete("/api/troops/:troopId/custom-gear/:id", requireAuth, requireTroopAdmin, (req, res) => {
   try {
     deleteTroopCustomGear(parseId(req.params.troopId), parseId(req.params.id));
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // ═══════════════════════════════════════════
@@ -876,7 +901,7 @@ app.post("/api/gear/ai/weight-lookup", requireAuth, (req, res) => {
     const { product_name } = req.body;
     if (!product_name?.trim()) return res.status(400).json({ error: "product_name required" });
     res.json({ product_name, estimated_weight_oz: null, confidence: "unavailable", source: "ai_lookup_pending" });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.post("/api/gear/ai/chat", requireAuth, (req, res) => {
@@ -896,12 +921,12 @@ app.post("/api/gear/ai/chat", requireAuth, (req, res) => {
     const response = "AI gear chatbot is being set up. Check back soon for personalized gear advice!";
     logAIQuery(req.user.id, adventure_id, message, response, 0);
     res.json({ response, tokens_used: 0 });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 app.get("/api/gear/ai/usage", requireAuth, (req, res) => {
   try { res.json(getAIUsage(req.user.id)); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { safeError(res, e); }
 });
 
 // ═══════════════════════════════════════════
@@ -917,7 +942,7 @@ app.put("/api/troops/:troopId/settings", requireAuth, requireTroopAdmin, (req, r
       updateTroopAffiliateTag(parseId(req.params.troopId), safeTag);
     }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // ═══════════════════════════════════════════
@@ -930,7 +955,7 @@ app.put("/api/admin/settings", requireAuth, requireGlobalAdmin, (req, res) => {
     if (!key || typeof key !== "string") return res.status(400).json({ error: "key is required" });
     setSetting(key, value);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // ═══════════════════════════════════════════
@@ -978,13 +1003,13 @@ app.post("/api/adventures/:adventureId/invitations", requireAuth, requireAdventu
     sendInvitationEmail(email.trim(), req.user.name, troop.name, adv.name, inviteUrl)
       .catch(e => console.error("Invitation email failed:", e));
     res.status(201).json({ ok: true, token });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // List invitations for an adventure
 app.get("/api/adventures/:adventureId/invitations", requireAuth, requireAdventureAdmin, (req, res) => {
   try { res.json(getInvitations(parseId(req.params.adventureId))); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { safeError(res, e); }
 });
 
 // Accept invitation (browser visits this link from email)
@@ -1015,7 +1040,7 @@ app.put("/api/adventures/:adventureId/members/:userId/role", requireAuth, requir
     if (!["admin", "member"].includes(role)) return res.status(400).json({ error: "role must be 'admin' or 'member'" });
     updateAdventureMemberRole(parseId(req.params.adventureId), parseId(req.params.userId), role);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Update member user_type (admin can change adult <-> scout)
@@ -1025,7 +1050,7 @@ app.put("/api/adventures/:adventureId/members/:userId/user-type", requireAuth, r
     if (!["adult", "scout"].includes(user_type)) return res.status(400).json({ error: "user_type must be 'adult' or 'scout'" });
     updateUserProfile(parseId(req.params.userId), { user_type });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Update member participation type
@@ -1035,7 +1060,7 @@ app.put("/api/adventures/:adventureId/members/:userId/participation", requireAut
     if (!["trekking", "support"].includes(participation)) return res.status(400).json({ error: "participation must be 'trekking' or 'support'" });
     updateAdventureMemberParticipation(parseId(req.params.adventureId), parseId(req.params.userId), participation);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Link adult to scout (admin override — any adult, any scout)
@@ -1056,7 +1081,7 @@ app.put("/api/adventures/:adventureId/members/:userId/link", requireAuth, requir
     }
     linkMember(adventureId, userId, linked_to || null);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Add manual member (scout without account)
@@ -1066,7 +1091,7 @@ app.post("/api/adventures/:adventureId/manual-members", requireAuth, requireAdve
     if (!name?.trim()) return res.status(400).json({ error: "Name required" });
     const member = addManualMember(parseId(req.params.adventureId), name.trim());
     res.status(201).json(member);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Remove manual member
@@ -1074,7 +1099,7 @@ app.delete("/api/adventures/:adventureId/manual-members/:memberId", requireAuth,
   try {
     removeManualMember(parseId(req.params.adventureId), parseId(req.params.memberId));
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // ═══════════════════════════════════════════
@@ -1110,7 +1135,7 @@ app.post("/api/adventures/:adventureId/link-requests", requireAuth, requireAdven
       }
     });
     res.status(201).json({ ok: true, id: result.id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Get link requests (admin: all, member: own only)
@@ -1123,7 +1148,7 @@ app.get("/api/adventures/:adventureId/link-requests", requireAuth, requireAdvent
     } else {
       res.json(getMyLinkRequests(adventureId, req.user.id));
     }
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Approve link request
@@ -1132,7 +1157,7 @@ app.put("/api/adventures/:adventureId/link-requests/:requestId/approve", require
     const result = approveLinkRequest(parseId(req.params.requestId), req.user.id);
     if (!result) return res.status(404).json({ error: "Pending request not found" });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Deny link request
@@ -1140,7 +1165,7 @@ app.put("/api/adventures/:adventureId/link-requests/:requestId/deny", requireAut
   try {
     denyLinkRequest(parseId(req.params.requestId), req.user.id);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // ═══════════════════════════════════════════
@@ -1154,7 +1179,7 @@ app.get("/api/adventures/:adventureId/achievements", requireAuth, requireAdventu
     const badges = getBadges(adventureId);
     const milestones = getCrewMilestones(adventureId);
     res.json({ badges, milestones });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Check and award badges/milestones after readiness changes
@@ -1290,7 +1315,7 @@ app.post("/api/adventures/:adventureId/check-milestones", requireAuth, requireAd
     }
 
     res.json({ newBadges, newMilestones });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { safeError(res, e); }
 });
 
 // Health check (no auth — for uptime monitoring)

@@ -1,124 +1,25 @@
-# Crew 614 Training Coordinator
+# TrailLog
 
-A real-time collaborative scheduling platform for Philmont Scout Ranch crew training coordination. Parents visit the same URL, select their name, mark available dates, and the app intelligently finds optimal overlapping training windows for the group.
+A multi-troop collaborative platform for Scouting America high adventure preparation. Crews use TrailLog to coordinate training schedules, track gear readiness, manage crew logistics, and prepare for Philmont Scout Ranch treks.
 
-**Live:** [philmont.gracezero.ai](https://philmont.gracezero.ai)
+**Live:** [traillog.gracezero.ai](https://traillog.gracezero.ai) · Built by [GraceZero](https://gracezero.ai)
 
 ---
 
 ## Features
 
-- **Interactive Calendar** — Click or drag to select availability. Heatmap visualization shows group overlap at a glance.
-- **Smart Window Finder** — Algorithm identifies the best consecutive-day training windows, scored by crew attendance, duration, and weekend bonus.
-- **Skills Tracker** — Track completion of 8 critical backcountry skills across all crew members with gap analysis.
-- **Itinerary Reference** — 12-day trek details with elevation profiles, mileage, camp types, and training priorities.
-- **Real-time Sync** — 15-second auto-polling keeps all users in sync without manual refresh.
-- **Admin Controls** — PIN-protected admin mode for managing crew roster and custom skills.
-
----
-
-## Architecture
-
-### System Overview
-
-```mermaid
-graph TB
-    subgraph Client ["Frontend (React + Vite)"]
-        App[App.jsx<br/>Orchestrator]
-        App --> Header[Header]
-        App --> MemberBar[MemberBar]
-        App --> Cal[Calendar]
-        App --> Res[Results]
-        App --> Ski[Skills]
-        App --> Itin[Itinerary]
-        App --> Modals[AdminModal<br/>ConfirmModal]
-    end
-
-    subgraph Server ["Backend (Express.js)"]
-        API[REST API<br/>Port 3614]
-        MW[Admin Middleware<br/>PIN Verification]
-        DB[(SQLite + WAL<br/>crew614.db)]
-        API --> MW
-        API --> DB
-    end
-
-    subgraph Infra ["Infrastructure"]
-        Docker[Docker Container]
-        Traefik[Traefik Proxy<br/>HTTPS/TLS]
-        DNS[DNS<br/>philmont.gracezero.ai]
-    end
-
-    Client -->|HTTP/JSON| API
-    DNS --> Traefik --> Docker --> Server
-```
-
-### Data Flow
-
-```mermaid
-sequenceDiagram
-    participant U as User Browser
-    participant R as React App
-    participant A as Express API
-    participant D as SQLite DB
-
-    U->>R: Select name & toggle dates
-    R->>R: Optimistic state update
-    R-->>A: PUT /api/members/:id/dates (debounced 500ms)
-    A->>D: UPDATE members SET dates = ?
-    D-->>A: OK
-    A-->>R: { ok: true }
-
-    loop Every 15 seconds
-        R->>A: GET /api/members
-        A->>D: SELECT * FROM members
-        D-->>A: Rows
-        A-->>R: Member[] with dates & skills
-        R->>R: Recompute heatmap & windows
-    end
-```
-
-### Analysis Engine
-
-```mermaid
-flowchart LR
-    A[Member<br/>Availability] --> B[Date<br/>Heatmap]
-    B --> C[Consecutive<br/>Window Finder]
-    C --> D[Scoring<br/>Algorithm]
-    D --> E[Ranked<br/>Windows]
-
-    D --- F["Score Formula:<br/>consistent_members x 1000<br/>+ window_days x 50<br/>+ weekend_bonus x 20"]
-```
-
-### Component Architecture
-
-```mermaid
-graph TD
-    App["App (State Orchestrator)"]
-    App --> H["Header<br/><small>Countdown, stats, admin toggle</small>"]
-    App --> M["MemberBar<br/><small>Crew roster, selection, CRUD</small>"]
-    App --> V{View Router}
-    V -->|calendar| C["Calendar<br/><small>Date grid, drag select, heatmap</small>"]
-    V -->|results| R["Results<br/><small>Windows, best dates, summary</small>"]
-    V -->|skills| S["Skills<br/><small>Checklist, gap analysis</small>"]
-    V -->|itinerary| I["Itinerary<br/><small>12-day trek reference</small>"]
-
-    App --> AM["AdminModal"]
-    App --> CM["ConfirmModal"]
-
-    subgraph Hooks
-        UC[useCountdown]
-    end
-
-    subgraph Utils
-        DT[dates.js]
-        CO[constants.js]
-        TH[theme.js]
-    end
-
-    H --> UC
-    C --> DT
-    R --> DT
-```
+- **Multi-Troop SaaS** — Troops are scoped by BSA council. Public troops are discoverable; private troops are invite-only.
+- **Adventure Scoping** — Each trek is an "adventure" with its own members, dates, gear, skills, and readiness tracking.
+- **Training Hike Coordinator** — Interactive calendar with drag-to-select availability. Heatmap shows crew overlap at a glance.
+- **Best Training Windows** — Algorithm scores consecutive-day windows by attendance, duration, and weekend bonus.
+- **Gear Catalog** — 76-item Philmont-specific gear catalog with 3-state tracking (needed → owned → packed), pack weight calculator, and category/priority filters.
+- **Readiness Dashboard** — Crew and individual readiness across 4 categories (training, gear, medical, admin) with journey waypoint gamification.
+- **Trail Badges** — Auto-awarded badges (🎒 Gear Ready, 🏥 Trail Medic, 📋 Admin Pro, 🥾 Training Complete, ⭐ Fully Prepared) with email notifications.
+- **Parent-Scout Linking** — Support adults linked to scouts via email match, request/approve, or admin override.
+- **12-Day Itinerary** — Day-by-day trek reference with elevation, mileage, and printable pocket cheat sheet.
+- **Two-Tier Admin** — Global admin (platform-wide) + Troop admin (per-troop member and adventure management).
+- **Dark/Light Theme** — User-selectable with system preference detection.
+- **Email Notifications** — 9 email templates for invitations, approvals, date changes, badge awards, and more.
 
 ---
 
@@ -127,65 +28,12 @@ graph TD
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
 | Frontend | React 18, Vite 6 | Component UI, fast HMR dev |
-| Backend | Express.js 4 | REST API server |
-| Database | SQLite (better-sqlite3) | Embedded DB with WAL mode |
+| Backend | Express.js 4 | REST API (89 routes) |
+| Database | SQLite (better-sqlite3, WAL) | Embedded DB, schema v7 |
+| Auth | Passport.js, bcrypt | Google OAuth + email/password |
+| Security | Helmet.js, express-rate-limit | Headers, rate limiting |
+| Email | Nodemailer | Gmail SMTP templates |
 | Deployment | Docker, Traefik | Containerized with auto-HTTPS |
-| Fonts | Playfair Display, Instrument Sans | Typography system |
-
----
-
-## Project Structure
-
-```
-crew614/
-├── client/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Header.jsx         # App header + countdown timer
-│   │   │   ├── MemberBar.jsx      # Crew roster management
-│   │   │   ├── Calendar.jsx       # Interactive date picker + heatmap
-│   │   │   ├── Results.jsx        # Analysis & training windows
-│   │   │   ├── Skills.jsx         # Skills checklist + gap analysis
-│   │   │   ├── Itinerary.jsx      # Trek reference view
-│   │   │   ├── AdminModal.jsx     # Admin PIN authentication
-│   │   │   └── ConfirmModal.jsx   # Destructive action confirmation
-│   │   ├── hooks/
-│   │   │   └── useCountdown.js    # Real-time countdown hook
-│   │   ├── utils/
-│   │   │   ├── constants.js       # Itinerary data, travel date, config
-│   │   │   ├── dates.js           # Date manipulation helpers
-│   │   │   └── theme.js           # Shared style system
-│   │   ├── api.js                 # API client wrapper
-│   │   ├── App.jsx                # Root orchestrator component
-│   │   └── main.jsx               # React entry point
-│   ├── index.html
-│   ├── vite.config.js
-│   └── package.json
-├── server/
-│   ├── index.js                   # Express server + routes
-│   ├── db.js                      # SQLite schema, queries, seeds
-│   └── package.json
-├── Dockerfile                     # Multi-stage production build
-├── docker-compose.yml             # Container orchestration
-└── README.md
-```
-
----
-
-## API Endpoints
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/api/members` | — | List all crew members |
-| `POST` | `/api/members` | Admin | Add a crew member |
-| `DELETE` | `/api/members/:id` | Admin | Remove a crew member |
-| `PUT` | `/api/members/:id/dates` | — | Update availability dates |
-| `PUT` | `/api/members/:id/skills` | — | Update completed skills |
-| `GET` | `/api/skills` | — | List all training skills |
-| `POST` | `/api/skills` | Admin | Add a custom skill |
-| `DELETE` | `/api/skills/:id` | Admin | Remove a custom skill |
-| `POST` | `/api/admin/verify` | — | Verify admin PIN |
-| `POST` | `/api/admin/reset` | Admin | Reset all data |
 
 ---
 
@@ -209,41 +57,76 @@ Frontend runs at `http://localhost:5173` with API proxy to `localhost:3614`.
 docker compose up -d --build
 ```
 
-Runs on port `3614`. Point your reverse proxy (Traefik/nginx) to this port for HTTPS.
-
-### Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `3614` | Server port |
-| `ADMIN_PIN` | `614` | Admin authentication PIN |
-| `DATA_DIR` | `./data` | SQLite database directory |
+Runs on port `3614` behind your reverse proxy (Traefik/nginx) for HTTPS.
 
 ---
 
-## Database Schema
+## Environment Variables
 
-```sql
--- Crew members with availability and skills tracking
-CREATE TABLE members (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  name       TEXT NOT NULL UNIQUE,
-  color_bg   TEXT NOT NULL,
-  dates      TEXT NOT NULL DEFAULT '[]',    -- JSON array of date keys
-  skills     TEXT NOT NULL DEFAULT '[]',    -- JSON array of skill IDs
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `PORT` | No (default: 3614) | Server port |
+| `NODE_ENV` | Yes (production) | Enables secure cookies, error sanitization |
+| `DATA_DIR` | No (default: /app/data) | SQLite database directory |
+| `SESSION_SECRET` | Yes (production) | Session encryption key (40+ chars) |
+| `GOOGLE_CLIENT_ID` | Yes | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth client secret |
+| `GOOGLE_CALLBACK_URL` | Yes | OAuth callback URL |
+| `APP_URL` | Yes | Public app URL (for email links) |
+| `ADMIN_EMAIL` | Yes | Global admin email address |
+| `SMTP_USER` | No | Gmail address for sending emails |
+| `SMTP_PASS` | No | Gmail app password |
 
--- Training skills (8 defaults + custom)
-CREATE TABLE skills (
-  id          TEXT PRIMARY KEY,
-  name        TEXT NOT NULL,
-  icon        TEXT NOT NULL DEFAULT '📋',
-  description TEXT NOT NULL DEFAULT '',
-  is_default  INTEGER NOT NULL DEFAULT 0,
-  sort_order  INTEGER NOT NULL DEFAULT 0
-);
+---
+
+## Project Structure
+
 ```
+crew614/
+├── server/
+│   ├── index.js          Express app, 89 API routes, middleware
+│   ├── db.js             SQLite schema v7, migrations, 76-item seed
+│   ├── auth.js           Passport.js Google OAuth + local strategy
+│   ├── email.js          Nodemailer templates (9 email types)
+│   └── package.json
+│
+├── client/
+│   ├── src/
+│   │   ├── main.jsx              Entry point (provider wrappers)
+│   │   ├── App.jsx               Auth gates, routing, state orchestration
+│   │   ├── api.js                Fetch wrapper, all API methods
+│   │   ├── contexts/
+│   │   │   ├── AuthContext.jsx    User auth + memberships
+│   │   │   ├── ThemeContext.jsx   Dark/light theme
+│   │   │   ├── AdventureContext.jsx  Adventure + gear data
+│   │   │   └── ToastContext.jsx   Toast notifications
+│   │   ├── components/           26 React components
+│   │   ├── hooks/
+│   │   │   └── useCountdown.js   Phase-aware countdown
+│   │   └── utils/
+│   │       ├── readiness.js      Shared readiness calculation
+│   │       ├── theme.js          Color tokens, badge helpers
+│   │       ├── dates.js          Date math utilities
+│   │       └── constants.js      Day names, config
+│   └── index.html
+│
+├── docs/                 Architecture, security, and operations docs
+├── Dockerfile            Multi-stage build, non-root user
+├── docker-compose.yml    Service config, Traefik labels
+├── ARCHITECTURE.md       Detailed system architecture
+├── SECURITY.md           Vulnerability disclosure policy
+└── README.md             This file
+```
+
+---
+
+## Documentation
+
+- [Architecture Overview](ARCHITECTURE.md) — System design, data model, API routes
+- [Security Policy](SECURITY.md) — Vulnerability reporting and disclosure
+- [Architecture Deep-Dive](docs/architecture/) — Overview, data flow, infrastructure
+- [Security Documentation](docs/security/) — Threat model, auth, data protection, dependency audit
+- [Operations Runbook](docs/operations/) — Backup, DR, incident response, day-to-day operations
 
 ---
 

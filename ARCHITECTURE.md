@@ -1,6 +1,6 @@
 # TrailLog Architecture
 
-> **Schema Version:** 6 | **Last Updated:** 2026-03-10
+> **Schema Version:** 7 | **Last Updated:** 2026-03-10
 
 ## System Overview
 
@@ -63,7 +63,7 @@ Backup Strategy:
   └─────────────────────────────────────────────────────────────┘
 ```
 
-## Data Model (Schema v6)
+## Data Model (Schema v7)
 
 ```
 ┌─────────────────────────┐
@@ -86,8 +86,11 @@ Backup Strategy:
 ├─────────────────────┤  troop  ├─────────────────────┤
 │ user_id, troop_id   │  _id    │ id, name            │
 │ role (admin/member) │         │ description         │
-│ status (pending/    │         │ affiliate_tag       │
-│   approved/denied)  │         └──────────┬──────────┘
+│ status (pending/    │         │ council (required)   │
+│   approved/denied)  │         │ location             │
+│                     │         │ is_public (0/1)      │
+│                     │         │ affiliate_tag        │
+│                     │         └──────────┬──────────┘
 └─────────────────────┘                    │
                                            │ troop_id
                                            ▼
@@ -162,7 +165,7 @@ Backup Strategy:
 │  affiliate_clicks    │     │  platform_settings    │
 ├─────────────────────┤     ├───────────────────────┤
 │ user_id             │     │ key, value            │
-│ product_option_id   │     │ (schema_version = 6)  │
+│ product_option_id   │     │ (schema_version = 7)  │
 │ gear_catalog_id     │     └───────────────────────┘
 │ url, referrer       │
 │ created_at          │
@@ -396,6 +399,9 @@ AI Gear:
 Content:
   GET  /api/itineraries                           → List itineraries
   GET  /api/itineraries/:id                       → Enriched itinerary
+
+Health:
+  GET  /api/health                                → Status, version, uptime (no auth)
 ```
 
 ## File Structure
@@ -403,10 +409,10 @@ Content:
 ```
 crew614/
 ├── server/
-│   ├── index.js          Express app, all API routes, middleware
-│   ├── db.js             SQLite schema v6, migrations, 76-item seed, all DB functions
-│   ├── auth.js           Passport.js Google OAuth strategy
-│   ├── email.js          Nodemailer templates (9 email types)
+│   ├── index.js          Express app, 89 API routes, helmet, middleware
+│   ├── db.js             SQLite schema v7, migrations, 76-item seed, all DB functions
+│   ├── auth.js           Passport.js Google OAuth + local strategy
+│   ├── email.js          Nodemailer templates (9 email types, XSS-escaped)
 │   └── package.json
 │
 ├── client/
@@ -454,11 +460,20 @@ crew614/
 │   ├── index.html
 │   └── vite.config.js
 │
+├── docs/
+│   ├── architecture/       Overview, data flow, infrastructure
+│   ├── security/           Threat model, auth, data protection, dependency audit
+│   └── operations/         Backup, DR, incident response, runbook
+│
+├── .github/
+│   └── SECURITY.md         GitHub security policy (links to root)
+│
 ├── backups/                VPS: /opt/crew614/backups/ (rolling 10)
 ├── backup.sh               Rolling backup script
-├── Dockerfile              Multi-stage build
+├── Dockerfile              Multi-stage build, non-root user
 ├── docker-compose.yml      Service config, volume, Traefik labels
 ├── ARCHITECTURE.md         This file
+├── SECURITY.md             Vulnerability disclosure policy
 └── README.md               Project overview
 ```
 
@@ -479,6 +494,10 @@ v6 → Added: affiliate_url on gear_product_options,
      affiliate_clicks table for tracking.
      Removed: gear_retailers and gear_item_retailers tables.
      Added: global admin query functions (troops, users, settings, affiliate stats).
+v7 → Added: council (TEXT, required), location (TEXT), is_public (INTEGER, default 1)
+     on troops table. BSA troop numbers only unique within council.
+     GET /api/troops filters: public troops + troops user is a member of.
+     12 performance indexes via standalone ensureIndexes() function.
 ```
 
 ## Gamification System
@@ -541,6 +560,51 @@ Affiliate Links:
   - Analytics in Global Admin → Affiliate tab
   - Amazon Associates: tag in URL, earn on full session
   - REI: Impact network, ~5%, 15-day cookie
+```
+
+## Security
+
+```
+Request Pipeline:
+  express.json (1MB limit) → helmet (security headers) → rate limiters →
+  session (SQLite store) → passport → express.static → route handlers
+
+Security Headers (Helmet.js):
+  Content-Security-Policy    style-src 'unsafe-inline' (React CSS-in-JS)
+  X-Frame-Options            SAMEORIGIN
+  X-Content-Type-Options     nosniff
+  Strict-Transport-Security  max-age=15552000; includeSubDomains
+  Referrer-Policy            no-referrer
+
+Rate Limiting (express-rate-limit):
+  authLimiter    20 req / 15 min  (login, signup)
+  apiLimiter    100 req / 1 min   (all /api/ routes)
+
+Error Handling:
+  safeError()    500 errors → "Something went wrong" in production
+                 400/403/404/409 → intentional messages preserved
+
+Docker Security:
+  Non-root user  appuser (uid 1001)
+  Alpine image   Minimal attack surface
+  Log rotation   json-file, 10MB max, 3 files
+
+Input Validation:
+  parseId()          Safe parseInt (null not NaN)
+  express.json       1MB body limit
+  esc()              HTML-escape in email templates
+  Parameterized SQL  100% prepared statements, zero concatenation
+
+Session Management:
+  httpOnly: true   No JavaScript access
+  secure: true     HTTPS only (production)
+  sameSite: "lax"  CSRF mitigation
+  Hourly GC        Expired sessions cleaned up
+
+Data Integrity:
+  db.transaction()   deleteAdventure (8 tables), removeAdventureMember (4 tables)
+  12 indexes         ensureIndexes() runs every startup
+  WAL mode           Crash resilience, concurrent reads
 ```
 
 ## Email Templates (9 types)
