@@ -198,11 +198,17 @@ export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack
               <select value={form.itinerary_id} onChange={e => setForm({ ...form, itinerary_id: e.target.value })}
                 style={{ ...inputStyle, color: form.itinerary_id ? theme.text : theme.textDim }}>
                 <option value="">Select itinerary...</option>
-                {itineraries.map(it => (
-                  <option key={it.id} value={it.id}>
-                    {it.name} ({it.days} days, {it.miles} mi, {it.rating})
-                  </option>
-                ))}
+                {[12, 9, 7].map(days => {
+                  const group = itineraries.filter(it => it.days === days).sort((a, b) => {
+                    const na = parseInt(a.id.split("-")[1]) || 0, nb = parseInt(b.id.split("-")[1]) || 0;
+                    return na - nb;
+                  });
+                  return group.length > 0 ? (
+                    <optgroup key={days} label={`${days}-Day Treks`}>
+                      {group.map(it => <option key={it.id} value={it.id}>{it.name} ({it.miles} mi, {it.rating})</option>)}
+                    </optgroup>
+                  ) : null;
+                })}
               </select>
               {error && <div style={{ fontSize: 12, color: theme.danger, marginBottom: 8 }}>{error}</div>}
               <div style={{ display: "flex", gap: 8 }}>

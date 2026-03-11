@@ -347,9 +347,17 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                     <label style={labelStyle}>Itinerary</label>
                     <select value={newAdv.itinerary_id} onChange={e => setNewAdv({ ...newAdv, itinerary_id: e.target.value })} style={{ ...inputStyle, color: newAdv.itinerary_id ? theme.text : theme.textDim }}>
                       <option value="">Select itinerary...</option>
-                      {itineraries.map(it => (
-                        <option key={it.id} value={it.id}>{it.name} ({it.days} days, {it.miles} mi, {it.rating})</option>
-                      ))}
+                      {[12, 9, 7].map(days => {
+                        const group = itineraries.filter(it => it.days === days).sort((a, b) => {
+                          const na = parseInt(a.id.split("-")[1]) || 0, nb = parseInt(b.id.split("-")[1]) || 0;
+                          return na - nb;
+                        });
+                        return group.length > 0 ? (
+                          <optgroup key={days} label={`${days}-Day Treks`}>
+                            {group.map(it => <option key={it.id} value={it.id}>{it.name} ({it.miles} mi, {it.rating})</option>)}
+                          </optgroup>
+                        ) : null;
+                      })}
                     </select>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button type="button" onClick={() => setShowCreateAdv(false)} style={{ flex: 1, padding: "10px 0", borderRadius: 7, border: `1px solid ${theme.borderLight}`, background: theme.bgAlt, color: theme.textMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
