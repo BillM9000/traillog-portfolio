@@ -3,11 +3,12 @@ import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import { fontBody, fontDisplay, card, cardTitle, toolbarBtn } from "../utils/theme";
+import { US_STATES } from "../utils/constants";
 
-export default function GlobalAdmin({ isGlobalAdmin, troopId, onClose }) {
+export default function GlobalAdmin({ isGlobalAdmin, troopId, onClose, onEnterTroop, onLogout, user, alwaysOpen }) {
   const { theme } = useTheme();
   const { addToast } = useToast();
-  const [tab, setTab] = useState(isGlobalAdmin ? "catalog" : "troop");
+  const [tab, setTab] = useState(isGlobalAdmin ? (alwaysOpen ? "troops" : "catalog") : "troop");
   const [catalog, setCatalog] = useState([]);
   const [search, setSearch] = useState("");
   const [editItem, setEditItem] = useState(null);
@@ -87,15 +88,37 @@ export default function GlobalAdmin({ isGlobalAdmin, troopId, onClose }) {
   }
   if (troopId) tabs.push(["troop", "Troop Overrides"]);
 
+  const outerStyle = alwaysOpen
+    ? { minHeight: "100vh", background: theme.bg, fontFamily: fontBody }
+    : { position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.5)", overflowY: "auto" };
+  const innerStyle = alwaysOpen
+    ? { maxWidth: 700, margin: "0 auto", background: theme.bgCard, minHeight: "100vh", border: `1px solid ${theme.border}` }
+    : { maxWidth: 700, margin: "20px auto", background: theme.bgCard, borderRadius: 16, border: `1px solid ${theme.border}`, boxShadow: theme.shadow };
+
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.5)", overflowY: "auto" }}>
-      <div style={{ maxWidth: 700, margin: "20px auto", background: theme.bgCard, borderRadius: 16, border: `1px solid ${theme.border}`, boxShadow: theme.shadow }}>
+    <div style={outerStyle}>
+      <div style={innerStyle}>
         {/* Header */}
         <div style={{ padding: "16px 20px", borderBottom: `1px solid ${theme.borderLight}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h2 style={{ fontSize: 18, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay, margin: 0 }}>
-            {isGlobalAdmin ? "🌐 Global Admin" : "⚙️ Gear Admin"}
+            {isGlobalAdmin ? "🌐 Platform Admin" : "⚙️ Gear Admin"}
           </h2>
-          <button onClick={onClose} style={{ ...toolbarBtn(theme), padding: "5px 12px" }}>✕</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {alwaysOpen && user && (
+              <>
+                {user.avatar_url && <img src={user.avatar_url} alt="" style={{ width: 24, height: 24, borderRadius: "50%" }} />}
+                <span style={{ fontSize: 11, color: theme.textDim, fontFamily: fontBody }}>{user.name}</span>
+              </>
+            )}
+            {alwaysOpen && onClose && (
+              <button onClick={onClose} style={{ fontSize: 11, color: theme.accent, background: "none", border: `1px solid ${theme.accent}40`, padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontFamily: fontBody, fontWeight: 600 }}>Lobby</button>
+            )}
+            {alwaysOpen && onLogout ? (
+              <button onClick={onLogout} style={{ fontSize: 11, color: theme.warn, background: "none", border: `1px solid ${theme.warnBg}`, padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontFamily: fontBody, fontWeight: 600 }}>Sign Out</button>
+            ) : (
+              <button onClick={onClose} style={{ ...toolbarBtn(theme), padding: "5px 12px" }}>✕</button>
+            )}
+          </div>
         </div>
 
         {/* Tabs */}
@@ -110,7 +133,7 @@ export default function GlobalAdmin({ isGlobalAdmin, troopId, onClose }) {
           ))}
         </div>
 
-        <div style={{ padding: 20, maxHeight: "70vh", overflowY: "auto" }}>
+        <div style={{ padding: 20, ...(alwaysOpen ? {} : { maxHeight: "70vh", overflowY: "auto" }) }}>
           {/* ── Gear Catalog Tab ── */}
           {tab === "catalog" && isGlobalAdmin && (
             <CatalogTab
@@ -123,7 +146,8 @@ export default function GlobalAdmin({ isGlobalAdmin, troopId, onClose }) {
           {/* ── Troop Overview Tab ── */}
           {tab === "troops" && isGlobalAdmin && (
             <TroopsTab troops={troops} loaded={troopsLoaded} theme={theme} addToast={addToast}
-              onRefresh={() => api.getAdminTroops().then(d => { setTroops(d); setTroopsLoaded(true); })} />
+              onRefresh={() => api.getAdminTroops().then(d => { setTroops(d); setTroopsLoaded(true); })}
+              onEnterTroop={onEnterTroop} />
           )}
 
           {/* ── Affiliate Analytics Tab ── */}
@@ -244,12 +268,15 @@ function CatalogTab({ catalog, grouped, search, setSearch, theme, addToast, refr
 }
 
 // ─── Troop Overview Tab ───
-function TroopsTab({ troops, loaded, theme, addToast, onRefresh }) {
+function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop }) {
   const [expanded, setExpanded] = useState(null);
   const [members, setMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [deleteInput, setDeleteInput] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+  const [newTroop, setNewTroop] = useState({ name: "", council: "", city: "", state: "", description: "", is_public: true });
+  const [creating, setCreating] = useState(false);
 
   const refreshMembers = async (troopId) => {
     try {
@@ -306,15 +333,79 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh }) {
     } catch (e) { addToast(e.message, "error"); }
   };
 
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    if (!newTroop.name.trim()) { addToast("Troop name required", "error"); return; }
+    if (!newTroop.council.trim()) { addToast("Council is required", "error"); return; }
+    if (!newTroop.city.trim()) { addToast("City is required", "error"); return; }
+    if (!newTroop.state) { addToast("State is required", "error"); return; }
+    setCreating(true);
+    try {
+      const location = [newTroop.city.trim(), newTroop.state].filter(Boolean).join(", ");
+      await api.createTroop({ ...newTroop, location });
+      setNewTroop({ name: "", council: "", city: "", state: "", description: "", is_public: true });
+      setShowCreate(false);
+      addToast("Troop created", "success");
+      onRefresh();
+    } catch (e) { addToast(e.message, "error"); }
+    finally { setCreating(false); }
+  };
+
+  const inputStyle = { width: "100%", padding: "8px 10px", borderRadius: 6, border: `1.5px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody, outline: "none", marginBottom: 6, boxSizing: "border-box" };
+
   if (!loaded) {
     return <div style={{ fontSize: 12, color: theme.textDimmer, fontStyle: "italic" }}>Loading troops...</div>;
   }
-  if (troops.length === 0) {
-    return <div style={{ fontSize: 12, color: theme.textDimmer, fontStyle: "italic" }}>No troops registered yet.</div>;
-  }
   return (
     <div>
-      <div style={{ fontSize: 10, color: theme.textDimmer, marginBottom: 8 }}>{troops.length} troops registered</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <div style={{ fontSize: 10, color: theme.textDimmer }}>{troops.length} troop{troops.length !== 1 ? "s" : ""} registered</div>
+        {!showCreate && (
+          <button onClick={() => setShowCreate(true)} style={{ fontSize: 10, fontWeight: 600, color: theme.accent, background: theme.accentBg, border: `1px solid ${theme.borderAccent}`, padding: "4px 12px", borderRadius: 6, cursor: "pointer", fontFamily: fontBody }}>+ Create Troop</button>
+        )}
+      </div>
+
+      {showCreate && (
+        <div style={{ marginBottom: 12, padding: 14, borderRadius: 10, border: `1.5px solid ${theme.borderAccent}`, background: theme.bgAlt }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: theme.heading, marginBottom: 8, fontFamily: fontDisplay }}>Create a Troop</div>
+          <form onSubmit={handleCreate}>
+            <input value={newTroop.name} onChange={e => setNewTroop({ ...newTroop, name: e.target.value })} placeholder="Troop name (e.g. Troop 444)" style={inputStyle} required />
+            <input value={newTroop.council} onChange={e => setNewTroop({ ...newTroop, council: e.target.value })} placeholder="Council (required)" style={inputStyle} required maxLength={60} />
+            <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+              <input value={newTroop.city} onChange={e => setNewTroop({ ...newTroop, city: e.target.value })} placeholder="City (required)" style={{ ...inputStyle, flex: 1, marginBottom: 0 }} required />
+              <select value={newTroop.state} onChange={e => setNewTroop({ ...newTroop, state: e.target.value })} style={{ ...inputStyle, width: 70, marginBottom: 0, cursor: "pointer" }} required>
+                <option value="">ST</option>
+                {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: theme.textDim }}>Visibility:</span>
+                {[true, false].map(isPublic => (
+                  <button key={String(isPublic)} type="button" onClick={() => setNewTroop({ ...newTroop, is_public: isPublic })} style={{
+                    padding: "3px 10px", borderRadius: 5, border: "none", fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
+                    background: newTroop.is_public === isPublic ? theme.accent : theme.bgInput,
+                    color: newTroop.is_public === isPublic ? "#fff" : theme.textMuted,
+                  }}>{isPublic ? "Public" : "Private"}</button>
+                ))}
+              </div>
+              <div style={{ fontSize: 10, color: newTroop.is_public ? theme.textDim : theme.warn, padding: "6px 8px", borderRadius: 5, lineHeight: 1.4, background: newTroop.is_public ? theme.bgInput : `${theme.warn}10`, border: `1px solid ${newTroop.is_public ? theme.borderLight : theme.warn + "30"}` }}>
+                {newTroop.is_public
+                  ? "Troop will be listed so parents and scouts can search and request to join."
+                  : "Troop will be hidden from search. Members must be invited by email."}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button type="button" onClick={() => setShowCreate(false)} style={{ flex: 1, padding: "7px 0", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.textDim, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
+              <button type="submit" disabled={creating} style={{ flex: 1, padding: "7px 0", borderRadius: 6, border: "none", background: theme.accent, color: "#fff", fontSize: 11, fontWeight: 600, cursor: creating ? "wait" : "pointer", fontFamily: fontBody }}>{creating ? "..." : "Create"}</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {troops.length === 0 && !showCreate && (
+        <div style={{ fontSize: 12, color: theme.textDimmer, fontStyle: "italic" }}>No troops registered yet. Click "+ Create Troop" to get started.</div>
+      )}
       {troops.map(t => (
         <div key={t.id} style={{ marginBottom: 6, borderRadius: 8, border: `1px solid ${theme.borderLight}`, overflow: "hidden" }}>
           {/* Troop row */}
@@ -334,6 +425,13 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh }) {
               )}
               <span style={{ fontSize: 10, color: theme.textMuted }}>{t.adventure_count} adv</span>
               <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 3, fontWeight: 600, background: t.is_public ? theme.accentBg : `${theme.warn}20`, color: t.is_public ? theme.accent : theme.warn }}>{t.is_public ? "Public" : "Private"}</span>
+              {onEnterTroop && (
+                <button onClick={(e) => { e.stopPropagation(); onEnterTroop(t.id, t); }} style={{
+                  padding: "3px 10px", borderRadius: 5, border: `1px solid ${theme.borderAccent}`,
+                  background: theme.accentBg, color: theme.accentLight, fontSize: 10, fontWeight: 600,
+                  cursor: "pointer", fontFamily: fontBody,
+                }}>Enter →</button>
+              )}
             </div>
           </div>
 

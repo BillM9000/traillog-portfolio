@@ -32,6 +32,8 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
     e.preventDefault();
     if (!newTroop.name.trim()) return setError("Troop name required");
     if (!newTroop.council.trim()) return setError("Council is required");
+    if (!newTroop.city.trim()) return setError("City is required");
+    if (!newTroop.state) return setError("State is required");
     setLoading(true);
     setError("");
     try {
@@ -127,7 +129,7 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
                   </div>
                   {membership ? (
                     membership.status === "approved" && onEnterTroop ? (
-                      <button onClick={() => onEnterTroop(t.id)} style={{
+                      <button onClick={() => onEnterTroop(t.id, t)} style={{
                         padding: "5px 12px", borderRadius: 6, border: `1px solid ${theme.borderAccent}`,
                         background: theme.accentBg, color: theme.accentLight, fontSize: 11, fontWeight: 600,
                         cursor: "pointer", fontFamily: fontBody,
@@ -139,6 +141,12 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
                         border: `1px solid ${theme.gold}40`,
                       }}>Pending</span>
                     )
+                  ) : isGlobalAdmin ? (
+                    <button onClick={() => onEnterTroop(t.id, t)} style={{
+                      padding: "5px 12px", borderRadius: 6, border: `1px solid ${theme.borderAccent}`,
+                      background: theme.accentBg, color: theme.accentLight, fontSize: 11, fontWeight: 600,
+                      cursor: "pointer", fontFamily: fontBody,
+                    }}>Enter →</button>
                   ) : (
                     <button onClick={() => handleJoin(t.id)} style={{
                       padding: "5px 12px", borderRadius: 6, border: "none", background: theme.accent,
@@ -167,9 +175,9 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
                 placeholder="Council (e.g. Northeast Illinois Council)" style={inputStyle} required maxLength={60} />
               <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                 <input value={newTroop.city} onChange={e => setNewTroop({ ...newTroop, city: e.target.value })}
-                  placeholder="City" style={{ ...inputStyle, flex: 1, marginBottom: 0 }} />
+                  placeholder="City (required)" style={{ ...inputStyle, flex: 1, marginBottom: 0 }} required />
                 <select value={newTroop.state} onChange={e => setNewTroop({ ...newTroop, state: e.target.value })}
-                  style={{ ...inputStyle, width: 80, marginBottom: 0, cursor: "pointer" }}>
+                  style={{ ...inputStyle, width: 80, marginBottom: 0, cursor: "pointer" }} required>
                   <option value="">State</option>
                   {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>

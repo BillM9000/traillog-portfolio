@@ -1,5 +1,7 @@
 import Database from "better-sqlite3";
-import { existsSync, mkdirSync } from "fs";
+import { existsSync, mkdirSync, readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 
 const DATA_DIR = process.env.DATA_DIR || "./data";
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
@@ -271,7 +273,7 @@ db.exec(`
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 8;
+const CURRENT_SCHEMA_VERSION = 10;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -460,6 +462,26 @@ function migrate() {
     // ── v8 migration: adventure type ──
     if (version < 8) {
       tryAlter("ALTER TABLE adventures ADD COLUMN adventure_type TEXT NOT NULL DEFAULT 'philmont'");
+    }
+
+    // ── v9 migration: manual member linking ──
+    if (version < 9) {
+      tryAlter("ALTER TABLE adventure_members ADD COLUMN linked_to_manual INTEGER");
+    }
+
+    // ── v10 migration: multi-scout linking (up to 3 scouts per adult) ──
+    if (version < 10) {
+      tryAlter("ALTER TABLE adventure_members ADD COLUMN linked_scouts TEXT NOT NULL DEFAULT '[]'");
+      // Migrate existing single links into the new array
+      const rows = db.prepare("SELECT id, linked_to, linked_to_manual FROM adventure_members WHERE linked_to IS NOT NULL OR linked_to_manual IS NOT NULL").all();
+      for (const r of rows) {
+        const scouts = [];
+        if (r.linked_to) scouts.push(r.linked_to);
+        if (r.linked_to_manual) scouts.push(-r.linked_to_manual);
+        if (scouts.length > 0) {
+          db.prepare("UPDATE adventure_members SET linked_scouts = ? WHERE id = ?").run(JSON.stringify(scouts), r.id);
+        }
+      }
     }
 
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
@@ -772,18 +794,32 @@ const TRAINING_PRIORITIES_12_20 = [
   { icon: "🏕️", label: "Shakedowns", detail: "Min 2 full overnights with loaded packs before arrival" },
 ];
 
-// ── Seed Itinerary 12-20 ──
-const existingItin = db.prepare("SELECT id FROM itineraries WHERE id = '12-20'").get();
-if (!existingItin) {
-  db.prepare(`INSERT INTO itineraries (id, name, days, miles, rating, highlights, route_data, training_priorities, default_skills, global_info)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-    "12-20", "Itinerary 12-20", 12, 69, "Super Strenuous",
-    JSON.stringify(["Baldy Summit 12,441'", "3 Dry Camps", "Tooth of Time", "COPE Challenge", "Conservation Project", "Rock Climbing"]),
-    JSON.stringify(ROUTE_DATA_12_20),
-    JSON.stringify(TRAINING_PRIORITIES_12_20),
-    JSON.stringify(DEFAULT_SKILLS_12_20),
-    JSON.stringify(GLOBAL_INFO_12_20),
-  );
+// ── Seed 2026 Philmont Itineraries (48 itineraries from official guidebook) ──
+const itinCount = db.prepare("SELECT COUNT(*) as c FROM itineraries").get();
+if (itinCount.c < 48) {
+  try {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+    const seedData = JSON.parse(readFileSync(join(__dirname, "itinerary_seed.json"), "utf-8"));
+    const upsert = db.prepare(`INSERT OR REPLACE INTO itineraries (id, name, days, miles, rating, highlights, route_data, training_priorities, default_skills, global_info)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    const seedAll = db.transaction(() => {
+      for (const it of seedData) {
+        upsert.run(
+          it.id, it.name, it.days, it.miles, it.rating,
+          JSON.stringify(it.highlights || []),
+          JSON.stringify(it.route_data || []),
+          JSON.stringify([]),
+          JSON.stringify([]),
+          JSON.stringify({ description: it.description || "", elevations: it.elevations || {}, camps_info: it.camps_info || "", conservation: it.conservation || "" }),
+        );
+      }
+    });
+    seedAll();
+    console.log(`Seeded ${seedData.length} Philmont itineraries`);
+  } catch (e) {
+    console.error("Failed to seed itineraries:", e.message);
+  }
 }
 
 // ── Seed default gear items ──
@@ -1162,7 +1198,7 @@ export function createAdventure({ troop_id, name, description, trek_date, depart
   return { id: advId, troop_id, name, description: description || "", trek_date: trek_date || arrive_date, depart_date, arrive_date, return_date, home_date, itinerary_id, adventure_type: adventure_type || "philmont", status: "active" };
 }
 
-export function updateAdventure(id, { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status, itinerary_id }) {
+export function updateAdventure(id, { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status, itinerary_id, adventure_type }) {
   const sets = [];
   const vals = [];
   if (name !== undefined) { sets.push("name = ?"); vals.push(name); }
@@ -1174,6 +1210,7 @@ export function updateAdventure(id, { name, description, trek_date, depart_date,
   if (home_date !== undefined) { sets.push("home_date = ?"); vals.push(home_date); }
   if (status !== undefined) { sets.push("status = ?"); vals.push(status); }
   if (itinerary_id !== undefined) { sets.push("itinerary_id = ?"); vals.push(itinerary_id); }
+  if (adventure_type !== undefined) { sets.push("adventure_type = ?"); vals.push(adventure_type); }
   if (sets.length === 0) return;
   vals.push(id);
   db.prepare(`UPDATE adventures SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
@@ -1232,26 +1269,45 @@ export function getAdventureMembers(adventureId) {
     SELECT am.* FROM adventure_members am
     WHERE am.adventure_id = ? AND am.is_manual = 1 ORDER BY am.id
   `).all(adventureId);
-  const mapRow = r => ({
-    id: r.id, adventure_id: r.adventure_id, user_id: r.user_id,
-    name: r.is_manual ? r.manual_name : r.name,
-    email: r.email || null, avatar_url: r.avatar_url || null,
-    user_type: r.is_manual ? "scout" : r.user_type,
-    role: r.role, participation: r.participation || "trekking",
-    linked_to: r.linked_to || null, is_manual: !!r.is_manual,
-    color: { bg: r.color_bg },
-    dates: JSON.parse(r.dates), skills: JSON.parse(r.skills),
-    gear: JSON.parse(r.gear), medical: JSON.parse(r.medical), admin_tasks: JSON.parse(r.admin_tasks),
-  });
+  const mapRow = r => {
+    let linkedScouts = [];
+    try { linkedScouts = JSON.parse(r.linked_scouts || "[]"); } catch { linkedScouts = []; }
+    // Backward compat: if linked_scouts empty but old columns have data
+    if (linkedScouts.length === 0) {
+      if (r.linked_to) linkedScouts.push(r.linked_to);
+      else if (r.linked_to_manual) linkedScouts.push(-r.linked_to_manual);
+    }
+    return {
+      id: r.id, adventure_id: r.adventure_id, user_id: r.user_id,
+      name: r.is_manual ? r.manual_name : r.name,
+      email: r.email || null, avatar_url: r.avatar_url || null,
+      user_type: r.is_manual ? "scout" : r.user_type,
+      role: r.role, participation: r.participation || "trekking",
+      linked_to: linkedScouts[0] || null, // backward compat for old code
+      linked_scouts: linkedScouts,
+      is_manual: !!r.is_manual,
+      color: { bg: r.color_bg },
+      dates: JSON.parse(r.dates), skills: JSON.parse(r.skills),
+      gear: JSON.parse(r.gear), medical: JSON.parse(r.medical), admin_tasks: JSON.parse(r.admin_tasks),
+    };
+  };
   return [...accountRows.map(mapRow), ...manualRows.map(mapRow)];
 }
 
 export function getAdventureMember(adventureId, userId) {
   const r = db.prepare("SELECT * FROM adventure_members WHERE adventure_id = ? AND user_id = ?").get(adventureId, userId);
   if (!r) return null;
+  let linkedScouts = [];
+  try { linkedScouts = JSON.parse(r.linked_scouts || "[]"); } catch { linkedScouts = []; }
+  if (linkedScouts.length === 0) {
+    if (r.linked_to) linkedScouts.push(r.linked_to);
+    else if (r.linked_to_manual) linkedScouts.push(-r.linked_to_manual);
+  }
   return {
     ...r, color: { bg: r.color_bg }, participation: r.participation || "trekking",
-    linked_to: r.linked_to || null, is_manual: !!r.is_manual,
+    linked_to: linkedScouts[0] || null,
+    linked_scouts: linkedScouts,
+    is_manual: !!r.is_manual,
     dates: JSON.parse(r.dates), skills: JSON.parse(r.skills),
     gear: JSON.parse(r.gear), medical: JSON.parse(r.medical), admin_tasks: JSON.parse(r.admin_tasks),
   };
@@ -1271,7 +1327,18 @@ export function removeAdventureMember(adventureId, userId) {
   const run = db.transaction(() => {
     db.prepare("DELETE FROM member_gear WHERE adventure_id = ? AND user_id = ?").run(adventureId, userId);
     db.prepare("DELETE FROM achievements WHERE adventure_id = ? AND user_id = ?").run(adventureId, userId);
-    db.prepare("DELETE FROM link_requests WHERE adventure_id = ? AND (requester_id = ? OR target_id = ?)").run(adventureId, userId, userId);
+    db.prepare("DELETE FROM link_requests WHERE adventure_id = ? AND (requester_id = ? OR scout_id = ?)").run(adventureId, userId, userId);
+    // Clean up linked_scouts references: remove this user's ID from any adult's linked_scouts array
+    const adults = db.prepare("SELECT id, linked_scouts FROM adventure_members WHERE adventure_id = ? AND linked_scouts != '[]'").all(adventureId);
+    for (const a of adults) {
+      try {
+        const scouts = JSON.parse(a.linked_scouts || "[]");
+        const filtered = scouts.filter(sid => sid !== userId);
+        if (filtered.length !== scouts.length) {
+          db.prepare("UPDATE adventure_members SET linked_scouts = ? WHERE id = ?").run(JSON.stringify(filtered), a.id);
+        }
+      } catch {}
+    }
     db.prepare("DELETE FROM adventure_members WHERE adventure_id = ? AND user_id = ?").run(adventureId, userId);
   });
   run();
@@ -1414,9 +1481,12 @@ export function updateAdventureMemberParticipation(adventureId, userId, particip
     .run(participation, adventureId, userId);
 }
 
-export function linkMember(adventureId, supportUserId, scoutUserId) {
-  db.prepare("UPDATE adventure_members SET linked_to = ? WHERE adventure_id = ? AND user_id = ?")
-    .run(scoutUserId, adventureId, supportUserId);
+export function linkMember(adventureId, supportUserId, linkedScouts) {
+  // linkedScouts: array of values — positive = user_id, negative = -manual adventure_members.id
+  // Max 3 scouts per adult
+  const scouts = Array.isArray(linkedScouts) ? linkedScouts.slice(0, 3) : [];
+  db.prepare("UPDATE adventure_members SET linked_scouts = ? WHERE adventure_id = ? AND user_id = ?")
+    .run(JSON.stringify(scouts), adventureId, supportUserId);
 }
 
 // ── Manual Members ──
@@ -1431,6 +1501,18 @@ export function addManualMember(adventureId, name) {
 }
 
 export function removeManualMember(adventureId, memberId) {
+  // Clean up linked_scouts references: remove -memberId from any adult's linked_scouts array
+  const negId = -memberId;
+  const adults = db.prepare("SELECT id, linked_scouts FROM adventure_members WHERE adventure_id = ? AND linked_scouts != '[]'").all(adventureId);
+  for (const a of adults) {
+    try {
+      const scouts = JSON.parse(a.linked_scouts || "[]");
+      const filtered = scouts.filter(sid => sid !== negId);
+      if (filtered.length !== scouts.length) {
+        db.prepare("UPDATE adventure_members SET linked_scouts = ? WHERE id = ?").run(JSON.stringify(filtered), a.id);
+      }
+    } catch {}
+  }
   db.prepare("DELETE FROM adventure_members WHERE adventure_id = ? AND id = ? AND is_manual = 1").run(adventureId, memberId);
 }
 

@@ -1,33 +1,119 @@
 import { useState, useEffect } from "react";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
+import { useToast } from "../contexts/ToastContext";
 import { card, cardTitle, fontDisplay, fontBody } from "../utils/theme";
 import PrintCheatSheet from "./PrintCheatSheet";
 
-export default function Itinerary({ adventureId, adventure }) {
+export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }) {
   const { theme, mode } = useTheme();
+  const { addToast } = useToast();
   const [itin, setItin] = useState(null);
   const [expanded, setExpanded] = useState(new Set());
   const [typeFilter, setTypeFilter] = useState(null);
   const [showPrint, setShowPrint] = useState(false);
+  const [itineraries, setItineraries] = useState([]);
+  const [selectingItin, setSelectingItin] = useState(false);
 
   useEffect(() => {
     if (!adventureId) return;
     api.getAdventure(adventureId).then(adv => {
       if (adv.itinerary_id) api.getItinerary(adv.itinerary_id).then(setItin).catch(console.error);
+      else api.getItineraries().then(setItineraries).catch(console.error);
     }).catch(console.error);
   }, [adventureId]);
 
+  const handleSelectItinerary = async (itinId) => {
+    if (!itinId) return;
+    setSelectingItin(true);
+    try {
+      await api.updateAdventure(adventureId, { itinerary_id: itinId });
+      const data = await api.getItinerary(itinId);
+      setItin(data);
+      if (onRefresh) onRefresh();
+    } catch (e) {
+      console.error(e);
+      addToast(e.message || "Failed to set itinerary", "error");
+    }
+    setSelectingItin(false);
+  };
+
   if (!itin) {
+    const grouped = { 12: [], 9: [], 7: [] };
+    itineraries.forEach(it => { if (grouped[it.days]) grouped[it.days].push(it); });
+    Object.values(grouped).forEach(arr => arr.sort((a, b) => {
+      const na = parseInt(a.id.split("-")[1]) || 0, nb = parseInt(b.id.split("-")[1]) || 0;
+      return na - nb;
+    }));
     return (
-      <div style={{ ...card(theme), textAlign: "center", color: theme.textDim, fontSize: 12, fontStyle: "italic" }}>
-        No itinerary selected for this adventure.
+      <div style={{ ...card(theme), textAlign: "center", padding: "32px 20px" }}>
+        <div style={{ fontSize: 36, marginBottom: 10 }}>🗺️</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay, marginBottom: 6 }}>No itinerary selected</div>
+        <div style={{ fontSize: 12, color: theme.textDim, marginBottom: 16, lineHeight: 1.5 }}>
+          {isAdmin
+            ? "Choose a trail itinerary to see daily route details, camps, and program highlights."
+            : "Your crew leader hasn't selected an itinerary yet. Check back soon!"}
+        </div>
+        {isAdmin && itineraries.length > 0 && (
+          <div style={{ maxWidth: 360, margin: "0 auto" }}>
+            <select
+              defaultValue=""
+              onChange={e => handleSelectItinerary(e.target.value)}
+              disabled={selectingItin}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1.5px solid ${theme.borderAccent}`, background: theme.bgAlt, color: theme.text, fontSize: 13, fontFamily: fontBody, cursor: selectingItin ? "wait" : "pointer" }}
+            >
+              <option value="">Select itinerary...</option>
+              {[12, 9, 7].map(days => grouped[days]?.length > 0 && (
+                <optgroup key={days} label={`${days}-Day Treks`}>
+                  {grouped[days].map(it => (
+                    <option key={it.id} value={it.id}>{it.name} — {it.miles} mi, {it.rating}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            {selectingItin && <div style={{ fontSize: 11, color: theme.textDim, marginTop: 8 }}>Loading itinerary...</div>}
+          </div>
+        )}
       </div>
     );
   }
 
-  const route = itin.route_data || [];
-  const global = itin.global_info || {};
+  // Normalize route data: new format (from PDF) has simple fields, adapt to rich format
+  const rawRoute = itin.route_data || [];
+  const route = rawRoute.map(day => {
+    // Already rich format (has 'type' field) — use as-is
+    if (day.type) return day;
+    // New simple format — derive type from camp name conventions
+    const campUpper = (day.camp || "").toUpperCase();
+    const isDry = (day.programs || "").toLowerCase().includes("dry camp");
+    const isStaffed = campUpper === day.camp && day.camp !== "Camping HQ" && !isDry;
+    const isLayover = day.miles === 0 && day.day > 1;
+    const type = day.camp === "Camping HQ" ? "Base Camp"
+      : isLayover ? "Layover"
+      : isDry ? "Dry Camp"
+      : isStaffed ? "Staffed"
+      : "Trail";
+    const showers = (day.programs || "").toLowerCase().includes("shower") || /\bs\b/.test("");
+    const foodPickup = (day.programs || "").match(/Food Pickup|pick up/i) ? day.programs : null;
+    // Parse program string into array of objects
+    const progStr = day.programs || "";
+    const programs = progStr ? progStr.split(/;\s*/).filter(Boolean).map(p => ({
+      name: p.trim(), type: "program", description: "",
+    })) : [];
+    return {
+      ...day,
+      type,
+      notes: progStr,
+      showers: false,
+      food_pickup: foodPickup,
+      programs,
+      water: isDry ? { strategy: "Dry camp — carry extra water", fill_location: "", next_source: "", carry_liters: 4 } : null,
+      warnings: isDry ? ["DRY CAMP — carry minimum 4-6 liters per person"] : [],
+      optional_hikes: [],
+    };
+  });
+  const rawGlobal = itin.global_info || {};
+  const global = typeof rawGlobal === "string" ? (() => { try { return JSON.parse(rawGlobal); } catch { return {}; } })() : rawGlobal;
   const toggle = (day) => setExpanded(p => { const s = new Set(p); s.has(day) ? s.delete(day) : s.add(day); return s; });
   const expandAll = () => setExpanded(new Set(route.map(d => d.day)));
   const collapseAll = () => setExpanded(new Set());

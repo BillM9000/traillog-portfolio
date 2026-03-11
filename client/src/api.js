@@ -71,7 +71,7 @@ export const api = {
   updateMemberRole: (advId, userId, role) => request(`/adventures/${advId}/members/${userId}/role`, { method: "PUT", body: JSON.stringify({ role }) }),
   updateMemberUserType: (advId, userId, user_type) => request(`/adventures/${advId}/members/${userId}/user-type`, { method: "PUT", body: JSON.stringify({ user_type }) }),
   updateParticipation: (advId, userId, participation) => request(`/adventures/${advId}/members/${userId}/participation`, { method: "PUT", body: JSON.stringify({ participation }) }),
-  linkMember: (advId, userId, linked_to) => request(`/adventures/${advId}/members/${userId}/link`, { method: "PUT", body: JSON.stringify({ linked_to }) }),
+  linkMember: (advId, userId, linked_scouts) => request(`/adventures/${advId}/members/${userId}/link`, { method: "PUT", body: JSON.stringify({ linked_scouts }) }),
   addManualMember: (advId, name) => request(`/adventures/${advId}/manual-members`, { method: "POST", body: JSON.stringify({ name }) }),
   removeManualMember: (advId, memberId) => request(`/adventures/${advId}/manual-members/${memberId}`, { method: "DELETE" }),
 

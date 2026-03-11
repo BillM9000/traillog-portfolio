@@ -6,7 +6,7 @@ import crypto from "crypto";
 import passport, { hashPassword, generateVerificationToken } from "./auth.js";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import {
+import db, {
   createSessionStore, findUserByEmail, findUserById, createUser, updateUserProfile, verifyUserEmail,
   getTroops, getTroop, createTroop, updateTroop, updateTroopAffiliateTag,
   getTroopMembers, getTroopMember, getUserMemberships, getUserAdventureMemberships,
@@ -156,6 +156,7 @@ function requireAdventureMember(req, res, next) {
 }
 
 function requireAdventureAdmin(req, res, next) {
+  if (isGlobalAdmin(req)) return next();
   const adventureId = parseId(req.params.adventureId);
   const member = getAdventureMember(adventureId, req.user.id);
   // Adventure-level admin
@@ -176,6 +177,7 @@ function requireAdventureAdmin(req, res, next) {
 }
 
 function requireAdventureSelfOrAdmin(req, res, next) {
+  if (isGlobalAdmin(req)) return next();
   const adventureId = parseId(req.params.adventureId);
   const targetUserId = parseId(req.params.userId);
   if (req.user.id === targetUserId) return next();
@@ -239,6 +241,14 @@ app.post("/api/auth/login", authLimiter, (req, res, next) => {
     if (!user.email_verified) return res.status(403).json({ error: "Please verify your email first" });
     req.logIn(user, (err) => {
       if (err) return safeError(res, err);
+      // Process pending invitation if present
+      if (req.session.pendingInviteToken) {
+        const invitation = getInvitationByToken(req.session.pendingInviteToken);
+        if (invitation && invitation.status === "pending") {
+          processInvitation(user, invitation);
+        }
+        delete req.session.pendingInviteToken;
+      }
       const { password_hash, verification_token, ...safe } = user;
       res.json(safe);
     });
@@ -286,8 +296,8 @@ app.get("/api/itineraries", requireAuth, (req, res) => {
 
 app.get("/api/itineraries/:id", requireAuth, (req, res) => {
   try {
-    const id = parseId(req.params.id);
-    if (!id) return res.status(400).json({ error: "Invalid itinerary ID" });
+    const id = req.params.id;
+    if (!id || !/^[\d-]+$/.test(id)) return res.status(400).json({ error: "Invalid itinerary ID" });
     const itin = getItinerary(id);
     if (!itin) return res.status(404).json({ error: "Itinerary not found" });
     res.json(itin);
@@ -373,9 +383,17 @@ app.get("/api/troops/:troopId/members", requireAuth, requireTroopMember(), (req,
 
 app.put("/api/troops/:troopId/members/:userId/approve", requireAuth, requireTroopAdmin, (req, res) => {
   try {
-    approveTroopMember(parseId(req.params.troopId), parseId(req.params.userId));
-    const user = findUserById(parseId(req.params.userId));
-    const troop = getTroop(parseId(req.params.troopId));
+    const troopId = parseId(req.params.troopId);
+    const userId = parseId(req.params.userId);
+    approveTroopMember(troopId, userId);
+    // Auto-add to all active adventures in this troop
+    const adventures = getAdventures(troopId).filter(a => a.status === "active");
+    for (const adv of adventures) {
+      const existing = getAdventureMember(adv.id, userId);
+      if (!existing) addAdventureMember(adv.id, userId, "member");
+    }
+    const user = findUserById(userId);
+    const troop = getTroop(troopId);
     if (user?.email) {
       sendMemberApprovedEmail(user.email, user.name, troop.name)
         .catch(e => console.error("Approval email failed:", e));
@@ -494,9 +512,11 @@ app.get("/api/adventures/:adventureId", requireAuth, requireAdventureMember, (re
 app.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req, res) => {
   try {
     const adventureId = parseId(req.params.adventureId);
-    const { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status, itinerary_id } = req.body;
+    const { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status, itinerary_id, adventure_type } = req.body;
+    const validTypes = ["philmont", "northern_tier", "sea_base", "summit"];
+    const safeType = adventure_type && validTypes.includes(adventure_type) ? adventure_type : undefined;
     const oldAdv = getAdventure(adventureId);
-    updateAdventure(adventureId, { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status, itinerary_id });
+    updateAdventure(adventureId, { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status, itinerary_id, adventure_type: safeType });
 
     // Send date change emails if any date changed
     const dateFields = ["depart_date", "arrive_date", "return_date", "home_date"];
@@ -1039,7 +1059,7 @@ app.post("/api/adventures/:adventureId/invitations", requireAuth, requireAdventu
     const troop = getTroop(adv.troop_id);
     const token = crypto.randomUUID();
     createInvitation({ troop_id: adv.troop_id, adventure_id: adventureId, email: email.trim(), invited_by: req.user.id, token });
-    const inviteUrl = `${process.env.APP_URL || "https://traillog.gracezero.ai"}/invite/${token}`;
+    const inviteUrl = `${process.env.APP_URL || "https://traillog.gracezero.ai"}/api/invitations/${token}`;
     sendInvitationEmail(email.trim(), req.user.name, troop.name, adv.name, inviteUrl)
       .catch(e => console.error("Invitation email failed:", e));
     res.status(201).json({ ok: true, token });
@@ -1063,9 +1083,9 @@ app.get("/api/invitations/:token", (req, res) => {
       processInvitation(req.user, invitation);
       return res.redirect("/");
     }
-    // Store token in session, redirect to OAuth
+    // Store token in session, redirect to login page (supports Google + email/password)
     req.session.pendingInviteToken = req.params.token;
-    res.redirect("/auth/google");
+    res.redirect("/?invite=pending");
   } catch (e) { res.redirect("/?error=invite-error"); }
 });
 
@@ -1103,23 +1123,35 @@ app.put("/api/adventures/:adventureId/members/:userId/participation", requireAut
   } catch (e) { safeError(res, e); }
 });
 
-// Link adult to scout (admin override — any adult, any scout)
+// Link adult to scouts (admin override — up to 3 scouts, registered or manual)
+// Convention: positive = user_id (registered scout), negative = -adventure_members.id (manual scout)
 app.put("/api/adventures/:adventureId/members/:userId/link", requireAuth, requireAdventureAdmin, (req, res) => {
   try {
     const adventureId = parseId(req.params.adventureId);
     const userId = parseId(req.params.userId);
-    const { linked_to } = req.body;
+    const { linked_scouts } = req.body;
     // Validate: member being linked must be an adult
     const memberUser = findUserById(userId);
     if (memberUser?.user_type !== "adult") return res.status(400).json({ error: "Only adults can be linked to scouts" });
-    // Validate: target must be a scout in this adventure (or null to unlink)
-    if (linked_to) {
-      const targetMember = getAdventureMember(adventureId, linked_to);
-      if (!targetMember) return res.status(400).json({ error: "Target scout not in this adventure" });
-      const targetUser = findUserById(linked_to);
-      if (targetUser?.user_type !== "scout") return res.status(400).json({ error: "Can only link to scouts" });
+    // Accept array of scout IDs (max 3), or empty array to unlink all
+    const scouts = Array.isArray(linked_scouts) ? linked_scouts.slice(0, 3) : [];
+    // Validate each target
+    for (const scoutId of scouts) {
+      if (typeof scoutId !== "number" || scoutId === 0) return res.status(400).json({ error: "Invalid scout ID" });
+      if (scoutId > 0) {
+        // Registered scout: validate user_id is a scout in this adventure
+        const targetMember = getAdventureMember(adventureId, scoutId);
+        if (!targetMember) return res.status(400).json({ error: "Target scout not in this adventure" });
+        const targetUser = findUserById(scoutId);
+        if (targetUser?.user_type !== "scout") return res.status(400).json({ error: "Can only link to scouts" });
+      } else {
+        // Manual scout: validate adventure_members row exists and is manual
+        const memberId = Math.abs(scoutId);
+        const row = db.prepare("SELECT * FROM adventure_members WHERE id = ? AND adventure_id = ? AND is_manual = 1").get(memberId, adventureId);
+        if (!row) return res.status(400).json({ error: "Manual scout not found in this adventure" });
+      }
     }
-    linkMember(adventureId, userId, linked_to || null);
+    linkMember(adventureId, userId, scouts);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });

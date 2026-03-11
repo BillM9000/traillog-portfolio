@@ -3,7 +3,7 @@ import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import { fontBody, fontDisplay, memberTypeBadge, participationBadge, toolbarBtn } from "../utils/theme";
-import { US_STATES } from "../utils/constants";
+import { US_STATES, ADVENTURE_TYPES } from "../utils/constants";
 import Logo from "./Logo";
 import ConfirmModal from "./ConfirmModal";
 
@@ -32,6 +32,8 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   const [returnDate, setReturnDate] = useState(adventure?.return_date || "");
   const [homeDate, setHomeDate] = useState(adventure?.home_date || "");
   const [advStatus, setAdvStatus] = useState(adventure?.status || "active");
+  const [advType, setAdvType] = useState(adventure?.adventure_type || "philmont");
+  const [advItinerary, setAdvItinerary] = useState(adventure?.itinerary_id || "");
   const [saving, setSaving] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [invitations, setInvitations] = useState([]);
@@ -43,7 +45,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   // New adventure creation
   const [showCreateAdv, setShowCreateAdv] = useState(false);
   const [itineraries, setItineraries] = useState([]);
-  const [newAdv, setNewAdv] = useState({ name: "", depart_date: "", arrive_date: "", return_date: "", home_date: "", itinerary_id: "" });
+  const [newAdv, setNewAdv] = useState({ name: "", depart_date: "", arrive_date: "", return_date: "", home_date: "", itinerary_id: "", adventure_type: "philmont" });
   const [creatingAdv, setCreatingAdv] = useState(false);
 
   // Link requests
@@ -70,11 +72,14 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
     setSaving(false);
   };
 
+  const typeConfig = ADVENTURE_TYPES.find(t => t.id === advType) || ADVENTURE_TYPES[0];
+  const dateLabels = typeConfig.dateLabels;
+
   const saveAdventure = async () => {
     // Validate date sequence: depart ≤ arrive ≤ return ≤ home
     const dates = [departDate, arriveDate, returnDate, homeDate].filter(Boolean);
     if (dates.length >= 2) {
-      const labels = ["Depart Home", "Arrive Philmont", "Depart Philmont", "Return Home"];
+      const labels = [dateLabels.depart, dateLabels.arrive, dateLabels.return, dateLabels.home];
       const vals = [departDate, arriveDate, returnDate, homeDate];
       for (let i = 0; i < vals.length - 1; i++) {
         if (vals[i] && vals[i + 1] && vals[i] > vals[i + 1]) {
@@ -88,7 +93,8 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
       await api.updateAdventure(adventure.id, {
         name: normalize(advName), description: normalize(advDesc),
         depart_date: departDate || null, arrive_date: arriveDate || null,
-        return_date: returnDate || null, home_date: homeDate || null, status: advStatus,
+        return_date: returnDate || null, home_date: homeDate || null,
+        status: advStatus, adventure_type: advType, itinerary_id: advItinerary || null,
       });
       onRefresh(); addToast("Adventure saved", "success");
     } catch (e) { addToast(e.message, "error"); }
@@ -129,8 +135,14 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
     catch (e) { addToast(e.message, "error"); }
   };
 
-  const handleLink = async (userId, linkedTo) => {
-    try { await api.linkMember(adventure.id, userId, linkedTo || null); onRefresh(); }
+  const handleAddScoutLink = async (userId, currentScouts, newScoutId) => {
+    const updated = [...(currentScouts || []), newScoutId].slice(0, 3);
+    try { await api.linkMember(adventure.id, userId, updated); onRefresh(); }
+    catch (e) { addToast(e.message, "error"); }
+  };
+  const handleRemoveScoutLink = async (userId, currentScouts, removeId) => {
+    const updated = (currentScouts || []).filter(id => id !== removeId);
+    try { await api.linkMember(adventure.id, userId, updated); onRefresh(); }
     catch (e) { addToast(e.message, "error"); }
   };
 
@@ -179,10 +191,11 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
     } catch (e) { addToast(e.message, "error"); }
   };
 
-  const openCreateAdventure = async () => {
-    if (itineraries.length === 0) {
-      try { setItineraries(await api.getItineraries()); } catch {}
-    }
+  useEffect(() => {
+    api.getItineraries().then(setItineraries).catch(() => {});
+  }, []);
+
+  const openCreateAdventure = () => {
     setShowCreateAdv(true);
   };
 
@@ -214,7 +227,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
 
   const advMemberIds = new Set((adventureMembers || []).filter(m => !m.is_manual).map(m => m.user_id));
   const availableMembers = (troopMembers || []).filter(m => m.status === "approved" && !advMemberIds.has(m.user_id));
-  const allScouts = (adventureMembers || []).filter(m => !m.is_manual && m.user_type === "scout");
+  const allScouts = (adventureMembers || []).filter(m => m.is_manual || m.user_type === "scout");
 
   const inputStyle = { width: "100%", padding: "9px 12px", borderRadius: 7, border: `1.5px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 12, fontFamily: fontBody, outline: "none", marginBottom: 8, boxSizing: "border-box" };
   const labelStyle = { fontSize: 10, fontWeight: 700, color: theme.textDim, textTransform: "uppercase", marginBottom: 4, display: "block" };
@@ -248,12 +261,44 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
               <label style={labelStyle}>Description</label>
               <input value={advDesc} onChange={e => setAdvDesc(e.target.value)} style={inputStyle} placeholder="Optional description" />
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-                <div><label style={labelStyle}>Depart Home</label><input value={departDate} onChange={e => setDepartDate(e.target.value)} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                <div><label style={labelStyle}>Arrive Philmont</label><input value={arriveDate} onChange={e => setArriveDate(e.target.value)} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                <div><label style={labelStyle}>Depart Philmont</label><input value={returnDate} onChange={e => setReturnDate(e.target.value)} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                <div><label style={labelStyle}>Return Home</label><input value={homeDate} onChange={e => setHomeDate(e.target.value)} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+              <label style={labelStyle}>Adventure Type</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 10 }}>
+                {ADVENTURE_TYPES.map(at => (
+                  <button key={at.id} type="button" onClick={() => at.enabled && setAdvType(at.id)} style={{
+                    padding: "8px 10px", borderRadius: 7, cursor: at.enabled ? "pointer" : "default",
+                    border: advType === at.id ? `2px solid ${theme.accent}` : `1.5px solid ${theme.borderLight}`,
+                    background: advType === at.id ? theme.accentBg : (at.enabled ? theme.bgAlt : theme.bg),
+                    opacity: at.enabled ? 1 : 0.45, textAlign: "left", fontFamily: fontBody,
+                  }}>
+                    <div style={{ fontSize: 16 }}>{at.icon}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: advType === at.id ? theme.accent : theme.heading }}>{at.name}</div>
+                    <div style={{ fontSize: 9, color: theme.textDim }}>{at.enabled ? at.location : "Coming Soon"}</div>
+                  </button>
+                ))}
               </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+                <div><label style={labelStyle}>{dateLabels.depart}</label><input value={departDate} onChange={e => setDepartDate(e.target.value)} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                <div><label style={labelStyle}>{dateLabels.arrive}</label><input value={arriveDate} onChange={e => setArriveDate(e.target.value)} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                <div><label style={labelStyle}>{dateLabels.return}</label><input value={returnDate} onChange={e => setReturnDate(e.target.value)} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                <div><label style={labelStyle}>{dateLabels.home}</label><input value={homeDate} onChange={e => setHomeDate(e.target.value)} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+              </div>
+
+              <label style={labelStyle}>Itinerary</label>
+              <select value={advItinerary} onChange={e => setAdvItinerary(e.target.value)} style={{ ...inputStyle, color: advItinerary ? theme.text : theme.textDim }}>
+                <option value="">Select itinerary...</option>
+                {[12, 9, 7].map(days => {
+                  const group = itineraries.filter(it => it.days === days).sort((a, b) => {
+                    const na = parseInt(a.id.split("-")[1]) || 0, nb = parseInt(b.id.split("-")[1]) || 0;
+                    return na - nb;
+                  });
+                  return group.length > 0 ? (
+                    <optgroup key={days} label={`${days}-Day Treks`}>
+                      {group.map(it => <option key={it.id} value={it.id}>{it.name} — {it.miles} mi, {it.rating}</option>)}
+                    </optgroup>
+                  ) : null;
+                })}
+              </select>
 
               <label style={labelStyle}>Status</label>
               <select value={advStatus} onChange={e => setAdvStatus(e.target.value)} style={{ ...inputStyle, color: theme.text }}>
@@ -271,15 +316,33 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                 <div style={{ fontSize: 10, fontWeight: 700, color: theme.accent, textTransform: "uppercase", marginBottom: 8 }}>New Adventure</div>
                 {!showCreateAdv ? (
                   <button onClick={openCreateAdventure} style={{ width: "100%", padding: "10px 0", borderRadius: 7, border: `1.5px dashed ${theme.borderAccent}`, background: "transparent", color: theme.accent, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>+ Create Another Adventure</button>
-                ) : (
+                ) : (() => {
+                  const newTypeConfig = ADVENTURE_TYPES.find(t => t.id === newAdv.adventure_type) || ADVENTURE_TYPES[0];
+                  const newDateLabels = newTypeConfig.dateLabels;
+                  return (
                   <>
-                    <label style={labelStyle}>Adventure Name</label>
-                    <input value={newAdv.name} onChange={e => setNewAdv({ ...newAdv, name: e.target.value })} placeholder="e.g. Philmont 2027" style={inputStyle} />
+                    <label style={labelStyle}>Adventure Type</label>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
-                      <div><label style={labelStyle}>Depart Home</label><input value={newAdv.depart_date} onChange={e => setNewAdv({ ...newAdv, depart_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                      <div><label style={labelStyle}>Arrive Philmont</label><input value={newAdv.arrive_date} onChange={e => setNewAdv({ ...newAdv, arrive_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                      <div><label style={labelStyle}>Depart Philmont</label><input value={newAdv.return_date} onChange={e => setNewAdv({ ...newAdv, return_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                      <div><label style={labelStyle}>Return Home</label><input value={newAdv.home_date} onChange={e => setNewAdv({ ...newAdv, home_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                      {ADVENTURE_TYPES.map(at => (
+                        <button key={at.id} type="button" onClick={() => at.enabled && setNewAdv({ ...newAdv, adventure_type: at.id })} style={{
+                          padding: "6px 8px", borderRadius: 6, cursor: at.enabled ? "pointer" : "default",
+                          border: newAdv.adventure_type === at.id ? `2px solid ${theme.accent}` : `1.5px solid ${theme.borderLight}`,
+                          background: newAdv.adventure_type === at.id ? theme.accentBg : (at.enabled ? theme.bgAlt : theme.bg),
+                          opacity: at.enabled ? 1 : 0.45, textAlign: "left", fontFamily: fontBody,
+                        }}>
+                          <div style={{ fontSize: 14 }}>{at.icon}</div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: newAdv.adventure_type === at.id ? theme.accent : theme.heading }}>{at.name}</div>
+                          <div style={{ fontSize: 8, color: theme.textDim }}>{at.enabled ? at.location : "Coming Soon"}</div>
+                        </button>
+                      ))}
+                    </div>
+                    <label style={labelStyle}>Adventure Name</label>
+                    <input value={newAdv.name} onChange={e => setNewAdv({ ...newAdv, name: e.target.value })} placeholder={`e.g. ${newTypeConfig.name} 2027`} style={inputStyle} />
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
+                      <div><label style={labelStyle}>{newDateLabels.depart}</label><input value={newAdv.depart_date} onChange={e => setNewAdv({ ...newAdv, depart_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                      <div><label style={labelStyle}>{newDateLabels.arrive}</label><input value={newAdv.arrive_date} onChange={e => setNewAdv({ ...newAdv, arrive_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                      <div><label style={labelStyle}>{newDateLabels.return}</label><input value={newAdv.return_date} onChange={e => setNewAdv({ ...newAdv, return_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                      <div><label style={labelStyle}>{newDateLabels.home}</label><input value={newAdv.home_date} onChange={e => setNewAdv({ ...newAdv, home_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
                     </div>
                     <label style={labelStyle}>Itinerary</label>
                     <select value={newAdv.itinerary_id} onChange={e => setNewAdv({ ...newAdv, itinerary_id: e.target.value })} style={{ ...inputStyle, color: newAdv.itinerary_id ? theme.text : theme.textDim }}>
@@ -293,7 +356,8 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                       <button onClick={createNewAdventure} disabled={creatingAdv} style={{ flex: 1, padding: "10px 0", borderRadius: 7, border: "none", background: theme.accent, color: "#fff", fontSize: 12, fontWeight: 600, cursor: creatingAdv ? "wait" : "pointer", fontFamily: fontBody }}>{creatingAdv ? "Creating..." : "Create Adventure"}</button>
                     </div>
                   </>
-                )}
+                  );
+                })()}
               </div>
 
               <div style={{ marginTop: 20, padding: 12, borderRadius: 8, border: `1.5px solid ${theme.danger}40`, background: theme.name === "dark" ? "#2a1a1a" : "#fdf0f0" }}>
@@ -329,7 +393,10 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                       <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{m.name}</span>
                         {m.is_manual ? (
-                          <span style={{ ...memberTypeBadge(theme, "scout"), background: "#888", fontSize: 8 }}>MANUAL</span>
+                          <>
+                            <span style={memberTypeBadge(theme, "scout")}>SCOUT</span>
+                            <span style={{ fontSize: 7, fontWeight: 600, color: theme.textDim, background: theme.bgAlt, padding: "1px 4px", borderRadius: 3, border: `1px solid ${theme.borderLight}` }}>manual</span>
+                          </>
                         ) : (
                           <>
                             <span style={memberTypeBadge(theme, m.user_type)}>{(m.user_type || "?").toUpperCase()}</span>
@@ -350,13 +417,34 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                         <button onClick={() => toggleRole(m.user_id, m.role)} style={{ fontSize: 9, color: theme.accent, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontFamily: fontBody }}>{m.role === "admin" ? "Demote" : "Make Admin"}</button>
                         <button onClick={() => toggleUserType(m.user_id, m.user_type)} style={{ fontSize: 9, color: m.user_type === "adult" ? "#5080b0" : "#508050", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontFamily: fontBody }}>{m.user_type === "adult" ? "Change to Scout" : "Change to Adult"}</button>
                         <button onClick={() => toggleParticipation(m.user_id, m.participation)} style={{ fontSize: 9, color: "#8a6d3b", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontFamily: fontBody }}>{m.participation === "trekking" ? "Set Support" : "Set Trekking"}</button>
-                        {m.user_type === "adult" && (
-                          <select value={m.linked_to || ""} onChange={e => handleLink(m.user_id, parseInt(e.target.value) || null)} style={{ fontSize: 9, padding: "1px 4px", background: theme.bgInput, border: `1px solid ${theme.borderLight}`, borderRadius: 3, color: theme.text, fontFamily: fontBody }}>
-                            <option value="">Link to scout...</option>
-                            {allScouts.map(s => <option key={s.user_id} value={s.user_id}>{s.name}</option>)}
-                          </select>
-                        )}
-                        {m.linked_to && (() => { const linked = (adventureMembers || []).find(x => x.user_id === m.linked_to); return linked ? <span style={{ fontSize: 9, color: theme.accent }}>Linked: {linked.name}</span> : null; })()}
+                        {m.user_type === "adult" && (() => {
+                          const scouts = m.linked_scouts || [];
+                          const linkedScoutIds = new Set(scouts);
+                          const availScouts = allScouts.filter(s => {
+                            const sid = s.is_manual ? -s.id : s.user_id;
+                            return !linkedScoutIds.has(sid);
+                          });
+                          return (
+                            <div style={{ display: "flex", gap: 3, flexWrap: "wrap", alignItems: "center" }}>
+                              {scouts.map(sid => {
+                                const linked = sid > 0 ? (adventureMembers || []).find(x => x.user_id === sid) : (adventureMembers || []).find(x => x.id === Math.abs(sid));
+                                if (!linked) return null;
+                                return (
+                                  <span key={sid} style={{ fontSize: 9, color: theme.accent, background: theme.accentBg, padding: "1px 6px", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 3, border: `1px solid ${theme.borderAccent}` }}>
+                                    {linked.name}
+                                    <span onClick={() => handleRemoveScoutLink(m.user_id, scouts, sid)} style={{ cursor: "pointer", fontWeight: 700, fontSize: 10, color: theme.danger, lineHeight: 1 }}>×</span>
+                                  </span>
+                                );
+                              })}
+                              {scouts.length < 3 && availScouts.length > 0 && (
+                                <select value="" onChange={e => { const v = parseInt(e.target.value); if (v) handleAddScoutLink(m.user_id, scouts, v); }} style={{ fontSize: 9, padding: "1px 4px", background: theme.bgInput, border: `1px solid ${theme.borderLight}`, borderRadius: 3, color: theme.text, fontFamily: fontBody }}>
+                                  <option value="">{scouts.length === 0 ? "Link to scout..." : "+ Add scout"}</option>
+                                  {availScouts.map(s => <option key={s.is_manual ? `m${s.id}` : s.user_id} value={s.is_manual ? -s.id : s.user_id}>{s.name}</option>)}
+                                </select>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>

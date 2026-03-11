@@ -1,0 +1,4771 @@
+[
+  {
+    "id": "12-1",
+    "name": "Itinerary 12-1",
+    "days": 12,
+    "miles": 54,
+    "rating": "Challenging",
+    "highlights": [
+      "Shaefers Peak 9,413 ft"
+    ],
+    "description": "Introduce yourselves to much of Philmont's South Country in this twelve-day program-focused expedition. You'll have plenty of opportunities to take advantage of a mix of high adventure and living history programs while taking in all that the South Country has to offer. Enjoy beautiful views of various meadows and peaks scattered along your route before learning about the Jicarilla Apache people who dwelt in this area. Be a part of preserving this land for future generations through your forest fuel reduction conservation project at Beaubien. Challenge yourselves on the rocks of Miners Park and take in the scenic views of the Tooth of Time from the Lover's Leap region. If you crew is up for it, hike up to the top of this iconic rock formation before descending into Base Camp!",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Olympia",
+        "miles": 2.6,
+        "gain": 520,
+        "loss": 300,
+        "programs": "Ranger Training; Trail Camp, Passthrough Rayado Rancho"
+      },
+      {
+        "day": 3,
+        "camp": "ABREU",
+        "miles": 3.3,
+        "gain": 600,
+        "loss": 110,
+        "programs": "Abreu Family Homestead Program; Cantina; Abreu Family"
+      },
+      {
+        "day": 4,
+        "camp": "Fish Camp",
+        "miles": 7.9,
+        "gain": 6970,
+        "loss": 5480,
+        "programs": "Trail Camp - No services"
+      },
+      {
+        "day": 5,
+        "camp": "Buck Creek",
+        "miles": 7.5,
+        "gain": 3840,
+        "loss": 3380,
+        "programs": "Passthrough Jicarilla Apache Ethnology Program @"
+      },
+      {
+        "day": 6,
+        "camp": "BEAUBIEN",
+        "miles": 3.3,
+        "gain": 1740,
+        "loss": 1570,
+        "programs": "Horse Ride; High Mountain Ranching Program;"
+      },
+      {
+        "day": 7,
+        "camp": "BEAUBIEN",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Forest Fuels Reduction Project; High Mountain Ranching"
+      },
+      {
+        "day": 8,
+        "camp": "MINERS PARK",
+        "miles": 8.6,
+        "gain": 4320,
+        "loss": 5640,
+        "programs": "Passthrough Black Mountain Encampment Program;"
+      },
+      {
+        "day": 9,
+        "camp": "Bear Caves",
+        "miles": 3.1,
+        "gain": 1780,
+        "loss": 1380,
+        "programs": "Passthrough Continental Tie & Lumber Company Program"
+      },
+      {
+        "day": 10,
+        "camp": "URRACA",
+        "miles": 4.6,
+        "gain": 1780,
+        "loss": 2210,
+        "programs": "Challenge Course Program; Campfire Show"
+      },
+      {
+        "day": 11,
+        "camp": "Stockade Ridge",
+        "miles": 4.7,
+        "gain": 1310,
+        "loss": 1750,
+        "programs": "High Ropes Course & Climbing Tower Program @ RMSC"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 7.7,
+        "gain": 2860,
+        "loss": 3720,
+        "programs": "Tooth of Time via Stockade Trail; Hike into Camping"
+      }
+    ],
+    "elevations": {
+      "min": 6729,
+      "max": 9343
+    },
+    "camps_info": "4 Staffed, 5 Trail, 1 Layover, 1 Dry Camp",
+    "conservation": "Beaubien"
+  },
+  {
+    "id": "12-2",
+    "name": "Itinerary 12-2",
+    "days": 12,
+    "miles": 51,
+    "rating": "Challenging",
+    "highlights": [
+      "Hiking Highlights\nMount Phillips 11,736 ft",
+      "Comanche Peak 11,303 ft",
+      "Lookout Peak 9,927 ft",
+      "Big Red 11,020 ft"
+    ],
+    "description": "This elevation heavy South Country itinerary is a classic Philmont trek. Visit the Demonstration Forest to learn about sustainable forestry practices before heading to Miners Park. Enjoy a timeless chuckwagon dinner at Beaubien and learn about life in the area at both Crooked Creek and Abreu. Challenge your crew to summit some of the iconic peaks South Country offers including Trail Peak. Experience life on the Santa Fe Trail at Rayado and the Kit Carson Museum. If your crew is prepared for a physical challenge, this itinerary provides excellent opportunities to see all that Philmont has to offer.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Hunting Lodge",
+        "miles": 3.6,
+        "gain": 1200,
+        "loss": 490,
+        "programs": "Ranger Training; Trail Camp (no services) Camping HQ"
+      },
+      {
+        "day": 3,
+        "camp": "Shaefers Pass",
+        "miles": 4.9,
+        "gain": 2960,
+        "loss": 1970,
+        "programs": "Forest Stewardship Program @ Demonstration Forest;"
+      },
+      {
+        "day": 4,
+        "camp": "MINERS PARK",
+        "miles": 3.7,
+        "gain": 1490,
+        "loss": 2250,
+        "programs": "Shaefers Peak (optional); Rock Climbing Program Miners Park"
+      },
+      {
+        "day": 5,
+        "camp": "Bear Caves",
+        "miles": 3.1,
+        "gain": 1780,
+        "loss": 1380,
+        "programs": "Passthrough Continental Tie & Lumber Company Program"
+      },
+      {
+        "day": 6,
+        "camp": "BEAUBIEN",
+        "miles": 8.5,
+        "gain": 4110,
+        "loss": 3190,
+        "programs": "Trail Peak (optional); High Mountain Ranching Program;"
+      },
+      {
+        "day": 7,
+        "camp": "BEAUBIEN",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Horse Ride; High Mountain Ranching Program (continued);"
+      },
+      {
+        "day": 8,
+        "camp": "CROOKED CREEK",
+        "miles": 4.0,
+        "gain": 1800,
+        "loss": 1750,
+        "programs": "Passthrough Commissary & Trading Post @ Phillips"
+      },
+      {
+        "day": 9,
+        "camp": "Agua Fria",
+        "miles": 7.3,
+        "gain": 2960,
+        "loss": 3550,
+        "programs": "Passthrough Jicarilla Apache Ethnology Program @"
+      },
+      {
+        "day": 10,
+        "camp": "ABREU",
+        "miles": 9.2,
+        "gain": 6220,
+        "loss": 7820,
+        "programs": "Passthrough @ Fish Camp (No Services); Abreu Family"
+      },
+      {
+        "day": 11,
+        "camp": "Olympia",
+        "miles": 3.3,
+        "gain": 110,
+        "loss": 600,
+        "programs": "Trail Camp"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 2.6,
+        "gain": 300,
+        "loss": 520,
+        "programs": "Hike to Rayado Trailhead; Rayado Rancho Program; Kit"
+      }
+    ],
+    "elevations": {
+      "min": 6729,
+      "max": 9393
+    },
+    "camps_info": "4 Staffed, 5 Trail, 1 Layover, 1 Dry Camp",
+    "conservation": "North Fork Urraca"
+  },
+  {
+    "id": "12-3",
+    "name": "Itinerary 12-3",
+    "days": 12,
+    "miles": 56,
+    "rating": "Challenging",
+    "highlights": [
+      "Hiking Highlights\nBaldy Mountain 12,441 ft",
+      "Hart Peak 7,975 ft"
+    ],
+    "description": "This South Country itinerary offers several scenic peaks along with the opportunity to learn about early settlers of northern New Mexico. Take time to enjoy the history and views of the area as you hike along the Rayado Creek deep into Philmont's western mountains. You'll be following in the footsteps of fur trappers, pioneer homesteaders, and cowboys with plenty of opportunities to learn about their lives while taking part in unique living history programs. Enjoy the scenic vistas along the Beaubien meadow before taking in the views from Fowler Pass and Stonewall Pass and wrapping up your adventure hiking into Base Camp from the Lover's Leap area.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Olympia",
+        "miles": 2.6,
+        "gain": 520,
+        "loss": 300,
+        "programs": "Ranger Training; Passthrough Rayado Rancho Program;"
+      },
+      {
+        "day": 3,
+        "camp": "ABREU",
+        "miles": 3.3,
+        "gain": 600,
+        "loss": 110,
+        "programs": "Abreu Family Homestead Program; Abreu Family Dinner"
+      },
+      {
+        "day": 4,
+        "camp": "Lookout Meadow",
+        "miles": 4.8,
+        "gain": 3490,
+        "loss": 1260,
+        "programs": "Trail Camp"
+      },
+      {
+        "day": 5,
+        "camp": "APACHE SPRINGS",
+        "miles": 6.6,
+        "gain": 3790,
+        "loss": 3820,
+        "programs": "Lookout Peak (optional); Passthrough @ Fish Camp (no"
+      },
+      {
+        "day": 6,
+        "camp": "Wild Horse",
+        "miles": 7.5,
+        "gain": 3360,
+        "loss": 2350,
+        "programs": "Passthrough Pioneer Homestead Program @ Crooked"
+      },
+      {
+        "day": 7,
+        "camp": "CLEAR CREEK",
+        "miles": 2.8,
+        "gain": 1210,
+        "loss": 1310,
+        "programs": "Taos Trappers Program; Mount Phillips Hike Prep"
+      },
+      {
+        "day": 8,
+        "camp": "Divide",
+        "miles": 8.4,
+        "gain": 3800,
+        "loss": 3550,
+        "programs": "Mount Phillips; Comanche Peak; Dry Camp (Water @ Red"
+      },
+      {
+        "day": 9,
+        "camp": "BLACK MOUNTAIN",
+        "miles": 4.3,
+        "gain": 1930,
+        "loss": 3400,
+        "programs": "Big Red; Black Mountain OR Bonito Peak (optional); Black"
+      },
+      {
+        "day": 10,
+        "camp": "MINERS PARK",
+        "miles": 5.2,
+        "gain": 2450,
+        "loss": 3540,
+        "programs": "Trail Construction @ North Fork Urraca; Rock Climbing"
+      },
+      {
+        "day": 11,
+        "camp": "Magpie",
+        "miles": 5.1,
+        "gain": 1590,
+        "loss": 2210,
+        "programs": "Lovers Leap Overlook; Trail Camp"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 4.4,
+        "gain": 470,
+        "loss": 1170,
+        "programs": "High Ropes/Climbing Wall Program @ RMSC COPE"
+      }
+    ],
+    "elevations": {
+      "min": 6729,
+      "max": 10580
+    },
+    "camps_info": "5 Staffed, 5 Trail, 2 Dry Camps",
+    "conservation": "North Fork Urraca"
+  },
+  {
+    "id": "12-4",
+    "name": "Itinerary 12-4",
+    "days": 12,
+    "miles": 60,
+    "rating": "Challenging",
+    "highlights": [
+      "Hiking Highlights\nBaldy Mountain 12,441 ft"
+    ],
+    "description": "Enjoy unique challenges in the Philmont's North Country on this 12-day trek. Learn about the legacy and impact of the Cimarron & Northwestern Railroad in the North Ponil Canyon and join the nightly company meeting before learning the art of burro packing at Ponil.  If your crew is up for the challenge, climb Hart Peak and take in views of the surrounding canyons and peaks. Lace up your boots and prepare to hike Baldy Mountain and experience life in the Baldy region at the turn of the 20th century. Wrap up your trek and leave your mark with trail construction at the Sioux conservation site before heading back into Base Camp.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "House Canyon",
+        "miles": 2.3,
+        "gain": 1010,
+        "loss": 560,
+        "programs": "Ranger Training; T-Rex Track; Trail Camp Camping HQ"
+      },
+      {
+        "day": 3,
+        "camp": "Cottonwood",
+        "miles": 6.2,
+        "gain": 2720,
+        "loss": 2480,
+        "programs": "Passthrough Ancestral Puebloan Archaeology Program @"
+      },
+      {
+        "day": 4,
+        "camp": "METCALF STATION",
+        "miles": 3.3,
+        "gain": 1140,
+        "loss": 1340,
+        "programs": "Cimarron & Northwestern Railway Program, Campfire"
+      },
+      {
+        "day": 5,
+        "camp": "PONIL",
+        "miles": 5.9,
+        "gain": 1840,
+        "loss": 1930,
+        "programs": "Hart Peak OR Horse Ride; Philturn Five Points Camp"
+      },
+      {
+        "day": 6,
+        "camp": "HEAD OF DEAN",
+        "miles": 7.5,
+        "gain": 4540,
+        "loss": 2920,
+        "programs": "Pick Up Burro @ Ponil; Passthrough Continental Tie &"
+      },
+      {
+        "day": 7,
+        "camp": "Touch-Me-Not Creek",
+        "miles": 4.8,
+        "gain": 1960,
+        "loss": 1780,
+        "programs": "Drop Off Burro @ Miranda Burro Pens; Pass-through Bent,"
+      },
+      {
+        "day": 8,
+        "camp": "BALDY TOWN",
+        "miles": 3.6,
+        "gain": 2140,
+        "loss": 1200,
+        "programs": "Baldy Mining District Program; Baldy Hike Prep"
+      },
+      {
+        "day": 9,
+        "camp": "BALDY TOWN",
+        "miles": 10.3,
+        "gain": 5960,
+        "loss": 5960,
+        "programs": "Baldy Mountain Baldy Town"
+      },
+      {
+        "day": 10,
+        "camp": "Pueblano Ruins",
+        "miles": 5.5,
+        "gain": 2210,
+        "loss": 3660,
+        "programs": "Passthrough Claude Mining & Milling Company Program @"
+      },
+      {
+        "day": 11,
+        "camp": "Sioux",
+        "miles": 8.2,
+        "gain": 3160,
+        "loss": 4190,
+        "programs": "Passthrough Continental Tie & Lumber Company Program"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 2.2,
+        "gain": 990,
+        "loss": 1330,
+        "programs": "Trail Construction Project @ Sioux; Hike to Ponil Trailhead;"
+      }
+    ],
+    "elevations": {
+      "min": 7132,
+      "max": 9881
+    },
+    "camps_info": "4 Staffed, 5 Trail, 1 Layover",
+    "conservation": "Sioux"
+  },
+  {
+    "id": "12-5",
+    "name": "Itinerary 12-5",
+    "days": 12,
+    "miles": 57,
+    "rating": "Rugged",
+    "highlights": [],
+    "description": "This rugged itinerary provides a wealth of living history experiences with a little bit of high adventure program mixed in as well. Start your journey with the only confirmed T-Rex track in the world and Native American petroglyphs as you head deep into the North Ponil Canyon. Move forward in time and learn about life for railroaders, loggers, and cowboys as you traverse canyons and ridges making your way towards Baldy Mountain. Challenge your crew to summit Philmont's highest peak at 12,441 ft. Swing by the Bent, St. Vrain & Company fur trappers at Miranda before transitioning to the present day with some high adventure programs. Be sure to soak up the iconic views of Baldy as you wrap things up in Ute Park and learn about fire ecology and wildlife conservation.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "House Canyon",
+        "miles": 2.3,
+        "gain": 1010,
+        "loss": 560,
+        "programs": "Ranger Training; T-Rex Track; Trail Camp Camping HQ"
+      },
+      {
+        "day": 3,
+        "camp": "INDIAN WRITINGS",
+        "miles": 3.2,
+        "gain": 1120,
+        "loss": 1330,
+        "programs": "Ancestral Puebloan Archaeology Program"
+      },
+      {
+        "day": 4,
+        "camp": "Horse Canyon",
+        "miles": 7.4,
+        "gain": 2930,
+        "loss": 1790,
+        "programs": "Passthrough Cimarron & Northwestern Railway Program @"
+      },
+      {
+        "day": 5,
+        "camp": "Dean Skyline",
+        "miles": 6.9,
+        "gain": 3340,
+        "loss": 3050,
+        "programs": "Passthrough Philturn Five Points Camp Program & Cantina"
+      },
+      {
+        "day": 6,
+        "camp": "PUEBLANO",
+        "miles": 6.4,
+        "gain": 2950,
+        "loss": 3290,
+        "programs": "Continental Tie & Lumber Company Program; Campfire"
+      },
+      {
+        "day": 7,
+        "camp": "Placer",
+        "miles": 5.5,
+        "gain": 2920,
+        "loss": 1450,
+        "programs": "Trail Camp; Baldy Hike Prep"
+      },
+      {
+        "day": 8,
+        "camp": "Placer",
+        "miles": 8.7,
+        "gain": 5350,
+        "loss": 5350,
+        "programs": "Baldy Mountain; Passthrough Baldy Mining District"
+      },
+      {
+        "day": 9,
+        "camp": "HEAD OF DEAN",
+        "miles": 5.6,
+        "gain": 1950,
+        "loss": 2740,
+        "programs": "Passthrough Bent, St. Vrain & Company Fur Trading"
+      },
+      {
+        "day": 10,
+        "camp": "New Dean",
+        "miles": 5.1,
+        "gain": 1080,
+        "loss": 2070,
+        "programs": "Trail Camp"
+      },
+      {
+        "day": 11,
+        "camp": "Cimarron River",
+        "miles": 3.6,
+        "gain": 1260,
+        "loss": 1740,
+        "programs": "Black Jack's Hideout (optional); Trail Camp"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 2.2,
+        "gain": 640,
+        "loss": 580,
+        "programs": "Reforestation Project @ Cimarroncita; Passthrough Fire"
+      }
+    ],
+    "elevations": {
+      "min": 6968,
+      "max": 9550
+    },
+    "camps_info": "3 Staffed, 6 Trail, 1 Layover, 1 Dry Camp",
+    "conservation": "Cimarroncita"
+  },
+  {
+    "id": "12-6",
+    "name": "Itinerary 12-6",
+    "days": 12,
+    "miles": 65,
+    "rating": "Rugged",
+    "highlights": [
+      "Hiking Highlights\nBaldy Mountain 12,441 ft"
+    ],
+    "description": "Enjoy Philmont's North Country along with the scenic Valle Vidal in this program focused itinerary.  Experience a delicious chuckwagon dinner and a fun filled campfire show at the Philturn Five Points camp at Ponil before setting off into the neighboring Valle Vidal.  Use your land navigation and low-impact camping skills as you traverse the vast meadows of the Valle and learn about astronomy and the Philmont's connection to astronauts before heading back into the heart of Philmont's North Country. Explore the rich history of the North Ponil Canyon from the first people in this land to the logging operations of the Cimarron & Northwestern Railway at Indian Writings and Metcalf Station. While the terrain of this itinerary is less strenuous than others, it does have relatively high mileage and requires crews to have strong land navigation and low-impact camping experience.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Trail Canyon",
+        "miles": 0.6,
+        "gain": 230,
+        "loss": 70,
+        "programs": "Ranger Training; Dry Camp (Water @ South Ponil Creek) Camping HQ"
+      },
+      {
+        "day": 3,
+        "camp": "Elkhorn",
+        "miles": 9.5,
+        "gain": 5200,
+        "loss": 3780,
+        "programs": "Trail Camp"
+      },
+      {
+        "day": 4,
+        "camp": "HEAD OF DEAN",
+        "miles": 3.1,
+        "gain": 1100,
+        "loss": 870,
+        "programs": "Challenge Course Program"
+      },
+      {
+        "day": 5,
+        "camp": "PONIL",
+        "miles": 7.5,
+        "gain": 2920,
+        "loss": 4540,
+        "programs": "Passthrough Continental Tie & Lumber Company Program"
+      },
+      {
+        "day": 6,
+        "camp": "Beatty Lakes",
+        "miles": 10.5,
+        "gain": 3320,
+        "loss": 2180,
+        "programs": "Passthrough Challenge Course Program @ Dan Beard;"
+      },
+      {
+        "day": 7,
+        "camp": "RING PLACE",
+        "miles": 3.2,
+        "gain": 290,
+        "loss": 440,
+        "programs": "Astronomy & Space Science Program Ring Place"
+      },
+      {
+        "day": 8,
+        "camp": "WHITEMAN VEGA",
+        "miles": 2.8,
+        "gain": 120,
+        "loss": 180,
+        "programs": "Stream Restoration Project @ McCrystal Creek; Mountain"
+      },
+      {
+        "day": 9,
+        "camp": "DAN BEARD",
+        "miles": 9.8,
+        "gain": 820,
+        "loss": 980,
+        "programs": "Challenge Course Program"
+      },
+      {
+        "day": 10,
+        "camp": "Cottonwood",
+        "miles": 9.3,
+        "gain": 2750,
+        "loss": 3250,
+        "programs": "Passthrough Cimarron & Northwestern Railway Program @"
+      },
+      {
+        "day": 11,
+        "camp": "House Canyon",
+        "miles": 6.2,
+        "gain": 2480,
+        "loss": 2720,
+        "programs": "Passthrough Ancestral Puebloan Archaeology Program @"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 2.3,
+        "gain": 560,
+        "loss": 1010,
+        "programs": "T-Rex Track; Hike to Six Mile Gate; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 7099,
+      "max": 8756
+    },
+    "camps_info": "5 Staffed, 5 Trail, 2 Dry Camps",
+    "conservation": "McCrystal Creek"
+  },
+  {
+    "id": "12-7",
+    "name": "Itinerary 12-7",
+    "days": 12,
+    "miles": 64,
+    "rating": "Rugged",
+    "highlights": [
+      "Hiking Highlights\nBaldy Mountain 12,441 ft"
+    ],
+    "description": "This 12-day itinerary begins by heading far north from the Ponil country into the breathtaking Valle Vidal unit of the Carson National Forest. There you will have the opportunity to visit historic homesteads, learn about astronomy & space science at Ring Place, and take part in mountain biking at Whiteman Vega. Head back south to Ponil to experience the Philturn Five Points Camp and enjoy a chuckwagon dinner and Cantina Show. As you head west along the South Ponil Canyon on your way to the bustling Baldy Mining District, be sure to check out the Continental Tie & Lumber Company at Pueblano and the gold mining program at French Henry. After an early rise to the 12,441 ft. summit of Baldy Mountain, you'll descend along Ute Creek to the scenic meadows surrounding Miranda and take part in the Bent, St. Vrain & Company fur trading program. This itinerary is ideal for crews wanting to challenge themselves while experiencing many unique programs.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Sioux",
+        "miles": 2.5,
+        "gain": 1340,
+        "loss": 1000,
+        "programs": "Ranger Training; Passthrough Philturn Five Points Program"
+      },
+      {
+        "day": 3,
+        "camp": "DAN BEARD",
+        "miles": 5.5,
+        "gain": 2560,
+        "loss": 2040,
+        "programs": "Challenge Course Program"
+      },
+      {
+        "day": 4,
+        "camp": "WHITEMAN VEGA",
+        "miles": 9.8,
+        "gain": 980,
+        "loss": 820,
+        "programs": "Mountain Biking Program Ring Place"
+      },
+      {
+        "day": 5,
+        "camp": "RING PLACE",
+        "miles": 2.8,
+        "gain": 180,
+        "loss": 120,
+        "programs": "Stream Restoration Project @ McCrystal Creek; Astronomy"
+      },
+      {
+        "day": 6,
+        "camp": "Beatty Lakes",
+        "miles": 3.2,
+        "gain": 440,
+        "loss": 290,
+        "programs": "Low Impact Dry Camp (Water @ South Windmill)"
+      },
+      {
+        "day": 7,
+        "camp": "PONIL",
+        "miles": 10.5,
+        "gain": 2180,
+        "loss": 3320,
+        "programs": "Philturn Five Points Camp Program & Cantina,"
+      },
+      {
+        "day": 8,
+        "camp": "Pueblano Ruins",
+        "miles": 6.8,
+        "gain": 3870,
+        "loss": 2570,
+        "programs": "Horse Ride; Passthrough Continental Tie & Lumber"
+      },
+      {
+        "day": 9,
+        "camp": "Copper Park",
+        "miles": 4.6,
+        "gain": 3550,
+        "loss": 1440,
+        "programs": "Passthrough Mining History Program @ French Henry;"
+      },
+      {
+        "day": 10,
+        "camp": "Copper Park",
+        "miles": 10.8,
+        "gain": 6330,
+        "loss": 6330,
+        "programs": "Baldy Mountain; Passthrough Baldy Mining District"
+      },
+      {
+        "day": 11,
+        "camp": "MIRANDA",
+        "miles": 5.4,
+        "gain": 1390,
+        "loss": 2980,
+        "programs": "Bent, St. Vrain & Company Fur Trading Program"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 1.7,
+        "gain": 70,
+        "loss": 630,
+        "programs": "Hike to Maxwell Trailhead; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 7132,
+      "max": 10534
+    },
+    "camps_info": "5 Staffed, 4 Trail, 1 Layover, 1 Dry Camp",
+    "conservation": "McCrystal Creek"
+  },
+  {
+    "id": "12-8",
+    "name": "Itinerary 12-8",
+    "days": 12,
+    "miles": 59,
+    "rating": "Rugged",
+    "highlights": [
+      "Hiking Highlights\nTooth of Time 9,003 ft",
+      "Shaefers Peak 9,413 ft"
+    ],
+    "description": "Focusing primarily on the Baldy Region, this 12-day itinerary gives your crew ample time to explore Philmont's North Country. Enjoy rock climbing at Dean Cow and learn about logging with the Continental Tie & Lumber Company at Pueblano. Prepare to summit Baldy and discover what mining was like in this iconic region in the early 1900s. Mileage is relatively low on this trek to allow your crew plenty of time to take advantage of a mix of high adventure and living history programs. There is quite a bit of elevation gain in this itinerary, so be sure your crew is physically prepared and ready for an early start on summit day!",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire Show"
+      },
+      {
+        "day": 2,
+        "camp": "Trail Canyon",
+        "miles": 0.6,
+        "gain": 230,
+        "loss": 70,
+        "programs": "Ranger Training; Dry Camp (Water @ South Ponil Creek) Camping HQ"
+      },
+      {
+        "day": 3,
+        "camp": "DEAN COW",
+        "miles": 4.5,
+        "gain": 2810,
+        "loss": 2650,
+        "programs": "Rock Climbing Program"
+      },
+      {
+        "day": 4,
+        "camp": "New Dean",
+        "miles": 3.9,
+        "gain": 1630,
+        "loss": 1120,
+        "programs": "Trail Camp"
+      },
+      {
+        "day": 5,
+        "camp": "Bluestem",
+        "miles": 7.6,
+        "gain": 2840,
+        "loss": 2700,
+        "programs": "Passthrough Philturn Five Camps Program & Cantina @"
+      },
+      {
+        "day": 6,
+        "camp": "PUEBLANO",
+        "miles": 7.5,
+        "gain": 3020,
+        "loss": 2850,
+        "programs": "Continental Tie & Lumber Company Program; Campfire"
+      },
+      {
+        "day": 7,
+        "camp": "Ewells Park",
+        "miles": 4.0,
+        "gain": 2300,
+        "loss": 970,
+        "programs": "Baldy Hike Prep; Trail Camp"
+      },
+      {
+        "day": 8,
+        "camp": "Ewells Park",
+        "miles": 12.1,
+        "gain": 6810,
+        "loss": 6810,
+        "programs": "Baldy Mountain; Passthrough Claude Mining & Milling"
+      },
+      {
+        "day": 9,
+        "camp": "MIRANDA",
+        "miles": 2.3,
+        "gain": 410,
+        "loss": 880,
+        "programs": "Bent, St. Vrain & Company Program @ Miranda"
+      },
+      {
+        "day": 10,
+        "camp": "HEAD OF DEAN",
+        "miles": 4.1,
+        "gain": 1480,
+        "loss": 1660,
+        "programs": "Challenge Course Program"
+      },
+      {
+        "day": 11,
+        "camp": "Mistletoe",
+        "miles": 5.8,
+        "gain": 1540,
+        "loss": 1870,
+        "programs": "Passthrough @ Santa Claus (no services); Dry Camp"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 6.1,
+        "gain": 2100,
+        "loss": 3180,
+        "programs": "Passthrough Fire Ecology & Wildlife Conservation Program"
+      }
+    ],
+    "elevations": {
+      "min": 7099,
+      "max": 9409
+    },
+    "camps_info": "4 Staffed, 5 Trail, 1 Layover, 3 Dry Camps",
+    "conservation": "Elkhorn"
+  },
+  {
+    "id": "12-9",
+    "name": "Itinerary 12-9",
+    "days": 12,
+    "miles": 59,
+    "rating": "Rugged",
+    "highlights": [
+      "Hiking Highlights\nMount Phillips 11,736 ft",
+      "Tooth of Time 9,003 ft",
+      "Bonito Peak 10,610 ft"
+    ],
+    "description": "This rugged itinerary winds North to South allowing you to experience the diverse environments and programs of the Philmont backcountry. Start your journey in the historic Ponil Canyon and try your hand at rock climbing. Make a quick visit into the 2018 Ute Park burn scar and hike your way up canyons and ridges to the base of Baldy Mountain. Along the way you will experience a variety of high adventure and living history programs. Head back across the burn scar over the Ute Park Pass to enjoy more rock-climbing program and Central Country views around Cimarroncito. Learn about sustainable forest stewardship in the Demonstration Forest before enjoying a delicious chuckwagon dinner at Clarks Fork. Your trek will culminate with an exciting summit of the famous Tooth of Time and a hike into base camp.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "DEAN COW",
+        "miles": 5.0,
+        "gain": 2970,
+        "loss": 2660,
+        "programs": "Ranger Training; Rock Climbing Program Camping HQ"
+      },
+      {
+        "day": 3,
+        "camp": "New Dean",
+        "miles": 3.9,
+        "gain": 1630,
+        "loss": 1120,
+        "programs": "Trail Camp"
+      },
+      {
+        "day": 4,
+        "camp": "Bluestem",
+        "miles": 7.6,
+        "gain": 2840,
+        "loss": 2700,
+        "programs": "Passthrough Philturn Five Points Camp Program & Cantina"
+      },
+      {
+        "day": 5,
+        "camp": "Elkhorn",
+        "miles": 3.5,
+        "gain": 1710,
+        "loss": 1090,
+        "programs": "Trail Camp"
+      },
+      {
+        "day": 6,
+        "camp": "HEAD OF DEAN",
+        "miles": 3.1,
+        "gain": 1100,
+        "loss": 870,
+        "programs": "Trail Construction Project @ Elkhorn; Challenge Course"
+      },
+      {
+        "day": 7,
+        "camp": "Minnette Meadows",
+        "miles": 12.6,
+        "gain": 4260,
+        "loss": 5150,
+        "programs": "Passthrough Fire Ecology & Wildlife Conservation Program"
+      },
+      {
+        "day": 8,
+        "camp": "CIMARRONCITO",
+        "miles": 5.7,
+        "gain": 2460,
+        "loss": 2160,
+        "programs": "Rock Climbing Program Ute Gulch"
+      },
+      {
+        "day": 9,
+        "camp": "CIMARRONCITO",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Rock Climbing Program (continued)"
+      },
+      {
+        "day": 10,
+        "camp": "CLARKS FORK",
+        "miles": 3.2,
+        "gain": 650,
+        "loss": 1280,
+        "programs": "Passthrough @ Hunting Lodge (no services); Forest"
+      },
+      {
+        "day": 11,
+        "camp": "Tooth Ridge",
+        "miles": 6.8,
+        "gain": 4420,
+        "loss": 3630,
+        "programs": "Shaefers Peak; Dry camp (Water @ Clarks Fork)"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 7.0,
+        "gain": 1980,
+        "loss": 3590,
+        "programs": "Tooth of Time; Hike Into Base; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 7260,
+      "max": 8756
+    },
+    "camps_info": "4 Staffed, 5 Trail, 1 Layover, 3 Dry Camps",
+    "conservation": "Elkhorn"
+  },
+  {
+    "id": "12-10",
+    "name": "Itinerary 12-10",
+    "days": 12,
+    "miles": 61,
+    "rating": "Rugged",
+    "highlights": [
+      "Hiking Highlights\nBaldy Mountain 12,441 ft",
+      "Wilson Mesa\nBaldy Skyline\nHart Peak 7,975 ft"
+    ],
+    "description": "Explore the numerous peaks of Philmont's South Country in this rugged itinerary. Lace up your hiking boots for your trek through time as you visit the high mountain ranchers, loggers, miners, and trappers that called this land home in the 19th and 20th centuries. Challenge your crew to summit some of the highest peaks at Philmont including Mount Phillips and take advantage of several opportunities to test your marksmanship. While mileage is relatively low on this itinerary, there are significant elevation gains and exposed burn areas which your crew will need to be physically and mentally prepared to overcome.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Old Abreu",
+        "miles": 3.1,
+        "gain": 900,
+        "loss": 420,
+        "programs": "Ranger Training; Passthrough Abreu Family Homestead"
+      },
+      {
+        "day": 3,
+        "camp": "Fish Camp",
+        "miles": 7.2,
+        "gain": 6520,
+        "loss": 5210,
+        "programs": "Trail Camp (no services)"
+      },
+      {
+        "day": 4,
+        "camp": "BEAUBIEN",
+        "miles": 5.7,
+        "gain": 3110,
+        "loss": 2470,
+        "programs": "Lookout Peak; High Mountain Ranching Program;"
+      },
+      {
+        "day": 5,
+        "camp": "Porcupine",
+        "miles": 2.7,
+        "gain": 1260,
+        "loss": 1410,
+        "programs": "Forest Fuels Reduction Project; Passthrough Commissary"
+      },
+      {
+        "day": 6,
+        "camp": "CLEAR CREEK",
+        "miles": 6.8,
+        "gain": 2960,
+        "loss": 1830,
+        "programs": "Passthrough Pioneer Homestead Program @ Crooked"
+      },
+      {
+        "day": 7,
+        "camp": "Comanche Peak",
+        "miles": 6.0,
+        "gain": 3210,
+        "loss": 2420,
+        "programs": "Mount Phillips; Comanche Peak; Dry Camp (Water @"
+      },
+      {
+        "day": 8,
+        "camp": "CYPHERS MINE",
+        "miles": 4.5,
+        "gain": 1960,
+        "loss": 3720,
+        "programs": "St. Louis & Cimarron Mining Company Program; Campfire"
+      },
+      {
+        "day": 9,
+        "camp": "SAWMILL",
+        "miles": 5.3,
+        "gain": 3090,
+        "loss": 3220,
+        "programs": "Rifle Shooting & Cartridge Reloading Program"
+      },
+      {
+        "day": 10,
+        "camp": "Devils Wash Basin",
+        "miles": 8.7,
+        "gain": 3470,
+        "loss": 4190,
+        "programs": "Passthrough Commissary & Trading Post @ Ute Gulch;"
+      },
+      {
+        "day": 11,
+        "camp": "HARLAN",
+        "miles": 6.1,
+        "gain": 1530,
+        "loss": 2490,
+        "programs": "Shotgun Shooting & Shotshell Reloading Program"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 4.1,
+        "gain": 710,
+        "loss": 1630,
+        "programs": "Hike to Turkey Creek Trailhead; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 7401,
+      "max": 11115
+    },
+    "camps_info": "5 Staffed, 5 Trail, 2 Dry Camps",
+    "conservation": "Beaubien"
+  },
+  {
+    "id": "12-11",
+    "name": "Itinerary 12-11",
+    "days": 12,
+    "miles": 57,
+    "rating": "Rugged",
+    "highlights": [
+      "Hiking Highlights\nMount Phillips 11,736 ft",
+      "Tooth of Time 9,003 ft",
+      "Big Red 11,020 ft",
+      "Shaefers Peak 9,413 ft"
+    ],
+    "description": "Experience the beauty of Philmont\u2019s North Country as you loop around the region on this rugged journey. Offering a good mix of hiking and program, this itinerary provides opportunities to see this land from the perspective of those living in the late 1800s through today! Start in Ute Park previewing your route with iconic views of Baldy Mountain. Hike through the site of an old west shootout and over ridges into the historic Ponil Region where you'll encounter cowboys, homesteaders, railroads, and the loggers that supported them. As you approach the Summit of Baldy Mountain, you'll visit the mining districts before wrapping things up at the beautiful Miranda Meadow.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Cimarron River",
+        "miles": 2.2,
+        "gain": 580,
+        "loss": 640,
+        "programs": "Ranger Training; Passthrough Fire Ecology & Wildlife"
+      },
+      {
+        "day": 3,
+        "camp": "Black Jacks",
+        "miles": 3.9,
+        "gain": 1970,
+        "loss": 1030,
+        "programs": "Black Jack's Hideout (optional); Trail Camp"
+      },
+      {
+        "day": 4,
+        "camp": "Elkhorn",
+        "miles": 5.4,
+        "gain": 1940,
+        "loss": 1650,
+        "programs": "Trail Building Project; Trail Camp"
+      },
+      {
+        "day": 5,
+        "camp": "PONIL",
+        "miles": 5.1,
+        "gain": 2100,
+        "loss": 3490,
+        "programs": "Horse Ride; Philturn Five Points Camp Program & Cantina;"
+      },
+      {
+        "day": 6,
+        "camp": "METCALF STATION",
+        "miles": 5.9,
+        "gain": 1930,
+        "loss": 1840,
+        "programs": "Hart Peak (optional); Cimarron & Northwestern Railway"
+      },
+      {
+        "day": 7,
+        "camp": "DAN BEARD",
+        "miles": 6.0,
+        "gain": 2110,
+        "loss": 1410,
+        "programs": "Challenge Course Program"
+      },
+      {
+        "day": 8,
+        "camp": "Pueblano Ruins",
+        "miles": 9.1,
+        "gain": 3700,
+        "loss": 3190,
+        "programs": "Wilson Mesa; Passthrough Continental Tie & Lumber"
+      },
+      {
+        "day": 9,
+        "camp": "Ewells Park",
+        "miles": 2.9,
+        "gain": 1520,
+        "loss": 550,
+        "programs": "Baldy Hike Prep; Trail Camp"
+      },
+      {
+        "day": 10,
+        "camp": "Ewells Park",
+        "miles": 12.0,
+        "gain": 6750,
+        "loss": 6750,
+        "programs": "Passthrough Claude Mining & Milling Company Program @"
+      },
+      {
+        "day": 11,
+        "camp": "MIRANDA",
+        "miles": 2.3,
+        "gain": 410,
+        "loss": 880,
+        "programs": "Bent, St. Vrain & Company Fur Trading Program"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 1.7,
+        "gain": 70,
+        "loss": 630,
+        "programs": "Hike to Maxwell Trailhead; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 7132,
+      "max": 9409
+    },
+    "camps_info": "4 Staffed, 5 Trail, 1 Layover",
+    "conservation": "Elkhorn"
+  },
+  {
+    "id": "12-12",
+    "name": "Itinerary 12-12",
+    "days": 12,
+    "miles": 65,
+    "rating": "Rugged",
+    "highlights": [
+      "Hiking Highlights\nTooth of Time 9,003 ft"
+    ],
+    "description": "This strenuous itinerary is focused on the experience of the hike as it traces the western boundaries of Philmont's South Country.  Your crew will have the opportunity to summit Mount Phillips, Comanche Peak, Lookout Peak, and the iconic Tooth of Time. Experience life as a fur trapper in the early 1800s and learn about the Jicarilla Apache people. Your crew will have opportunities for various programs while still overnighting at several trail camps for a bigger sense of adventure and solitude. Practice hikes and good preparation are key to ensuring your crew can experience this itinerary to its fullest.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Old Abreu",
+        "miles": 3.1,
+        "gain": 900,
+        "loss": 420,
+        "programs": "Passthrough Abreu Family Homestead Program & Cantina"
+      },
+      {
+        "day": 3,
+        "camp": "Fish Camp",
+        "miles": 7.2,
+        "gain": 6520,
+        "loss": 5210,
+        "programs": "Trail Camp (No Services)"
+      },
+      {
+        "day": 4,
+        "camp": "APACHE SPRINGS",
+        "miles": 3.5,
+        "gain": 2430,
+        "loss": 1720,
+        "programs": "Jicarilla Apache Ethnology Program Apache Springs"
+      },
+      {
+        "day": 5,
+        "camp": "CLEAR CREEK",
+        "miles": 10.4,
+        "gain": 4250,
+        "loss": 3340,
+        "programs": "Passthrough Pioneer Homestead Program @ Crooked"
+      },
+      {
+        "day": 6,
+        "camp": "Red Hills",
+        "miles": 7.8,
+        "gain": 3500,
+        "loss": 3420,
+        "programs": "Mount Phillips; Comanche Peak; Trail Camp"
+      },
+      {
+        "day": 7,
+        "camp": "BEAUBIEN",
+        "miles": 7.4,
+        "gain": 3230,
+        "loss": 4290,
+        "programs": "Big Red (optional); Commissary & Trading Post @ Phillips"
+      },
+      {
+        "day": 8,
+        "camp": "BEAUBIEN",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Horse Ride; Forest Fuels Reduction Project; High Mountain"
+      },
+      {
+        "day": 9,
+        "camp": "Lower Bonito",
+        "miles": 4.6,
+        "gain": 1750,
+        "loss": 2110,
+        "programs": "Trail Peak (optional); Trail Camp"
+      },
+      {
+        "day": 10,
+        "camp": "MINERS PARK",
+        "miles": 6.5,
+        "gain": 2360,
+        "loss": 3310,
+        "programs": "Passthrough Continental Tie & Lumber Company Program"
+      },
+      {
+        "day": 11,
+        "camp": "Tooth Ridge",
+        "miles": 7.6,
+        "gain": 4230,
+        "loss": 3930,
+        "programs": "Shaefers Peak; Dry Camp (Water @ North Fork Urraca)"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 7.0,
+        "gain": 1980,
+        "loss": 3590,
+        "programs": "Tooth of Time; Hike Into Camping Headquarters; Closing"
+      }
+    ],
+    "elevations": {
+      "min": 7401,
+      "max": 10403
+    },
+    "camps_info": "4 Staffed, 5 Trail, 1 Layover, 1 Dry Camp",
+    "conservation": "Beaubien"
+  },
+  {
+    "id": "12-13",
+    "name": "Itinerary 12-13",
+    "days": 12,
+    "miles": 62,
+    "rating": "Rugged",
+    "highlights": [
+      "Hiking Highlights\nBaldy Mountain 12,441 ft"
+    ],
+    "description": "This South Country itinerary is all about ascending to new heights! Your crew will have multiple opportunities for rock climbing programs, Low COPE, High COPE, and several well-known peaks including the Tooth of Time. In-between climbing, enjoy the living history of this area at Black Mountain and Clarks Fork. If your crew is physically and mentally prepared for the challenge of elevation gain and can get early starts, they should have ample time to take part in the unique backcountry experiences offered all around this region of Philmont.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Toothache Springs",
+        "miles": 2.5,
+        "gain": 1150,
+        "loss": 200,
+        "programs": "Ranger Training; Trail Camp Camping HQ"
+      },
+      {
+        "day": 3,
+        "camp": "Magpie",
+        "miles": 3.6,
+        "gain": 1550,
+        "loss": 2010,
+        "programs": "Passthrough Challenge Course Program @ Urraca; Dry"
+      },
+      {
+        "day": 4,
+        "camp": "MINERS PARK",
+        "miles": 6.2,
+        "gain": 2310,
+        "loss": 1690,
+        "programs": "High Ropes Course & Climbing Wall Program @ RMSC"
+      },
+      {
+        "day": 5,
+        "camp": "Lower Bonito",
+        "miles": 6.5,
+        "gain": 3310,
+        "loss": 2360,
+        "programs": "Passthrough Continental Tie & Lumber Company Program"
+      },
+      {
+        "day": 6,
+        "camp": "BLACK MOUNTAIN",
+        "miles": 8.0,
+        "gain": 4020,
+        "loss": 3900,
+        "programs": "Forest Fuels Reduction Project @ Beaubien; Passthrough"
+      },
+      {
+        "day": 7,
+        "camp": "Lamberts Mine",
+        "miles": 8.4,
+        "gain": 5930,
+        "loss": 5990,
+        "programs": "Passthrough St. Louis & Cimarron Mining Company"
+      },
+      {
+        "day": 8,
+        "camp": "CIMARRONCITO",
+        "miles": 4.1,
+        "gain": 2070,
+        "loss": 2960,
+        "programs": "Rock Climbing Program"
+      },
+      {
+        "day": 9,
+        "camp": "CIMARRONCITO",
+        "miles": 4.7,
+        "gain": 1740,
+        "loss": 1740,
+        "programs": "Rock Climbing Program (continued) Ute Gulch"
+      },
+      {
+        "day": 10,
+        "camp": "CLARKS FORK",
+        "miles": 3.1,
+        "gain": 620,
+        "loss": 1250,
+        "programs": "Window & Cathedral Rock Viewpoints (optional);"
+      },
+      {
+        "day": 11,
+        "camp": "Tooth Ridge",
+        "miles": 7.1,
+        "gain": 4510,
+        "loss": 3720,
+        "programs": "Shaefers Peak; Dry Camp (Water @ Clarks Fork)"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 7.0,
+        "gain": 1980,
+        "loss": 3590,
+        "programs": "Tooth of Time; Hike Into Base; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 7408,
+      "max": 9107
+    },
+    "camps_info": "4 Staffed, 5 Trail, 1 Layover, 2 Dry Camps",
+    "conservation": "Beaubien"
+  },
+  {
+    "id": "12-14",
+    "name": "Itinerary 12-14",
+    "days": 12,
+    "miles": 60,
+    "rating": "Strenuous",
+    "highlights": [
+      "Hiking Highlights\nBaldy Mountain 12,441 ft",
+      "Hart Peak 7,975 ft"
+    ],
+    "description": "This rugged conservation-focused itinerary traverses from the South Country up into the North Country and provides the opportunity to earn the prestigious 50-Miler Award. You will discover the ecological diversity of Philmont's backcountry while keeping a good balance of hiking and program opportunities traversing rivers, mountain ridges, canyons, burn scars, and peaks. Program opportunities include a mix of living history and rock climbing and the whole trek culminates with a Summit of Philmont's highest peak, Baldy Mountain.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Herradura",
+        "miles": 3.4,
+        "gain": 1600,
+        "loss": 1200,
+        "programs": "Ranger Training; Lovers Leap Overlook; Dry Camp (Water"
+      },
+      {
+        "day": 3,
+        "camp": "MINERS PARK",
+        "miles": 3.1,
+        "gain": 1020,
+        "loss": 510,
+        "programs": "Rock Climbing Program"
+      },
+      {
+        "day": 4,
+        "camp": "CLARKS FORK",
+        "miles": 6.8,
+        "gain": 3800,
+        "loss": 4290,
+        "programs": "Trail Building Project @ North Fork Urraca; Shaefers Peak"
+      },
+      {
+        "day": 5,
+        "camp": "Minnette Meadows",
+        "miles": 8.8,
+        "gain": 3410,
+        "loss": 3080,
+        "programs": "50-Miler Forest Stewardship Program @ Demonstration"
+      },
+      {
+        "day": 6,
+        "camp": "CIMARRONCITA",
+        "miles": 1.7,
+        "gain": 230,
+        "loss": 670,
+        "programs": "Reforestation Project; Fire Ecology & Wildlife Conservation"
+      },
+      {
+        "day": 7,
+        "camp": "Elkhorn",
+        "miles": 10.8,
+        "gain": 4560,
+        "loss": 3460,
+        "programs": "Passthrough @ Santa Claus (no services); Trail Camp"
+      },
+      {
+        "day": 8,
+        "camp": "Pueblano Ruins",
+        "miles": 5.4,
+        "gain": 2120,
+        "loss": 2210,
+        "programs": "Trail Building Project @ Elkhorn; Passthrough Continental"
+      },
+      {
+        "day": 9,
+        "camp": "BALDY TOWN",
+        "miles": 4.0,
+        "gain": 2340,
+        "loss": 890,
+        "programs": "50-Miler Geology Program; Baldy Mining District Program;"
+      },
+      {
+        "day": 10,
+        "camp": "BALDY TOWN",
+        "miles": 10.3,
+        "gain": 5960,
+        "loss": 5960,
+        "programs": "Baldy Mountain; Passthrough Claude Mining & Milling"
+      },
+      {
+        "day": 11,
+        "camp": "Maxwell",
+        "miles": 4.1,
+        "gain": 930,
+        "loss": 2280,
+        "programs": "Bent, St. Vrain & Company Fur Trading Program"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 0.9,
+        "gain": 100,
+        "loss": 260,
+        "programs": "Hike to Maxwell Trailhead; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 7424,
+      "max": 9881
+    },
+    "camps_info": "4 Staffed, 5 Trail, 1 Layover, 2 Dry Camps",
+    "conservation": "North Fork Urraca"
+  },
+  {
+    "id": "12-15",
+    "name": "Itinerary 12-15",
+    "days": 12,
+    "miles": 66,
+    "rating": "Strenuous",
+    "highlights": [],
+    "description": "This tour of Philmont's Central and North countries is for crews looking for a true wilderness backpacking experience with moderately high mileage days and many nights at staff camps. Work as a team to complete challenge course programs before summiting Baldy Mountain. Learn about the lives of loggers in the South Ponil Canyon with the Continental Tie & Lumber Company and enjoy a chuckwagon dinner at the Philturn Five Points Camp. Spend time discovering petroglyphs left by the Puebloan people and keep an eye out for dinosaur tracks before heading back to Base Camp!",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "HARLAN",
+        "miles": 4.1,
+        "gain": 1630,
+        "loss": 710,
+        "programs": "Ranger Training; Dry Camp (Water @ Harlan) Camping HQ"
+      },
+      {
+        "day": 3,
+        "camp": "Devils Wash Basin",
+        "miles": 6.1,
+        "gain": 2490,
+        "loss": 1530,
+        "programs": "Dry Camp (Water @ Spring Northeast of Camp)"
+      },
+      {
+        "day": 4,
+        "camp": "Cimarron River",
+        "miles": 8.5,
+        "gain": 2940,
+        "loss": 4170,
+        "programs": "Passthrough Commissary & Trading Post @ Ute Gulch;"
+      },
+      {
+        "day": 5,
+        "camp": "Santa Claus",
+        "miles": 5.6,
+        "gain": 3060,
+        "loss": 1870,
+        "programs": "Dry Camp (Water at Cimarron River)"
+      },
+      {
+        "day": 6,
+        "camp": "BALDY TOWN",
+        "miles": 10.9,
+        "gain": 4990,
+        "loss": 3580,
+        "programs": "Passthrough Challenge Course Program @ Head of Dean;"
+      },
+      {
+        "day": 7,
+        "camp": "BALDY TOWN",
+        "miles": 6.3,
+        "gain": 4050,
+        "loss": 4050,
+        "programs": "Black Horse Mine; Baldy Mountain; Baldy Mining District"
+      },
+      {
+        "day": 8,
+        "camp": "PUEBLANO",
+        "miles": 6.6,
+        "gain": 2570,
+        "loss": 4380,
+        "programs": "Passthrough Claude Mining & Milling Co Program @"
+      },
+      {
+        "day": 9,
+        "camp": "Elkhorn",
+        "miles": 4.0,
+        "gain": 1760,
+        "loss": 1310,
+        "programs": "Trail Construction Project; Trail Camp"
+      },
+      {
+        "day": 10,
+        "camp": "PONIL",
+        "miles": 5.1,
+        "gain": 2100,
+        "loss": 3490,
+        "programs": "Philturn Five Points Camp Program & Cantina;"
+      },
+      {
+        "day": 11,
+        "camp": "INDIAN WRITINGS",
+        "miles": 4.5,
+        "gain": 1910,
+        "loss": 2080,
+        "programs": "Hart Peak; Ancestral Puebloan Archaeology Program"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 3.8,
+        "gain": 1260,
+        "loss": 1500,
+        "programs": "T-Rex Track; Hike to Six Mile Gate; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 6968,
+      "max": 9881
+    },
+    "camps_info": "5 Staffed, 4 Trail, 1 Layover, 2 Dry Camps",
+    "conservation": "Elkhorn"
+  },
+  {
+    "id": "12-16",
+    "name": "Itinerary 12-16",
+    "days": 12,
+    "miles": 73,
+    "rating": "Strenuous",
+    "highlights": [
+      "Hiking Highlights\nMount Phillips 11,736 ft",
+      "Tooth of Time 9,003 ft",
+      "Comanche Peak 11,303 ft"
+    ],
+    "description": "This high mileage itinerary takes you through some of the most remote and beautiful spots in the Philmont backcountry. Explore the stunning beauty of the Valle Vidal and challenge your crew to hike Baldy Mountain, the most iconic peak in the North Country. Enjoy the experience of burro packing just like the fur trappers of the Bent, St. Vrain & Company outfit. End your trek with a rewarding chuckwagon dinner and a fun filled campfire show at the Philturn Five Points Camp!",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Horse Canyon",
+        "miles": 5.3,
+        "gain": 3000,
+        "loss": 1950,
+        "programs": "Ranger Training; Trail Camp Camping HQ"
+      },
+      {
+        "day": 3,
+        "camp": "DAN BEARD",
+        "miles": 2.7,
+        "gain": 390,
+        "loss": 590,
+        "programs": "Challenge Course Program"
+      },
+      {
+        "day": 4,
+        "camp": "WHITEMAN VEGA",
+        "miles": 9.8,
+        "gain": 980,
+        "loss": 820,
+        "programs": "Mountain Biking Program"
+      },
+      {
+        "day": 5,
+        "camp": "Beatty Lakes",
+        "miles": 6.0,
+        "gain": 620,
+        "loss": 410,
+        "programs": "Stream Restoration Project @ McCrystal Creek;"
+      },
+      {
+        "day": 6,
+        "camp": "Flume Canyon",
+        "miles": 10.8,
+        "gain": 2700,
+        "loss": 3210,
+        "programs": "Trail Camp"
+      },
+      {
+        "day": 7,
+        "camp": "Copper Park",
+        "miles": 7.4,
+        "gain": 4970,
+        "loss": 2210,
+        "programs": "Passthrough Continental Tie & Lumber Company Program"
+      },
+      {
+        "day": 8,
+        "camp": "Copper Park",
+        "miles": 11.2,
+        "gain": 6430,
+        "loss": 6430,
+        "programs": "Baldy Mountain; Passthrough Baldy Mining District"
+      },
+      {
+        "day": 9,
+        "camp": "MIRANDA",
+        "miles": 6.7,
+        "gain": 2910,
+        "loss": 4510,
+        "programs": "Bent, St. Vrain & Company Fur Trading Program"
+      },
+      {
+        "day": 10,
+        "camp": "HEAD OF DEAN",
+        "miles": 4.1,
+        "gain": 1480,
+        "loss": 1660,
+        "programs": "Pick Up @ Burro Pens; Challenge Course Program"
+      },
+      {
+        "day": 11,
+        "camp": "PONIL",
+        "miles": 7.5,
+        "gain": 2920,
+        "loss": 4540,
+        "programs": "Drop Off Burro; Horse ride; Philturn Five Points Camp"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 1.1,
+        "gain": 680,
+        "loss": 740,
+        "programs": "Hike to Ponil Trailhead; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 7132,
+      "max": 10534
+    },
+    "camps_info": "5 Staffed, 4 Trail, 1 Layover, 1 Dry Camp",
+    "conservation": "McCrystal Creek"
+  },
+  {
+    "id": "12-17",
+    "name": "Itinerary 12-17",
+    "days": 12,
+    "miles": 67,
+    "rating": "Strenuous",
+    "highlights": [
+      "Hiking Highlights\nMount Phillips 11,736 ft",
+      "Tooth of Time 9,003 ft",
+      "Comanche Peak 11,303 ft"
+    ],
+    "description": "Explore Philmont\u2019s southwestern corner on this hiking-focused itinerary that begins in the heart of the 2018 Ute Park Fire recovery area. If summiting peaks is your crew's biggest wish, this trek offers the opportunity to climb Mount Phillips, Comanche Peak, Trail Peak, and the Tooth of Time among others. While program is not the main focus of this trek, your crew will still have several opportunities to experience campfire shows, living history, and climbing programs. This is a strenuous trek with some long days and large gains in elevation. If your crew is looking to challenge themselves while experiencing some of the most beautiful scenery at Philmont, this trek is for you!",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Minnette Meadows",
+        "miles": 2.6,
+        "gain": 790,
+        "loss": 270,
+        "programs": "Ranger Training; Passthrough Fire Ecology & Wildlife"
+      },
+      {
+        "day": 3,
+        "camp": "CIMARRONCITO",
+        "miles": 5.7,
+        "gain": 2460,
+        "loss": 2160,
+        "programs": "Passthrough Commissary & Trading Post @ Ute Gulch;"
+      },
+      {
+        "day": 4,
+        "camp": "CYPHERS MINE",
+        "miles": 5.3,
+        "gain": 3960,
+        "loss": 2770,
+        "programs": "St. Louis & Cimarron Mining Company Program; Campfire"
+      },
+      {
+        "day": 5,
+        "camp": "Mount Phillips",
+        "miles": 6.1,
+        "gain": 4870,
+        "loss": 2520,
+        "programs": "Comanche Peak; Dry Camp (Water @ Red Hills)"
+      },
+      {
+        "day": 7,
+        "camp": "Lost Cabin",
+        "miles": 6.5,
+        "gain": 2540,
+        "loss": 2290,
+        "programs": "Passthrough Jicarrila Apache Ethnology Program @"
+      },
+      {
+        "day": 8,
+        "camp": "Lower Bonito",
+        "miles": 5.7,
+        "gain": 3400,
+        "loss": 3650,
+        "programs": "Passthrough @ Fish Camp (No Services); Lookout Peak"
+      },
+      {
+        "day": 9,
+        "camp": "CRATER LAKE",
+        "miles": 4.5,
+        "gain": 1430,
+        "loss": 2020,
+        "programs": "Trail Peak (optional); Continental Tie & Lumber Company"
+      },
+      {
+        "day": 10,
+        "camp": "MINERS PARK",
+        "miles": 4.9,
+        "gain": 2500,
+        "loss": 2870,
+        "programs": "Trail Building Project @ North Fork Urraca; Rock Climbing"
+      },
+      {
+        "day": 11,
+        "camp": "Tooth Ridge",
+        "miles": 7.6,
+        "gain": 4230,
+        "loss": 3930,
+        "programs": "Shaefers Peak; Dry Camp (Water @ North Fork Urraca)"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 7.0,
+        "gain": 1980,
+        "loss": 3590,
+        "programs": "Tooth of Time; Hike Into Base; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 7860,
+      "max": 11706
+    },
+    "camps_info": "5 Staffed, 5 Trail, 4 Dry Camps",
+    "conservation": "North Fork Urraca"
+  },
+  {
+    "id": "12-18",
+    "name": "Itinerary 12-18",
+    "days": 12,
+    "miles": 70,
+    "rating": "Strenuous",
+    "highlights": [
+      "Hiking Highlights\nTooth of Time 9,003 ft",
+      "Comanche Peak 11,303 ft",
+      "Mount Phillips 11,736 ft",
+      "Big Red 11,020 ft"
+    ],
+    "description": "Circumnavigate Philmont\u2019s South Country on one of the few itineraries that has you hike in and out of Base Camp! This trek has many high mileage days, so preparation will be key. Challenge your crew to climb Mount Phillips before making your way down to Clarks Fork for a hearty chuckwagon dinner. Learn about forest stewardship and life at a ranch in the 1960s and end your trek with a memorable hike down into Base Camp through the iconic We All Made It sign.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Magpie",
+        "miles": 3.3,
+        "gain": 840,
+        "loss": 140,
+        "programs": "Ranger Training; Dry Camp (Water @ North Fork Urraca"
+      },
+      {
+        "day": 3,
+        "camp": "URRACA",
+        "miles": 1.9,
+        "gain": 1140,
+        "loss": 550,
+        "programs": "Challenge Course Program; Campfire Show"
+      },
+      {
+        "day": 4,
+        "camp": "Lower Bonito",
+        "miles": 10.1,
+        "gain": 4620,
+        "loss": 3630,
+        "programs": "Stonewall Pass; Passthrough Continental Tie & Lumber"
+      },
+      {
+        "day": 5,
+        "camp": "APACHE SPRINGS",
+        "miles": 6.1,
+        "gain": 3850,
+        "loss": 3410,
+        "programs": "Lookout Peak (optional); Passthrough @ Fish Camp (no"
+      },
+      {
+        "day": 6,
+        "camp": "Wild Horse",
+        "miles": 7.5,
+        "gain": 3360,
+        "loss": 2350,
+        "programs": "Passthrough Pioneer Homestead Program @ Crooked"
+      },
+      {
+        "day": 7,
+        "camp": "Mount Phillips",
+        "miles": 7.3,
+        "gain": 3880,
+        "loss": 2610,
+        "programs": "Passthrough Taos Trappers Program @ Clear Creek;"
+      },
+      {
+        "day": 8,
+        "camp": "Whistle Punk",
+        "miles": 6.5,
+        "gain": 2680,
+        "loss": 4460,
+        "programs": "Comanche Peak; Trail Camp"
+      },
+      {
+        "day": 9,
+        "camp": "SAWMILL",
+        "miles": 2.0,
+        "gain": 450,
+        "loss": 1150,
+        "programs": "Trail Building Project; Rifle Shooting & Cartridge Reloading"
+      },
+      {
+        "day": 10,
+        "camp": "CLARKS FORK",
+        "miles": 11.9,
+        "gain": 3640,
+        "loss": 5340,
+        "programs": "Passthrough Climbing Program @ Cimarroncito;"
+      },
+      {
+        "day": 11,
+        "camp": "Tooth Ridge",
+        "miles": 7.6,
+        "gain": 4800,
+        "loss": 4010,
+        "programs": "Shaefers Peak; Tooth of Time; Dry Camp (Water @ Clarks"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 5.6,
+        "gain": 1340,
+        "loss": 2950,
+        "programs": "Hike Into Base; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 7408,
+      "max": 11706
+    },
+    "camps_info": "4 Staffed, 6 Trail, 3 Dry Camps",
+    "conservation": "Sawmill"
+  },
+  {
+    "id": "12-19",
+    "name": "Itinerary 12-19",
+    "days": 12,
+    "miles": 64,
+    "rating": "Super Strenuous",
+    "highlights": [
+      "Hiking Highlights\nBaldy Mountain 12,441 ft",
+      "Tooth of Time 9,003 ft"
+    ],
+    "description": "This South Country tour of Philmont summits iconic peaks, spans beautiful meadows, follows waterways, and traverses picturesque ridges while providing opportunities for unique historical programs. Experience this stunning and diverse area of New Mexico as homesteaders, ranchers, and loggers as you take full advantage of the geography and ecology of this region. Be sure to look back at what you've accomplished as you crest the Tooth of Time on your hike back into Base Camp. Ensure your crew can enjoy all of the views offered by this itinerary by being physically prepared for the elevation gained on this journey.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Toothache Springs",
+        "miles": 2.5,
+        "gain": 1150,
+        "loss": 200,
+        "programs": "Ranger Training; Trail Camp Camping HQ"
+      },
+      {
+        "day": 3,
+        "camp": "CRATER LAKE",
+        "miles": 4.8,
+        "gain": 2410,
+        "loss": 1880,
+        "programs": "Continental Tie & Lumber Company Program; Campfire"
+      },
+      {
+        "day": 4,
+        "camp": "BEAUBIEN",
+        "miles": 7.3,
+        "gain": 3660,
+        "loss": 2710,
+        "programs": "Trail Peak (optional); High Mountain Ranching Program;"
+      },
+      {
+        "day": 5,
+        "camp": "BEAUBIEN",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Forest Fuels Reduction Project; Horse Ride; High Mountain"
+      },
+      {
+        "day": 6,
+        "camp": "APACHE SPRINGS",
+        "miles": 7.3,
+        "gain": 3220,
+        "loss": 3150,
+        "programs": "Passthrough Trading Post @ Phillips Junction; Jicarilla"
+      },
+      {
+        "day": 7,
+        "camp": "Wild Horse",
+        "miles": 7.5,
+        "gain": 3360,
+        "loss": 2350,
+        "programs": "Passthrough Pioneer Homestead Program @ Crooked"
+      },
+      {
+        "day": 8,
+        "camp": "Mount Phillips",
+        "miles": 7.3,
+        "gain": 3880,
+        "loss": 2610,
+        "programs": "Passthrough Taos Trappers Program @ Clear Creek;"
+      },
+      {
+        "day": 9,
+        "camp": "BLACK MOUNTAIN",
+        "miles": 7.0,
+        "gain": 2660,
+        "loss": 5260,
+        "programs": "Comanche Peak; Big Red; Black Mountain (optional); Black"
+      },
+      {
+        "day": 10,
+        "camp": "MINERS PARK",
+        "miles": 5.1,
+        "gain": 2400,
+        "loss": 3480,
+        "programs": "Rock Climbing Program Miners Park"
+      },
+      {
+        "day": 11,
+        "camp": "Tooth Ridge",
+        "miles": 7.6,
+        "gain": 4230,
+        "loss": 3930,
+        "programs": "Shaefers Peak; Dry Camp (Water @ North Fork Urraca"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 7.0,
+        "gain": 1980,
+        "loss": 3590,
+        "programs": "Tooth of Time; Hike Into Base; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 7867,
+      "max": 11706
+    },
+    "camps_info": "5 Staffed, 4 Trail, 1 Layover, 2 Dry Camps",
+    "conservation": "Beaubien"
+  },
+  {
+    "id": "12-20",
+    "name": "Itinerary 12-20",
+    "days": 12,
+    "miles": 69,
+    "rating": "Super Strenuous",
+    "highlights": [
+      "Hiking Highlights\nMount Phillips 11,736 ft",
+      "Tooth of Time 9,003 ft",
+      "Stone Wall Pass\nShaefers Peak 9,413 ft"
+    ],
+    "description": "Start this super strenuous 12-day trek in Philmont's beautiful South Country and work your way up to the summit of Baldy Mountain. Experienced hikers will enjoy the high-mileage days and optional side hikes of classic Philmont sites like the Tooth of Time. While hiking is the main focus of this trek, crews of strong hikers will have ample opportunity to experience programs ranging from rock climbing to western lore to challenge courses. As the crowning achievement of your trek, summit Baldy Mountain and then enjoy a leisurely hike down to visit the loggers of the Continental Tie & Lumber Company at Pueblano. Be sure not to miss the campfire show at Clarks Fork and the company meeting at Pueblano!",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Aguila",
+        "miles": 5.9,
+        "gain": 2920,
+        "loss": 1510,
+        "programs": "Ranger Training; Trail Camp Camping HQ"
+      },
+      {
+        "day": 3,
+        "camp": "MINERS PARK",
+        "miles": 4.6,
+        "gain": 2000,
+        "loss": 2310,
+        "programs": "Passthrough Continental Tie & Lumber Company Program"
+      },
+      {
+        "day": 4,
+        "camp": "CLARKS FORK",
+        "miles": 6.8,
+        "gain": 3800,
+        "loss": 4290,
+        "programs": "Shaefers Peak; Tooth of Time; Western Lore Program @"
+      },
+      {
+        "day": 5,
+        "camp": "Minnette Meadows",
+        "miles": 8.2,
+        "gain": 3290,
+        "loss": 2960,
+        "programs": "Passthrough Commissary & Trading Post @ Ute Gulch;"
+      },
+      {
+        "day": 6,
+        "camp": "Mistletoe",
+        "miles": 6.9,
+        "gain": 3290,
+        "loss": 2730,
+        "programs": "Reforestation Project @ Cimarroncita; Passthrough Fire"
+      },
+      {
+        "day": 7,
+        "camp": "HEAD OF DEAN",
+        "miles": 5.5,
+        "gain": 1820,
+        "loss": 1480,
+        "programs": "Challenge Course Program"
+      },
+      {
+        "day": 8,
+        "camp": "Ewells Park",
+        "miles": 4.7,
+        "gain": 2320,
+        "loss": 1670,
+        "programs": "Trail Camp; Baldy Hike Prep"
+      },
+      {
+        "day": 9,
+        "camp": "Ewells Park",
+        "miles": 11.9,
+        "gain": 6650,
+        "loss": 6650,
+        "programs": "Baldy Mountain; Claude Mining & Milling Company @"
+      },
+      {
+        "day": 10,
+        "camp": "PUEBLANO",
+        "miles": 4.0,
+        "gain": 970,
+        "loss": 2300,
+        "programs": "Continental Tie & Lumber Company Program; Campfire"
+      },
+      {
+        "day": 11,
+        "camp": "Dean Skyline",
+        "miles": 6.4,
+        "gain": 3290,
+        "loss": 2950,
+        "programs": "Dry Camp (Water @ South Ponil Creek)"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 3.7,
+        "gain": 1470,
+        "loss": 2810,
+        "programs": ""
+      }
+    ],
+    "elevations": {
+      "min": 7532,
+      "max": 9409
+    },
+    "camps_info": "4 Staffed, 5 Trail, 1 Layover, 3 Dry Camps",
+    "conservation": "Cimarroncita"
+  },
+  {
+    "id": "12-21",
+    "name": "Itinerary 12-21",
+    "days": 12,
+    "miles": 74,
+    "rating": "Super Strenuous",
+    "highlights": [
+      "Hiking Highlights\nBaldy Mountain 12,441 ft",
+      "Tooth of Time 9,003 ft"
+    ],
+    "description": "If your crew is looking for a true challenge through Philmont's South and Central countries, then this itinerary is for you! Experienced hikers will enjoy a mix of staff and trail camps with the opportunity for various programs. Prop up your feet after a long day and enjoy several different campfire shows throughout your trek. Enjoy the sunrise over the 2018 burn scar at Sawmill, challenge courses and rock-climbing programs, as well as a beautiful trek into Base Camp from the Tooth of Time.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Magpie",
+        "miles": 4.4,
+        "gain": 1170,
+        "loss": 470,
+        "programs": "Ranger Training; Passthrough High Ropes Program @"
+      },
+      {
+        "day": 3,
+        "camp": "URRACA",
+        "miles": 1.9,
+        "gain": 1140,
+        "loss": 550,
+        "programs": "Challenge Course Program; Campfire Show"
+      },
+      {
+        "day": 4,
+        "camp": "MINERS PARK",
+        "miles": 6.9,
+        "gain": 2520,
+        "loss": 2500,
+        "programs": "Rock Climbing Program Miners Park"
+      },
+      {
+        "day": 5,
+        "camp": "BLACK MOUNTAIN",
+        "miles": 5.2,
+        "gain": 3540,
+        "loss": 2450,
+        "programs": "Trail Building Project @ North Fork Urraca; Black Mountain"
+      },
+      {
+        "day": 6,
+        "camp": "Porcupine",
+        "miles": 6.2,
+        "gain": 3410,
+        "loss": 3330,
+        "programs": "Passthrough High Mountain Ranching Program @"
+      },
+      {
+        "day": 7,
+        "camp": "CLEAR CREEK",
+        "miles": 6.8,
+        "gain": 2960,
+        "loss": 1830,
+        "programs": "Passthrough Pioneer Homestead Program @ Crooked"
+      },
+      {
+        "day": 8,
+        "camp": "SAWMILL",
+        "miles": 12.6,
+        "gain": 5980,
+        "loss": 7080,
+        "programs": "Mount Phillips; Comanche Peak; Rifle Shooting & Cartridge"
+      },
+      {
+        "day": 9,
+        "camp": "Devils Wash Basin",
+        "miles": 7.6,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Dry Camp (Water @ Spring NE of Camp)"
+      },
+      {
+        "day": 10,
+        "camp": "CLARKS FORK",
+        "miles": 7.8,
+        "gain": 2490,
+        "loss": 3470,
+        "programs": "Passthrough Climbing Program @ Cimarroncito; Forest"
+      },
+      {
+        "day": 11,
+        "camp": "Tooth Ridge",
+        "miles": 6.8,
+        "gain": 4420,
+        "loss": 3630,
+        "programs": "Shaefers Peak; Dry Camp (Water @ Clarks Fork)"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 7.0,
+        "gain": 1980,
+        "loss": 3590,
+        "programs": "Tooth of Time; Hike Into Base Camp; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 7408,
+      "max": 10324
+    },
+    "camps_info": "6 Staffed, 4 Trail, 3 Dry Camps",
+    "conservation": "North Fork Urraca"
+  },
+  {
+    "id": "12-22",
+    "name": "Itinerary 12-22",
+    "days": 12,
+    "miles": 82,
+    "rating": "Super Strenuous",
+    "highlights": [
+      "Hiking Highlights\nBaldy Mountain 12,441 ft",
+      "Tooth of Time 9,003 ft"
+    ],
+    "description": "The most physically challenging itinerary at Philmont visits many of the less-traveled trail camps throughout the North and Central countries. Start your adventure at one of the most beautiful trail camps before making your way towards Baldy Mountain. Spend time learning about the lives of the Continental Tie & Lumber Company loggers before summiting Baldy Mountain. Explore the Central Country through the 2018 Ute Park burn scar into Sawmill for the opportunity to test your marksmanship. Join the miners of the St. Louis & Cimarron Mining Company for a day of work and the company meeting and top off your trek by hiking into Base Camp over the Tooth of Time and through the iconic 'You Made It' sign.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Bluestem",
+        "miles": 3.7,
+        "gain": 2050,
+        "loss": 1210,
+        "programs": "Ranger Training; Passthrough Philturn Five Points Camp"
+      },
+      {
+        "day": 3,
+        "camp": "PUEBLANO",
+        "miles": 5.9,
+        "gain": 2830,
+        "loss": 2660,
+        "programs": "Continental Tie & Lumber Company Program; Campfire"
+      },
+      {
+        "day": 4,
+        "camp": "Placer",
+        "miles": 5.5,
+        "gain": 2920,
+        "loss": 1450,
+        "programs": "Trail Camp; Baldy Hike Prep"
+      },
+      {
+        "day": 5,
+        "camp": "Placer",
+        "miles": 8.7,
+        "gain": 5350,
+        "loss": 5350,
+        "programs": "Passthrough Claude Mining & Milling Program @ French"
+      },
+      {
+        "day": 6,
+        "camp": "Mistletoe",
+        "miles": 11.3,
+        "gain": 3200,
+        "loss": 4330,
+        "programs": "Passthrough Bent, St. Vrain & Company Program @"
+      },
+      {
+        "day": 7,
+        "camp": "Cimarron River",
+        "miles": 6.6,
+        "gain": 2520,
+        "loss": 3660,
+        "programs": "Reforestation Project @ Cimarroncita; Trail Camp"
+      },
+      {
+        "day": 8,
+        "camp": "SAWMILL",
+        "miles": 8.8,
+        "gain": 4250,
+        "loss": 2310,
+        "programs": "Rifle Shooting & Cartridge Reloading Program"
+      },
+      {
+        "day": 9,
+        "camp": "CYPHERS MINE",
+        "miles": 5.3,
+        "gain": 3220,
+        "loss": 3090,
+        "programs": "Trail Building Project @ Sawmill; St. Louis & Cimarron"
+      },
+      {
+        "day": 10,
+        "camp": "CIMARRONCITO",
+        "miles": 10.0,
+        "gain": 4510,
+        "loss": 5700,
+        "programs": "Rock Climbing Program; Commissary & Trading Post @"
+      },
+      {
+        "day": 11,
+        "camp": "Shaefers Pass",
+        "miles": 6.1,
+        "gain": 3090,
+        "loss": 2470,
+        "programs": "Passthrough Western Lore Program @ Clarks Fork; Dry"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 10.1,
+        "gain": 3670,
+        "loss": 5740,
+        "programs": "Shaefers Peak; Tooth of Time; Hike Into Base; Closing"
+      }
+    ],
+    "elevations": {
+      "min": 7283,
+      "max": 9550
+    },
+    "camps_info": "4 Staffed, 5 Trail, 1 Layover, 3 Dry Camps",
+    "conservation": "Sawmill"
+  },
+  {
+    "id": "12-23",
+    "name": "Itinerary 12-23",
+    "days": 12,
+    "miles": 81,
+    "rating": "Super Strenuous",
+    "highlights": [
+      "Hiking Highlights\nBaldy Mountain 12,441 ft",
+      "Tooth of Time 9,003 ft",
+      "Mount Phillips 11,736 ft"
+    ],
+    "description": "Super-strenuous treks are not recommended for inexperienced hikers, and this trek will challenge even those crews that spend their weekends in the mountains. High-mileage days are common but with difficulty comes the opportunity to experience some of the most unique parts of Philmont's North Country. Discover the rich history of gold mining throughout this region before taking in breathtaking views from the summit of Baldy Mountain, the highest peak on Philmont property. On your way out of Baldy country, stop by Miranda to pick up your burro. Relax and trade tales with the loggers of the Continental Tie & Lumber Company and the ranchers of Ponil and Clarks Fork. Enjoy lively campfire shows and opportunities to test your mettle with rock climbing programs and challenge courses. Whip up a delicious chuckwagon dinner before setting off to climb the Tooth of Time as you make your way back to Base Camp.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Cimarron River",
+        "miles": 2.2,
+        "gain": 580,
+        "loss": 640,
+        "programs": "Ranger Training; Passthrough Fire Ecology & Wildlife"
+      },
+      {
+        "day": 3,
+        "camp": "Santa Claus",
+        "miles": 5.6,
+        "gain": 3060,
+        "loss": 1870,
+        "programs": "Trail Camp (no services)"
+      },
+      {
+        "day": 4,
+        "camp": "HEAD OF DEAN",
+        "miles": 4.0,
+        "gain": 1440,
+        "loss": 1150,
+        "programs": "Challenge Course Program"
+      },
+      {
+        "day": 5,
+        "camp": "Black Horse Creek",
+        "miles": 5.2,
+        "gain": 2520,
+        "loss": 1580,
+        "programs": "Passthrough Bent, St. Vrain & Company Program @"
+      },
+      {
+        "day": 6,
+        "camp": "Black Horse Creek",
+        "miles": 9.1,
+        "gain": 5820,
+        "loss": 5820,
+        "programs": "Baldy Mountain, Passthrough Claude Mining & Milling"
+      },
+      {
+        "day": 7,
+        "camp": "PUEBLANO",
+        "miles": 7.3,
+        "gain": 2370,
+        "loss": 4000,
+        "programs": "Pick up Burro @ Miranda Burro Pens; Continental Tie &"
+      },
+      {
+        "day": 8,
+        "camp": "PONIL",
+        "miles": 8.2,
+        "gain": 3030,
+        "loss": 3980,
+        "programs": "Drop off Burro @ Ponil, Trail Building Project @ Sioux;"
+      },
+      {
+        "day": 9,
+        "camp": "DEAN COW",
+        "miles": 8.1,
+        "gain": 3460,
+        "loss": 3340,
+        "programs": "Rock Climbing Program"
+      },
+      {
+        "day": 10,
+        "camp": "Vaca",
+        "miles": 10.0,
+        "gain": 4050,
+        "loss": 3890,
+        "programs": "Passthrough Shotgun Program @ Harlan; Trail Camp"
+      },
+      {
+        "day": 11,
+        "camp": "CLARKS FORK",
+        "miles": 7.7,
+        "gain": 2630,
+        "loss": 2510,
+        "programs": "Western Lore Program @ Clarks Fork; Chuckwagon"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 12.8,
+        "gain": 6040,
+        "loss": 6870,
+        "programs": "Tooth of Time, Hike in to Base; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 7132,
+      "max": 9698
+    },
+    "camps_info": "5 Staffed, 4 Trail, 1 Layover, 1 Dry Camp",
+    "conservation": "Sioux"
+  },
+  {
+    "id": "12-24",
+    "name": "Itinerary 12-24",
+    "days": 12,
+    "miles": 87,
+    "rating": "Super Strenuous",
+    "highlights": [
+      "Hiking Highlights\nBeaubien Meadow\nUrraca Mesa\nNorth Fork Urraca Creek\nBonito Peak 10,610 ft"
+    ],
+    "description": "Tour the length of Philmont on this super strenuous trek that winds its way from Ponil down and over the Tooth of Time. Discover life in the Continental Tie & Lumber Company before hiking through the Baldy Mining District to look for gold like the miners of old. After summiting Baldy Mountain, make your way down into the Ute Park fire recovery zone for your reforestation conservation project. If your crew is up for it, side hike the second highest peak at Philmont, Mount Phillips. Enjoy a delightful chuckwagon dinner and show at Beaubien before finishing your trek by reaching the top of the Tooth of Time and hiking back into Base Camp in time for the closing campfire.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Bluestem",
+        "miles": 3.7,
+        "gain": 2050,
+        "loss": 1210,
+        "programs": "Ranger Training; Passthrough Philturn Five Points Camp"
+      },
+      {
+        "day": 3,
+        "camp": "PUEBLANO",
+        "miles": 5.9,
+        "gain": 2830,
+        "loss": 2660,
+        "programs": "Continental Tie & Lumber Company Program; Campfire"
+      },
+      {
+        "day": 4,
+        "camp": "BALDY TOWN",
+        "miles": 6.6,
+        "gain": 4380,
+        "loss": 2570,
+        "programs": "Passthrough Claude Mining & Milling Company Program @"
+      },
+      {
+        "day": 5,
+        "camp": "BALDY TOWN",
+        "miles": 5.9,
+        "gain": 3950,
+        "loss": 3950,
+        "programs": "Black Horse Mine; Baldy Mountain; Baldy Mining District"
+      },
+      {
+        "day": 6,
+        "camp": "Mistletoe",
+        "miles": 12.4,
+        "gain": 3910,
+        "loss": 5370,
+        "programs": "Passthrough Challenge Course Program @ Head of Dean;"
+      },
+      {
+        "day": 7,
+        "camp": "CIMARRONCITA",
+        "miles": 5.2,
+        "gain": 2060,
+        "loss": 3060,
+        "programs": "Reforestation Project; Fire Ecology & Wildlife Conservation"
+      },
+      {
+        "day": 8,
+        "camp": "Whistle Punk",
+        "miles": 13.1,
+        "gain": 6550,
+        "loss": 4050,
+        "programs": "Passthrough Commissary & Trading Post @ Ute Gulch;"
+      },
+      {
+        "day": 9,
+        "camp": "Red Hills",
+        "miles": 6.8,
+        "gain": 3610,
+        "loss": 3130,
+        "programs": "Comanche Peak & Mount Phillips (optional); Trail Camp"
+      },
+      {
+        "day": 10,
+        "camp": "BEAUBIEN",
+        "miles": 7.4,
+        "gain": 3230,
+        "loss": 4290,
+        "programs": "Passthrough Commissary & Trading Post @ Phillips"
+      },
+      {
+        "day": 11,
+        "camp": "Shaefers Pass",
+        "miles": 9.2,
+        "gain": 4970,
+        "loss": 5530,
+        "programs": "Passthrough Black Mountain Encampment Program; Dry"
+      },
+      {
+        "day": 12,
+        "camp": "Camping HQ",
+        "miles": 10.1,
+        "gain": 3670,
+        "loss": 5740,
+        "programs": "Shaefers Peak; Tooth of Time; Hike into Base, Closing"
+      }
+    ],
+    "elevations": {
+      "min": 7424,
+      "max": 10403
+    },
+    "camps_info": "4 Staffed, 5 Trail, 1 Layover, 3 Dry Camps",
+    "conservation": "Cimarroncita"
+  },
+  {
+    "id": "9-1",
+    "name": "Itinerary 9-1",
+    "days": 9,
+    "miles": 42,
+    "rating": "Challenging",
+    "highlights": [
+      "Hiking Highlights\nBeaubien Meadow\nUrraca Mesa\nTrail Peak 10,250 ft",
+      "Lookout Peak 9,927 ft"
+    ],
+    "description": "Enjoy the opportunity to participate in a wide variety of activities on this program-focused itinerary. Visit many staffed camps located in Philmont's South Country while exploring this region's beautiful meadows, riverways, and mesas. Learn about High Mountain Ranching and challenge your crew to reach new heights at rock climbing. Your crew will also get to see many different campfire shows and cook a delicious chuckwagon dinner! This trek is an excellent introduction to all that the beautiful South Country has to offer.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "ABREU",
+        "miles": 5.8,
+        "gain": 1180,
+        "loss": 480,
+        "programs": "Ranger Training; Passthrough Rayado Rancho Program;"
+      },
+      {
+        "day": 3,
+        "camp": "Lower Bonito",
+        "miles": 4.7,
+        "gain": 3080,
+        "loss": 1310,
+        "programs": "Trail Camp"
+      },
+      {
+        "day": 4,
+        "camp": "BEAUBIEN",
+        "miles": 8.1,
+        "gain": 4030,
+        "loss": 3670,
+        "programs": "High Mountain Ranching Program; Chuckwagon Dinner;"
+      },
+      {
+        "day": 5,
+        "camp": "BLACK MOUNTAIN",
+        "miles": 3.5,
+        "gain": 1920,
+        "loss": 2150,
+        "programs": "Bonito Peak (optional); Black Mountain Encampment"
+      },
+      {
+        "day": 6,
+        "camp": "MINERS PARK",
+        "miles": 5.2,
+        "gain": 2450,
+        "loss": 3540,
+        "programs": "Trail Building Project @ North Fork Urraca; Rock Climbing"
+      },
+      {
+        "day": 7,
+        "camp": "Bear Caves",
+        "miles": 3.1,
+        "gain": 1780,
+        "loss": 1380,
+        "programs": "Passthrough Continental Tie & Lumber Company Program"
+      },
+      {
+        "day": 8,
+        "camp": "URRACA",
+        "miles": 4.6,
+        "gain": 1780,
+        "loss": 2210,
+        "programs": "Stone Wall Pass; Challenge Course Program; Campfire"
+      },
+      {
+        "day": 9,
+        "camp": "Camping HQ",
+        "miles": 6.8,
+        "gain": 2520,
+        "loss": 3400,
+        "programs": "High Ropes & Climbing Tower @ RMSC COPE Course;"
+      }
+    ],
+    "elevations": {
+      "min": 7214,
+      "max": 9343
+    },
+    "camps_info": "5 Staffed, 2 Trail",
+    "conservation": "North Fork Urraca"
+  },
+  {
+    "id": "9-2",
+    "name": "Itinerary 9-2",
+    "days": 9,
+    "miles": 39,
+    "rating": "Challenging",
+    "highlights": [
+      "Hiking Highlights\nBaldy Mountain 12,441 ft"
+    ],
+    "description": "Enjoy the opportunity to participate in a wide variety of activities on this program-focused itinerary. Visit many staffed camps located in Philmont's South Country while exploring this region's beautiful meadows, riverways, and mesas. Learn about High Mountain Ranching and the life of homesteaders along the Santa Fe Trail. Your crew will also get to see campfire shows and enjoy both a chuckwagon dinner and a Mexican dinner! This trek is an excellent introduction to much of what the beautiful South Country has to offer.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Magpie",
+        "miles": 3.3,
+        "gain": 840,
+        "loss": 140,
+        "programs": "Ranger Training; Dry Camp (Water @ North Fork Urraca"
+      },
+      {
+        "day": 3,
+        "camp": "URRACA",
+        "miles": 1.9,
+        "gain": 1140,
+        "loss": 550,
+        "programs": "Challenge Course Program; Campfire Show"
+      },
+      {
+        "day": 4,
+        "camp": "Bear Caves",
+        "miles": 6.8,
+        "gain": 3090,
+        "loss": 2660,
+        "programs": "Stonewall Pass; Campfire Show @ Crater Lake; Trail"
+      },
+      {
+        "day": 5,
+        "camp": "BEAUBIEN",
+        "miles": 8.5,
+        "gain": 4110,
+        "loss": 3190,
+        "programs": "Trail Peak (optional); High Mountain Ranching;"
+      },
+      {
+        "day": 6,
+        "camp": "Fish Camp",
+        "miles": 4.2,
+        "gain": 1750,
+        "loss": 2380,
+        "programs": "Passthrough Commissary & Trading Post @ Phillips"
+      },
+      {
+        "day": 7,
+        "camp": "ABREU",
+        "miles": 7.9,
+        "gain": 5480,
+        "loss": 6970,
+        "programs": "Lookout Peak (optional); Abreu Family Homestead"
+      },
+      {
+        "day": 8,
+        "camp": "Olympia",
+        "miles": 3.3,
+        "gain": 110,
+        "loss": 600,
+        "programs": "Trail Camp"
+      },
+      {
+        "day": 9,
+        "camp": "Camping HQ",
+        "miles": 2.6,
+        "gain": 300,
+        "loss": 520,
+        "programs": "Rayado Rancho Program; Kit Carson Museum; Hike to"
+      }
+    ],
+    "elevations": {
+      "min": 6729,
+      "max": 9343
+    },
+    "camps_info": "3 Staffed, 4 Trail, 1 Dry Camp",
+    "conservation": "Beaubien"
+  },
+  {
+    "id": "9-3",
+    "name": "Itinerary 9-3",
+    "days": 9,
+    "miles": 36,
+    "rating": "Challenging",
+    "highlights": [
+      "Hiking Highlights\nBaldy Mountain 12,441 ft",
+      "Hart Peak 7,975 ft"
+    ],
+    "description": "Watch the landscape evolve as your traverse Philmont's North Country on this rugged nine-day trek. Exploring pre-history in the North Ponil Canyon with dinosaurs and ancient Puebloan petroglyphs. Discover the lives and traditions cowboys, loggers, fur trappers, and miners as you ascend into Baldy Country. Learn the art of burro packing with this unique opportunity to travel as people have in this land for centuries. Challenge your crew to summit the highest peak on Philmont property and uncover what it was like to hunt for gold in these hills. You'll be amazed when you look back at the wide variety of scenic landscapes you've experienced and all of the historic people that have traversed them!",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "INDIAN WRITINGS",
+        "miles": 3.8,
+        "gain": 1500,
+        "loss": 1260,
+        "programs": "Ranger Training; T-Rex Track; Ancestral Puebloan"
+      },
+      {
+        "day": 3,
+        "camp": "Sioux",
+        "miles": 5.9,
+        "gain": 2670,
+        "loss": 2240,
+        "programs": "Hart Peak; Passthrough Philturn Five Points Camp"
+      },
+      {
+        "day": 4,
+        "camp": "Flume Canyon",
+        "miles": 5.3,
+        "gain": 2680,
+        "loss": 2320,
+        "programs": "Trail Construction Project @ Sioux; Pick Up Burro @ Ponil;"
+      },
+      {
+        "day": 5,
+        "camp": "HEAD OF DEAN",
+        "miles": 3.8,
+        "gain": 2180,
+        "loss": 1190,
+        "programs": "Passthrough Continental Tie & Lumber Company Program"
+      },
+      {
+        "day": 6,
+        "camp": "Black Horse Mine",
+        "miles": 6.7,
+        "gain": 3970,
+        "loss": 1910,
+        "programs": "Drop Off @ Miranda Burro Pens; Baldy Hike Prep; Dry"
+      },
+      {
+        "day": 7,
+        "camp": "Black Horse Mine",
+        "miles": 6.2,
+        "gain": 4030,
+        "loss": 4030,
+        "programs": "Baldy Mountain; Passthrough Claude Mining & Milling"
+      },
+      {
+        "day": 8,
+        "camp": "MIRANDA",
+        "miles": 2.6,
+        "gain": 430,
+        "loss": 2310,
+        "programs": "Bent, St. Vrain & Company Fur Trading Program"
+      },
+      {
+        "day": 9,
+        "camp": "Camping HQ",
+        "miles": 1.7,
+        "gain": 70,
+        "loss": 630,
+        "programs": "Hike to Maxwell Trailhead; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 6968,
+      "max": 10820
+    },
+    "camps_info": "3 Staffed, 3 Trail, 1 Layover, 1 Dry Camp",
+    "conservation": "Sioux"
+  },
+  {
+    "id": "9-4",
+    "name": "Itinerary 9-4",
+    "days": 9,
+    "miles": 43,
+    "rating": "Rugged",
+    "highlights": [
+      "Hiking Highlights\nHart Peak 7,975 ft"
+    ],
+    "description": "chance to explore the historic wonders of the North Ponil canyon before crossing over to the South Ponil. Challenge your crew to hike Hart Peak and enjoy a lovely chuckwagon dinner and a lively campfire show. Ascend to the summit of Baldy Mountain and overlook all of the land you had previously hiked over. While you will check-in with quite a few staffed camps, know that your time spent at each may be limited as you quickly move across this breathtaking landscape!",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "McBride Canyon",
+        "miles": 2.6,
+        "gain": 1150,
+        "loss": 740,
+        "programs": "Ranger Training; Trail Camp Camping HQ"
+      },
+      {
+        "day": 3,
+        "camp": "PONIL",
+        "miles": 5.1,
+        "gain": 1960,
+        "loss": 1970,
+        "programs": "Passthrough Ancestral Puebloan Archaeology @ Indian"
+      },
+      {
+        "day": 4,
+        "camp": "Elkhorn",
+        "miles": 5.1,
+        "gain": 3490,
+        "loss": 2100,
+        "programs": "Trail Construction Project; Trail Camp Ponil"
+      },
+      {
+        "day": 5,
+        "camp": "PUEBLANO",
+        "miles": 5.1,
+        "gain": 1900,
+        "loss": 2350,
+        "programs": "Passthrough Challenge Course Program @ Head of Dean;"
+      },
+      {
+        "day": 6,
+        "camp": "Copper Park",
+        "miles": 5.7,
+        "gain": 4270,
+        "loss": 1810,
+        "programs": "Passthrough Claude Mining & Milling Company Program @"
+      },
+      {
+        "day": 7,
+        "camp": "Copper Park",
+        "miles": 10.8,
+        "gain": 6330,
+        "loss": 6330,
+        "programs": "Baldy Mountain; Passthrough Baldy Mining District"
+      },
+      {
+        "day": 8,
+        "camp": "MIRANDA",
+        "miles": 6.7,
+        "gain": 2910,
+        "loss": 4510,
+        "programs": "Bent, St. Vrain & Company Fur Trading Program"
+      },
+      {
+        "day": 9,
+        "camp": "Camping HQ",
+        "miles": 1.7,
+        "gain": 70,
+        "loss": 630,
+        "programs": "Hike to Maxwell Trailhead; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 7132,
+      "max": 10534
+    },
+    "camps_info": "3 Staffed, 3 Trail, 1 Layover",
+    "conservation": "Elkhorn"
+  },
+  {
+    "id": "9-5",
+    "name": "Itinerary 9-5",
+    "days": 9,
+    "miles": 39,
+    "rating": "Rugged",
+    "highlights": [
+      "Hiking Highlights\nTooth of Time 9,003 ft",
+      "Trail Peak 10,250 ft",
+      "Big Red Peak 11,020 ft",
+      "Black Mountain 10,889 ft"
+    ],
+    "description": "This Central and North Country trek is ideal for crews wanting to explore the rich history of Philmont with a great mix of hiking and opportunity for program. Traverse the 2018 Ute Park fire recovery zone to try your hand at shotgun and learn about fire ecology and wildlife conservation. Cross the beautiful ridges and canyons of the North past Black Jack's famous hideout, and into the Ponil Country for a hearty Chuckwagon dinner and campfire show at the Philturn Five Points Camp. Hike over Hart Peak and find yourself in North Ponil Canyon, filled with pre-historic petroglyphs and dinosaur tracks!",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "HARLAN",
+        "miles": 4.1,
+        "gain": 1630,
+        "loss": 710,
+        "programs": "Ranger Training; Shotgun Shooting & Shotshell Reloading"
+      },
+      {
+        "day": 3,
+        "camp": "Devils Wash Basin",
+        "miles": 6.1,
+        "gain": 2490,
+        "loss": 1530,
+        "programs": "Dry Camp (Water @ Harlan)"
+      },
+      {
+        "day": 4,
+        "camp": "CIMARRONCITA",
+        "miles": 7.2,
+        "gain": 2480,
+        "loss": 3570,
+        "programs": "Fire Ecology & Wildlife Conservation Program Ute Gulch"
+      },
+      {
+        "day": 5,
+        "camp": "New Dean",
+        "miles": 4.9,
+        "gain": 2200,
+        "loss": 1860,
+        "programs": "Reforestation Project @ Cimarroncita; Black Jack's Hideout"
+      },
+      {
+        "day": 6,
+        "camp": "PONIL",
+        "miles": 3.7,
+        "gain": 1460,
+        "loss": 2090,
+        "programs": "Philturn Five Points Camp Program; Horse Ride; Cantina;"
+      },
+      {
+        "day": 7,
+        "camp": "Coyote Howl",
+        "miles": 5.7,
+        "gain": 2920,
+        "loss": 2520,
+        "programs": "Passthrough Ancestral Puebloan Archaeology Program @"
+      },
+      {
+        "day": 8,
+        "camp": "House Canyon",
+        "miles": 4.4,
+        "gain": 1770,
+        "loss": 2130,
+        "programs": "Trail Camp"
+      },
+      {
+        "day": 9,
+        "camp": "Camping HQ",
+        "miles": 2.3,
+        "gain": 560,
+        "loss": 1010,
+        "programs": "T-Rex Track; Hike to Six Mile Trailhead; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 7132,
+      "max": 8510
+    },
+    "camps_info": "3 Staffed, 4 Trail, 2 Dry Camps",
+    "conservation": "Cimarroncita"
+  },
+  {
+    "id": "9-6",
+    "name": "Itinerary 9-6",
+    "days": 9,
+    "miles": 46,
+    "rating": "Rugged",
+    "highlights": [],
+    "description": "Challenge your crew to summit some of the iconic peaks of Philmont's South Country while discovering the rich living history of the area. Learn about New Mexican homesteading with the Abreu family and the pioneers of Crooked Creek. Try your hand at high mountain ranching in the 1870s and enjoy a chuckwagon dinner at the end of a long day. Trail Peak, Big Red, Black Mountain, and the Tooth of Time all give your crew the ability to challenge themselves to reach new heights on this rugged trek.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "ABREU",
+        "miles": 2.4,
+        "gain": 450,
+        "loss": 160,
+        "programs": "Ranger Training; Abreu Family Homestead Program;"
+      },
+      {
+        "day": 3,
+        "camp": "CRATER LAKE",
+        "miles": 5.8,
+        "gain": 3000,
+        "loss": 1820,
+        "programs": "Continental Tie & Lumber Company Program; Campfire"
+      },
+      {
+        "day": 4,
+        "camp": "BEAUBIEN",
+        "miles": 7.3,
+        "gain": 3660,
+        "loss": 2710,
+        "programs": "Trail Peak (optional); high Mountain Ranching Program;"
+      },
+      {
+        "day": 5,
+        "camp": "Porcupine",
+        "miles": 2.7,
+        "gain": 1260,
+        "loss": 1410,
+        "programs": "Horse Ride; Passthrough Commissary & Trading Post @"
+      },
+      {
+        "day": 6,
+        "camp": "Red Hills",
+        "miles": 6.2,
+        "gain": 3700,
+        "loss": 2480,
+        "programs": "Passthrough Pioneer Homestead Program @ Crooked"
+      },
+      {
+        "day": 7,
+        "camp": "BLACK MOUNTAIN",
+        "miles": 4.9,
+        "gain": 2190,
+        "loss": 3490,
+        "programs": "Big Red; Comanche Pass; Black Mountain (optional); Black"
+      },
+      {
+        "day": 8,
+        "camp": "Shaefers Pass",
+        "miles": 6.0,
+        "gain": 3140,
+        "loss": 3460,
+        "programs": "Trail Building Project @ North Fork Urraca; Dry Camp"
+      },
+      {
+        "day": 9,
+        "camp": "Camping HQ",
+        "miles": 10.1,
+        "gain": 3670,
+        "loss": 5740,
+        "programs": "Shaefers Peak; Tooth of Time; Hike Into Camping"
+      }
+    ],
+    "elevations": {
+      "min": 7214,
+      "max": 10403
+    },
+    "camps_info": "4 Staffed, 3 Trail, 1 Dry Camp",
+    "conservation": "North Fork Urraca"
+  },
+  {
+    "id": "9-7",
+    "name": "Itinerary 9-7",
+    "days": 9,
+    "miles": 60,
+    "rating": "Rugged",
+    "highlights": [],
+    "description": "Explore further north than any other nine-day itinerary with this rugged trek. Distance is the name of the game, and you'll get to experience the Valle Vidal of the Carson National Forest while still having plenty of opportunities for program steeped in rich history. Start at the confluence of the North and South Ponil creeks and head far up canyons and into the valleys north of Philmont to learn about astronomy and space science. Visit the Philturn Five Points Camp for a night of cowboy fun including a delicious chuckwagon dinner. Check out the Continental Tie & Lumber Company at Pueblano and be sure to attend the company meeting that night. Work together to complete a variety of challenge courses and enjoy the views from the Baldy Skyline area before your triumphant return to Camping Headquarters.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "INDIAN WRITINGS",
+        "miles": 3.8,
+        "gain": 1500,
+        "loss": 1260,
+        "programs": "Ranger Training; T-Rex Track; Ancestral Puebloan"
+      },
+      {
+        "day": 3,
+        "camp": "Rabbit Ear",
+        "miles": 9.2,
+        "gain": 3220,
+        "loss": 2020,
+        "programs": "Passthrough Cimarron & Northwestern Railway Program @"
+      },
+      {
+        "day": 4,
+        "camp": "RING PLACE",
+        "miles": 8.2,
+        "gain": 940,
+        "loss": 980,
+        "programs": "Passthrough Challenge Course Program @ Dan Beard;"
+      },
+      {
+        "day": 5,
+        "camp": "Iris Park",
+        "miles": 8.0,
+        "gain": 860,
+        "loss": 420,
+        "programs": "Stream Restoration Project @ McCrystal Creek; Low"
+      },
+      {
+        "day": 6,
+        "camp": "PONIL",
+        "miles": 12.1,
+        "gain": 2320,
+        "loss": 3760,
+        "programs": "Philturn Five Points Program; Cantina; Campfire Show Ponil"
+      },
+      {
+        "day": 7,
+        "camp": "PUEBLANO",
+        "miles": 5.4,
+        "gain": 3060,
+        "loss": 2120,
+        "programs": "Continental Tie & Lumber Company Program; Campfire"
+      },
+      {
+        "day": 8,
+        "camp": "Dean Skyline",
+        "miles": 6.8,
+        "gain": 2590,
+        "loss": 2250,
+        "programs": "Passthrough Challenge Course Program @ Head of Dean;"
+      },
+      {
+        "day": 9,
+        "camp": "Camping HQ",
+        "miles": 6.1,
+        "gain": 2440,
+        "loss": 3910,
+        "programs": "Hike to Nine Mile Trailhead; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 6968,
+      "max": 8566
+    },
+    "camps_info": "4 Staffed, 3 Trail, 3 Dry Camps",
+    "conservation": "McCrystal Creek"
+  },
+  {
+    "id": "9-8",
+    "name": "Itinerary 9-8",
+    "days": 9,
+    "miles": 42,
+    "rating": "Strenuous",
+    "highlights": [
+      "Hiking Highlights\nMount Phillips 11,736 ft",
+      "Comanche Peak 11,303 ft",
+      "Big Red 11,020 ft"
+    ],
+    "description": "This trek is ideal for experienced crews that are looking for a hiking-focused itinerary. Crews will have ample opportunities to hike through the 2018 Ute Park fire recovery zone which will require early starts and a close eye on the weather while traversing exposed areas and canyons. Enjoy opportunities for shooting sports and fire ecology programs at a variety of staffed camps. Give back to Philmont with the newest conservation project, reforestation of the Cimarroncita area!",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "HARLAN",
+        "miles": 5.4,
+        "gain": 2360,
+        "loss": 1900,
+        "programs": "Ranger Training; Shotgun Shooting & Shotshell Reloading"
+      },
+      {
+        "day": 3,
+        "camp": "Deer Lake",
+        "miles": 2.7,
+        "gain": 1520,
+        "loss": 800,
+        "programs": "Trail Camp; Dry Camp (Water @ Harlan)"
+      },
+      {
+        "day": 4,
+        "camp": "CIMARRONCITO",
+        "miles": 7.8,
+        "gain": 2750,
+        "loss": 2850,
+        "programs": "Passthrough Commissary & Trading Post @ Ute Gulch;"
+      },
+      {
+        "day": 5,
+        "camp": "Lamberts Mine",
+        "miles": 4.1,
+        "gain": 2960,
+        "loss": 2070,
+        "programs": "Trail Camp"
+      },
+      {
+        "day": 6,
+        "camp": "Comanche Peak",
+        "miles": 6.1,
+        "gain": 5040,
+        "loss": 2980,
+        "programs": "Passthrough St. Louis & Cimarron Mining Company"
+      },
+      {
+        "day": 7,
+        "camp": "SAWMILL",
+        "miles": 6.6,
+        "gain": 2780,
+        "loss": 4670,
+        "programs": "Mount Phillips & Comanche Peak (optional); Rifle Shooting"
+      },
+      {
+        "day": 8,
+        "camp": "CIMARRONCITA",
+        "miles": 7.5,
+        "gain": 1850,
+        "loss": 3650,
+        "programs": "Fire Ecology & Wildlife Conservation Program"
+      },
+      {
+        "day": 9,
+        "camp": "Camping HQ",
+        "miles": 0.9,
+        "gain": 40,
+        "loss": 120,
+        "programs": "Reforestation Project @ Cimarroncita; Hike to Ute Park"
+      }
+    ],
+    "elevations": {
+      "min": 7424,
+      "max": 11115
+    },
+    "camps_info": "4 Staffed, 3 Trail, 2 Dry Camps",
+    "conservation": "Cimarroncita"
+  },
+  {
+    "id": "9-9",
+    "name": "Itinerary 9-9",
+    "days": 9,
+    "miles": 47,
+    "rating": "Strenuous",
+    "highlights": [
+      "Trail Peak 10,240 ft"
+    ],
+    "description": "Choose this strenuous itinerary and follow in the footsteps of New Mexican settlers pushing further into the mountains that now make up Philmont. Follow the Rayado valley up the river into the breathtaking Beaubien Meadow and on to Mount Phillips, the highest point on your trek. Discover the challenges and rewards of high mountain ranching and fur trapping. Trace ridges and watercourses back down to the miners of the St. Louis & Cimarron Mining Company and attend a company meeting. Learn about sustainable forest stewardship at the Demonstration Forest. This trek offers ample program opportunities, but to take advantage of them you'll need to make sure your crew is works together to prepare for some early starts.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Carson Meadows",
+        "miles": 4.2,
+        "gain": 1640,
+        "loss": 830,
+        "programs": "Ranger Training; Passthrough Abreu Family Homestead"
+      },
+      {
+        "day": 3,
+        "camp": "Fish Camp",
+        "miles": 6.5,
+        "gain": 5950,
+        "loss": 4990,
+        "programs": "Trail Camp (no services)"
+      },
+      {
+        "day": 4,
+        "camp": "BEAUBIEN",
+        "miles": 5.7,
+        "gain": 3110,
+        "loss": 2470,
+        "programs": "Lookout Peak (optional); Forest Fuels Reduction Project;"
+      },
+      {
+        "day": 5,
+        "camp": "CLEAR CREEK",
+        "miles": 9.3,
+        "gain": 4140,
+        "loss": 3160,
+        "programs": "Passthrough Commissary & Trading Post @ Phillips"
+      },
+      {
+        "day": 6,
+        "camp": "Divide",
+        "miles": 7.2,
+        "gain": 3420,
+        "loss": 3160,
+        "programs": "Mount Phillips; Comanche Peak; Dry Camp (Water @"
+      },
+      {
+        "day": 7,
+        "camp": "CYPHERS MINE",
+        "miles": 6.2,
+        "gain": 3940,
+        "loss": 5170,
+        "programs": "Big Red; Comanche Pass; St. Louis & Cimarron Mining"
+      },
+      {
+        "day": 8,
+        "camp": "Hunting Lodge",
+        "miles": 4.1,
+        "gain": 2270,
+        "loss": 3830,
+        "programs": "Trail Camp (No Services)"
+      },
+      {
+        "day": 9,
+        "camp": "Camping HQ",
+        "miles": 3.6,
+        "gain": 490,
+        "loss": 1200,
+        "programs": "Forest Stewardship @ Demonstration Forest; Hike to"
+      }
+    ],
+    "elevations": {
+      "min": 7739,
+      "max": 10580
+    },
+    "camps_info": "3 Staffed, 4 Trail, 1 Dry Camp",
+    "conservation": "Beaubien"
+  },
+  {
+    "id": "9-10",
+    "name": "Itinerary 9-10",
+    "days": 9,
+    "miles": 51,
+    "rating": "Strenuous",
+    "highlights": [
+      "Hiking Highlights\nTooth of Time 9,003 ft",
+      "Dean Skyline\nShaefers Peak 9,413 ft"
+    ],
+    "description": "Trek through the depths of Philmont's beautiful South Country on this 9-day strenuous trek focusing primarily on hiking with a number of opportunities for program. Discover how the Jicarilla Apache lived before the high mountain ranchers brought their livelihoods into this area. If your crew is ready for the additional challenge, summit Trail Peak on your way the challenge courses of Urraca. Enjoy several campfire shows and top off your trek by climbing the iconic Tooth of Time.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Rimrock Park",
+        "miles": 5.6,
+        "gain": 1070,
+        "loss": 200,
+        "programs": "Ranger Training; Rayado Rancho Program; Kit Carson"
+      },
+      {
+        "day": 3,
+        "camp": "Fish Camp",
+        "miles": 8.5,
+        "gain": 7080,
+        "loss": 5750,
+        "programs": "Passthrough Abreu Family Homestead Program & Cantina"
+      },
+      {
+        "day": 4,
+        "camp": "APACHE SPRINGS",
+        "miles": 3.5,
+        "gain": 2430,
+        "loss": 1720,
+        "programs": "Jicarrilla Apache Ethnology Program Apache Springs"
+      },
+      {
+        "day": 5,
+        "camp": "BEAUBIEN",
+        "miles": 7.3,
+        "gain": 3150,
+        "loss": 3220,
+        "programs": "Forest Fuels Reduction Project; High Mountain Ranching"
+      },
+      {
+        "day": 6,
+        "camp": "Bear Caves",
+        "miles": 8.5,
+        "gain": 3190,
+        "loss": 4110,
+        "programs": "Trail Peak (optional); Passthrough Continental Tie &"
+      },
+      {
+        "day": 7,
+        "camp": "URRACA",
+        "miles": 4.6,
+        "gain": 1780,
+        "loss": 2210,
+        "programs": "Stone Wall Pass; Challenge Course Program; Campfire"
+      },
+      {
+        "day": 8,
+        "camp": "Stockade Ridge",
+        "miles": 8.0,
+        "gain": 3100,
+        "loss": 3540,
+        "programs": "High Ropes & Climbing Tower Program @ RMSC COPE"
+      },
+      {
+        "day": 9,
+        "camp": "Camping HQ",
+        "miles": 4.1,
+        "gain": 1790,
+        "loss": 2240,
+        "programs": "Tooth of Time; Hike Into Camping Headquarters via Tooth"
+      }
+    ],
+    "elevations": {
+      "min": 7378,
+      "max": 9416
+    },
+    "camps_info": "3 Staffed, 4 Trail, 1 Dry Camp",
+    "conservation": "Beaubien"
+  },
+  {
+    "id": "9-11",
+    "name": "Itinerary 9-11",
+    "days": 9,
+    "miles": 52,
+    "rating": "Super Strenuous",
+    "highlights": [
+      "Hiking Highlights\nMount Phillips 11,736 ft",
+      "Tooth of Time 9,003 ft",
+      "Comanche Peak 11,303 ft"
+    ],
+    "description": "Very prepared and physically fit crews will be rewarded in this itinerary by traversing many different regions of Philmont Scout Ranch with a focus on rock climbing program. You'll start in the northern canyon country and head along Dean Skyline before dropping down into the Ute Park Fire Recovery Area. From. After climbing at Dean Cow, you'll head down Turkey Creek Canyon, which was the location of an Old West shootout in 1899. Make a couple stops in the burn scar at Harlan and Ute Gulch before exploring the rocky outcroppings in the Cimarroncito area which provide great views of Tooth of Time Ridge, where you will wrap up with a hike into Camping Headquarters.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Dean Skyline",
+        "miles": 3.7,
+        "gain": 2810,
+        "loss": 1470,
+        "programs": "Ranger Training; Passthrough Philturn Five Points Camp"
+      },
+      {
+        "day": 3,
+        "camp": "DEAN COW",
+        "miles": 4.9,
+        "gain": 1220,
+        "loss": 2370,
+        "programs": "Rock Climbing Program"
+      },
+      {
+        "day": 4,
+        "camp": "Vaca",
+        "miles": 10.0,
+        "gain": 4050,
+        "loss": 3890,
+        "programs": "Black Jack's Hideout (optional); Passthrough Shotgun"
+      },
+      {
+        "day": 5,
+        "camp": "CIMARRONCITO",
+        "miles": 8.1,
+        "gain": 3950,
+        "loss": 3210,
+        "programs": "Passthrough Commissary & Trading Post @ Ute Gulch;"
+      },
+      {
+        "day": 6,
+        "camp": "CLARKS FORK",
+        "miles": 3.1,
+        "gain": 620,
+        "loss": 1250,
+        "programs": "Window Rock (optional); Forest Stewardship Program @"
+      },
+      {
+        "day": 7,
+        "camp": "MINERS PARK",
+        "miles": 6.8,
+        "gain": 4290,
+        "loss": 3800,
+        "programs": "Trail Building Project @ North Fork Urraca; Rock Climbing"
+      },
+      {
+        "day": 8,
+        "camp": "Tooth Ridge",
+        "miles": 7.4,
+        "gain": 4200,
+        "loss": 3910,
+        "programs": "Dry Camp (Water @ North Fork Urraca)"
+      },
+      {
+        "day": 9,
+        "camp": "Camping HQ",
+        "miles": 7.0,
+        "gain": 1980,
+        "loss": 3590,
+        "programs": "Tooth of Time; Hike Into Camping Headquarters; Closing"
+      }
+    ],
+    "elevations": {
+      "min": 7260,
+      "max": 8412
+    },
+    "camps_info": "4 Staffed, 3 Trail, 2 Dry Camps",
+    "conservation": "North Fork Urraca"
+  },
+  {
+    "id": "9-12",
+    "name": "Itinerary 9-12",
+    "days": 9,
+    "miles": 60,
+    "rating": "Super Strenuous",
+    "highlights": [
+      "Hiking Highlights\nBaldy Mountain Views\nUte Park Fire Recovery Area\nHart Peak 7,975 ft"
+    ],
+    "description": "This nine-day itinerary provides wonderful rewards for high-performing crews willing to meet the challenge of long days and elevation changes. Traverse the 2018 Ute Park fire recovery zone and quickly gain elevation leading up to Mount Phillips. If you have time, enjoy the opportunity to test your marksmanship at various shooting sports staff camps. Enjoy the beauty of Beaubien Meadow with the high mountain ranchers and their lively campfire show. Descend past rivers and meadows before gaining elevation once again to reach the Summit of the iconic Tooth of Time. Along the way there are brief stops at many different staffed camps with opportunities for program, but only if your crew's hiking schedule allows.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "HARLAN",
+        "miles": 4.1,
+        "gain": 1630,
+        "loss": 710,
+        "programs": "Ranger Training; Shotgun Shooting & Shotshell Reloading"
+      },
+      {
+        "day": 3,
+        "camp": "Devils Wash Basin",
+        "miles": 6.1,
+        "gain": 2490,
+        "loss": 1530,
+        "programs": "Dry Camp (Water @ Harlan or Deer Lake)"
+      },
+      {
+        "day": 4,
+        "camp": "SAWMILL",
+        "miles": 8.7,
+        "gain": 4190,
+        "loss": 3470,
+        "programs": "Rifle Shooting & Cartridge Reloading Program Ute Gulch"
+      },
+      {
+        "day": 5,
+        "camp": "Mount Phillips",
+        "miles": 8.2,
+        "gain": 5820,
+        "loss": 3330,
+        "programs": "Trail Building Project @ Sawmill; Comanche Peak; Dry"
+      },
+      {
+        "day": 6,
+        "camp": "Porcupine",
+        "miles": 10.0,
+        "gain": 2560,
+        "loss": 5080,
+        "programs": "Mount Phillips; Passthrough Taos Trappers Program @"
+      },
+      {
+        "day": 7,
+        "camp": "BEAUBIEN",
+        "miles": 2.7,
+        "gain": 1410,
+        "loss": 1260,
+        "programs": "Passthrough Commissary & Trading Post @ Phillips"
+      },
+      {
+        "day": 8,
+        "camp": "Shaefers Pass",
+        "miles": 9.2,
+        "gain": 4970,
+        "loss": 5530,
+        "programs": "Passthrough Black Mountain Encampment Program; Black"
+      },
+      {
+        "day": 9,
+        "camp": "Camping HQ",
+        "miles": 10.1,
+        "gain": 3670,
+        "loss": 5740,
+        "programs": "Shaefers Peak; Tooth of Time; Hike Into Base; Closing"
+      }
+    ],
+    "elevations": {
+      "min": 7545,
+      "max": 11706
+    },
+    "camps_info": "3 Staffed, 4 Trail, 3 Dry Camps",
+    "conservation": "Sawmill"
+  },
+  {
+    "id": "7-1",
+    "name": "Itinerary 7-1",
+    "days": 7,
+    "miles": 26,
+    "rating": "Challenging",
+    "highlights": [
+      "Hiking Highlights\nHistoric North Ponil Canyon\nDean Skyline\nHart Peak 7,975 ft"
+    ],
+    "description": "This trek begins in Ute Park with fantastic views of Baldy Mountain and the Cimarron River valley. Watch as the landscape and ecosystems change dramatically as you hike over ridges separating Bear Canyon, Dean Canyon, and Ponil Canyon with scenes that would fit well in any old western. In the Ponil country you'll have the opportunity to climb Hart Peak and explore all of the history of this region: from pre-historic dinosaurs and petroglyphs to railroading, cowboy life, and the very beginnings of Philmont Scout Ranch.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Cimarron River",
+        "miles": 2.2,
+        "gain": 580,
+        "loss": 640,
+        "programs": "Ranger Training; Passthrough Fire Ecology & Wildlife"
+      },
+      {
+        "day": 3,
+        "camp": "New Dean",
+        "miles": 3.6,
+        "gain": 1740,
+        "loss": 1260,
+        "programs": "Black Jack's Hideout (optional); Trail Camp"
+      },
+      {
+        "day": 4,
+        "camp": "PONIL",
+        "miles": 6.5,
+        "gain": 2380,
+        "loss": 3010,
+        "programs": "Trail Construction Project @ Sioux; Philturn Five Points"
+      },
+      {
+        "day": 5,
+        "camp": "METCALF STATION",
+        "miles": 5.9,
+        "gain": 1930,
+        "loss": 1840,
+        "programs": "Horse Ride; Hart Peak (optional); Cimarron & Northwestern"
+      },
+      {
+        "day": 6,
+        "camp": "INDIAN WRITINGS",
+        "miles": 3.6,
+        "gain": 890,
+        "loss": 1140,
+        "programs": "Ancestral Puebloan Archaeology Program"
+      },
+      {
+        "day": 7,
+        "camp": "Camping HQ",
+        "miles": 3.8,
+        "gain": 1260,
+        "loss": 1500,
+        "programs": "T-Rex Track; Hike to Six Mile Gate Trailhead; Closing"
+      }
+    ],
+    "elevations": {
+      "min": 6968,
+      "max": 7765
+    },
+    "camps_info": "3 Staffed, 2 Trail",
+    "conservation": "Sioux"
+  },
+  {
+    "id": "7-2",
+    "name": "Itinerary 7-2",
+    "days": 7,
+    "miles": 31,
+    "rating": "Challenging",
+    "highlights": [
+      "Hiking Highlights\nDean Skyline\nWilson Mesa\nHart Peak 7,975 ft"
+    ],
+    "description": "This itinerary explores much of the Ponil country, which includes some of the richest history on the ranch. You'll start with dinosaurs and petroglyphs in the North Ponil Canyon. If your crew is up for it, take the side hike to Hart Peak, the highest peak on the original gift from Waite Phillips. Move up the canyon to experience railroad history at Metcalf Station. From there you'll pass through Dan Beard on your way to Ponil, the original Base Camp for Rocky Mountain Philturn Scout Camp. Learn about western lore and enjoy a chuckwagon dinner and Cantina show.  After your Conservation project at Sioux, see the effects of the Ute Park Fire as you head for a relaxing night at New Dean. Enjoy recently reopened camp of Dean Cow before completing your trek with a hike down Turkey Creek Canyon.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "House Canyon",
+        "miles": 2.3,
+        "gain": 1010,
+        "loss": 560,
+        "programs": "Ranger Training; T-Rex Track; Trail Camp Camping HQ"
+      },
+      {
+        "day": 3,
+        "camp": "METCALF STATION",
+        "miles": 6.8,
+        "gain": 2270,
+        "loss": 2220,
+        "programs": "Passthrough Ancestral Puebloan Archaeology Program @"
+      },
+      {
+        "day": 4,
+        "camp": "PONIL",
+        "miles": 5.9,
+        "gain": 1840,
+        "loss": 1930,
+        "programs": "Passthrough Challenge Course Program @ Dan Beard"
+      },
+      {
+        "day": 5,
+        "camp": "Dean Skyline",
+        "miles": 5.4,
+        "gain": 2990,
+        "loss": 1710,
+        "programs": "Trail Construction Project @ Sioux; Trail Camp"
+      },
+      {
+        "day": 6,
+        "camp": "DEAN COW",
+        "miles": 4.9,
+        "gain": 1220,
+        "loss": 2370,
+        "programs": "Rock Climbing Program"
+      },
+      {
+        "day": 7,
+        "camp": "Camping HQ",
+        "miles": 5.0,
+        "gain": 2660,
+        "loss": 2970,
+        "programs": "Hike to Nine Mile Trailhead; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 7132,
+      "max": 8412
+    },
+    "camps_info": "3 Staffed, 2 Trail, 1 Dry Camp",
+    "conservation": "Sioux"
+  },
+  {
+    "id": "7-3",
+    "name": "Itinerary 7-3",
+    "days": 7,
+    "miles": 36,
+    "rating": "Challenging",
+    "highlights": [
+      "Hiking Highlights\nNorth Ponil Canyon\nHart Peak 7,975 ft"
+    ],
+    "description": "This 7-day trek follows ridges, rivers, and mesas surrounding the Ponil Country offering beautiful landscapes and vistas of the Baldy Country and the peaks of southern Colorado contrasted with wildfire burn scars from 2002 and 2018. Learn about the rich history of this region while taking part in programs in western lore, logging, homesteading, and Project COPE along the way.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Dean Skyline",
+        "miles": 3.7,
+        "gain": 2810,
+        "loss": 1470,
+        "programs": "Ranger Training; Trail Camp Camping HQ"
+      },
+      {
+        "day": 3,
+        "camp": "PUEBLANO",
+        "miles": 6.4,
+        "gain": 2280,
+        "loss": 2670,
+        "programs": "Trail Construction Project @ Elkhorn; Continental Tie &"
+      },
+      {
+        "day": 4,
+        "camp": "PONIL",
+        "miles": 5.4,
+        "gain": 2120,
+        "loss": 3060,
+        "programs": "Philturn Five Points Camp Program; Cantina; Chuckwagon"
+      },
+      {
+        "day": 5,
+        "camp": "Horse Canyon",
+        "miles": 8.7,
+        "gain": 3290,
+        "loss": 2300,
+        "programs": "Passthrough Challenge Course Program @ Dan Beard;"
+      },
+      {
+        "day": 6,
+        "camp": "INDIAN WRITINGS",
+        "miles": 7.3,
+        "gain": 1770,
+        "loss": 2920,
+        "programs": "Passthrough Cimarron & Northwestern Railway Program @"
+      },
+      {
+        "day": 7,
+        "camp": "Camping HQ",
+        "miles": 3.8,
+        "gain": 1160,
+        "loss": 1400,
+        "programs": "T-Rex Track; Hike to Six Mile Gate Trailhead; Closing"
+      }
+    ],
+    "elevations": {
+      "min": 6968,
+      "max": 8412
+    },
+    "camps_info": "3 Staffed, 2 Trail, 1 Dry Camp",
+    "conservation": "Elkhorn"
+  },
+  {
+    "id": "7-4",
+    "name": "Itinerary 7-4",
+    "days": 7,
+    "miles": 34,
+    "rating": "Rugged",
+    "highlights": [],
+    "description": "This itinerary provides an excellent opportunity to explore a wide variety of landscapes, and historical timeframes. Start out in the North Ponil Canyon to witness evidence of dinosaurs and the Ancestral Puebloan people. Learn about local railroad history and enjoy a campfire at Metcalf Station. Enjoy the rocky ridges and expansive vistas north country has to offer. Hike over Hart Peak and into Ponil, the original base camp for Philturn Rocky Mountain Scout Camp. Hike historic canyons and ridges previously traveled by loggers, cattlemen, and outlaws, before landing at the Cimarron River where the green valleys below Baldy Mountain meet the 2018 Ute Park Fire recovery area.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Coyote Howl",
+        "miles": 5.0,
+        "gain": 2500,
+        "loss": 1700,
+        "programs": "Ranger Training; T-Rex Track; Passthrough Ancestral"
+      },
+      {
+        "day": 3,
+        "camp": "METCALF STATION",
+        "miles": 4.8,
+        "gain": 1590,
+        "loss": 1900,
+        "programs": "Cimarron & Northwestern Railway Program; Campfire"
+      },
+      {
+        "day": 4,
+        "camp": "PONIL",
+        "miles": 6.5,
+        "gain": 2290,
+        "loss": 2380,
+        "programs": "Hart Peak.; Philturn Five Points Camp Program; Cantina;"
+      },
+      {
+        "day": 5,
+        "camp": "Upper Dean Cow",
+        "miles": 6.6,
+        "gain": 3230,
+        "loss": 2080,
+        "programs": "Horse Ride; Trail Camp"
+      },
+      {
+        "day": 6,
+        "camp": "CIMARRONCITA",
+        "miles": 9.5,
+        "gain": 3200,
+        "loss": 4060,
+        "programs": "Fire Ecology & Wildlife Conservation Program;"
+      },
+      {
+        "day": 7,
+        "camp": "Camping HQ",
+        "miles": 0.9,
+        "gain": 40,
+        "loss": 120,
+        "programs": "Reforestation Project @ Cimarroncita; Hike to Ute Park"
+      }
+    ],
+    "elevations": {
+      "min": 7132,
+      "max": 8284
+    },
+    "camps_info": "3 Staffed, 2 Trail, 1 Dry Camp",
+    "conservation": "Cimarroncita"
+  },
+  {
+    "id": "7-5",
+    "name": "Itinerary 7-5",
+    "days": 7,
+    "miles": 33,
+    "rating": "Rugged",
+    "highlights": [],
+    "description": "This south to central itinerary traverses many rivers, passes, ridges, and mesas with wildly different landscapes, including recovery areas from both the 2022 Cooks Peak Fire and the 2018 Ute Park Fire. Enjoy beautiful south-country meadows, ponderosa pine forest, rocky ridges, and boulder fields with a very good mix of program themes including western lore, firearm activities, and multiple opportunities for climbing!",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Toothache Springs",
+        "miles": 2.5,
+        "gain": 1150,
+        "loss": 200,
+        "programs": "Ranger Training; Trail Camp Camping HQ"
+      },
+      {
+        "day": 3,
+        "camp": "MINERS PARK",
+        "miles": 5.8,
+        "gain": 2280,
+        "loss": 2120,
+        "programs": "Stone Wall Pass; Rock Climbing Program Miners Park"
+      },
+      {
+        "day": 4,
+        "camp": "CLARKS FORK",
+        "miles": 6.6,
+        "gain": 3470,
+        "loss": 3960,
+        "programs": "Trail Construction Project @ North Fork Urraca; Western"
+      },
+      {
+        "day": 5,
+        "camp": "CIMARRONCITO",
+        "miles": 3.1,
+        "gain": 1250,
+        "loss": 620,
+        "programs": "Forest Stewardship @ Demonstration Forest; Rock"
+      },
+      {
+        "day": 6,
+        "camp": "Vaca",
+        "miles": 11.2,
+        "gain": 3760,
+        "loss": 4500,
+        "programs": "Passthrough Shotgun Shooting & Shotshell Reloading"
+      },
+      {
+        "day": 7,
+        "camp": "Camping HQ",
+        "miles": 3.6,
+        "gain": 600,
+        "loss": 1390,
+        "programs": "Hike to Turkey Creek Trailhead; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 7417,
+      "max": 8159
+    },
+    "camps_info": "3 Staffed, 2 Trail",
+    "conservation": "North Fork Urraca"
+  },
+  {
+    "id": "7-6",
+    "name": "Itinerary 7-6",
+    "days": 7,
+    "miles": 30,
+    "rating": "Rugged",
+    "highlights": [
+      "Hiking Highlights\nTooth of Time 9,003 ft"
+    ],
+    "description": "Explore Philmont's Central and South Country passing through fire recovery areas, over ridges and through river valleys over the course of this 7-day itinerary. Climb Deer Lake Mesa to enjoy tranquil meadows and sweeping views of the Ranch. Spend a night near the historic Hunting Lodge Cabin with the opportunity to catch a unique view of the Rockies meeting the plains from Window Rock. Hike through healthy Ponderosa-Savannah forests in the areas around Hunting Lodge and Miners Park before ending your trek with picturesque view of Trail Peak and Fowler Mesa from Lovers Leap Overlook.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "HARLAN",
+        "miles": 4.1,
+        "gain": 1630,
+        "loss": 710,
+        "programs": "Ranger Training; Shotgun Shooting & Shotshell Reloading"
+      },
+      {
+        "day": 3,
+        "camp": "Devils Wash Basin",
+        "miles": 6.1,
+        "gain": 2490,
+        "loss": 1530,
+        "programs": "Dry Camp (Water @ Harlan)"
+      },
+      {
+        "day": 4,
+        "camp": "Hunting Lodge",
+        "miles": 6.0,
+        "gain": 2040,
+        "loss": 2750,
+        "programs": "Passthrough Climbing Program @ Cimarroncito; Window"
+      },
+      {
+        "day": 5,
+        "camp": "Shaefers Pass",
+        "miles": 4.9,
+        "gain": 2960,
+        "loss": 1970,
+        "programs": "Forest Stewardship @ Demonstration Forest; Passthrough"
+      },
+      {
+        "day": 6,
+        "camp": "MINERS PARK",
+        "miles": 3.7,
+        "gain": 1490,
+        "loss": 2250,
+        "programs": "Shaefers Peak (optional); Rock Climbing Program"
+      },
+      {
+        "day": 7,
+        "camp": "Camping HQ",
+        "miles": 4.7,
+        "gain": 1210,
+        "loss": 2120,
+        "programs": "Closing Campfire Show"
+      }
+    ],
+    "elevations": {
+      "min": 7545,
+      "max": 8786
+    },
+    "camps_info": "2 Staffed, 3 Trail, 2 Dry Camps",
+    "conservation": "North Fork Urraca"
+  },
+  {
+    "id": "7-7",
+    "name": "Itinerary 7-7",
+    "days": 7,
+    "miles": 32,
+    "rating": "Rugged",
+    "highlights": [
+      "Hiking Highlights\nTooth of Time 9,003 ft"
+    ],
+    "description": "This unique trek encircles the Tooth of Time, providing multiple perspectives of this iconic peak. Enjoy scenic meadows, healthy Ponderosa forests, mesas and rivers. Program is designed to bring the crew together through COPE and climbing activities as your hike over ridges and into valleys. Experience the Continental Tie & Lumber Company and learn about logging in the early 1900s during their campfire show! Finish your trek by summitting the Tooth of Time and hiking into Base Camp!",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Ponderosa Park",
+        "miles": 4.2,
+        "gain": 1670,
+        "loss": 730,
+        "programs": "Ranger Training; Passthrough Western Lore Program @"
+      },
+      {
+        "day": 3,
+        "camp": "MINERS PARK",
+        "miles": 4.8,
+        "gain": 2930,
+        "loss": 2930,
+        "programs": "Trail Construction Project @ North Fork Urraca; Climbing &"
+      },
+      {
+        "day": 4,
+        "camp": "Aguila",
+        "miles": 4.6,
+        "gain": 2310,
+        "loss": 2000,
+        "programs": "Passthrough Continental Tie & Lumber Company Program"
+      },
+      {
+        "day": 5,
+        "camp": "URRACA",
+        "miles": 4.5,
+        "gain": 1730,
+        "loss": 2060,
+        "programs": "Challenge Course Program; Campfire Show"
+      },
+      {
+        "day": 6,
+        "camp": "Tooth Ridge",
+        "miles": 6.3,
+        "gain": 2440,
+        "loss": 2120,
+        "programs": "Passthrough High Ropes Course & Climbing Tower"
+      },
+      {
+        "day": 7,
+        "camp": "Camping HQ",
+        "miles": 7.0,
+        "gain": 1980,
+        "loss": 3590,
+        "programs": "Tooth of Time; Hike Into Base; Closing Campfire"
+      }
+    ],
+    "elevations": {
+      "min": 7998,
+      "max": 8333
+    },
+    "camps_info": "2 Staffed, 3 Trail, 2 Dry Camps",
+    "conservation": "North Fork Urraca"
+  },
+  {
+    "id": "7-8",
+    "name": "Itinerary 7-8",
+    "days": 7,
+    "miles": 36,
+    "rating": "Strenuous",
+    "highlights": [
+      "Hiking Highlights\nTooth of Time 9,003 ft",
+      "Beaubien Meadow\nShaefers Peak 9,413 ft"
+    ],
+    "description": "This itinerary follows the beautiful, wooded waterways surrounding Tooth of Time Ridge, starting in the south country and passing over Comanche Pass into the central country. Hike along the beautiful Middle Fork Cito Creek and climb the Tooth of Time to see where the Rockies meet the Plains. Enjoy the seclusion and natural beauty of Black Mountain Camp. Experience mining history and program at Cyphers Mine. You'll pass the historic Hunting Lodge Cabin and learn about Forestry and Fire Ecology basics at Demonstration Forest.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Lovers Leap",
+        "miles": 2.6,
+        "gain": 1370,
+        "loss": 980,
+        "programs": "Ranger Training; Lovers Leap Overlook; Trail Camp Camping HQ"
+      },
+      {
+        "day": 3,
+        "camp": "MINERS PARK",
+        "miles": 2.2,
+        "gain": 760,
+        "loss": 240,
+        "programs": "Rock Climbing Program Miners Park"
+      },
+      {
+        "day": 4,
+        "camp": "BLACK MOUNTAIN",
+        "miles": 5.2,
+        "gain": 3540,
+        "loss": 2450,
+        "programs": "Trail Construction Project @ North Fork Urraca; Black"
+      },
+      {
+        "day": 5,
+        "camp": "CYPHERS MINE",
+        "miles": 6.2,
+        "gain": 4200,
+        "loss": 3960,
+        "programs": "St. Louis & Cimarron Mining Company Program; Campfire"
+      },
+      {
+        "day": 6,
+        "camp": "Ponderosa Park",
+        "miles": 7.4,
+        "gain": 3710,
+        "loss": 5030,
+        "programs": "Passthrough @ Hunting Lodge (no services); Forest"
+      },
+      {
+        "day": 7,
+        "camp": "Camping HQ",
+        "miles": 11.4,
+        "gain": 5140,
+        "loss": 6450,
+        "programs": "Tooth of Time; Hike into Camping Headquarters; Closing"
+      }
+    ],
+    "elevations": {
+      "min": 7500,
+      "max": 9350
+    },
+    "camps_info": "3 Staffed, 2 Trail, 1 Dry Camp",
+    "conservation": "North Fork Urraca"
+  },
+  {
+    "id": "7-9",
+    "name": "Itinerary 7-9",
+    "days": 7,
+    "miles": 43,
+    "rating": "Strenuous",
+    "highlights": [
+      "Hiking Highlights\nTooth of Time 9,003 ft",
+      "Beaubien Meadow\nLookout Peak 9,927 ft"
+    ],
+    "description": "This itinerary offers tons of living history opportunities as you hike through Philmont's beautiful south country and return to base over the Tooth of Time. Learn some ranching and logging history through campfire programs and pass by additional optional challenges in the form of Trail Peak and Black Mountain. You'll get to explore a wide variety of landscapes from lush meadows and thick forests to craggy peaks while hiking the same trails as homesteaders, loggers, cowboys, squatters, and land barons!",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Olympia",
+        "miles": 2.6,
+        "gain": 520,
+        "loss": 300,
+        "programs": "Ranger Training; Passthrough Rayado Rancho Program;"
+      },
+      {
+        "day": 3,
+        "camp": "CRATER LAKE",
+        "miles": 9.1,
+        "gain": 3600,
+        "loss": 1930,
+        "programs": "Passthrough Abreu Family Homestead Program @ Abreu;"
+      },
+      {
+        "day": 4,
+        "camp": "BEAUBIEN",
+        "miles": 10.9,
+        "gain": 5580,
+        "loss": 4630,
+        "programs": "Trail Peak (optional - strenuous); High Mountain Ranching"
+      },
+      {
+        "day": 5,
+        "camp": "BLACK MOUNTAIN",
+        "miles": 3.5,
+        "gain": 1920,
+        "loss": 2150,
+        "programs": "Forest Fuels Reduction Project @ Beaubien; Black"
+      },
+      {
+        "day": 6,
+        "camp": "Shaefers Pass",
+        "miles": 6.0,
+        "gain": 3140,
+        "loss": 3460,
+        "programs": "Black Mountain (optional - very strenuous); Dry Camp"
+      },
+      {
+        "day": 7,
+        "camp": "Camping HQ",
+        "miles": 10.1,
+        "gain": 3670,
+        "loss": 5740,
+        "programs": "Shaefers Peak; Tooth of Time; Hike Into Base; Closing"
+      }
+    ],
+    "elevations": {
+      "min": 6729,
+      "max": 9343
+    },
+    "camps_info": "3 Staffed, 2 Trail, 1 Dry Camp",
+    "conservation": "Beaubien"
+  },
+  {
+    "id": "7-10",
+    "name": "Itinerary 7-10",
+    "days": 7,
+    "miles": 44,
+    "rating": "Super Strenuous",
+    "highlights": [
+      "Hiking Highlights\nMount Phillips 11,736 ft",
+      "Ute Park Pass\nComanche Peak 11,303 ft"
+    ],
+    "description": "This super strenuous itinerary tours much of Philmont's South Country with many viewpoints and landscapes to explore. There are quite a few opportunities to sample program, including Living History programs, but your crew will only have time if they are able to work efficiently, get an early start, and put in the miles between camps. You'll hike through beautiful meadows, Ponderosa forests, and Aspen groves and pass the historic Rayado Lodge at Fish Camp.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Herradura",
+        "miles": 3.4,
+        "gain": 1600,
+        "loss": 1200,
+        "programs": "Ranger Training; Lovers Leap Overlook; Dry Camp (Water"
+      },
+      {
+        "day": 3,
+        "camp": "CRATER LAKE",
+        "miles": 4.1,
+        "gain": 2250,
+        "loss": 1370,
+        "programs": "Stone Wall Pass; Continental Tie & Lumber Company"
+      },
+      {
+        "day": 4,
+        "camp": "Lookout Meadow",
+        "miles": 6.1,
+        "gain": 2690,
+        "loss": 1640,
+        "programs": "Trail Camp"
+      },
+      {
+        "day": 5,
+        "camp": "BEAUBIEN",
+        "miles": 7.3,
+        "gain": 3740,
+        "loss": 3840,
+        "programs": "Lookout Peak; Passthrough @ Fish Camp (No Services);"
+      },
+      {
+        "day": 6,
+        "camp": "MINERS PARK",
+        "miles": 8.6,
+        "gain": 4320,
+        "loss": 5640,
+        "programs": "Forest Fuels Reduction Project @ Beaubien; Passthrough"
+      },
+      {
+        "day": 7,
+        "camp": "Camping HQ",
+        "miles": 13.6,
+        "gain": 5850,
+        "loss": 7170,
+        "programs": "Shaefers Peak; Tooth of Time; Hike Into Base; Closing"
+      }
+    ],
+    "elevations": {
+      "min": 7513,
+      "max": 9442
+    },
+    "camps_info": "3 Staffed, 2 Trail, 1 Dry Camp",
+    "conservation": "Beaubien"
+  },
+  {
+    "id": "7-11",
+    "name": "Itinerary 7-11",
+    "days": 7,
+    "miles": 47,
+    "rating": "Super Strenuous",
+    "highlights": [
+      "Hiking Highlights\nTooth of Time 9,003 ft",
+      "Cimarroncito Peak 10,475 ft"
+    ],
+    "description": "This super strenuous itinerary traverses the west side of Philmont, starting at the valleys below Baldy Mountain, making its way up to Mount Phillips, and descending into the meadows of the south country. During this trek, you'll have the opportunity to experience multiple rivers, valleys, burn scars, passes, and peaks and see about as much of the ranch as is possible during a seven day timeframe. While there are opportunities for program, keep in mind that due to mileage and difficulty, it may be limited.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire"
+      },
+      {
+        "day": 2,
+        "camp": "Minnette Meadows",
+        "miles": 2.6,
+        "gain": 790,
+        "loss": 270,
+        "programs": "Ranger Training; Passthrough Fire Ecology & Wildlife"
+      },
+      {
+        "day": 3,
+        "camp": "CIMARRONCITO",
+        "miles": 5.7,
+        "gain": 2460,
+        "loss": 2160,
+        "programs": "Passthrough Commissary & Trading Post @ Ute Gulch;"
+      },
+      {
+        "day": 4,
+        "camp": "Comanche Peak",
+        "miles": 10.9,
+        "gain": 8380,
+        "loss": 5430,
+        "programs": "Passthrough St. Louis & Cimarron Mining Company"
+      },
+      {
+        "day": 6,
+        "camp": "Lower Bonito",
+        "miles": 6.3,
+        "gain": 2890,
+        "loss": 2880,
+        "programs": "Forest Fuels Reduction Project @ Beaubien; Passthrough"
+      },
+      {
+        "day": 7,
+        "camp": "Camping HQ",
+        "miles": 7.1,
+        "gain": 1460,
+        "loss": 3520,
+        "programs": "Passthrough Abreu Family Homestead Program @ Abreu;"
+      }
+    ],
+    "elevations": {
+      "min": 7860,
+      "max": 11115
+    },
+    "camps_info": "2 Staffed, 3 Trail, 2 Dry Camps",
+    "conservation": "Beaubien"
+  },
+  {
+    "id": "7-12",
+    "name": "Itinerary 7-12",
+    "days": 7,
+    "miles": 44,
+    "rating": "Super Strenuous",
+    "highlights": [
+      "Hiking Highlights\nBaldy Mountain 12,441 ft",
+      "Hiking Highlights\nBaldy Mountain 12,441 ft",
+      "Hiking Highlights\nBaldy Mountain 12,441 ft",
+      "Hiking Highlights\nBaldy Mountain 12,441 ft",
+      "Hiking Highlights\nBaldy Mountain 12,441 ft",
+      "Hiking Highlights\nBaldy Mountain 12,441 ft"
+    ],
+    "description": "While this super strenuous itinerary doesn't have the highest mileage, it has significant exposure and elevation gain and loss from day to day. Come prepared to hike steep trails and be rewarded with the awesome views that come along with them, including the unbeatable sunrise from the Sawmill porch. This itinerary does offer stays at staffed camps, but keep in mind program opportunities will be limited based on time. Make sure your crew is ready to work together efficiently on the trail.",
+    "route_data": [
+      {
+        "day": 1,
+        "camp": "Camping HQ",
+        "miles": 0,
+        "gain": 0,
+        "loss": 0,
+        "programs": "Opening Campfire Show"
+      },
+      {
+        "day": 2,
+        "camp": "Vaca",
+        "miles": 3.6,
+        "gain": 1390,
+        "loss": 600,
+        "programs": "Ranger Training; Trail Camp; Trail Camp Camping HQ"
+      },
+      {
+        "day": 3,
+        "camp": "CIMARRONCITO",
+        "miles": 6.9,
+        "gain": 3360,
+        "loss": 2610,
+        "programs": "Passthrough Shotgun Program @ Harlan; Rock Climbing"
+      },
+      {
+        "day": 4,
+        "camp": "SAWMILL",
+        "miles": 8.7,
+        "gain": 4060,
+        "loss": 2990,
+        "programs": "Rifle Shooting & Cartridge Reloading Program Ute Gulch"
+      },
+      {
+        "day": 5,
+        "camp": "CYPHERS MINE",
+        "miles": 5.5,
+        "gain": 3250,
+        "loss": 3120,
+        "programs": "Trail Construction Project @ Sawmill; Cimarroncito Peak"
+      },
+      {
+        "day": 6,
+        "camp": "Ponderosa Park",
+        "miles": 7.4,
+        "gain": 3710,
+        "loss": 5030,
+        "programs": "Passthrough @ Hunting Lodge (no services); Forest"
+      },
+      {
+        "day": 7,
+        "camp": "Camping HQ",
+        "miles": 11.4,
+        "gain": 5140,
+        "loss": 6450,
+        "programs": "Shaefers Peak; Tooth of Time; Hike Into Base; Closing"
+      }
+    ],
+    "elevations": {
+      "min": 7417,
+      "max": 9350
+    },
+    "camps_info": "3 Staffed, 2 Trail, 1 Dry Camp",
+    "conservation": "Sawmill"
+  }
+]

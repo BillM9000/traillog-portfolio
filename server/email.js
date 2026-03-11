@@ -79,7 +79,7 @@ export async function sendInvitationEmail(toEmail, inviterName, troopName, adven
         <p><strong>${esc(inviterName)}</strong> has invited you to join <strong>${esc(adventureName || troopName)}</strong> on TrailLog — a platform to help your crew prepare for high adventure.</p>
         <p>Click below to accept the invitation and join the crew:</p>
         <p><a href="${esc(inviteUrl)}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Accept Invitation</a></p>
-        <p style="color:#888;font-size:13px">You'll sign in with your Google account. If you weren't expecting this, you can ignore this email.</p>
+        <p style="color:#888;font-size:13px">You can sign in with Google or create an account with your email. If you weren't expecting this, you can ignore this email.</p>
       </div>
     `,
   });

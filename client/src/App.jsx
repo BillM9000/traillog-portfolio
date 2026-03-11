@@ -34,6 +34,7 @@ export default function App() {
   const [wentBack, setWentBack] = useState(false);
   const [showLobby, setShowLobby] = useState(false);
   const [showGlobalAdmin, setShowGlobalAdmin] = useState(false);
+  const [lobbyTroop, setLobbyTroop] = useState(null); // troop data for global admin entering non-member troop
   const isGlobalAdmin = !!user?.is_global_admin;
 
   // Auto-select first approved troop (but not if user navigated to lobby)
@@ -54,20 +55,30 @@ export default function App() {
 
   if (!user) return <LoginPage onLogin={login} onSignup={signup} />;
   if (!user.user_type) return <ProfileSetup user={user} onComplete={updateProfile} />;
+  // Global admin with no troops: go straight to Platform Admin (unless they clicked Lobby)
+  if (isGlobalAdmin && approvedTroops.length === 0 && !troopId && !showLobby) return (
+    <>
+      <GlobalAdmin isGlobalAdmin={isGlobalAdmin} troopId={null}
+        onClose={() => { setShowLobby(true); }}
+        onEnterTroop={(id, troopData) => { setTroopId(id); setLobbyTroop(troopData || null); }}
+        onLogout={logout} user={user}
+        alwaysOpen />
+    </>
+  );
   if (approvedTroops.length === 0 || showLobby) return (
     <>
       <Lobby user={user} memberships={memberships} onRefresh={refresh} onLogout={logout}
         isGlobalAdmin={isGlobalAdmin} onGlobalAdminClick={() => setShowGlobalAdmin(true)}
-        onEnterTroop={(id) => { setTroopId(id); setShowLobby(false); }} />
+        onEnterTroop={(id, troopData) => { setTroopId(id); setLobbyTroop(troopData || null); setShowLobby(false); }} />
       {showGlobalAdmin && (
         <GlobalAdmin isGlobalAdmin={isGlobalAdmin} troopId={null} onClose={() => setShowGlobalAdmin(false)} />
       )}
     </>
   );
 
-  // Find selected troop membership
+  // Find selected troop membership (global admin can enter any troop)
   const currentMembership = memberships.find(m => m.troop_id === troopId);
-  const isAdmin = currentMembership?.role === "admin";
+  const isAdmin = currentMembership?.role === "admin" || isGlobalAdmin;
 
   // Adventure picker gate
   if (!adventureId) {
@@ -75,7 +86,7 @@ export default function App() {
       <>
         <AdventurePicker
           user={user}
-          troop={{ id: troopId, name: currentMembership?.troop_name || "Troop", council: currentMembership?.troop_council, location: currentMembership?.troop_location }}
+          troop={{ id: troopId, name: currentMembership?.troop_name || lobbyTroop?.name || "Troop", council: currentMembership?.troop_council || lobbyTroop?.council, location: currentMembership?.troop_location || lobbyTroop?.location }}
           isAdmin={isAdmin}
           onSelect={(id) => { setAdventureId(id); setWentBack(false); }}
           onBack={() => { setTroopId(null); setShowLobby(true); setWentBack(false); }}
@@ -392,7 +403,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
             achievements={achievements}
           />
         )}
-        {view === "itinerary" && <Itinerary adventureId={adventureId} adventure={adventure} />}
+        {view === "itinerary" && <Itinerary adventureId={adventureId} adventure={adventure} isAdmin={isAdmin} onRefresh={refreshAll} />}
         {view === "gear" && (
           <div>
             {/* Gear admin & AI chat buttons */}

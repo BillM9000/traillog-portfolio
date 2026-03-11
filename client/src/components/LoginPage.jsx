@@ -24,6 +24,7 @@ export default function LoginPage({ onLogin, onSignup }) {
       if (mode === "signup") {
         const result = await onSignup(name, email, password);
         setMessage(result.message || "Check your email to verify your account");
+        setName(""); setEmail(""); setPassword("");
         setMode("login");
       } else {
         await onLogin(email, password);
@@ -74,8 +75,12 @@ export default function LoginPage({ onLogin, onSignup }) {
           </div>
         )}
         {message && (
-          <div style={{ background: "rgba(91,122,58,0.15)", border: "1px solid rgba(184,204,154,0.3)", borderRadius: 12, padding: "10px 14px", marginBottom: 12, fontSize: 12, color: "#B8CC9A", textAlign: "center" }}>
-            {message}
+          <div style={{ background: "rgba(91,122,58,0.2)", border: "2px solid rgba(184,204,154,0.5)", borderRadius: 14, padding: "20px 18px", marginBottom: 16, textAlign: "center" }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>📧</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#D4E4B8", marginBottom: 6, fontFamily: fontDisplay }}>Check your email</div>
+            <div style={{ fontSize: 12, color: "#B8CC9A", lineHeight: 1.5 }}>
+              We sent a verification link to your inbox.<br />Click the link to activate your account, then come back here to sign in.
+            </div>
           </div>
         )}
 
@@ -106,7 +111,7 @@ export default function LoginPage({ onLogin, onSignup }) {
           <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" type="email"
             style={inputStyle} required />
           <input value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" type="password"
-            style={inputStyle} required minLength={6} />
+            style={inputStyle} required minLength={8} />
 
           {error && (
             <div style={{ fontSize: 12, color: "#d08080", marginBottom: 8 }}>{error}</div>
