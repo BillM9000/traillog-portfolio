@@ -13,7 +13,7 @@ export function ToastProvider({ children }) {
   const addToast = useCallback((message, type = "success") => {
     const id = ++toastId;
     setToasts(prev => [...prev, { id, message, type }]);
-    const duration = type === "celebration" ? 5000 : 3000;
+    const duration = type === "celebration" ? 5000 : 4000;
     timersRef.current[id] = setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
       delete timersRef.current[id];

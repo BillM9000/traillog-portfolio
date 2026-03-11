@@ -71,7 +71,7 @@ export default function App() {
         isGlobalAdmin={isGlobalAdmin} onGlobalAdminClick={() => setShowGlobalAdmin(true)}
         onEnterTroop={(id, troopData) => { setTroopId(id); setLobbyTroop(troopData || null); setShowLobby(false); }} />
       {showGlobalAdmin && (
-        <GlobalAdmin isGlobalAdmin={isGlobalAdmin} troopId={null} onClose={() => setShowGlobalAdmin(false)} />
+        <GlobalAdmin isGlobalAdmin={isGlobalAdmin} troopId={null} onClose={() => { setShowGlobalAdmin(false); refresh(); }} />
       )}
     </>
   );
