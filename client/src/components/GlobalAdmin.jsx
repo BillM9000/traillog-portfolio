@@ -122,7 +122,8 @@ export default function GlobalAdmin({ isGlobalAdmin, troopId, onClose }) {
 
           {/* ── Troop Overview Tab ── */}
           {tab === "troops" && isGlobalAdmin && (
-            <TroopsTab troops={troops} loaded={troopsLoaded} theme={theme} />
+            <TroopsTab troops={troops} loaded={troopsLoaded} theme={theme} addToast={addToast}
+              onRefresh={() => api.getAdminTroops().then(d => { setTroops(d); setTroopsLoaded(true); })} />
           )}
 
           {/* ── Affiliate Analytics Tab ── */}
@@ -243,7 +244,68 @@ function CatalogTab({ catalog, grouped, search, setSearch, theme, addToast, refr
 }
 
 // ─── Troop Overview Tab ───
-function TroopsTab({ troops, loaded, theme }) {
+function TroopsTab({ troops, loaded, theme, addToast, onRefresh }) {
+  const [expanded, setExpanded] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [deleteInput, setDeleteInput] = useState("");
+
+  const refreshMembers = async (troopId) => {
+    try {
+      const data = await api.getAdminTroopMembers(troopId);
+      setMembers(data);
+    } catch (e) { addToast(e.message, "error"); }
+  };
+
+  const toggleExpand = async (troopId) => {
+    if (expanded === troopId) { setExpanded(null); return; }
+    setExpanded(troopId);
+    setMembersLoading(true);
+    try {
+      const data = await api.getAdminTroopMembers(troopId);
+      setMembers(data);
+    } catch (e) { addToast(e.message, "error"); }
+    finally { setMembersLoading(false); }
+  };
+
+  const handleApprove = async (troopId, userId) => {
+    try {
+      await api.approveMember(troopId, userId);
+      addToast("Approved", "success");
+      refreshMembers(troopId);
+      onRefresh();
+    } catch (e) { addToast(e.message, "error"); }
+  };
+
+  const handleDeny = async (troopId, userId) => {
+    try {
+      await api.denyMember(troopId, userId);
+      addToast("Denied", "success");
+      refreshMembers(troopId);
+      onRefresh();
+    } catch (e) { addToast(e.message, "error"); }
+  };
+
+  const handleRemove = async (troopId, userId) => {
+    try {
+      await api.removeMember(troopId, userId);
+      addToast("Removed", "success");
+      refreshMembers(troopId);
+      onRefresh();
+    } catch (e) { addToast(e.message, "error"); }
+  };
+
+  const handleDelete = async (troopId) => {
+    try {
+      await api.deleteAdminTroop(troopId);
+      addToast("Troop deleted", "success");
+      setDeleteConfirm(null);
+      setDeleteInput("");
+      onRefresh();
+    } catch (e) { addToast(e.message, "error"); }
+  };
+
   if (!loaded) {
     return <div style={{ fontSize: 12, color: theme.textDimmer, fontStyle: "italic" }}>Loading troops...</div>;
   }
@@ -253,35 +315,108 @@ function TroopsTab({ troops, loaded, theme }) {
   return (
     <div>
       <div style={{ fontSize: 10, color: theme.textDimmer, marginBottom: 8 }}>{troops.length} troops registered</div>
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, fontFamily: fontBody }}>
-          <thead>
-            <tr style={{ borderBottom: `2px solid ${theme.borderLight}` }}>
-              {["Troop", "Council", "Members", "Adventures", "Tier", "Visibility", "Creator", "Created"].map(h => (
-                <th key={h} style={{ textAlign: "left", padding: "6px 8px", fontSize: 10, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {troops.map(t => (
-              <tr key={t.id} style={{ borderBottom: `1px solid ${theme.borderLight}` }}>
-                <td style={{ padding: "6px 8px", fontWeight: 600, color: theme.text }}>{t.name}{t.location ? ` · ${t.location}` : ""}</td>
-                <td style={{ padding: "6px 8px", color: theme.textMuted, fontSize: 10 }}>{t.council || "—"}</td>
-                <td style={{ padding: "6px 8px", color: theme.textMuted }}>{t.member_count}</td>
-                <td style={{ padding: "6px 8px", color: theme.textMuted }}>{t.adventure_count}</td>
-                <td style={{ padding: "6px 8px" }}>
-                  <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 3, background: theme.accentBg, color: theme.accent, fontWeight: 600 }}>{t.tier || "free"}</span>
-                </td>
-                <td style={{ padding: "6px 8px" }}>
-                  <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 3, fontWeight: 600, background: t.is_public ? theme.accentBg : `${theme.warn}20`, color: t.is_public ? theme.accent : theme.warn }}>{t.is_public ? "Public" : "Private"}</span>
-                </td>
-                <td style={{ padding: "6px 8px", color: theme.textDimmer, fontSize: 10 }}>{t.creator_name || "—"}</td>
-                <td style={{ padding: "6px 8px", color: theme.textDimmer, fontSize: 10 }}>{t.created_at ? new Date(t.created_at).toLocaleDateString() : "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {troops.map(t => (
+        <div key={t.id} style={{ marginBottom: 6, borderRadius: 8, border: `1px solid ${theme.borderLight}`, overflow: "hidden" }}>
+          {/* Troop row */}
+          <div onClick={() => toggleExpand(t.id)} style={{
+            display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", cursor: "pointer",
+            background: expanded === t.id ? theme.bgAlt : "transparent",
+          }}>
+            <span style={{ fontSize: 10, color: theme.textDimmer }}>{expanded === t.id ? "▾" : "▸"}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: theme.heading }}>{t.name}{t.location ? ` · ${t.location}` : ""}</div>
+              <div style={{ fontSize: 10, color: theme.textDimmer }}>{t.council || "—"}</div>
+            </div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+              <span style={{ fontSize: 10, color: theme.textMuted }}>{t.member_count} members</span>
+              {t.pending_count > 0 && (
+                <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 10, fontWeight: 700, background: `${theme.warn}25`, color: theme.warn }}>{t.pending_count} pending</span>
+              )}
+              <span style={{ fontSize: 10, color: theme.textMuted }}>{t.adventure_count} adv</span>
+              <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 3, fontWeight: 600, background: t.is_public ? theme.accentBg : `${theme.warn}20`, color: t.is_public ? theme.accent : theme.warn }}>{t.is_public ? "Public" : "Private"}</span>
+            </div>
+          </div>
+
+          {/* Expanded member list */}
+          {expanded === t.id && (
+            <div style={{ padding: "0 10px 10px", background: theme.bgAlt }}>
+              {membersLoading ? (
+                <div style={{ fontSize: 11, color: theme.textDimmer, fontStyle: "italic", padding: 6 }}>Loading...</div>
+              ) : members.length === 0 ? (
+                <div style={{ fontSize: 11, color: theme.textDimmer, fontStyle: "italic", padding: 6 }}>No members.</div>
+              ) : (
+                <div>
+                  {members.map(m => (
+                    <div key={m.id} style={{
+                      display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", marginBottom: 2,
+                      borderRadius: 6, background: theme.bgCard, border: `1px solid ${theme.borderLight}`,
+                    }}>
+                      {m.avatar_url && <img src={m.avatar_url} alt="" style={{ width: 20, height: 20, borderRadius: "50%" }} />}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>{m.name}</span>
+                        <span style={{ fontSize: 9, color: theme.textDimmer, marginLeft: 6 }}>{m.email}</span>
+                      </div>
+                      <span style={{ fontSize: 9, color: theme.textDimmer }}>{m.user_type}</span>
+                      <span style={{
+                        fontSize: 9, padding: "1px 5px", borderRadius: 3, fontWeight: 600,
+                        background: m.role === "admin" ? theme.accentBg : "transparent",
+                        color: m.role === "admin" ? theme.accent : theme.textDimmer,
+                      }}>{m.role}</span>
+                      {m.status === "pending" ? (
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <button onClick={() => handleApprove(t.id, m.user_id)} style={{
+                            padding: "2px 8px", borderRadius: 4, border: "none", fontSize: 9, fontWeight: 600,
+                            cursor: "pointer", fontFamily: fontBody, background: theme.accent, color: "#fff",
+                          }}>Approve</button>
+                          <button onClick={() => handleDeny(t.id, m.user_id)} style={{
+                            padding: "2px 8px", borderRadius: 4, border: "1px solid #DC262640", fontSize: 9, fontWeight: 600,
+                            cursor: "pointer", fontFamily: fontBody, background: "transparent", color: "#DC2626",
+                          }}>Deny</button>
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                          <span style={{
+                            fontSize: 9, padding: "1px 5px", borderRadius: 3, fontWeight: 600,
+                            background: `${theme.accent}15`, color: theme.accent,
+                          }}>{m.status}</span>
+                          <button onClick={() => handleRemove(t.id, m.user_id)} style={{
+                            padding: "2px 6px", borderRadius: 4, border: "1px solid #DC262640", fontSize: 9,
+                            cursor: "pointer", fontFamily: fontBody, background: "transparent", color: "#DC2626",
+                          }}>Remove</button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Delete troop */}
+              <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${theme.borderLight}` }}>
+                {deleteConfirm === t.id ? (
+                  <div>
+                    <div style={{ fontSize: 11, color: "#DC2626", fontWeight: 600, marginBottom: 6 }}>
+                      Type "{t.name}" to confirm deletion. This removes the troop, all adventures, members, and gear data permanently.
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <input value={deleteInput} onChange={e => setDeleteInput(e.target.value)} placeholder={t.name}
+                        style={{ flex: 1, padding: "5px 8px", borderRadius: 5, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody, outline: "none" }} />
+                      <button onClick={() => deleteInput === t.name && handleDelete(t.id)} disabled={deleteInput !== t.name}
+                        style={{ padding: "4px 12px", borderRadius: 5, border: "none", fontSize: 10, fontWeight: 700, cursor: deleteInput === t.name ? "pointer" : "not-allowed", fontFamily: fontBody, background: deleteInput === t.name ? "#DC2626" : "#DC262640", color: "#fff" }}>Delete</button>
+                      <button onClick={() => { setDeleteConfirm(null); setDeleteInput(""); }}
+                        style={{ padding: "4px 10px", borderRadius: 5, border: `1px solid ${theme.borderLight}`, fontSize: 10, cursor: "pointer", fontFamily: fontBody, background: "transparent", color: theme.textDim }}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setDeleteConfirm(t.id)} style={{
+                    padding: "4px 10px", borderRadius: 5, border: "1px solid #DC262630", background: "transparent",
+                    color: "#DC2626", fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
+                  }}>Delete Troop</button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -369,28 +504,37 @@ function SettingsTab({ settings, loaded, setSettings, theme, addToast }) {
     return <div style={{ fontSize: 12, color: theme.textDimmer, fontStyle: "italic" }}>No settings found.</div>;
   }
 
+  const PROTECTED_KEYS = ["schema_version"];
+
   return (
     <div>
       <div style={{ fontSize: 10, color: theme.textDimmer, marginBottom: 8 }}>{settings.length} platform settings</div>
-      {settings.map(s => (
-        <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 6, marginBottom: 3, background: theme.bgAlt, border: `1px solid ${theme.borderLight}` }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: theme.text, minWidth: 140 }}>{s.key}</span>
-          {editKey === s.key ? (
-            <>
-              <input value={editValue} onChange={e => setEditValue(e.target.value)}
-                style={{ flex: 1, padding: "4px 6px", borderRadius: 4, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody, outline: "none" }} />
-              <button onClick={() => saveSetting(s.key)} style={{ padding: "2px 8px", borderRadius: 4, border: "none", background: theme.accent, color: "#fff", fontSize: 9, cursor: "pointer", fontFamily: fontBody }}>Save</button>
-              <button onClick={() => setEditKey(null)} style={{ padding: "2px 8px", borderRadius: 4, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.textDim, fontSize: 9, cursor: "pointer", fontFamily: fontBody }}>✕</button>
-            </>
-          ) : (
-            <>
-              <span style={{ flex: 1, fontSize: 11, color: theme.textMuted }}>{s.value}</span>
-              <button onClick={() => { setEditKey(s.key); setEditValue(s.value); }}
-                style={{ padding: "2px 8px", borderRadius: 4, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.textDim, fontSize: 9, cursor: "pointer", fontFamily: fontBody }}>Edit</button>
-            </>
-          )}
-        </div>
-      ))}
+      {settings.map(s => {
+        const isProtected = PROTECTED_KEYS.includes(s.key);
+        return (
+          <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 6, marginBottom: 3, background: theme.bgAlt, border: `1px solid ${theme.borderLight}` }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: theme.text, minWidth: 140 }}>{s.key}</span>
+            {editKey === s.key ? (
+              <>
+                <input value={editValue} onChange={e => setEditValue(e.target.value)}
+                  style={{ flex: 1, padding: "4px 6px", borderRadius: 4, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody, outline: "none" }} />
+                <button onClick={() => saveSetting(s.key)} style={{ padding: "2px 8px", borderRadius: 4, border: "none", background: theme.accent, color: "#fff", fontSize: 9, cursor: "pointer", fontFamily: fontBody }}>Save</button>
+                <button onClick={() => setEditKey(null)} style={{ padding: "2px 8px", borderRadius: 4, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.textDim, fontSize: 9, cursor: "pointer", fontFamily: fontBody }}>✕</button>
+              </>
+            ) : (
+              <>
+                <span style={{ flex: 1, fontSize: 11, color: theme.textMuted }}>{s.value}</span>
+                {isProtected ? (
+                  <span style={{ fontSize: 9, color: theme.textDimmer, fontStyle: "italic" }}>system</span>
+                ) : (
+                  <button onClick={() => { setEditKey(s.key); setEditValue(s.value); }}
+                    style={{ padding: "2px 8px", borderRadius: 4, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.textDim, fontSize: 9, cursor: "pointer", fontFamily: fontBody }}>Edit</button>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

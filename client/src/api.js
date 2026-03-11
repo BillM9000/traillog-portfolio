@@ -36,6 +36,7 @@ export const api = {
   approveMember: (troopId, userId) => request(`/troops/${troopId}/members/${userId}/approve`, { method: "PUT" }),
   denyMember: (troopId, userId) => request(`/troops/${troopId}/members/${userId}/deny`, { method: "PUT" }),
   removeMember: (troopId, userId) => request(`/troops/${troopId}/members/${userId}`, { method: "DELETE" }),
+  leaveTroop: (troopId) => request(`/troops/${troopId}/leave`, { method: "POST" }),
   updateDates: (troopId, userId, dates) => request(`/troops/${troopId}/members/${userId}/dates`, { method: "PUT", body: JSON.stringify({ dates }) }),
   updateSkills: (troopId, userId, skills) => request(`/troops/${troopId}/members/${userId}/skills`, { method: "PUT", body: JSON.stringify({ skills }) }),
 
@@ -138,6 +139,8 @@ export const api = {
 
   // Global Admin
   getAdminTroops: () => request("/admin/troops"),
+  getAdminTroopMembers: (troopId) => request(`/admin/troops/${troopId}/members`),
+  deleteAdminTroop: (troopId) => request(`/admin/troops/${troopId}`, { method: "DELETE" }),
   getAdminUsers: () => request("/admin/users"),
   getAdminSettings: () => request("/admin/settings"),
   updateAdminSetting: (key, value) => request("/admin/settings", { method: "PUT", body: JSON.stringify({ key, value }) }),

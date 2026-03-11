@@ -3,6 +3,7 @@ import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import { fontBody, fontDisplay, memberTypeBadge, participationBadge, toolbarBtn } from "../utils/theme";
+import { US_STATES } from "../utils/constants";
 import Logo from "./Logo";
 import ConfirmModal from "./ConfirmModal";
 
@@ -12,7 +13,16 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   const [tab, setTab] = useState("adventure");
   const [troopName, setTroopName] = useState(troop?.name || "");
   const [troopCouncil, setTroopCouncil] = useState(troop?.council || "");
-  const [troopLocation, setTroopLocation] = useState(troop?.location || "");
+  const [troopCity, setTroopCity] = useState(() => {
+    const loc = troop?.location || "";
+    const parts = loc.split(",").map(s => s.trim());
+    return parts.length >= 2 ? parts.slice(0, -1).join(", ") : loc;
+  });
+  const [troopState, setTroopState] = useState(() => {
+    const loc = troop?.location || "";
+    const parts = loc.split(",").map(s => s.trim());
+    return parts.length >= 2 && US_STATES.includes(parts[parts.length - 1]) ? parts[parts.length - 1] : "";
+  });
   const [troopDesc, setTroopDesc] = useState(troop?.description || "");
   const [troopPublic, setTroopPublic] = useState(troop?.is_public !== 0);
   const [advName, setAdvName] = useState(adventure?.name || "");
@@ -53,7 +63,8 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
     if (!troopCouncil.trim()) { addToast("Council is required", "error"); return; }
     setSaving(true);
     try {
-      await api.updateTroop(troop.id, { name: normalize(troopName), council: normalize(troopCouncil), location: normalize(troopLocation), description: normalize(troopDesc), is_public: troopPublic });
+      const location = [troopCity.trim(), troopState].filter(Boolean).join(", ");
+      await api.updateTroop(troop.id, { name: normalize(troopName), council: normalize(troopCouncil), location: normalize(location), description: normalize(troopDesc), is_public: troopPublic });
       onRefresh(); addToast("Troop saved", "success");
     } catch (e) { addToast(e.message, "error"); }
     setSaving(false);
@@ -420,9 +431,15 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
               <label style={labelStyle}>Troop Name</label>
               <input value={troopName} onChange={e => setTroopName(e.target.value)} style={inputStyle} />
               <label style={labelStyle}>Council</label>
-              <input value={troopCouncil} onChange={e => setTroopCouncil(e.target.value)} style={inputStyle} placeholder="e.g. Northeast Illinois Council" />
+              <input value={troopCouncil} onChange={e => setTroopCouncil(e.target.value)} style={inputStyle} placeholder="e.g. Northeast Illinois Council" maxLength={60} />
               <label style={labelStyle}>Location</label>
-              <input value={troopLocation} onChange={e => setTroopLocation(e.target.value)} style={inputStyle} placeholder="e.g. Barrington, IL" />
+              <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                <input value={troopCity} onChange={e => setTroopCity(e.target.value)} style={{ ...inputStyle, flex: 1, marginBottom: 0 }} placeholder="City" />
+                <select value={troopState} onChange={e => setTroopState(e.target.value)} style={{ ...inputStyle, width: 70, marginBottom: 0, cursor: "pointer" }}>
+                  <option value="">State</option>
+                  {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
               <label style={labelStyle}>Description</label>
               <input value={troopDesc} onChange={e => setTroopDesc(e.target.value)} style={inputStyle} />
 

@@ -3,6 +3,7 @@ import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import { fontBody, fontDisplay, card, cardTitle } from "../utils/theme";
+import { US_STATES } from "../utils/constants";
 import Logo from "./Logo";
 
 export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobalAdmin, onGlobalAdminClick, onEnterTroop }) {
@@ -10,7 +11,7 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
   const { addToast } = useToast();
   const [troops, setTroops] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
-  const [newTroop, setNewTroop] = useState({ name: "", council: "", location: "", description: "", is_public: true });
+  const [newTroop, setNewTroop] = useState({ name: "", council: "", city: "", state: "", description: "", is_public: true });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -34,7 +35,8 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
     setLoading(true);
     setError("");
     try {
-      const created = await api.createTroop(newTroop);
+      const location = [newTroop.city.trim(), newTroop.state].filter(Boolean).join(", ");
+      const created = await api.createTroop({ ...newTroop, location });
       await onRefresh();
       if (onEnterTroop && created?.id) onEnterTroop(created.id);
     } catch (e) {
@@ -87,8 +89,15 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
           <div style={{ ...card(theme), border: `1px solid ${theme.gold}40` }}>
             <div style={{ ...cardTitle(theme), color: theme.gold }}>Pending Requests</div>
             {pendingRequests.map(m => (
-              <div key={m.troop_id} style={{ fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>
-                <strong>{m.troop_name}</strong> — waiting for admin approval...
+              <div key={m.troop_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>
+                <span><strong>{m.troop_name}</strong> — waiting for admin approval...</span>
+                <button onClick={async () => {
+                  try { await api.leaveTroop(m.troop_id); await onRefresh(); addToast("Request withdrawn", "success"); }
+                  catch (e) { addToast(e.message, "error"); }
+                }} style={{
+                  padding: "3px 8px", borderRadius: 5, border: `1px solid ${theme.warn}40`, background: "transparent",
+                  color: theme.warn, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: fontBody, flexShrink: 0,
+                }}>Withdraw</button>
               </div>
             ))}
           </div>
@@ -155,9 +164,16 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
               <input value={newTroop.name} onChange={e => setNewTroop({ ...newTroop, name: e.target.value })}
                 placeholder="Troop or crew name (e.g. Troop 10, Crew 614)" style={inputStyle} required />
               <input value={newTroop.council} onChange={e => setNewTroop({ ...newTroop, council: e.target.value })}
-                placeholder="Council (e.g. Northeast Illinois Council)" style={inputStyle} required />
-              <input value={newTroop.location} onChange={e => setNewTroop({ ...newTroop, location: e.target.value })}
-                placeholder="Location (e.g. Barrington, IL)" style={inputStyle} />
+                placeholder="Council (e.g. Northeast Illinois Council)" style={inputStyle} required maxLength={60} />
+              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                <input value={newTroop.city} onChange={e => setNewTroop({ ...newTroop, city: e.target.value })}
+                  placeholder="City" style={{ ...inputStyle, flex: 1, marginBottom: 0 }} />
+                <select value={newTroop.state} onChange={e => setNewTroop({ ...newTroop, state: e.target.value })}
+                  style={{ ...inputStyle, width: 80, marginBottom: 0, cursor: "pointer" }}>
+                  <option value="">State</option>
+                  {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
               <input value={newTroop.description} onChange={e => setNewTroop({ ...newTroop, description: e.target.value })}
                 placeholder="Description (optional)" style={inputStyle} />
 
@@ -165,12 +181,16 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
               <div style={{ marginBottom: 10 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: theme.heading }}>Troop Visibility</span>
-                  <button type="button" onClick={() => setNewTroop({ ...newTroop, is_public: !newTroop.is_public })} style={{
-                    padding: "3px 10px", borderRadius: 5, border: "none", fontSize: 11, fontWeight: 600,
-                    cursor: "pointer", fontFamily: fontBody,
-                    background: newTroop.is_public ? theme.accent : theme.textDimmer,
-                    color: "#fff",
-                  }}>{newTroop.is_public ? "Public" : "Private"}</button>
+                  <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: `1px solid ${theme.borderLight}` }}>
+                    {[true, false].map(isPublic => (
+                      <button key={String(isPublic)} type="button" onClick={() => setNewTroop({ ...newTroop, is_public: isPublic })} style={{
+                        padding: "4px 14px", border: "none", fontSize: 11, fontWeight: 600,
+                        cursor: "pointer", fontFamily: fontBody,
+                        background: newTroop.is_public === isPublic ? theme.accent : "transparent",
+                        color: newTroop.is_public === isPublic ? "#fff" : theme.textMuted,
+                      }}>{isPublic ? "Public" : "Private"}</button>
+                    ))}
+                  </div>
                 </div>
                 <div style={{
                   fontSize: 11, color: newTroop.is_public ? theme.textDim : theme.warn,

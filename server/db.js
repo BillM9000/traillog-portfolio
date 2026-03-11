@@ -271,7 +271,7 @@ db.exec(`
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 7;
+const CURRENT_SCHEMA_VERSION = 8;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -455,6 +455,11 @@ function migrate() {
       tryAlter("ALTER TABLE troops ADD COLUMN council TEXT");
       tryAlter("ALTER TABLE troops ADD COLUMN location TEXT NOT NULL DEFAULT ''");
       tryAlter("ALTER TABLE troops ADD COLUMN is_public INTEGER NOT NULL DEFAULT 1");
+    }
+
+    // ── v8 migration: adventure type ──
+    if (version < 8) {
+      tryAlter("ALTER TABLE adventures ADD COLUMN adventure_type TEXT NOT NULL DEFAULT 'philmont'");
     }
 
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
@@ -1129,10 +1134,10 @@ export function getAdventure(id) {
   return r || null;
 }
 
-export function createAdventure({ troop_id, name, description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id, created_by }) {
+export function createAdventure({ troop_id, name, description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id, adventure_type, created_by }) {
   const result = db.prepare(
-    "INSERT INTO adventures (troop_id, name, description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)"
-  ).run(troop_id, name, description || "", trek_date || arrive_date || null, depart_date || null, arrive_date || null, return_date || null, home_date || null, itinerary_id || null, created_by);
+    "INSERT INTO adventures (troop_id, name, description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id, adventure_type, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)"
+  ).run(troop_id, name, description || "", trek_date || arrive_date || null, depart_date || null, arrive_date || null, return_date || null, home_date || null, itinerary_id || null, adventure_type || "philmont", created_by);
   const advId = result.lastInsertRowid;
 
   // Add creator as admin member
@@ -1154,7 +1159,7 @@ export function createAdventure({ troop_id, name, description, trek_date, depart
     }
   }
 
-  return { id: advId, troop_id, name, description: description || "", trek_date: trek_date || arrive_date, depart_date, arrive_date, return_date, home_date, itinerary_id, status: "active" };
+  return { id: advId, troop_id, name, description: description || "", trek_date: trek_date || arrive_date, depart_date, arrive_date, return_date, home_date, itinerary_id, adventure_type: adventure_type || "philmont", status: "active" };
 }
 
 export function updateAdventure(id, { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status, itinerary_id }) {
@@ -1184,6 +1189,31 @@ export function deleteAdventure(id) {
     db.prepare("DELETE FROM adventure_members WHERE adventure_id = ?").run(id);
     db.prepare("DELETE FROM skills WHERE adventure_id = ?").run(id);
     db.prepare("DELETE FROM adventures WHERE id = ?").run(id);
+  });
+  run();
+}
+
+export function deleteTroop(troopId) {
+  const run = db.transaction(() => {
+    // Get all adventure IDs for this troop
+    const adventures = db.prepare("SELECT id FROM adventures WHERE troop_id = ?").all(troopId);
+    // Cascade-delete each adventure's child data
+    for (const adv of adventures) {
+      db.prepare("DELETE FROM member_gear WHERE adventure_id = ?").run(adv.id);
+      db.prepare("DELETE FROM link_requests WHERE adventure_id = ?").run(adv.id);
+      db.prepare("DELETE FROM achievements WHERE adventure_id = ?").run(adv.id);
+      db.prepare("DELETE FROM crew_milestones WHERE adventure_id = ?").run(adv.id);
+      db.prepare("DELETE FROM adventure_members WHERE adventure_id = ?").run(adv.id);
+      db.prepare("DELETE FROM skills WHERE adventure_id = ?").run(adv.id);
+    }
+    // Delete troop-level child data
+    db.prepare("DELETE FROM invitations WHERE troop_id = ?").run(troopId);
+    db.prepare("DELETE FROM skills WHERE troop_id = ?").run(troopId);
+    db.prepare("DELETE FROM troop_gear_overrides WHERE troop_id = ?").run(troopId);
+    db.prepare("DELETE FROM troop_custom_gear WHERE troop_id = ?").run(troopId);
+    db.prepare("DELETE FROM adventures WHERE troop_id = ?").run(troopId);
+    db.prepare("DELETE FROM troop_members WHERE troop_id = ?").run(troopId);
+    db.prepare("DELETE FROM troops WHERE id = ?").run(troopId);
   });
   run();
 }
@@ -1758,12 +1788,22 @@ export function getAllTroopsAdmin() {
   return db.prepare(`
     SELECT t.*,
       (SELECT COUNT(*) FROM troop_members WHERE troop_id = t.id AND status = 'approved') as member_count,
+      (SELECT COUNT(*) FROM troop_members WHERE troop_id = t.id AND status = 'pending') as pending_count,
       (SELECT COUNT(*) FROM adventures WHERE troop_id = t.id) as adventure_count,
       u.name as creator_name, u.email as creator_email
     FROM troops t
     LEFT JOIN users u ON t.created_by = u.id
     ORDER BY t.created_at DESC
   `).all();
+}
+
+export function getTroopMembersAdmin(troopId) {
+  return db.prepare(`
+    SELECT tm.id, tm.user_id, tm.troop_id, tm.role, tm.status, tm.created_at,
+           u.name, u.email, u.avatar_url, u.user_type
+    FROM troop_members tm JOIN users u ON tm.user_id = u.id
+    WHERE tm.troop_id = ? ORDER BY tm.status DESC, tm.role DESC, tm.id
+  `).all(troopId);
 }
 
 export function getAllUsersAdmin() {

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { fontBody, fontDisplay, card, cardTitle } from "../utils/theme";
+import { ADVENTURE_TYPES } from "../utils/constants";
 import Logo from "./Logo";
 
 export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack, onLogout, skipAutoSelect, isGlobalAdmin, onGlobalAdminClick }) {
@@ -9,7 +10,7 @@ export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack
   const [adventures, setAdventures] = useState([]);
   const [itineraries, setItineraries] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ name: "", depart_date: "", arrive_date: "", return_date: "", home_date: "", itinerary_id: "" });
+  const [form, setForm] = useState({ name: "", depart_date: "", arrive_date: "", return_date: "", home_date: "", itinerary_id: "", adventure_type: "philmont" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [fetching, setFetching] = useState(true);
@@ -111,11 +112,14 @@ export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack
                 padding: "12px 14px", background: theme.bgAlt, borderRadius: 8, marginBottom: 6,
                 border: `1px solid ${theme.border}`, cursor: "pointer",
               }}>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>{a.name}</div>
-                  <div style={{ fontSize: 11, color: theme.textDim, marginTop: 2 }}>
-                    {a.itinerary_id && `Itinerary ${a.itinerary_id}`}
-                    {(a.arrive_date || a.trek_date) && ` \u2022 ${a.arrive_date || a.trek_date}`}
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 22 }}>{ADVENTURE_TYPES.find(t => t.id === a.adventure_type)?.icon || "🏔️"}</span>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>{a.name}</div>
+                    <div style={{ fontSize: 11, color: theme.textDim, marginTop: 2 }}>
+                      {a.itinerary_id && `Itinerary ${a.itinerary_id}`}
+                      {(a.arrive_date || a.trek_date) && ` \u2022 ${a.arrive_date || a.trek_date}`}
+                    </div>
                   </div>
                 </div>
                 <span style={{ fontSize: 18, color: theme.textDimmer }}>›</span>
@@ -136,26 +140,61 @@ export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack
           <div style={card(theme)}>
             <div style={cardTitle(theme)}>New Adventure</div>
             <form onSubmit={handleCreate}>
-              <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-                placeholder="Adventure name (e.g. Philmont 2026)" style={inputStyle} required />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
-                <div>
-                  <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>Depart Home</label>
-                  <input value={form.depart_date} onChange={e => setForm({ ...form, depart_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>Arrive Philmont</label>
-                  <input value={form.arrive_date} onChange={e => setForm({ ...form, arrive_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>Depart Philmont</label>
-                  <input value={form.return_date} onChange={e => setForm({ ...form, return_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>Return Home</label>
-                  <input value={form.home_date} onChange={e => setForm({ ...form, home_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+              {/* Adventure Type Selector */}
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase", marginBottom: 4, display: "block" }}>Adventure Type</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                  {ADVENTURE_TYPES.map(t => (
+                    <button key={t.id} type="button" disabled={!t.enabled}
+                      onClick={() => t.enabled && setForm({ ...form, adventure_type: t.id })}
+                      style={{
+                        padding: "10px 12px", borderRadius: 8, cursor: t.enabled ? "pointer" : "default",
+                        border: form.adventure_type === t.id ? `2px solid ${theme.accent}` : `1.5px solid ${theme.borderLight}`,
+                        background: form.adventure_type === t.id ? theme.accentBg : t.enabled ? theme.bgAlt : theme.bgAlt,
+                        opacity: t.enabled ? 1 : 0.45, textAlign: "left", fontFamily: fontBody,
+                        position: "relative",
+                      }}>
+                      <div style={{ fontSize: 14, marginBottom: 2 }}>{t.icon}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: t.enabled ? theme.heading : theme.textDim }}>{t.name}</div>
+                      <div style={{ fontSize: 10, color: theme.textDim }}>{t.location}</div>
+                      {!t.enabled && (
+                        <div style={{
+                          position: "absolute", top: 6, right: 8, fontSize: 8, fontWeight: 700,
+                          color: theme.textDim, background: theme.border, padding: "2px 6px", borderRadius: 4,
+                          textTransform: "uppercase", letterSpacing: 0.5,
+                        }}>Coming Soon</div>
+                      )}
+                    </button>
+                  ))}
                 </div>
               </div>
+
+              <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
+                placeholder={`Adventure name (e.g. ${(ADVENTURE_TYPES.find(t => t.id === form.adventure_type)?.name || "Philmont")} 2026)`}
+                style={inputStyle} required />
+              {(() => {
+                const labels = ADVENTURE_TYPES.find(t => t.id === form.adventure_type)?.dateLabels || ADVENTURE_TYPES[0].dateLabels;
+                return (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
+                    <div>
+                      <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>{labels.depart}</label>
+                      <input value={form.depart_date} onChange={e => setForm({ ...form, depart_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>{labels.arrive}</label>
+                      <input value={form.arrive_date} onChange={e => setForm({ ...form, arrive_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>{labels.return}</label>
+                      <input value={form.return_date} onChange={e => setForm({ ...form, return_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>{labels.home}</label>
+                      <input value={form.home_date} onChange={e => setForm({ ...form, home_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+                    </div>
+                  </div>
+                );
+              })()}
               <select value={form.itinerary_id} onChange={e => setForm({ ...form, itinerary_id: e.target.value })}
                 style={{ ...inputStyle, color: form.itinerary_id ? theme.text : theme.textDim }}>
                 <option value="">Select itinerary...</option>

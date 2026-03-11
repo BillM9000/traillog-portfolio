@@ -35,6 +35,7 @@ import {
   getTroopCustomGear, addTroopCustomGear, updateTroopCustomGearItem, deleteTroopCustomGear,
   logAIQuery, getAIUsage,
   getAllTroopsAdmin, getAllUsersAdmin, getAllSettings, trackAffiliateClick, getAffiliateStats,
+  deleteTroop, getTroopMembersAdmin,
 } from "./db.js";
 import {
   sendJoinRequestEmail, sendParentNotificationEmail, sendVerificationEmail,
@@ -108,8 +109,14 @@ function requireAuth(req, res, next) {
   next();
 }
 
+function isGlobalAdmin(req) {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  return !!(adminEmail && req.user?.email === adminEmail);
+}
+
 function requireTroopMember(requiredStatus = "approved") {
   return (req, res, next) => {
+    if (isGlobalAdmin(req)) { req.membership = { role: "admin", status: "approved" }; return next(); }
     const troopId = parseId(req.params.troopId);
     const membership = getTroopMember(troopId, req.user.id);
     if (!membership || membership.status !== requiredStatus) {
@@ -121,6 +128,7 @@ function requireTroopMember(requiredStatus = "approved") {
 }
 
 function requireTroopAdmin(req, res, next) {
+  if (isGlobalAdmin(req)) { req.membership = { role: "admin", status: "approved" }; return next(); }
   const troopId = parseId(req.params.troopId);
   const membership = getTroopMember(troopId, req.user.id);
   if (!membership || membership.role !== "admin" || membership.status !== "approved") {
@@ -308,6 +316,7 @@ app.post("/api/troops", requireAuth, (req, res) => {
     const { name, description, council, location, is_public } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Troop name required" });
     if (!council?.trim()) return res.status(400).json({ error: "Council is required" });
+    if (council.trim().length > 60) return res.status(400).json({ error: "Council name too long (60 char max)" });
     const troop = createTroop({ name: name.trim(), description, council: council.trim(), location: location?.trim(), is_public, created_by: req.user.id });
     res.status(201).json(troop);
   } catch (e) { safeError(res, e); }
@@ -395,6 +404,14 @@ app.delete("/api/troops/:troopId/members/:userId", requireAuth, requireTroopAdmi
   } catch (e) { safeError(res, e); }
 });
 
+app.post("/api/troops/:troopId/leave", requireAuth, (req, res) => {
+  try {
+    const troopId = parseId(req.params.troopId);
+    removeTroopMember(troopId, req.user.id);
+    res.json({ ok: true });
+  } catch (e) { safeError(res, e); }
+});
+
 app.put("/api/troops/:troopId/members/:userId/dates", requireAuth, requireTroopMember(), requireSelfOrAdmin, (req, res) => {
   try {
     const { dates } = req.body;
@@ -451,11 +468,13 @@ app.get("/api/troops/:troopId/adventures", requireAuth, requireTroopMember(), (r
 // Create adventure
 app.post("/api/troops/:troopId/adventures", requireAuth, requireTroopAdmin, (req, res) => {
   try {
-    const { name, description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id } = req.body;
+    const { name, description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id, adventure_type } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Adventure name required" });
+    const validTypes = ["philmont", "northern_tier", "sea_base", "summit"];
+    const type = validTypes.includes(adventure_type) ? adventure_type : "philmont";
     const adventure = createAdventure({
       troop_id: parseId(req.params.troopId),
-      name: name.trim(), description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id,
+      name: name.trim(), description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id, adventure_type: type,
       created_by: req.user.id,
     });
     res.status(201).json(adventure);
@@ -756,6 +775,25 @@ app.get("/api/admin/troops", requireAuth, requireGlobalAdmin, (req, res) => {
   catch (e) { safeError(res, e); }
 });
 
+app.get("/api/admin/troops/:troopId/members", requireAuth, requireGlobalAdmin, (req, res) => {
+  try {
+    const troopId = parseId(req.params.troopId);
+    if (!troopId) return res.status(400).json({ error: "Invalid troop ID" });
+    res.json(getTroopMembersAdmin(troopId));
+  } catch (e) { safeError(res, e); }
+});
+
+app.delete("/api/admin/troops/:troopId", requireAuth, requireGlobalAdmin, (req, res) => {
+  try {
+    const troopId = parseId(req.params.troopId);
+    if (!troopId) return res.status(400).json({ error: "Invalid troop ID" });
+    const troop = getTroop(troopId);
+    if (!troop) return res.status(404).json({ error: "Troop not found" });
+    deleteTroop(troopId);
+    res.json({ ok: true });
+  } catch (e) { safeError(res, e); }
+});
+
 app.get("/api/admin/users", requireAuth, requireGlobalAdmin, (req, res) => {
   try { res.json(getAllUsersAdmin()); }
   catch (e) { safeError(res, e); }
@@ -953,6 +991,8 @@ app.put("/api/admin/settings", requireAuth, requireGlobalAdmin, (req, res) => {
   try {
     const { key, value } = req.body;
     if (!key || typeof key !== "string") return res.status(400).json({ error: "key is required" });
+    const PROTECTED_KEYS = ["schema_version"];
+    if (PROTECTED_KEYS.includes(key)) return res.status(403).json({ error: "This setting is system-managed and cannot be edited" });
     setSetting(key, value);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
