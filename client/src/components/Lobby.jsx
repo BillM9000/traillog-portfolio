@@ -5,6 +5,7 @@ import { useToast } from "../contexts/ToastContext";
 import { fontBody, fontDisplay, card, cardTitle } from "../utils/theme";
 import { US_STATES } from "../utils/constants";
 import Logo from "./Logo";
+import TroopLogo from "./TroopLogo";
 
 export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobalAdmin, onGlobalAdminClick, onEnterTroop }) {
   const { theme } = useTheme();
@@ -118,14 +119,17 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
                   padding: "10px 12px", background: theme.bgAlt, borderRadius: 8, marginBottom: 6,
                   border: `1px solid ${theme.border}`,
                 }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: theme.heading }}>{t.name}</div>
-                    {(t.council || t.location) && (
-                      <div style={{ fontSize: 11, color: theme.textDim }}>
-                        {[t.council, t.location].filter(Boolean).join(" · ")}
-                      </div>
-                    )}
-                    {!t.council && t.description && <div style={{ fontSize: 11, color: theme.textDim }}>{t.description}</div>}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <TroopLogo troopId={t.id} name={t.name} size={40} theme={theme} />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: theme.heading }}>{t.name}</div>
+                      {(t.council || t.location) && (
+                        <div style={{ fontSize: 11, color: theme.textDim }}>
+                          {[t.council, t.location].filter(Boolean).join(" · ")}
+                        </div>
+                      )}
+                      {!t.council && t.description && <div style={{ fontSize: 11, color: theme.textDim }}>{t.description}</div>}
+                    </div>
                   </div>
                   {membership ? (
                     membership.status === "approved" && onEnterTroop ? (

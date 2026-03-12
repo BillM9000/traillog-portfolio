@@ -49,6 +49,43 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   const [newAdv, setNewAdv] = useState({ name: "", depart_date: "", arrive_date: "", return_date: "", home_date: "", itinerary_id: "", adventure_type: "philmont" });
   const [creatingAdv, setCreatingAdv] = useState(false);
 
+  // Troop logo
+  const [logoUrl, setLogoUrl] = useState(troop?.id ? `/api/troops/${troop.id}/logo?t=${Date.now()}` : null);
+  const [logoError, setLogoError] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.match(/^image\/(png|jpeg|webp)$/)) { addToast("Use PNG, JPG, or WebP", "error"); return; }
+    if (file.size > 500 * 1024) { addToast("Image too large (max 500KB)", "error"); return; }
+    setUploadingLogo(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          await api.uploadTroopLogo(troop.id, reader.result);
+          setLogoUrl(`/api/troops/${troop.id}/logo?t=${Date.now()}`);
+          setLogoError(false);
+          addToast("Logo uploaded", "success");
+        } catch (err) { addToast(err.message, "error"); }
+        setUploadingLogo(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) { addToast(err.message, "error"); setUploadingLogo(false); }
+  };
+
+  const handleLogoDelete = async () => {
+    setUploadingLogo(true);
+    try {
+      await api.deleteTroopLogo(troop.id);
+      setLogoUrl(null);
+      setLogoError(true);
+      addToast("Logo removed", "success");
+    } catch (err) { addToast(err.message, "error"); }
+    setUploadingLogo(false);
+  };
+
   // Link requests
   const [linkRequests, setLinkRequests] = useState([]);
 
@@ -549,6 +586,44 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
               </div>
               <label style={labelStyle}>Description</label>
               <input value={troopDesc} onChange={e => setTroopDesc(e.target.value)} style={inputStyle} />
+
+              <label style={labelStyle}>Troop Logo</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+                {logoUrl && !logoError ? (
+                  <img
+                    src={logoUrl}
+                    alt="Troop logo"
+                    style={{ width: 64, height: 64, borderRadius: 8, objectFit: "cover", border: `1px solid ${theme.border}` }}
+                    onError={() => setLogoError(true)}
+                  />
+                ) : (
+                  <div style={{
+                    width: 64, height: 64, borderRadius: 8, background: theme.accent + "30",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 24, fontWeight: 800, color: theme.accent, border: `1px dashed ${theme.border}`,
+                  }}>
+                    {troop?.name?.[0]?.toUpperCase() || "?"}
+                  </div>
+                )}
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <label style={{
+                    padding: "5px 12px", borderRadius: 6, border: `1px solid ${theme.borderAccent}`,
+                    background: theme.accentBg, color: theme.accentLight, fontSize: 11, fontWeight: 600,
+                    cursor: uploadingLogo ? "wait" : "pointer", fontFamily: fontBody, textAlign: "center",
+                  }}>
+                    {uploadingLogo ? "..." : "Upload"}
+                    <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleLogoUpload}
+                      style={{ display: "none" }} disabled={uploadingLogo} />
+                  </label>
+                  {logoUrl && !logoError && (
+                    <button onClick={handleLogoDelete} disabled={uploadingLogo} style={{
+                      padding: "3px 8px", borderRadius: 4, border: "none", background: "transparent",
+                      color: theme.textDim, fontSize: 10, cursor: "pointer", fontFamily: fontBody,
+                    }}>Remove</button>
+                  )}
+                </div>
+                <span style={{ fontSize: 10, color: theme.textDim }}>PNG, JPG, or WebP · Max 500KB</span>
+              </div>
 
               <label style={labelStyle}>Visibility</label>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>

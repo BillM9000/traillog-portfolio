@@ -31,6 +31,8 @@ export const api = {
   createTroop: (data) => request("/troops", { method: "POST", body: JSON.stringify(data) }),
   updateTroop: (id, data) => request(`/troops/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   joinTroop: (id) => request(`/troops/${id}/join`, { method: "POST" }),
+  uploadTroopLogo: (id, image) => request(`/troops/${id}/logo`, { method: "PUT", body: JSON.stringify({ image }) }),
+  deleteTroopLogo: (id) => request(`/troops/${id}/logo`, { method: "PUT", body: JSON.stringify({}) }),
   updateTroopSettings: (id, data) => request(`/troops/${id}/settings`, { method: "PUT", body: JSON.stringify(data) }),
 
   // Troop Members

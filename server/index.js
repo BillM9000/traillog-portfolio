@@ -6,6 +6,7 @@ import crypto from "crypto";
 import passport, { hashPassword, generateVerificationToken } from "./auth.js";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import { existsSync, mkdirSync, writeFileSync, unlinkSync } from "fs";
 import db, {
   createSessionStore, findUserByEmail, findUserById, createUser, updateUserProfile, verifyUserEmail,
   setResetToken, findUserByResetToken, clearResetToken, updatePassword,
@@ -402,6 +403,54 @@ app.put("/api/troops/:troopId", requireAuth, requireTroopAdmin, (req, res) => {
     const { name, description, council, location, is_public } = req.body;
     if (council !== undefined && !council?.trim()) return res.status(400).json({ error: "Council is required" });
     updateTroop(parseId(req.params.troopId), { name, description, council, location, is_public });
+    res.json({ ok: true });
+  } catch (e) { safeError(res, e); }
+});
+
+// ── Troop Logo Upload & Serve ──
+
+const LOGO_DIR = join(process.env.DATA_DIR || "./data", "troop-logos");
+if (!existsSync(LOGO_DIR)) mkdirSync(LOGO_DIR, { recursive: true });
+
+// Serve logo (no auth — logos are public)
+app.get("/api/troops/:troopId/logo", (req, res) => {
+  const troopId = parseId(req.params.troopId);
+  const logoPath = join(LOGO_DIR, `${troopId}.png`);
+  if (!existsSync(logoPath)) return res.status(404).json({ error: "No logo" });
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.sendFile(logoPath);
+});
+
+// Upload logo (admin only, base64 PNG/JPG in JSON body)
+app.put("/api/troops/:troopId/logo", requireAuth, requireTroopAdmin, (req, res) => {
+  try {
+    const troopId = parseId(req.params.troopId);
+    const { image } = req.body; // "data:image/png;base64,..."
+
+    if (!image) {
+      // Delete logo
+      const logoPath = join(LOGO_DIR, `${troopId}.png`);
+      if (existsSync(logoPath)) unlinkSync(logoPath);
+      return res.json({ ok: true, deleted: true });
+    }
+
+    // Validate data URL format
+    const match = image.match(/^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/);
+    if (!match) return res.status(400).json({ error: "Invalid image format. Use PNG, JPG, or WebP" });
+
+    const buffer = Buffer.from(match[2], "base64");
+
+    // Max 500KB
+    if (buffer.length > 500 * 1024) return res.status(400).json({ error: "Image too large. Maximum 500KB" });
+
+    // Validate PNG/JPG magic bytes
+    const isPNG = buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47;
+    const isJPG = buffer[0] === 0xFF && buffer[1] === 0xD8;
+    const isWebP = buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46;
+    if (!isPNG && !isJPG && !isWebP) return res.status(400).json({ error: "Invalid image data" });
+
+    writeFileSync(join(LOGO_DIR, `${troopId}.png`), buffer);
+    console.log(`[logo upload] Troop ${troopId}: ${(buffer.length / 1024).toFixed(1)}KB`);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });

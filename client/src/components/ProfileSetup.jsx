@@ -79,7 +79,7 @@ export default function ProfileSetup({ user, onComplete }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
             {[
               { value: "13+", label: "I am 13 or older", desc: "Youth / Scout participant" },
-              { value: "18+", label: "I am 18 or older", desc: "Adult leader or adviser" },
+              { value: "18+", label: "I am 18 or older", desc: "Adult leader or Scouter (Parent)" },
             ].map(opt => (
               <button key={opt.value} onClick={() => setAgeChoice(opt.value)} style={{
                 padding: "16px 18px", borderRadius: 12, cursor: "pointer", textAlign: "left",
