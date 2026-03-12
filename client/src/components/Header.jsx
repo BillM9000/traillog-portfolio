@@ -224,7 +224,7 @@ export default function Header({ user, troop, adventure, members, analysis, trek
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", position: "relative", marginBottom: 16, textAlign: "center" }}>
         {/* Troop Logo — hero size */}
         <div style={{ marginBottom: 8 }}>
-          <TroopLogo troopId={troop?.id} name={troopName} size={88} theme={{ bgAlt: "rgba(255,255,255,0.1)" }} />
+          <TroopLogo troopId={troop?.id} name={troopName} size={88} theme={{ bgAlt: "rgba(253,250,245,0.92)" }} />
         </div>
 
         {/* Troop name + adventure type */}
@@ -254,7 +254,13 @@ export default function Header({ user, troop, adventure, members, analysis, trek
 
         {/* Countdown */}
         {cd && (
-          <div style={{ fontSize: 12, fontWeight: 700, color: cd.color || "#fff", fontFamily: fontBody, textShadow: "0 1px 3px rgba(0,0,0,0.4)" }}>
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 4,
+            fontSize: 13, fontWeight: 800, color: "#fff", fontFamily: fontBody,
+            background: "rgba(0,0,0,0.25)", backdropFilter: "blur(4px)",
+            padding: "4px 14px", borderRadius: 20, marginTop: 2,
+            textShadow: "0 1px 3px rgba(0,0,0,0.5)",
+          }}>
             {cd.icon} {cd.text}
           </div>
         )}

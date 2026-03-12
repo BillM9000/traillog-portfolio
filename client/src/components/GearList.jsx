@@ -382,12 +382,14 @@ export default function GearList({ troopId, adventureId, members, active, setAct
                             }
                           }}
                             style={{
-                              padding: "3px 6px", borderRadius: 4, border: "none", cursor: "pointer", fontSize: 9, fontWeight: 600,
+                              display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
+                              padding: "3px 8px", borderRadius: 4, border: "none", cursor: "pointer", fontSize: 9, fontWeight: 600,
                               background: isActive ? s.color : theme.bgAlt, color: isActive ? "#fff" : theme.textDimmer,
-                              fontFamily: fontBody, transition: "all .12s",
+                              fontFamily: fontBody, transition: "all .12s", minWidth: 36,
                             }}
                           >
                             <s.Icon size={11} strokeWidth={2.5} />
+                            <span style={{ fontSize: 7, fontWeight: 700, letterSpacing: 0.3, textTransform: "uppercase" }}>{s.label}</span>
                           </button>
                         );
                       })}
