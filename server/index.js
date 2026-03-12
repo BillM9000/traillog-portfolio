@@ -36,11 +36,13 @@ import db, {
   logAIQuery, getAIUsage,
   getAllTroopsAdmin, getAllUsersAdmin, getAllSettings, trackAffiliateClick, getAffiliateStats,
   deleteTroop, getTroopMembersAdmin,
+  createTrainingEvent, getTrainingEvents, getTrainingEvent, deleteTrainingEvent, upsertTrainingRsvp,
 } from "./db.js";
 import {
   sendJoinRequestEmail, sendParentNotificationEmail, sendVerificationEmail,
   sendInvitationEmail, sendMemberApprovedEmail, sendMemberDeniedEmail,
   sendDateChangedEmail, sendItineraryChangedEmail, sendBadgeEarnedEmail, sendLinkRequestEmail,
+  sendTrainingScheduledEmail,
 } from "./email.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -689,6 +691,55 @@ app.delete("/api/adventures/:adventureId/skills/:skillId", requireAuth, requireA
   try {
     const result = removeAdventureSkill(parseId(req.params.adventureId), req.params.skillId);
     if (result.error) return res.status(400).json(result);
+    res.json({ ok: true });
+  } catch (e) { safeError(res, e); }
+});
+
+// ═══════════════════════════════════════════
+// TRAINING EVENT ROUTES
+// ═══════════════════════════════════════════
+
+app.get("/api/adventures/:adventureId/training-events", requireAuth, requireAdventureMember, (req, res) => {
+  try { res.json(getTrainingEvents(parseId(req.params.adventureId))); }
+  catch (e) { safeError(res, e); }
+});
+
+app.post("/api/adventures/:adventureId/training-events", requireAuth, requireAdventureAdmin, (req, res) => {
+  try {
+    const advId = parseId(req.params.adventureId);
+    const { date, period, time_label, location, notes } = req.body;
+    if (!date) return res.status(400).json({ error: "date required" });
+    if (period && !["am", "pm", "all"].includes(period)) return res.status(400).json({ error: "period must be am, pm, or all" });
+    const event = createTrainingEvent(advId, { date, period: period || "all", time_label, location, notes }, req.user.id);
+
+    // Email all members about the scheduled training
+    const adventure = getAdventure(advId);
+    const members = getAdventureMembers(advId).filter(m => !m.is_manual);
+    const periodLabel = period === "am" ? "Morning" : period === "pm" ? "Afternoon" : "All Day";
+    for (const m of members) {
+      const user = findUserById(m.user_id);
+      if (user?.email) {
+        sendTrainingScheduledEmail(user.email, user.name, adventure?.name || "Adventure", date, periodLabel, time_label, location, notes).catch(console.error);
+      }
+    }
+    console.log(`[training event] Adventure ${advId}: ${date} (${periodLabel}) at ${location || "TBD"} — ${members.length} members notified`);
+
+    res.status(201).json(event);
+  } catch (e) { safeError(res, e); }
+});
+
+app.delete("/api/adventures/:adventureId/training-events/:eventId", requireAuth, requireAdventureAdmin, (req, res) => {
+  try {
+    deleteTrainingEvent(parseId(req.params.eventId));
+    res.json({ ok: true });
+  } catch (e) { safeError(res, e); }
+});
+
+app.put("/api/adventures/:adventureId/training-events/:eventId/rsvp", requireAuth, requireAdventureMember, (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!["going", "cant"].includes(status)) return res.status(400).json({ error: "status must be going or cant" });
+    upsertTrainingRsvp(parseId(req.params.eventId), req.user.id, status);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });

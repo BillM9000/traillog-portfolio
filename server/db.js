@@ -270,10 +270,31 @@ db.exec(`
     active INTEGER NOT NULL DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS training_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    adventure_id INTEGER NOT NULL REFERENCES adventures(id),
+    date TEXT NOT NULL,
+    period TEXT NOT NULL DEFAULT 'all',
+    time_label TEXT,
+    location TEXT,
+    notes TEXT,
+    created_by INTEGER NOT NULL REFERENCES users(id),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS training_rsvps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL REFERENCES training_events(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    status TEXT NOT NULL DEFAULT 'going',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(event_id, user_id)
+  );
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 10;
+const CURRENT_SCHEMA_VERSION = 11;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -482,6 +503,31 @@ function migrate() {
           db.prepare("UPDATE adventure_members SET linked_scouts = ? WHERE id = ?").run(JSON.stringify(scouts), r.id);
         }
       }
+    }
+
+    // ── v11 migration: training events + time slot availability ──
+    if (version < 11) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS training_events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          adventure_id INTEGER NOT NULL REFERENCES adventures(id),
+          date TEXT NOT NULL,
+          period TEXT NOT NULL DEFAULT 'all',
+          time_label TEXT,
+          location TEXT,
+          notes TEXT,
+          created_by INTEGER NOT NULL REFERENCES users(id),
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS training_rsvps (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          event_id INTEGER NOT NULL REFERENCES training_events(id) ON DELETE CASCADE,
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          status TEXT NOT NULL DEFAULT 'going',
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(event_id, user_id)
+        );
+      `);
     }
 
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
@@ -2024,6 +2070,48 @@ export function createSessionStore(session) {
     catch (e) { console.error("Session GC error:", e.message); }
   }, 60 * 60 * 1000);
   return store;
+}
+
+// ── Training Events ──
+
+export function createTrainingEvent(adventureId, data, createdBy) {
+  const r = db.prepare(
+    "INSERT INTO training_events (adventure_id, date, period, time_label, location, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)"
+  ).run(adventureId, data.date, data.period || "all", data.time_label || null, data.location || null, data.notes || null, createdBy);
+  return { id: Number(r.lastInsertRowid), ...data };
+}
+
+export function getTrainingEvents(adventureId) {
+  const events = db.prepare("SELECT * FROM training_events WHERE adventure_id = ? ORDER BY date, period").all(adventureId);
+  for (const e of events) {
+    e.rsvps = db.prepare(`
+      SELECT tr.user_id, tr.status, u.name FROM training_rsvps tr
+      JOIN users u ON tr.user_id = u.id
+      WHERE tr.event_id = ?
+    `).all(e.id);
+  }
+  return events;
+}
+
+export function getTrainingEvent(eventId) {
+  const e = db.prepare("SELECT * FROM training_events WHERE id = ?").get(eventId);
+  if (!e) return null;
+  e.rsvps = db.prepare(`
+    SELECT tr.user_id, tr.status, u.name FROM training_rsvps tr
+    JOIN users u ON tr.user_id = u.id
+    WHERE tr.event_id = ?
+  `).all(e.id);
+  return e;
+}
+
+export function deleteTrainingEvent(eventId) {
+  db.prepare("DELETE FROM training_events WHERE id = ?").run(eventId);
+}
+
+export function upsertTrainingRsvp(eventId, userId, status) {
+  db.prepare(
+    "INSERT INTO training_rsvps (event_id, user_id, status, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(event_id, user_id) DO UPDATE SET status = ?, updated_at = CURRENT_TIMESTAMP"
+  ).run(eventId, userId, status, status);
 }
 
 export default db;

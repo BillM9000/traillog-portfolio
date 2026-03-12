@@ -2,6 +2,9 @@ import { parseDateKey } from "../utils/dates";
 import { formatDateShort, formatDateFull } from "../utils/dates";
 import { useTheme } from "../contexts/ThemeContext";
 import { card, cardTitle, badge, tag } from "../utils/theme";
+import { parseDateEntry } from "./Calendar";
+
+const PERIOD_LABELS = { am: "Morning", pm: "Afternoon", all: "All Day" };
 
 export default function Results({ members, analysis }) {
   const { theme } = useTheme();
@@ -22,21 +25,32 @@ export default function Results({ members, analysis }) {
         <div style={cardTitle(theme)}>Top Individual Dates</div>
         {analysis.bestDates.length === 0 && <div style={{ fontSize: 12, color: theme.textDimmer }}>No overlap yet.</div>}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-          {analysis.bestDates.map(d => (
-            <div key={d.key} style={{
-              padding: "5px 9px", borderRadius: 6, fontSize: 11,
-              background: d.count === members.length ? theme.accentBg : theme.bgAlt,
-              border: d.count === members.length ? `1.5px solid ${theme.accent}` : `1px solid ${theme.border}`,
-            }}>
-              <div style={{ fontWeight: 700, color: d.count === members.length ? theme.accentLight : theme.text }}>
-                {formatDateShort(d.key)} <span style={{ fontWeight: 400, color: theme.textDimmer }}>({d.dayName})</span>
+          {analysis.bestDates.map(d => {
+            const hmData = analysis.heatmap[d.key];
+            const bestPeriod = hmData?.amCount >= hmData?.pmCount ? "am" : "pm";
+            const bestCount = Math.max(hmData?.amCount || 0, hmData?.pmCount || 0);
+            return (
+              <div key={d.key} style={{
+                padding: "5px 9px", borderRadius: 6, fontSize: 11,
+                background: d.count === members.length ? theme.accentBg : theme.bgAlt,
+                border: d.count === members.length ? `1.5px solid ${theme.accent}` : `1px solid ${theme.border}`,
+              }}>
+                <div style={{ fontWeight: 700, color: d.count === members.length ? theme.accentLight : theme.text }}>
+                  {formatDateShort(d.key)} <span style={{ fontWeight: 400, color: theme.textDimmer }}>({d.dayName})</span>
+                </div>
+                <div style={{ fontSize: 10, color: theme.textDim, marginTop: 1 }}>
+                  {d.count}/{members.length} — {d.names.join(", ")}
+                  {d.missing.length > 0 && <span style={{ color: theme.warn }}> (w/o {d.missing.join(", ")})</span>}
+                </div>
+                {hmData && (hmData.amCount !== hmData.pmCount) && (
+                  <div style={{ fontSize: 9, color: theme.textDimmer, marginTop: 2 }}>
+                    AM: {hmData.amCount}/{members.length} · PM: {hmData.pmCount}/{members.length}
+                    {bestCount > d.count * 0.5 && <span style={{ color: theme.accentLight }}> — best: {PERIOD_LABELS[bestPeriod]}</span>}
+                  </div>
+                )}
               </div>
-              <div style={{ fontSize: 10, color: theme.textDim, marginTop: 1 }}>
-                {d.count}/{members.length} — {d.names.join(", ")}
-                {d.missing.length > 0 && <span style={{ color: theme.warn }}> (w/o {d.missing.join(", ")})</span>}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -67,6 +81,16 @@ export default function Results({ members, analysis }) {
             {w.consistentNames.join(", ")}
             {w.missing.length > 0 && <span> &nbsp; <span style={{ color: "#b08070" }}>{w.missing.join(", ")}</span></span>}
           </div>
+          {/* Period breakdown for single-day windows */}
+          {w.length === 1 && w.dates[0] && (
+            <div style={{ fontSize: 10, color: theme.textDimmer, marginTop: 3 }}>
+              {(() => {
+                const hmData = analysis.heatmap[w.dates[0].key];
+                if (!hmData) return null;
+                return <>AM: {hmData.amCount}/{members.length} · PM: {hmData.pmCount}/{members.length}</>;
+              })()}
+            </div>
+          )}
           <div style={{ marginTop: 5, display: "flex", flexWrap: "wrap", gap: 3 }}>
             {w.length === 1 && (
               <>
@@ -107,7 +131,14 @@ export default function Results({ members, analysis }) {
       <div style={{ ...card(theme), marginTop: 14 }}>
         <div style={cardTitle(theme)}>Member Summary</div>
         {members.map((m, i) => {
-          const fc = m.dates.filter(d => parseDateKey(d) >= new Date(new Date().setHours(0, 0, 0, 0))).length;
+          // Count unique dates (not entries, since a date can have am/pm/all)
+          const uniqueDates = new Set();
+          for (const d of m.dates) {
+            const { date } = parseDateEntry(d);
+            const pd = parseDateKey(date);
+            if (pd >= new Date(new Date().setHours(0, 0, 0, 0))) uniqueDates.add(date);
+          }
+          const fc = uniqueDates.size;
           return (
             <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 0", borderBottom: i < members.length - 1 ? `1px solid ${theme.border}` : "none" }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: m.color.bg }} />

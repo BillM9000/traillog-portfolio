@@ -15,7 +15,7 @@ import Lobby from "./components/Lobby";
 import AdventurePicker from "./components/AdventurePicker";
 import Header from "./components/Header";
 import MemberBar from "./components/MemberBar";
-import Calendar from "./components/Calendar";
+import Calendar, { parseDateEntry, getMemberPeriod } from "./components/Calendar";
 import Results from "./components/Results";
 import Skills from "./components/Skills";
 import Itinerary from "./components/Itinerary";
@@ -24,6 +24,7 @@ import GearAIChat from "./components/GearAIChat";
 import GlobalAdmin from "./components/GlobalAdmin";
 import ConfirmModal from "./components/ConfirmModal";
 import AdminPanel from "./components/AdminPanel";
+import TrainingEvents from "./components/TrainingEvents";
 
 export default function App() {
   const { user, memberships, approvedTroops, loading, login, signup, logout, updateProfile, refresh } = useAuth();
@@ -192,11 +193,28 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
     const hm = {};
     allDateKeys.forEach(key => {
       if (parseDateKey(key) < today) return;
-      const av = members.filter(m => m.dates.includes(key));
-      if (av.length > 0) hm[key] = {
-        count: av.length, pct: av.length / members.length,
-        names: av.map(m => m.name),
-        missing: members.filter(m => !m.dates.includes(key)).map(m => m.name),
+      // Check who is available for this date, broken down by period
+      const amAvail = []; // available in morning (has "am" or "all")
+      const pmAvail = []; // available in afternoon (has "pm" or "all")
+      const anyAvail = []; // available at all
+      for (const m of members) {
+        const periods = getMemberPeriod(m.dates, key);
+        if (periods.length === 0) continue;
+        anyAvail.push(m);
+        if (periods.includes("all") || periods.includes("am")) amAvail.push(m);
+        if (periods.includes("all") || periods.includes("pm")) pmAvail.push(m);
+      }
+      if (anyAvail.length > 0) hm[key] = {
+        count: anyAvail.length, pct: anyAvail.length / members.length,
+        names: anyAvail.map(m => m.name),
+        missing: members.filter(m => !anyAvail.includes(m)).map(m => m.name),
+        amCount: amAvail.length, amPct: amAvail.length / members.length,
+        amNames: amAvail.map(m => m.name),
+        pmCount: pmAvail.length, pmPct: pmAvail.length / members.length,
+        pmNames: pmAvail.map(m => m.name),
+        // Best period for this date
+        bestPeriod: amAvail.length >= pmAvail.length ? "am" : "pm",
+        bestPeriodCount: Math.max(amAvail.length, pmAvail.length),
       };
     });
     const sorted = Object.entries(hm).filter(([, v]) => v.count >= 2).sort(([a], [b]) => a.localeCompare(b));
@@ -245,14 +263,18 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
   }, [isAdmin, adventureId, members, active, refreshMembers]);
 
   // ── Date toggling (adventure-scoped) ──
-  const toggleDate = useCallback((key, mode) => {
+  const toggleDate = useCallback((key, mode, period) => {
     if (active === null) return;
     const m = members[active];
-    const has = m.dates.includes(key);
-    let newDates;
-    if (mode === "add" && !has) newDates = [...m.dates, key];
-    else if (mode === "remove" && has) newDates = m.dates.filter(d => d !== key);
-    else return;
+    // Remove any existing entries for this date key
+    let newDates = m.dates.filter(d => {
+      const { date } = parseDateEntry(d);
+      return date !== key;
+    });
+    // Add new entry if mode is "add"
+    if (mode === "add" && period) {
+      newDates.push(`${key}:${period}`);
+    }
     updateMemberLocally(m.user_id, { dates: newDates });
     debouncedSave(() => api.updateAdventureDates(adventureId, m.user_id, newDates));
   }, [active, members, adventureId, debouncedSave, updateMemberLocally]);
@@ -260,15 +282,25 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
   const bulkSelect = useCallback((type) => {
     if (active === null) return;
     const m = members[active];
-    const nd = new Set(m.dates);
+    // Build set of existing date keys that already have entries
+    const existingKeys = new Set();
+    const existing = [...m.dates];
+    for (const d of existing) {
+      const { date } = parseDateEntry(d);
+      existingKeys.add(date);
+    }
+    const newDates = [...existing];
     months.forEach(({ year, month }) => {
       for (let d = 1; d <= daysInMonth(year, month); d++) {
         if (isPast(year, month, d)) continue;
-        if (type === "all" || (type === "weekends" && (dayOfWeek(year, month, d) === 0 || dayOfWeek(year, month, d) === 6)))
-          nd.add(dateKey(year, month, d));
+        const key = dateKey(year, month, d);
+        if (existingKeys.has(key)) continue; // don't overwrite existing entries
+        if (type === "all" || (type === "weekends" && (dayOfWeek(year, month, d) === 0 || dayOfWeek(year, month, d) === 6))) {
+          newDates.push(`${key}:all`);
+          existingKeys.add(key);
+        }
       }
     });
-    const newDates = [...nd];
     updateMemberLocally(m.user_id, { dates: newDates });
     debouncedSave(() => api.updateAdventureDates(adventureId, m.user_id, newDates));
   }, [active, members, months, adventureId, debouncedSave, updateMemberLocally]);
@@ -396,7 +428,14 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
           <Calendar members={members} active={active} months={months} analysis={analysis}
             trekDates={trekDates} onToggleDate={toggleDate} onBulkSelect={bulkSelect} onClearAll={clearAll} />
         )}
-        {view === "results" && <Results members={members} analysis={analysis} />}
+        {view === "results" && (
+          <>
+            <Results members={members} analysis={analysis} />
+            <div style={{ marginTop: 16 }}>
+              <TrainingEvents adventureId={adventureId} isAdmin={isAdmin} currentUserId={user.id} members={members} />
+            </div>
+          </>
+        )}
         {view === "skills" && (
           <Skills members={members} active={active} skills={skills} analysis={analysis}
             isAdmin={isAdmin} onToggleSkill={toggleSkill} onAddSkill={addNewSkill} onRemoveSkill={removeSkillItem}

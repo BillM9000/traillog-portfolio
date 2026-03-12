@@ -89,6 +89,12 @@ export const api = {
   getAchievements: (advId) => request(`/adventures/${advId}/achievements`),
   checkMilestones: (advId) => request(`/adventures/${advId}/check-milestones`, { method: "POST" }),
 
+  // Training Events
+  getTrainingEvents: (advId) => request(`/adventures/${advId}/training-events`),
+  createTrainingEvent: (advId, data) => request(`/adventures/${advId}/training-events`, { method: "POST", body: JSON.stringify(data) }),
+  deleteTrainingEvent: (advId, eventId) => request(`/adventures/${advId}/training-events/${eventId}`, { method: "DELETE" }),
+  rsvpTrainingEvent: (advId, eventId, status) => request(`/adventures/${advId}/training-events/${eventId}/rsvp`, { method: "PUT", body: JSON.stringify({ status }) }),
+
   // Itineraries
   getItineraries: () => request("/itineraries"),
   getItinerary: (id) => request(`/itineraries/${id}`),

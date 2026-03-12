@@ -162,6 +162,34 @@ export async function sendItineraryChangedEmail(toEmail, memberName, adventureNa
   });
 }
 
+export async function sendTrainingScheduledEmail(toEmail, memberName, adventureName, date, periodLabel, timeLabel, location, notes) {
+  const t = getTransporter();
+  if (!t) return console.log(`[email skip] Training scheduled for ${toEmail} (no SMTP configured)`);
+
+  const details = [];
+  details.push(`<strong>Date:</strong> ${esc(date)}`);
+  details.push(`<strong>Time:</strong> ${esc(periodLabel)}${timeLabel ? ` — ${esc(timeLabel)}` : ""}`);
+  if (location) details.push(`<strong>Location:</strong> ${esc(location)}`);
+  if (notes) details.push(`<strong>Notes:</strong> ${esc(notes)}`);
+
+  await t.sendMail({
+    from: `"TrailLog" <${process.env.SMTP_USER}>`,
+    to: toEmail,
+    subject: `Training scheduled for ${adventureName}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:500px">
+        <h2 style="color:#2d3830">Training Hike Scheduled 🥾</h2>
+        <p>Hey <strong>${esc(memberName)}</strong>, a training session has been scheduled for <strong>${esc(adventureName)}</strong>.</p>
+        <div style="background:#f5f5f0;padding:12px 16px;border-radius:8px;margin:12px 0">
+          ${details.join("<br>")}
+        </div>
+        <p>Open TrailLog to RSVP:</p>
+        <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrailLog</a></p>
+      </div>
+    `,
+  });
+}
+
 export async function sendBadgeEarnedEmail(toEmail, memberName, badgeName, adventureName) {
   const t = getTransporter();
   if (!t) return console.log(`[email skip] Badge earned for ${toEmail} (no SMTP configured)`);
