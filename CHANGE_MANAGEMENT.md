@@ -344,6 +344,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 | v11 | 2026-03-12 | Time slot availability, training events | `crew614-GOLDEN-pre-timeslots-20260312.db` |
 | v12 | 2026-03-13 | Age gate (COPPA), session timeout | `crew614-GOLDEN-pre-agegate-20260313.db` |
 | v13 | 2026-03-13 | Password reset tokens | N/A (additive, no data risk) |
+| v14 | 2026-03-13 | TOS acceptance tracking (tos_accepted_at) | N/A (additive, no data risk) |
 
 ### Deployment Log
 
@@ -355,6 +356,8 @@ Record every production deployment here.
 | 2026-03-13 | Set 1: 7-day rolling session timeout | Medium | Bill McCoy | ✅ | Cookie flags hardened |
 | 2026-03-13 | Set 2: Age gate (schema v12, COPPA) | High | Bill McCoy | ✅ | Golden backup taken, browser tested |
 | 2026-03-13 | Set 3: Password reset (schema v13) | Medium | Bill McCoy | ✅ | API tested, manual email test pending |
+| 2026-03-13 | Set 4+5: VPS audit doc + Privacy/Terms pages | Low | Bill McCoy | ✅ | /privacy, /terms routes, VPS hardening deferred |
+| 2026-03-13 | TOS acceptance tracking (schema v14) | Medium | Bill McCoy | ✅ | Explicit checkbox on both signup paths, tos_accepted_at in DB |
 
 ### Golden Backup Registry
 

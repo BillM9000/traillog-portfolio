@@ -110,11 +110,12 @@ Pre-launch sign-off checklist. Items marked with the app name are specific to th
 |---|------|--------|-------|
 | 8.1 | Privacy policy | ✅ | Served at /privacy — standalone HTML, no auth required, crawlable |
 | 8.2 | Terms of service | ✅ | Served at /terms — standalone HTML, no auth required, crawlable |
-| 8.3 | Cookie consent banner | N/A | Required under GDPR if targeting EU users |
-| 8.4 | GDPR data export / deletion | N/A | Required if EU users. Account deletion is good practice regardless |
-| 8.5 | COPPA compliance | ✅ N/A | COPPA = under 13 only. BSA high adventure min age is 13 (Sea Base) or 14 (Philmont/NT/Summit). TrailLog users are 13+. Required if app collects data from children under 13 |
-| 8.6 | ADA / WCAG compliance | N/A | Required for: government, education, large enterprise. Good practice for all |
-| 8.7 | HIPAA compliance | N/A | Required only if handling health data |
+| 8.3 | TOS acceptance tracking | ✅ | Explicit checkbox on both signup paths (email + Google OAuth). `tos_accepted_at` timestamp stored in DB. Button disabled until checked. Server rejects without it |
+| 8.4 | Cookie consent banner | N/A | Required under GDPR if targeting EU users |
+| 8.5 | GDPR data export / deletion | N/A | Required if EU users. Account deletion is good practice regardless |
+| 8.6 | COPPA compliance | ✅ N/A | COPPA = under 13 only. BSA high adventure min age is 13 (Sea Base) or 14 (Philmont/NT/Summit). TrailLog users are 13+. Required if app collects data from children under 13 |
+| 8.7 | ADA / WCAG compliance | N/A | Required for: government, education, large enterprise. Good practice for all |
+| 8.8 | HIPAA compliance | N/A | Required only if handling health data |
 | 8.8 | SOC 2 / ISO 27001 | N/A | Required for: enterprise SaaS selling to large companies |
 | 8.9 | PCI DSS | N/A | Required only if processing credit card payments directly |
 
