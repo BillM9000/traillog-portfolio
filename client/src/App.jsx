@@ -8,7 +8,7 @@ import { DAYS_FULL } from "./utils/constants";
 import { getMonthsRange, daysInMonth, dateKey, parseDateKey, dayOfWeek, isPast } from "./utils/dates";
 import { fontBody, fontDisplay } from "./utils/theme";
 
-import { Calendar as CalendarIcon, BarChart3, ClipboardCheck, Map, Backpack } from "lucide-react";
+import { Calendar as CalendarIcon, BarChart3, ClipboardCheck, Map, Backpack, FileText } from "lucide-react";
 import LoginPage from "./components/LoginPage";
 import ProfileSetup from "./components/ProfileSetup";
 import Lobby from "./components/Lobby";
@@ -26,6 +26,7 @@ import ConfirmModal from "./components/ConfirmModal";
 import AdminPanel from "./components/AdminPanel";
 import TrainingEvents from "./components/TrainingEvents";
 import ProfilePage from "./components/ProfilePage";
+import Reports from "./components/Reports";
 
 export default function App() {
   const { user, memberships, approvedTroops, loading, login, signup, logout, updateProfile, refresh } = useAuth();
@@ -392,6 +393,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
     ["skills", "Readiness", ClipboardCheck],
     ["itinerary", "Itinerary", Map],
     ["gear", "Gear", Backpack],
+    ["reports", "Reports", FileText],
   ];
 
   return (
@@ -481,6 +483,9 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
             )}
             <GearList troopId={troopId} adventureId={adventureId} members={members} active={active} setActive={setActive} updateMemberLocally={updateMemberLocally} />
           </div>
+        )}
+        {view === "reports" && (
+          <Reports members={members} analysis={analysis} adventure={adventure} isAdmin={isAdmin} trekDates={trekDates} />
         )}
       </div>
 
