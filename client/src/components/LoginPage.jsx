@@ -201,6 +201,13 @@ export default function LoginPage({ onLogin, onSignup }) {
             </button>
           )}
         </div>
+
+        {/* Legal links */}
+        <div style={{ textAlign: "center", marginTop: 24, fontSize: 11, color: "#5A6A4A" }}>
+          <a href="/privacy" style={{ color: "#5A6A4A", textDecoration: "none" }}>Privacy Policy</a>
+          <span style={{ margin: "0 8px" }}>·</span>
+          <a href="/terms" style={{ color: "#5A6A4A", textDecoration: "none" }}>Terms of Service</a>
+        </div>
       </div>
     </div>
   );

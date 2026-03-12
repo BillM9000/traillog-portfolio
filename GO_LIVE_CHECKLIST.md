@@ -84,8 +84,8 @@ Pre-launch sign-off checklist. Items marked with the app name are specific to th
 | 6.4 | Container restart policy | ⬜ | Verify `restart: unless-stopped` or `always` in docker-compose |
 | 6.5 | Server auto-start on reboot | ⬜ | Docker service enabled on boot? Will app survive a VPS restart? |
 | 6.6 | Disk space monitoring | ⬜ | SQLite DB + backups + Docker images can fill small VPS disks |
-| 6.7 | Firewall configured | ⬜ | Only expose ports 80, 443, 22. Verify with `ufw status` or equivalent |
-| 6.8 | SSH hardened | ⬜ | Key-only auth, no root password login. Important for public-facing servers |
+| 6.7 | Firewall configured | ⬜ | UFW installed but inactive. Note: Docker bypasses UFW — bind containers to 127.0.0.1 instead. See VPS_SECURITY_HARDENING.md |
+| 6.8 | SSH hardened | ⬜ | Keys working, password auth still enabled (default). fail2ban active. See VPS_SECURITY_HARDENING.md |
 | 6.9 | CI/CD pipeline | N/A | Nice-to-have. TrailLog deploys manually via tar+scp. Fine for solo dev |
 | 6.10 | Rollback plan | ⬜ | Can you quickly revert to previous version? Keep last known-good image/backup |
 | 6.11 | Load balancing / horizontal scaling | N/A | Required if expecting high traffic. Single server fine for TrailLog |
@@ -108,8 +108,8 @@ Pre-launch sign-off checklist. Items marked with the app name are specific to th
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 8.1 | Privacy policy | ⬜ | Required if collecting any personal data. Even a simple one helps |
-| 8.2 | Terms of service | ⬜ | Protects you legally. Required for public apps |
+| 8.1 | Privacy policy | ✅ | Served at /privacy — standalone HTML, no auth required, crawlable |
+| 8.2 | Terms of service | ✅ | Served at /terms — standalone HTML, no auth required, crawlable |
 | 8.3 | Cookie consent banner | N/A | Required under GDPR if targeting EU users |
 | 8.4 | GDPR data export / deletion | N/A | Required if EU users. Account deletion is good practice regardless |
 | 8.5 | COPPA compliance | ✅ N/A | COPPA = under 13 only. BSA high adventure min age is 13 (Sea Base) or 14 (Philmont/NT/Summit). TrailLog users are 13+. Required if app collects data from children under 13 |
