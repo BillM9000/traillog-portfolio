@@ -614,6 +614,14 @@ app.post("/api/troops/:troopId/adventures", requireAuth, requireTroopAdmin, (req
   try {
     const { name, description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id, adventure_type } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Adventure name required" });
+    // Validate date sequence: depart ≤ arrive ≤ return ≤ home
+    const dateSeq = [depart_date, arrive_date, return_date, home_date];
+    const dateLabels = ["Depart Home", "Arrive", "Depart", "Return Home"];
+    for (let i = 0; i < dateSeq.length - 1; i++) {
+      if (dateSeq[i] && dateSeq[i + 1] && dateSeq[i] > dateSeq[i + 1]) {
+        return res.status(400).json({ error: `${dateLabels[i + 1]} date cannot be before ${dateLabels[i]} date` });
+      }
+    }
     const validTypes = ["philmont", "northern_tier", "sea_base", "summit"];
     const type = validTypes.includes(adventure_type) ? adventure_type : "philmont";
     const adventure = createAdventure({
@@ -641,7 +649,20 @@ app.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req
     const { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status, itinerary_id, adventure_type } = req.body;
     const validTypes = ["philmont", "northern_tier", "sea_base", "summit"];
     const safeType = adventure_type && validTypes.includes(adventure_type) ? adventure_type : undefined;
+    // Validate date sequence: depart ≤ arrive ≤ return ≤ home
     const oldAdv = getAdventure(adventureId);
+    const effDates = [
+      depart_date !== undefined ? depart_date : oldAdv.depart_date,
+      arrive_date !== undefined ? arrive_date : oldAdv.arrive_date,
+      return_date !== undefined ? return_date : oldAdv.return_date,
+      home_date !== undefined ? home_date : oldAdv.home_date,
+    ];
+    const effLabels = ["Depart Home", "Arrive", "Depart", "Return Home"];
+    for (let i = 0; i < effDates.length - 1; i++) {
+      if (effDates[i] && effDates[i + 1] && effDates[i] > effDates[i + 1]) {
+        return res.status(400).json({ error: `${effLabels[i + 1]} date cannot be before ${effLabels[i]} date` });
+      }
+    }
     updateAdventure(adventureId, { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status, itinerary_id, adventure_type: safeType });
 
     // Send date change emails if any date changed

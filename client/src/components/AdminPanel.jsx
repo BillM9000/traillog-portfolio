@@ -248,7 +248,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   };
 
   const createNewAdventure = async () => {
-    if (!newAdv.name.trim()) { addToast("Adventure name is required", "error"); return; }
+    if (!newAdv.name.trim()) { addToast("Crew name is required", "error"); return; }
     // Validate date sequence
     const dates = [newAdv.depart_date, newAdv.arrive_date, newAdv.return_date, newAdv.home_date].filter(Boolean);
     if (dates.length >= 2) {
@@ -304,8 +304,8 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
         <div style={{ padding: "16px 18px", overflowY: "auto", flex: 1 }}>
           {tab === "adventure" && (
             <>
-              <label style={labelStyle}>Adventure Name</label>
-              <input value={advName} onChange={e => setAdvName(e.target.value)} style={inputStyle} />
+              <label style={labelStyle}>Crew Name</label>
+              <input value={advName} onChange={e => setAdvName(e.target.value.slice(0, 30))} maxLength={30} style={inputStyle} />
               <label style={labelStyle}>Description</label>
               <input value={advDesc} onChange={e => setAdvDesc(e.target.value)} style={inputStyle} placeholder="Optional description" />
 
@@ -326,10 +326,25 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-                <div><label style={labelStyle}>{dateLabels.depart}</label><input value={departDate} onChange={e => setDepartDate(e.target.value)} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                <div><label style={labelStyle}>{dateLabels.arrive}</label><input value={arriveDate} onChange={e => setArriveDate(e.target.value)} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                <div><label style={labelStyle}>{dateLabels.return}</label><input value={returnDate} onChange={e => setReturnDate(e.target.value)} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                <div><label style={labelStyle}>{dateLabels.home}</label><input value={homeDate} onChange={e => setHomeDate(e.target.value)} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                <div><label style={labelStyle}>{dateLabels.depart}</label><input value={departDate} onChange={e => {
+                  const v = e.target.value;
+                  setDepartDate(v);
+                  if (v && arriveDate && arriveDate < v) setArriveDate("");
+                  if (v && returnDate && returnDate < v) setReturnDate("");
+                  if (v && homeDate && homeDate < v) setHomeDate("");
+                }} type="date" max={arriveDate || undefined} style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                <div><label style={labelStyle}>{dateLabels.arrive}</label><input value={arriveDate} onChange={e => {
+                  const v = e.target.value;
+                  setArriveDate(v);
+                  if (v && returnDate && returnDate < v) setReturnDate("");
+                  if (v && homeDate && homeDate < v) setHomeDate("");
+                }} type="date" min={departDate || undefined} max={returnDate || undefined} style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                <div><label style={labelStyle}>{dateLabels.return}</label><input value={returnDate} onChange={e => {
+                  const v = e.target.value;
+                  setReturnDate(v);
+                  if (v && homeDate && homeDate < v) setHomeDate("");
+                }} type="date" min={arriveDate || departDate || undefined} max={homeDate || undefined} style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                <div><label style={labelStyle}>{dateLabels.home}</label><input value={homeDate} onChange={e => setHomeDate(e.target.value)} type="date" min={returnDate || arriveDate || undefined} style={{ ...inputStyle, marginBottom: 0 }} /></div>
               </div>
 
               <label style={labelStyle}>Itinerary</label>
@@ -384,13 +399,31 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                         </button>
                       ))}
                     </div>
-                    <label style={labelStyle}>Adventure Name</label>
-                    <input value={newAdv.name} onChange={e => setNewAdv({ ...newAdv, name: e.target.value })} placeholder={`e.g. ${newTypeConfig.name} 2027`} style={inputStyle} />
+                    <label style={labelStyle}>Crew Name</label>
+                    <input value={newAdv.name} onChange={e => setNewAdv({ ...newAdv, name: e.target.value.slice(0, 30) })} placeholder="e.g. Crew 614" maxLength={30} style={inputStyle} />
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
-                      <div><label style={labelStyle}>{newDateLabels.depart}</label><input value={newAdv.depart_date} onChange={e => setNewAdv({ ...newAdv, depart_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                      <div><label style={labelStyle}>{newDateLabels.arrive}</label><input value={newAdv.arrive_date} onChange={e => setNewAdv({ ...newAdv, arrive_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                      <div><label style={labelStyle}>{newDateLabels.return}</label><input value={newAdv.return_date} onChange={e => setNewAdv({ ...newAdv, return_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                      <div><label style={labelStyle}>{newDateLabels.home}</label><input value={newAdv.home_date} onChange={e => setNewAdv({ ...newAdv, home_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                      <div><label style={labelStyle}>{newDateLabels.depart}</label><input value={newAdv.depart_date} onChange={e => {
+                        const v = e.target.value;
+                        const u = { ...newAdv, depart_date: v };
+                        if (v && u.arrive_date && u.arrive_date < v) u.arrive_date = "";
+                        if (v && u.return_date && u.return_date < v) u.return_date = "";
+                        if (v && u.home_date && u.home_date < v) u.home_date = "";
+                        setNewAdv(u);
+                      }} type="date" max={newAdv.arrive_date || undefined} style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                      <div><label style={labelStyle}>{newDateLabels.arrive}</label><input value={newAdv.arrive_date} onChange={e => {
+                        const v = e.target.value;
+                        const u = { ...newAdv, arrive_date: v };
+                        if (v && u.return_date && u.return_date < v) u.return_date = "";
+                        if (v && u.home_date && u.home_date < v) u.home_date = "";
+                        setNewAdv(u);
+                      }} type="date" min={newAdv.depart_date || undefined} max={newAdv.return_date || undefined} style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                      <div><label style={labelStyle}>{newDateLabels.return}</label><input value={newAdv.return_date} onChange={e => {
+                        const v = e.target.value;
+                        const u = { ...newAdv, return_date: v };
+                        if (v && u.home_date && u.home_date < v) u.home_date = "";
+                        setNewAdv(u);
+                      }} type="date" min={newAdv.arrive_date || newAdv.depart_date || undefined} max={newAdv.home_date || undefined} style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                      <div><label style={labelStyle}>{newDateLabels.home}</label><input value={newAdv.home_date} onChange={e => setNewAdv({ ...newAdv, home_date: e.target.value })} type="date" min={newAdv.return_date || newAdv.arrive_date || undefined} style={{ ...inputStyle, marginBottom: 0 }} /></div>
                     </div>
                     <label style={labelStyle}>Itinerary</label>
                     <select value={newAdv.itinerary_id} onChange={e => setNewAdv({ ...newAdv, itinerary_id: e.target.value })} style={{ ...inputStyle, color: newAdv.itinerary_id ? theme.text : theme.textDim }}>
@@ -593,7 +626,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                   <img
                     src={logoUrl}
                     alt="Troop logo"
-                    style={{ width: 80, height: 80, borderRadius: 8, objectFit: "cover", border: `1px solid ${theme.border}` }}
+                    style={{ width: 80, height: 80, borderRadius: 8, objectFit: "contain", background: theme.bgAlt, border: `1px solid ${theme.border}` }}
                     onError={() => setLogoError(true)}
                   />
                 ) : (

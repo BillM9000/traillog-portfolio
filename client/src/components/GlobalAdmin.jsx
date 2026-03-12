@@ -411,7 +411,7 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop })
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                 {newLogoPreview ? (
                   <img src={newLogoPreview} alt="Logo preview"
-                    style={{ width: 40, height: 40, borderRadius: 6, objectFit: "cover", border: `1px solid ${theme.border}` }} />
+                    style={{ width: 40, height: 40, borderRadius: 6, objectFit: "contain", background: theme.bgAlt, border: `1px solid ${theme.border}` }} />
                 ) : (
                   <div style={{
                     width: 40, height: 40, borderRadius: 6, background: theme.accent + "20",

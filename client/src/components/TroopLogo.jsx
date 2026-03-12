@@ -18,7 +18,7 @@ export default function TroopLogo({ troopId, name, size = 40, theme }) {
       <img
         src={`/api/troops/${troopId}/logo`}
         alt={name || "Logo"}
-        style={{ width: size, height: size, borderRadius: radius, objectFit: "cover", flexShrink: 0 }}
+        style={{ width: size, height: size, borderRadius: radius, objectFit: "contain", flexShrink: 0, background: theme?.bgAlt || "transparent" }}
         onError={() => setErr(true)}
       />
     );

@@ -8,7 +8,9 @@ import { fontBody, fontDisplay, JOURNEY_WAYPOINTS } from "../utils/theme";
 import { computeCrewReadiness } from "../utils/readiness";
 import { ProgressRing } from "./ProgressWidgets";
 import { Settings, Sun, Moon } from "lucide-react";
+import { ADVENTURE_TYPES } from "../utils/constants";
 import Logo from "./Logo";
+import TroopLogo from "./TroopLogo";
 
 export default function Header({ user, troop, adventure, members, analysis, trekDates, trekDate, saving, isAdmin, approvedTroops, onSwitchTroop, onBackToAdventures, onLogout, onAdminClick, onRefreshAuth, achievements }) {
   const countdown = useCountdown(trekDates || trekDate);
@@ -21,6 +23,22 @@ export default function Header({ user, troop, adventure, members, analysis, trek
 
   const adventureName = adventure?.name || "Loading...";
   const troopName = troop?.name || "";
+  const adventureType = ADVENTURE_TYPES.find(t => t.id === adventure?.adventure_type) || null;
+
+  // Format date range string (depart home → return home for full trip)
+  const dateRangeStr = (() => {
+    const fmt = (d) => d ? d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : null;
+    const depart = fmt(trekDates?.depart);
+    const home = fmt(trekDates?.home);
+    const arrive = fmt(trekDates?.arrive);
+    const ret = fmt(trekDates?.return);
+    // Prefer full trip range (depart → home), fallback to trek range (arrive → return)
+    const start = depart || arrive;
+    const end = home || ret;
+    if (start && end) return `${start} – ${end}`;
+    if (start) return start;
+    return null;
+  })();
 
   useEffect(() => {
     if (!showProfile) return;
@@ -202,40 +220,49 @@ export default function Header({ user, troop, adventure, members, analysis, trek
         </div>
       </div>
 
-      {/* ── ROW 2: Crew Info + Compact Countdown ── */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative", marginBottom: 16 }}>
-        <div>
-          {troopName && (
-            <button onClick={onBackToAdventures} aria-label="Back to adventures" style={{
-              fontSize: 11, color: "#fff", fontWeight: 700, letterSpacing: 1.5,
-              textTransform: "uppercase", background: "none", border: "none", cursor: "pointer",
-              fontFamily: fontBody, padding: 0, marginBottom: 4, display: "block",
-              textShadow: "0 1px 4px rgba(0,0,0,0.4)",
-            }}>
-              {troopName}
-            </button>
-          )}
-          <h1 style={{
-            fontSize: 26, fontWeight: 900, color: "#fff", margin: 0, lineHeight: 1.15,
-            fontFamily: fontDisplay, textShadow: "0 2px 6px rgba(0,0,0,0.35)",
-          }}>
-            {adventureName}
-          </h1>
-          {members.length > 0 && (
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.85)", marginTop: 4, fontFamily: fontBody, fontWeight: 600, textShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>
-              {trekkingMembers.length} trekking{members.length - trekkingMembers.length > 0 ? ` \u00B7 ${members.length - trekkingMembers.length} support` : ""}
-            </div>
-          )}
+      {/* ── ROW 2: Hero — Logo + Crew Identity + Dates + Countdown ── */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", position: "relative", marginBottom: 16, textAlign: "center" }}>
+        {/* Troop Logo — hero size */}
+        <div style={{ marginBottom: 8 }}>
+          <TroopLogo troopId={troop?.id} name={troopName} size={88} theme={{ bgAlt: "rgba(255,255,255,0.1)" }} />
         </div>
+
+        {/* Troop name + adventure type */}
+        <button onClick={onBackToAdventures} aria-label="Back to adventures" style={{
+          fontSize: 11, color: "rgba(255,255,255,0.85)", fontWeight: 700, letterSpacing: 1.5,
+          textTransform: "uppercase", background: "none", border: "none", cursor: "pointer",
+          fontFamily: fontBody, padding: 0, marginBottom: 2,
+          textShadow: "0 1px 4px rgba(0,0,0,0.4)",
+        }}>
+          {troopName}{adventureType ? ` · ${adventureType.name}` : ""}
+        </button>
+
+        {/* Crew name — big and bold */}
+        <h1 style={{
+          fontSize: 24, fontWeight: 900, color: "#fff", margin: "0 0 4px 0", lineHeight: 1.15,
+          fontFamily: fontDisplay, textShadow: "0 2px 6px rgba(0,0,0,0.35)",
+        }}>
+          {adventureName}
+        </h1>
+
+        {/* Date range */}
+        {dateRangeStr && (
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 600, fontFamily: fontBody, marginBottom: 2 }}>
+            {dateRangeStr}
+          </div>
+        )}
+
+        {/* Countdown */}
         {cd && (
-          <div style={{
-            background: "rgba(0,0,0,0.25)", backdropFilter: "blur(8px)",
-            borderRadius: 12, padding: "8px 12px", flexShrink: 0, maxWidth: 180,
-            border: "1px solid rgba(255,255,255,0.15)",
-          }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#fff", fontFamily: fontBody, whiteSpace: "nowrap", textShadow: "0 1px 3px rgba(0,0,0,0.4)" }}>
-              {cd.icon} {cd.text}
-            </div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: cd.color || "#fff", fontFamily: fontBody, textShadow: "0 1px 3px rgba(0,0,0,0.4)" }}>
+            {cd.icon} {cd.text}
+          </div>
+        )}
+
+        {/* Member count */}
+        {members.length > 0 && (
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginTop: 4, fontFamily: fontBody, fontWeight: 600 }}>
+            {trekkingMembers.length} trekking{members.length - trekkingMembers.length > 0 ? ` · ${members.length - trekkingMembers.length} support` : ""}
           </div>
         )}
       </div>

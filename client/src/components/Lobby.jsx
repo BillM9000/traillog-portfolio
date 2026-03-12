@@ -229,7 +229,7 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
                   {newLogoPreview ? (
                     <img src={newLogoPreview} alt="Logo preview"
-                      style={{ width: 56, height: 56, borderRadius: 8, objectFit: "cover", border: `1px solid ${theme.border}` }} />
+                      style={{ width: 56, height: 56, borderRadius: 8, objectFit: "contain", background: theme.bgAlt, border: `1px solid ${theme.border}` }} />
                   ) : (
                     <div style={{
                       width: 56, height: 56, borderRadius: 8, background: theme.accent + "20",

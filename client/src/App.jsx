@@ -62,7 +62,7 @@ export default function App() {
     <>
       <GlobalAdmin isGlobalAdmin={isGlobalAdmin} troopId={null}
         onClose={() => { setShowLobby(true); }}
-        onEnterTroop={(id, troopData) => { setTroopId(id); setLobbyTroop(troopData || null); }}
+        onEnterTroop={(id, troopData) => { setTroopId(id); setLobbyTroop(troopData || null); setShowLobby(false); }}
         onLogout={logout} user={user}
         alwaysOpen />
     </>

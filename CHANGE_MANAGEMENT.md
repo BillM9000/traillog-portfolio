@@ -359,6 +359,7 @@ Record every production deployment here.
 | 2026-03-13 | Set 4+5: VPS audit doc + Privacy/Terms pages | Low | Bill McCoy | ✅ | /privacy, /terms routes, VPS hardening deferred |
 | 2026-03-13 | TOS acceptance tracking (schema v14) | Medium | Bill McCoy | ✅ | Explicit checkbox on both signup paths, tos_accepted_at in DB |
 | 2026-03-13 | Set 7: Troop logo upload + display | Low | Bill McCoy | ✅ | File-based storage, AdminPanel upload, Lobby display, TroopLogo component |
+| 2026-03-13 | Set 7 polish: date validation, header redesign, logo hero | Low | Bill McCoy | ✅ | Date cascade auto-clear, objectFit contain, 88px hero logo, depart→home date range |
 
 ### Golden Backup Registry
 
