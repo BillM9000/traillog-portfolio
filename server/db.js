@@ -1774,8 +1774,14 @@ export function getMemberPackWeight(adventureId, userId) {
   }
 
   const totalLbs = totalOz / 16;
-  // Estimates: food ~1.75 lbs/day × 12 days, water ~4.4 lbs (2L)
-  const foodLbs = 1.75 * 12;
+  // Estimates: food ~1.75 lbs/day × trek days, water ~4.4 lbs (2L)
+  const adventure = getAdventure(adventureId);
+  let trekDays = 12; // default fallback
+  if (adventure?.itinerary_id) {
+    const itin = getItinerary(adventure.itinerary_id);
+    if (itin?.days) trekDays = itin.days;
+  }
+  const foodLbs = Math.round(1.75 * trekDays * 10) / 10;
   const waterLbs = 4.4;
   const grandTotalLbs = totalLbs + foodLbs + waterLbs;
 
@@ -1783,6 +1789,7 @@ export function getMemberPackWeight(adventureId, userId) {
     base_weight_oz: totalOz,
     base_weight_lbs: Math.round(totalLbs * 10) / 10,
     food_estimate_lbs: foodLbs,
+    trek_days: trekDays,
     water_lbs: waterLbs,
     grand_total_lbs: Math.round(grandTotalLbs * 10) / 10,
     by_category: byCategory,

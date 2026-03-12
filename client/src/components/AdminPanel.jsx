@@ -34,6 +34,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   const [advStatus, setAdvStatus] = useState(adventure?.status || "active");
   const [advType, setAdvType] = useState(adventure?.adventure_type || "philmont");
   const [advItinerary, setAdvItinerary] = useState(adventure?.itinerary_id || "");
+  const [confirmItineraryChange, setConfirmItineraryChange] = useState(false);
   const [saving, setSaving] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [invitations, setInvitations] = useState([]);
@@ -75,6 +76,20 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   const typeConfig = ADVENTURE_TYPES.find(t => t.id === advType) || ADVENTURE_TYPES[0];
   const dateLabels = typeConfig.dateLabels;
 
+  const doSaveAdventure = async () => {
+    setSaving(true);
+    try {
+      await api.updateAdventure(adventure.id, {
+        name: normalize(advName), description: normalize(advDesc),
+        depart_date: departDate || null, arrive_date: arriveDate || null,
+        return_date: returnDate || null, home_date: homeDate || null,
+        status: advStatus, adventure_type: advType, itinerary_id: advItinerary || null,
+      });
+      onRefresh(); addToast("Adventure saved", "success");
+    } catch (e) { addToast(e.message, "error"); }
+    setSaving(false);
+  };
+
   const saveAdventure = async () => {
     // Validate date sequence: depart ≤ arrive ≤ return ≤ home
     const dates = [departDate, arriveDate, returnDate, homeDate].filter(Boolean);
@@ -88,17 +103,13 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
         }
       }
     }
-    setSaving(true);
-    try {
-      await api.updateAdventure(adventure.id, {
-        name: normalize(advName), description: normalize(advDesc),
-        depart_date: departDate || null, arrive_date: arriveDate || null,
-        return_date: returnDate || null, home_date: homeDate || null,
-        status: advStatus, adventure_type: advType, itinerary_id: advItinerary || null,
-      });
-      onRefresh(); addToast("Adventure saved", "success");
-    } catch (e) { addToast(e.message, "error"); }
-    setSaving(false);
+    // Confirm if itinerary changed
+    const origItinerary = adventure?.itinerary_id || "";
+    if (advItinerary !== origItinerary) {
+      setConfirmItineraryChange(true);
+      return;
+    }
+    doSaveAdventure();
   };
 
   const deleteAdventure = async () => {
@@ -561,6 +572,9 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
 
       {confirmDeleteAdv && (
         <ConfirmModal title="Delete Adventure?" message={`This permanently deletes "${adventure?.name}" and all its data.`} confirmLabel="Delete Forever" onConfirm={deleteAdventure} onCancel={() => setConfirmDeleteAdv(false)} />
+      )}
+      {confirmItineraryChange && (
+        <ConfirmModal title="Change Itinerary?" message="Changing the itinerary will update the trek plan for all crew members. Everyone will be notified by email." confirmLabel="Change Itinerary" onConfirm={() => { setConfirmItineraryChange(false); doSaveAdventure(); }} onCancel={() => { setConfirmItineraryChange(false); setAdvItinerary(adventure?.itinerary_id || ""); }} />
       )}
     </div>
   );

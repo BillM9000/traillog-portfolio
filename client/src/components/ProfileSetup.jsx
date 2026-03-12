@@ -44,8 +44,8 @@ export default function ProfileSetup({ user, onComplete }) {
 
         <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 20 }}>
           {[
-            { type: "adult", label: "Adult", icon: "\uD83E\uDDD1", desc: "Parent, adviser, or crew leader" },
-            { type: "scout", label: "Scout", icon: "\uD83E\uDD7E", desc: "Youth trekking crew member" },
+            { type: "adult", label: "Adult", img: "/icons/scoutguy280good.png", desc: "Parent, adviser, or crew leader" },
+            { type: "scout", label: "Scout", img: "/icons/scoutrope280good.png", desc: "Youth trekking crew member" },
           ].map(opt => (
             <button key={opt.type} onClick={() => setUserType(opt.type)} style={{
               flex: 1, padding: "18px 14px", borderRadius: 14, cursor: "pointer", textAlign: "center",
@@ -53,7 +53,7 @@ export default function ProfileSetup({ user, onComplete }) {
               border: userType === opt.type ? "2px solid #5B7A3A" : "2px solid #3A4D2A",
               transition: "all .2s",
             }}>
-              <div style={{ fontSize: 28, marginBottom: 6 }}>{opt.icon}</div>
+              <img src={opt.img} alt={opt.label} style={{ width: 64, height: 64, objectFit: "contain", marginBottom: 6, opacity: userType === opt.type ? 1 : 0.6, filter: userType === opt.type ? "brightness(1.4)" : "brightness(1.2)" }} />
               <div style={{ fontSize: 14, fontWeight: 700, color: userType === opt.type ? "#FDFAF5" : "#8B8478", fontFamily: fontDisplay }}>{opt.label}</div>
               <div style={{ fontSize: 11, color: "#7A9A5A", marginTop: 3 }}>{opt.desc}</div>
             </button>

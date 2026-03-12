@@ -7,6 +7,7 @@ import { api } from "../api";
 import { fontBody, fontDisplay, JOURNEY_WAYPOINTS } from "../utils/theme";
 import { computeCrewReadiness } from "../utils/readiness";
 import { ProgressRing } from "./ProgressWidgets";
+import { Settings, Sun, Moon } from "lucide-react";
 import Logo from "./Logo";
 
 export default function Header({ user, troop, adventure, members, analysis, trekDates, trekDate, saving, isAdmin, approvedTroops, onSwitchTroop, onBackToAdventures, onLogout, onAdminClick, onRefreshAuth, achievements }) {
@@ -139,7 +140,7 @@ export default function Header({ user, troop, adventure, members, analysis, trek
             border: "none", cursor: "pointer", fontSize: 14, color: "#FDFAF5",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
-            {mode === "dark" ? "☀️" : "🌙"}
+            {mode === "dark" ? <Sun size={18} color="#FDFAF5" strokeWidth={2} /> : <Moon size={18} color="#FDFAF5" strokeWidth={2} />}
           </button>
           {isAdmin && (
             <button onClick={onAdminClick} title="Admin Panel" aria-label="Open Admin Panel" style={{
@@ -148,7 +149,7 @@ export default function Header({ user, troop, adventure, members, analysis, trek
               border: "none", cursor: "pointer", fontSize: 14,
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
-              {"⚙️"}
+              <Settings size={18} color="#fff" strokeWidth={2} />
             </button>
           )}
           <div ref={profileRef} style={{ position: "relative" }}>

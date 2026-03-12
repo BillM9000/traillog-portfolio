@@ -8,6 +8,7 @@ import { DAYS_FULL } from "./utils/constants";
 import { getMonthsRange, daysInMonth, dateKey, parseDateKey, dayOfWeek, isPast } from "./utils/dates";
 import { fontBody, fontDisplay } from "./utils/theme";
 
+import { Calendar as CalendarIcon, BarChart3, ClipboardCheck, Map, Backpack } from "lucide-react";
 import LoginPage from "./components/LoginPage";
 import ProfileSetup from "./components/ProfileSetup";
 import Lobby from "./components/Lobby";
@@ -338,11 +339,11 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
   }
 
   const tabs = [
-    ["calendar", "Training"],
-    ["results", "Best Windows"],
-    ["skills", "Readiness"],
-    ["itinerary", "Itinerary"],
-    ["gear", "Gear"],
+    ["calendar", "Training", CalendarIcon],
+    ["results", "Best Windows", BarChart3],
+    ["skills", "Readiness", ClipboardCheck],
+    ["itinerary", "Itinerary", Map],
+    ["gear", "Gear", Backpack],
   ];
 
   return (
@@ -376,15 +377,15 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
       {/* Tabs — Pill Navigation */}
       <div style={{ padding: "0 16px", marginBottom: 16 }}>
         <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
-          {tabs.map(([k, l]) => (
+          {tabs.map(([k, l, Icon]) => (
             <button key={k} onClick={() => setView(k)} style={{
               padding: "8px 16px", borderRadius: 20, border: "none", cursor: "pointer",
               fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", fontFamily: fontBody,
               background: view === k ? theme.pillActiveBg : theme.pillInactiveBg,
               color: view === k ? theme.pillActiveText : theme.pillInactiveText,
               boxShadow: view === k ? "0 2px 8px rgba(58,77,42,0.25)" : "none",
-              transition: "all 0.25s ease",
-            }}>{l}</button>
+              transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 5,
+            }}><Icon size={14} strokeWidth={2.5} />{l}</button>
           ))}
         </div>
       </div>

@@ -40,7 +40,7 @@ import db, {
 import {
   sendJoinRequestEmail, sendParentNotificationEmail, sendVerificationEmail,
   sendInvitationEmail, sendMemberApprovedEmail, sendMemberDeniedEmail,
-  sendDateChangedEmail, sendBadgeEarnedEmail, sendLinkRequestEmail,
+  sendDateChangedEmail, sendItineraryChangedEmail, sendBadgeEarnedEmail, sendLinkRequestEmail,
 } from "./email.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -425,6 +425,18 @@ app.delete("/api/troops/:troopId/members/:userId", requireAuth, requireTroopAdmi
 app.post("/api/troops/:troopId/leave", requireAuth, (req, res) => {
   try {
     const troopId = parseId(req.params.troopId);
+    if (!troopId) return res.status(400).json({ error: "Invalid troop ID" });
+    const membership = getTroopMember(troopId, req.user.id);
+    if (!membership || membership.status !== "approved") {
+      return res.status(400).json({ error: "You are not a member of this troop" });
+    }
+    // Prevent sole admin from leaving
+    if (membership.role === "admin") {
+      const admins = getTroopAdmins(troopId);
+      if (admins.length <= 1) {
+        return res.status(400).json({ error: "Cannot leave: you are the only admin. Promote another member first or delete the troop." });
+      }
+    }
     removeTroopMember(troopId, req.user.id);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
@@ -535,6 +547,22 @@ app.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req
         if (m.email && !m.is_manual) {
           sendDateChangedEmail(m.email, m.name, oldAdv.name, changeSummary)
             .catch(e => console.error("Date change email failed:", e));
+        }
+      });
+    }
+
+    // Send itinerary change emails if itinerary changed
+    if (itinerary_id !== undefined && itinerary_id !== oldAdv.itinerary_id) {
+      const oldItin = oldAdv.itinerary_id ? getItinerary(oldAdv.itinerary_id) : null;
+      const newItin = itinerary_id ? getItinerary(itinerary_id) : null;
+      const oldName = oldItin ? `${oldItin.name} (${oldItin.days}-day)` : "None";
+      const newName = newItin ? `${newItin.name} (${newItin.days}-day)` : "None";
+      console.log(`[itinerary change] Adventure ${adventureId}: ${oldName} → ${newName}`);
+      const members = getAdventureMembers(adventureId);
+      members.forEach(m => {
+        if (m.email && !m.is_manual) {
+          sendItineraryChangedEmail(m.email, m.name, oldAdv.name, oldName, newName)
+            .catch(e => console.error("Itinerary change email failed:", e));
         }
       });
     }

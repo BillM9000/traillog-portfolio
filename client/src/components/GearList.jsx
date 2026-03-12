@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { ClipboardList, CircleCheckBig, Backpack } from "lucide-react";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAdventure } from "../contexts/AdventureContext";
@@ -20,9 +21,9 @@ const PRIORITY_COLORS = {
 };
 
 const STATUS_OPTIONS = [
-  { value: "needed", label: "Need", icon: "📋", color: "#E07A5F" },
-  { value: "owned", label: "Own", icon: "✅", color: "#5B7A3A" },
-  { value: "packed", label: "Packed", icon: "🎒", color: "#3D6B5B" },
+  { value: "needed", label: "Need", Icon: ClipboardList, color: "#E07A5F" },
+  { value: "owned", label: "Own", Icon: CircleCheckBig, color: "#5B7A3A" },
+  { value: "packed", label: "Packed", Icon: Backpack, color: "#3D6B5B" },
 ];
 
 export default function GearList({ troopId, adventureId, members, active, setActive, updateMemberLocally }) {
@@ -262,7 +263,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
             <button onClick={() => setStatusFilter("none")} style={pillStyle(theme, statusFilter === "none")}>Unchecked</button>
             {STATUS_OPTIONS.map(s => (
               <button key={s.value} onClick={() => setStatusFilter(s.value)} style={pillStyle(theme, statusFilter === s.value)}>
-                {s.icon} {s.label}
+                <s.Icon size={11} strokeWidth={2.5} /> {s.label}
               </button>
             ))}
           </div>
@@ -309,7 +310,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
                       transition: "all .15s",
                     }}
                   >
-                    {statusInfo?.icon || ""}
+                    {statusInfo ? <statusInfo.Icon size={14} strokeWidth={2.5} /> : ""}
                   </div>
 
                   <div style={{ flex: 1, cursor: "pointer" }} onClick={() => toggleExpand(item.id)}>
@@ -386,7 +387,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
                               fontFamily: fontBody, transition: "all .12s",
                             }}
                           >
-                            {s.icon}
+                            <s.Icon size={11} strokeWidth={2.5} />
                           </button>
                         );
                       })}

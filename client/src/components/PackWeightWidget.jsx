@@ -41,7 +41,7 @@ export default function PackWeightWidget({ adventureId, userId, memberName }) {
       {/* Summary row */}
       <div style={{ display: "flex", gap: 10, fontSize: 10, color: theme.textMuted, marginBottom: 4 }}>
         <span>Base: <strong style={{ color: theme.text }}>{weight.base_weight_lbs} lbs</strong></span>
-        <span>+Food: <strong style={{ color: theme.text }}>{weight.food_estimate_lbs} lbs</strong></span>
+        <span>+Food: <strong style={{ color: theme.text }}>{weight.food_estimate_lbs} lbs</strong> <span style={{ color: theme.textDimmer }}>({weight.trek_days}d)</span></span>
         <span>+Water: <strong style={{ color: theme.text }}>{weight.water_lbs} lbs</strong></span>
       </div>
 

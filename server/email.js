@@ -142,6 +142,26 @@ export async function sendDateChangedEmail(toEmail, memberName, adventureName, c
   });
 }
 
+export async function sendItineraryChangedEmail(toEmail, memberName, adventureName, oldItineraryName, newItineraryName) {
+  const t = getTransporter();
+  if (!t) return console.log(`[email skip] Itinerary change for ${toEmail} (no SMTP configured)`);
+
+  await t.sendMail({
+    from: `"TrailLog" <${process.env.SMTP_USER}>`,
+    to: toEmail,
+    subject: `Itinerary updated for ${adventureName}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:500px">
+        <h2 style="color:#2d3830">Itinerary changed 🗺️</h2>
+        <p>Hey <strong>${esc(memberName)}</strong>, the itinerary for <strong>${esc(adventureName)}</strong> has been updated.</p>
+        <p><strong>Previous:</strong> ${esc(oldItineraryName)}<br><strong>New:</strong> ${esc(newItineraryName)}</p>
+        <p>Please review the updated day-by-day plan:</p>
+        <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrailLog</a></p>
+      </div>
+    `,
+  });
+}
+
 export async function sendBadgeEarnedEmail(toEmail, memberName, badgeName, adventureName) {
   const t = getTransporter();
   if (!t) return console.log(`[email skip] Badge earned for ${toEmail} (no SMTP configured)`);
