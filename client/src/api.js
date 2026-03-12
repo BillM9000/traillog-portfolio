@@ -19,7 +19,7 @@ export const api = {
   // Auth
   getMe: () => request("/auth/me"),
   login: (email, password) => request("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
-  signup: (name, email, password) => request("/auth/signup", { method: "POST", body: JSON.stringify({ name, email, password }) }),
+  signup: (name, email, password, tos_accepted) => request("/auth/signup", { method: "POST", body: JSON.stringify({ name, email, password, tos_accepted }) }),
   logout: () => request("/auth/logout", { method: "POST" }),
   updateProfile: (data) => request("/auth/profile", { method: "PUT", body: JSON.stringify(data) }),
   forgotPassword: (email) => request("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),

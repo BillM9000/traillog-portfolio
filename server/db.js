@@ -294,7 +294,7 @@ db.exec(`
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 13;
+const CURRENT_SCHEMA_VERSION = 14;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -540,6 +540,11 @@ function migrate() {
     if (version < 13) {
       tryAlter("ALTER TABLE users ADD COLUMN reset_token TEXT");
       tryAlter("ALTER TABLE users ADD COLUMN reset_token_expires DATETIME");
+    }
+
+    // ── v14 migration: TOS acceptance tracking ──
+    if (version < 14) {
+      tryAlter("ALTER TABLE users ADD COLUMN tos_accepted_at DATETIME");
     }
 
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
@@ -1041,14 +1046,14 @@ export function findUserById(id) {
   return db.prepare("SELECT * FROM users WHERE id = ?").get(id) || null;
 }
 
-export function createUser({ google_id, email, password_hash, name, avatar_url, email_verified, verification_token }) {
+export function createUser({ google_id, email, password_hash, name, avatar_url, email_verified, verification_token, tos_accepted_at }) {
   const result = db.prepare(
-    "INSERT INTO users (google_id, email, password_hash, name, avatar_url, email_verified, verification_token) VALUES (?, ?, ?, ?, ?, ?, ?)"
-  ).run(google_id || null, email.toLowerCase(), password_hash || null, name, avatar_url || null, email_verified || 0, verification_token || null);
+    "INSERT INTO users (google_id, email, password_hash, name, avatar_url, email_verified, verification_token, tos_accepted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+  ).run(google_id || null, email.toLowerCase(), password_hash || null, name, avatar_url || null, email_verified || 0, verification_token || null, tos_accepted_at || null);
   return { id: result.lastInsertRowid, google_id, email: email.toLowerCase(), name, avatar_url, email_verified: email_verified || 0, user_type: null, parent_email: null };
 }
 
-export function updateUserProfile(id, { name, user_type, parent_email, parent_email_2, age_confirmed }) {
+export function updateUserProfile(id, { name, user_type, parent_email, parent_email_2, age_confirmed, tos_accepted_at }) {
   const sets = [];
   const vals = [];
   if (name !== undefined) { sets.push("name = ?"); vals.push(name); }
@@ -1056,6 +1061,7 @@ export function updateUserProfile(id, { name, user_type, parent_email, parent_em
   if (parent_email !== undefined) { sets.push("parent_email = ?"); vals.push(parent_email || null); }
   if (parent_email_2 !== undefined) { sets.push("parent_email_2 = ?"); vals.push(parent_email_2 || null); }
   if (age_confirmed !== undefined) { sets.push("age_confirmed = ?"); vals.push(age_confirmed); sets.push("age_confirmed_at = CURRENT_TIMESTAMP"); }
+  if (tos_accepted_at !== undefined) { sets.push("tos_accepted_at = ?"); vals.push(tos_accepted_at); }
   if (sets.length === 0) return;
   vals.push(id);
   db.prepare(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`).run(...vals);

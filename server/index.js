@@ -220,9 +220,12 @@ app.get("/auth/google/callback",
 
 app.post("/api/auth/signup", authLimiter, async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, tos_accepted } = req.body;
     if (!name?.trim() || !email?.trim() || !password || password.length < 8) {
       return res.status(400).json({ error: "Name, email, and password (8+ chars) required" });
+    }
+    if (!tos_accepted) {
+      return res.status(400).json({ error: "You must agree to the Terms of Service and Privacy Policy" });
     }
     const existing = findUserByEmail(email);
     if (existing) return res.status(409).json({ error: "Email already registered" });
@@ -232,6 +235,7 @@ app.post("/api/auth/signup", authLimiter, async (req, res) => {
     createUser({
       email, name: name.trim(), password_hash: hash,
       email_verified: 0, verification_token: token,
+      tos_accepted_at: new Date().toISOString(),
     });
     sendVerificationEmail(email, token).catch(e => console.error("Verification email failed:", e));
     res.status(201).json({ ok: true, message: "Check your email to verify your account" });
@@ -317,7 +321,13 @@ app.put("/api/auth/profile", requireAuth, (req, res) => {
     if (age_confirmed !== undefined) {
       if (!["13+", "18+"].includes(age_confirmed)) return res.status(400).json({ error: "age_confirmed must be '13+' or '18+'" });
       if (req.user.age_confirmed) return res.status(400).json({ error: "Age confirmation cannot be changed" });
-      updateUserProfile(req.user.id, { age_confirmed });
+      // Record TOS acceptance if not already set (Google OAuth users accept during age gate)
+      const updates = { age_confirmed };
+      const currentUser = findUserById(req.user.id);
+      if (!currentUser.tos_accepted_at) {
+        updates.tos_accepted_at = new Date().toISOString();
+      }
+      updateUserProfile(req.user.id, updates);
       return res.json({ ok: true });
     }
 

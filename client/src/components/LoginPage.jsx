@@ -15,6 +15,7 @@ export default function LoginPage({ onLogin, onSignup }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [tosAccepted, setTosAccepted] = useState(false);
 
   const verified = params.get("verified");
   const authError = params.get("error");
@@ -26,9 +27,9 @@ export default function LoginPage({ onLogin, onSignup }) {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const result = await onSignup(name, email, password);
+        const result = await onSignup(name, email, password, tosAccepted);
         setMessage(result.message || "Check your email to verify your account");
-        setName(""); setEmail(""); setPassword("");
+        setName(""); setEmail(""); setPassword(""); setTosAccepted(false);
         setMode("login");
       } else if (mode === "forgot") {
         const result = await api.forgotPassword(email);
@@ -156,11 +157,31 @@ export default function LoginPage({ onLogin, onSignup }) {
             </>
           )}
 
+          {mode === "signup" && (
+            <label style={{
+              display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 12,
+              fontSize: 11, color: "#B8CC9A", cursor: "pointer", lineHeight: 1.4,
+            }}>
+              <input
+                type="checkbox"
+                checked={tosAccepted}
+                onChange={e => setTosAccepted(e.target.checked)}
+                style={{ marginTop: 2, accentColor: "#5B7A3A", cursor: "pointer" }}
+              />
+              <span>
+                I agree to the{" "}
+                <a href="/terms" target="_blank" style={{ color: "#D4E4B8", textDecoration: "underline" }}>Terms of Service</a>
+                {" "}and{" "}
+                <a href="/privacy" target="_blank" style={{ color: "#D4E4B8", textDecoration: "underline" }}>Privacy Policy</a>
+              </span>
+            </label>
+          )}
+
           {error && (
             <div style={{ fontSize: 12, color: "#d08080", marginBottom: 8 }}>{error}</div>
           )}
 
-          <button type="submit" disabled={loading} style={{
+          <button type="submit" disabled={loading || (mode === "signup" && !tosAccepted)} style={{
             width: "100%", padding: "12px 0", borderRadius: 12, border: "none",
             background: "#5B7A3A", color: "#FDFAF5", fontSize: 14, fontWeight: 600,
             cursor: loading ? "wait" : "pointer", fontFamily: fontBody, marginBottom: 12,

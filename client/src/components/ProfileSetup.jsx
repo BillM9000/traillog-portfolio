@@ -107,6 +107,13 @@ export default function ProfileSetup({ user, onComplete }) {
             This cannot be changed later. BSA High Adventure requires participants to be at least 13 years old.
           </p>
 
+          <p style={{ fontSize: 11, color: "#7A9A5A", marginBottom: 14, lineHeight: 1.5 }}>
+            By continuing, you agree to our{" "}
+            <a href="/terms" target="_blank" style={{ color: "#B8CC9A", textDecoration: "underline" }}>Terms of Service</a>
+            {" "}and{" "}
+            <a href="/privacy" target="_blank" style={{ color: "#B8CC9A", textDecoration: "underline" }}>Privacy Policy</a>.
+          </p>
+
           {error && <div style={{ fontSize: 12, color: "#d08080", marginBottom: 10 }}>{error}</div>}
 
           <button onClick={handleAgeConfirm} disabled={loading || !ageChoice} style={{
