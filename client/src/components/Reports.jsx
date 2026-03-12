@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTheme } from "../contexts/ThemeContext";
+import { useAuth } from "../contexts/AuthContext";
 import { useAdventure } from "../contexts/AdventureContext";
 import { useToast } from "../contexts/ToastContext";
 import { api } from "../api";
@@ -96,8 +97,10 @@ function ReportCard({ icon: Icon, title, description, formats, onCSV, onPrint, t
 
 export default function Reports({ members, analysis, adventure, isAdmin, trekDates }) {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const { gearCatalog, memberGearMap, skills, itinerary, adventureId, achievements } = useAdventure();
   const { addToast } = useToast();
+  const currentUserId = user?.id;
   const [trainingEvents, setTrainingEvents] = useState([]);
   const [packWeights, setPackWeights] = useState({});
   const [loadingWeights, setLoadingWeights] = useState(false);
@@ -249,46 +252,48 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
 
   // ── EVERYONE: My Gear Checklist Print ──
   const printMyGearChecklist = () => {
-    const userId = members.find(m => m.user_id)?.user_id;
-    if (!userId) return;
-    const myGear = memberGearMap[userId] || [];
-    const gearByStatus = { packed: [], owned: [], need: [] };
+    if (!currentUserId) return;
+    const myGear = memberGearMap[currentUserId] || [];
+    const gearByStatus = { packed: [], owned: [], need: [], unchecked: [] };
     const activeGear = gearCatalog.filter(g => g.active !== 0);
     activeGear.forEach(g => {
-      const mg = myGear.find(mg => mg.gear_id === g.id);
+      const mg = myGear.find(item => item.gear_id === g.id);
       const status = mg?.status || "unchecked";
-      const entry = { name: g.name, category: g.category, weight: g.weight_oz ? `${g.weight_oz} oz` : "—", sharing: g.sharing_type || "personal" };
+      const entry = { name: g.name, category: g.category, weight: g.weight_oz ? `${g.weight_oz} oz (${(g.weight_oz / 16).toFixed(1)} lbs)` : "—", sharing: g.sharing_type || "personal" };
       if (status === "packed") gearByStatus.packed.push(entry);
       else if (status === "owned") gearByStatus.owned.push(entry);
-      else gearByStatus.need.push(entry);
+      else if (status === "needed") gearByStatus.need.push(entry);
+      else gearByStatus.unchecked.push(entry);
     });
-    const section = (title, badge, items) => {
+    const section = (title, items) => {
       if (!items.length) return "";
       return `<div class="section"><h3>${title} (${items.length})</h3><table>
         <tr><th>☐</th><th>Item</th><th>Category</th><th>Weight</th><th>Type</th></tr>
         ${items.map(i => `<tr><td>☐</td><td>${i.name}</td><td>${i.category}</td><td>${i.weight}</td><td>${i.sharing}</td></tr>`).join("")}
       </table></div>`;
     };
-    const me = members.find(m => m.user_id === userId);
+    const me = members.find(m => String(m.user_id) === String(currentUserId));
     printHTML(`${me?.name || "My"} — Gear Checklist`, `
       <h1>${me?.name || "My"} — Gear Checklist</h1>
       <h2>${crewName}</h2>
-      <div class="meta">Generated ${now} · ${gearByStatus.packed.length} packed · ${gearByStatus.owned.length} owned · ${gearByStatus.need.length + (activeGear.length - gearByStatus.packed.length - gearByStatus.owned.length - gearByStatus.need.length)} unchecked</div>
-      ${section("Packed", "packed", gearByStatus.packed)}
-      ${section("Owned (not packed)", "own", gearByStatus.owned)}
-      ${section("Need to Get", "need", gearByStatus.need)}
+      <div class="meta">Generated ${now} · ${gearByStatus.packed.length} packed · ${gearByStatus.owned.length} owned · ${gearByStatus.need.length} need · ${gearByStatus.unchecked.length} unchecked</div>
+      ${section("✅ Packed", gearByStatus.packed)}
+      ${section("Owned (not packed yet)", gearByStatus.owned)}
+      ${section("Need to Get", gearByStatus.need)}
+      ${section("Unchecked", gearByStatus.unchecked)}
     `);
   };
 
   // ── EVERYONE: Still Need List CSV + Print ──
   const getStillNeedData = () => {
-    const userId = members.find(m => m.user_id)?.user_id;
-    if (!userId) return [];
-    const myGear = memberGearMap[userId] || [];
+    if (!currentUserId) return [];
+    const myGear = memberGearMap[currentUserId] || [];
     const activeGear = gearCatalog.filter(g => g.active !== 0);
+    // Items that are either "needed" status or completely unchecked (not owned/packed)
     return activeGear.filter(g => {
-      const mg = myGear.find(mg => mg.gear_id === g.id);
-      return !mg || mg.status === "needed";
+      const mg = myGear.find(item => item.gear_id === g.id);
+      if (!mg) return true; // unchecked = still need
+      return mg.status === "needed"; // explicitly marked as need
     }).map(g => ({
       Name: g.name,
       Category: g.category,
@@ -307,7 +312,7 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
 
   const printStillNeed = () => {
     const items = getStillNeedData();
-    const me = members.find(m => m.user_id);
+    const me = members.find(m => String(m.user_id) === String(currentUserId));
     printHTML(`${me?.name || "My"} — Still Need List`, `
       <h1>${me?.name || "My"} — Still Need List</h1>
       <h2>${crewName} · ${items.length} items remaining</h2>
@@ -322,21 +327,26 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
   // ── EVERYONE: Itinerary Cheat Sheet Print (reuse existing pattern) ──
   const printItinerary = () => {
     if (!itinerary) { addToast("No itinerary selected", "error"); return; }
-    const days = itinerary.days_data || [];
+    const days = itinerary.route_data || [];
     printHTML(`${crewName} — Itinerary`, `
       <h1>${crewName} — Itinerary Cheat Sheet</h1>
       <h2>${itinerary.name || itinerary.id} · ${itinerary.days} days · ${itinerary.difficulty || ""}</h2>
       <div class="meta">Generated ${now}</div>
       <table>
-        <tr><th>Day</th><th>Camp</th><th>Miles</th><th>Elevation</th><th>Activities</th></tr>
-        ${days.map((d, i) => `<tr>
-          <td>${i + 1}</td>
-          <td>${d.camp || d.location || "—"}</td>
+        <tr><th>Day</th><th>Camp</th><th>Miles</th><th>Elev</th><th>Gain/Loss</th><th>Programs</th><th>Notes</th></tr>
+        ${days.map(d => `<tr>
+          <td>${d.day}</td>
+          <td>${d.camp || "—"}${d.type && d.type !== "Trail" ? ` <span style="font-size:10px;color:#888">(${d.type})</span>` : ""}</td>
           <td>${d.miles || "—"}</td>
-          <td>${d.elevation || d.elev || "—"}</td>
-          <td>${(d.activities || d.programs || []).join(", ") || "—"}</td>
+          <td>${d.elevation ? d.elevation.toLocaleString() + "'" : "—"}</td>
+          <td>${d.gain || d.loss ? `+${d.gain || 0}/-${d.loss || 0}` : "—"}</td>
+          <td>${(d.programs || []).map(p => typeof p === "string" ? p : p.name).join(", ") || "—"}</td>
+          <td style="font-size:11px;color:#666">${d.notes || ""}</td>
         </tr>`).join("")}
       </table>
+      ${days.some(d => d.warnings?.length) ? `<div class="section"><h3>⚠️ Trail Warnings</h3><ul>
+        ${days.filter(d => d.warnings?.length).map(d => d.warnings.map(w => `<li><strong>Day ${d.day} (${d.camp}):</strong> ${w}</li>`).join("")).join("")}
+      </ul></div>` : ""}
     `);
   };
 
