@@ -90,8 +90,9 @@ app.use(session({
   secret: process.env.SESSION_SECRET || (() => { if (process.env.NODE_ENV === "production") throw new Error("SESSION_SECRET required in production"); return "dev-secret-local-only"; })(),
   resave: false,
   saveUninitialized: false,
+  rolling: true,
   cookie: {
-    maxAge: 30 * 24 * 60 * 60 * 1000,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
