@@ -56,7 +56,7 @@ export default function App() {
   }
 
   if (!user) return <LoginPage onLogin={login} onSignup={signup} />;
-  if (!user.user_type) return <ProfileSetup user={user} onComplete={updateProfile} />;
+  if (!user.age_confirmed || !user.user_type) return <ProfileSetup user={user} onComplete={updateProfile} />;
   // Global admin with no troops: go straight to Platform Admin (unless they clicked Lobby)
   if (isGlobalAdmin && approvedTroops.length === 0 && !troopId && !showLobby) return (
     <>

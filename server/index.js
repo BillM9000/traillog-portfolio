@@ -276,8 +276,25 @@ app.get("/api/auth/me", (req, res) => {
 
 app.put("/api/auth/profile", requireAuth, (req, res) => {
   try {
-    const { name, user_type, parent_email, parent_email_2 } = req.body;
+    const { name, user_type, parent_email, parent_email_2, age_confirmed } = req.body;
+
+    // Age confirmation: can only be set once, must be "13+" or "18+"
+    if (age_confirmed !== undefined) {
+      if (!["13+", "18+"].includes(age_confirmed)) return res.status(400).json({ error: "age_confirmed must be '13+' or '18+'" });
+      if (req.user.age_confirmed) return res.status(400).json({ error: "Age confirmation cannot be changed" });
+      updateUserProfile(req.user.id, { age_confirmed });
+      return res.json({ ok: true });
+    }
+
     if (user_type && !["adult", "scout"].includes(user_type)) return res.status(400).json({ error: "user_type must be 'adult' or 'scout'" });
+
+    // Age gate enforcement: must confirm age before setting role
+    const currentUser = findUserById(req.user.id);
+    if (user_type && !currentUser.age_confirmed) return res.status(400).json({ error: "You must confirm your age before selecting a role" });
+
+    // 18+ required for adult role
+    if (user_type === "adult" && currentUser.age_confirmed === "13+") return res.status(400).json({ error: "You must be 18 or older to register as an adult leader" });
+
     if (user_type === "scout" && !parent_email?.trim()) return res.status(400).json({ error: "Scouts must provide parent/guardian email" });
     updateUserProfile(req.user.id, { name: name?.trim(), user_type, parent_email, parent_email_2: parent_email_2?.trim() || null });
     res.json({ ok: true });

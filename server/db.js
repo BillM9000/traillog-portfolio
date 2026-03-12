@@ -294,7 +294,7 @@ db.exec(`
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 11;
+const CURRENT_SCHEMA_VERSION = 12;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -528,6 +528,12 @@ function migrate() {
           UNIQUE(event_id, user_id)
         );
       `);
+    }
+
+    // ── v12 migration: age gate (COPPA compliance) ──
+    if (version < 12) {
+      tryAlter("ALTER TABLE users ADD COLUMN age_confirmed TEXT");
+      tryAlter("ALTER TABLE users ADD COLUMN age_confirmed_at DATETIME");
     }
 
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
@@ -1036,13 +1042,14 @@ export function createUser({ google_id, email, password_hash, name, avatar_url, 
   return { id: result.lastInsertRowid, google_id, email: email.toLowerCase(), name, avatar_url, email_verified: email_verified || 0, user_type: null, parent_email: null };
 }
 
-export function updateUserProfile(id, { name, user_type, parent_email, parent_email_2 }) {
+export function updateUserProfile(id, { name, user_type, parent_email, parent_email_2, age_confirmed }) {
   const sets = [];
   const vals = [];
   if (name !== undefined) { sets.push("name = ?"); vals.push(name); }
   if (user_type !== undefined) { sets.push("user_type = ?"); vals.push(user_type); }
   if (parent_email !== undefined) { sets.push("parent_email = ?"); vals.push(parent_email || null); }
   if (parent_email_2 !== undefined) { sets.push("parent_email_2 = ?"); vals.push(parent_email_2 || null); }
+  if (age_confirmed !== undefined) { sets.push("age_confirmed = ?"); vals.push(age_confirmed); sets.push("age_confirmed_at = CURRENT_TIMESTAMP"); }
   if (sets.length === 0) return;
   vals.push(id);
   db.prepare(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`).run(...vals);

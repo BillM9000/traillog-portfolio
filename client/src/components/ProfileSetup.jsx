@@ -1,18 +1,43 @@
 import { useState } from "react";
 import { fontBody, fontDisplay } from "../utils/theme";
 import Logo from "./Logo";
+import { ShieldCheck } from "lucide-react";
 
 export default function ProfileSetup({ user, onComplete }) {
+  // Step 1: age confirmation (if not yet confirmed)
+  // Step 2: role selection (if age confirmed but no user_type)
+  const needsAge = !user.age_confirmed;
+  const [step, setStep] = useState(needsAge ? "age" : "role");
+  const [ageChoice, setAgeChoice] = useState(null);
   const [userType, setUserType] = useState(null);
   const [parentEmail, setParentEmail] = useState("");
   const [parentEmail2, setParentEmail2] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async () => {
+  const handleAgeConfirm = async () => {
+    setError("");
+    if (!ageChoice) return setError("Please confirm your age to continue");
+    setLoading(true);
+    try {
+      await onComplete({ age_confirmed: ageChoice });
+      setStep("role");
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRoleSubmit = async () => {
     setError("");
     if (!userType) return setError("Please select your role");
     if (userType === "scout" && !parentEmail.trim()) return setError("Scouts must provide a parent/guardian email");
+    // Block 13+ from picking adult (client-side, server also enforces)
+    const confirmedAge = user.age_confirmed || ageChoice;
+    if (userType === "adult" && confirmedAge === "13+") {
+      return setError("You must be 18 or older to register as an adult leader. Please select Scout.");
+    }
     setLoading(true);
     try {
       await onComplete(userType, parentEmail, parentEmail2);
@@ -23,41 +48,115 @@ export default function ProfileSetup({ user, onComplete }) {
     }
   };
 
+  const containerStyle = {
+    minHeight: "100vh",
+    background: "linear-gradient(175deg, #1A2412 0%, #2A3620 40%, #1A1F16 100%)",
+    display: "flex", alignItems: "center", justifyContent: "center", fontFamily: fontBody,
+  };
+
+  const cardStyle = { width: "100%", maxWidth: 400, padding: "0 20px", textAlign: "center" };
+
+  // ── Step 1: Age Confirmation ──
+  if (step === "age") {
+    return (
+      <div style={containerStyle}>
+        <div style={cardStyle}>
+          <Logo size={72} />
+          <h1 style={{ fontFamily: fontDisplay, fontSize: 24, fontWeight: 900, color: "#FDFAF5", margin: "12px 0 6px" }}>
+            Welcome, {user.name}!
+          </h1>
+          <p style={{ fontSize: 14, color: "#D4E4B8", marginBottom: 24 }}>
+            Before we get started, please confirm your age.
+          </p>
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 20, color: "#7A9A5A", fontSize: 12 }}>
+            <ShieldCheck size={16} />
+            <span>Required for BSA High Adventure eligibility</span>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+            {[
+              { value: "13+", label: "I am 13 or older", desc: "Youth / Scout participant" },
+              { value: "18+", label: "I am 18 or older", desc: "Adult leader or adviser" },
+            ].map(opt => (
+              <button key={opt.value} onClick={() => setAgeChoice(opt.value)} style={{
+                padding: "16px 18px", borderRadius: 12, cursor: "pointer", textAlign: "left",
+                background: ageChoice === opt.value ? "rgba(91,122,58,0.15)" : "rgba(26,36,18,0.4)",
+                border: ageChoice === opt.value ? "2px solid #5B7A3A" : "2px solid #3A4D2A",
+                transition: "all .2s", display: "flex", alignItems: "center", gap: 14,
+              }}>
+                <div style={{
+                  width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+                  border: ageChoice === opt.value ? "2px solid #5B7A3A" : "2px solid #555",
+                  background: ageChoice === opt.value ? "#5B7A3A" : "transparent",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  {ageChoice === opt.value && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#fff" }} />}
+                </div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: ageChoice === opt.value ? "#FDFAF5" : "#8B8478", fontFamily: fontDisplay }}>
+                    {opt.label}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#7A9A5A", marginTop: 2 }}>{opt.desc}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <p style={{ fontSize: 11, color: "#666", marginBottom: 14, lineHeight: 1.5 }}>
+            This cannot be changed later. BSA High Adventure requires participants to be at least 13 years old.
+          </p>
+
+          {error && <div style={{ fontSize: 12, color: "#d08080", marginBottom: 10 }}>{error}</div>}
+
+          <button onClick={handleAgeConfirm} disabled={loading || !ageChoice} style={{
+            width: "100%", padding: "13px 0", borderRadius: 12, border: "none",
+            background: ageChoice ? "#5B7A3A" : "#3A4D2A", color: "#FDFAF5",
+            fontSize: 14, fontWeight: 600, cursor: ageChoice && !loading ? "pointer" : "default",
+            fontFamily: fontBody, opacity: !ageChoice || loading ? 0.6 : 1,
+            boxShadow: ageChoice ? "0 2px 8px rgba(58,77,42,0.3)" : "none",
+          }}>
+            {loading ? "..." : "Confirm & Continue"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Step 2: Role Selection ──
+  const confirmedAge = user.age_confirmed || ageChoice;
+
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "linear-gradient(175deg, #1A2412 0%, #2A3620 40%, #1A1F16 100%)",
-      display: "flex", alignItems: "center", justifyContent: "center", fontFamily: fontBody,
-    }}>
-      <div style={{ width: "100%", maxWidth: 400, padding: "0 20px", textAlign: "center" }}>
+    <div style={containerStyle}>
+      <div style={cardStyle}>
         <Logo size={72} />
         <h1 style={{ fontFamily: fontDisplay, fontSize: 24, fontWeight: 900, color: "#FDFAF5", margin: "12px 0 6px" }}>
-          Welcome, {user.name}!
+          {user.name}, one more step!
         </h1>
         <p style={{ fontSize: 14, color: "#D4E4B8", marginBottom: 28 }}>
-          One quick question before we get started.
-        </p>
-
-        <p style={{ fontSize: 15, fontWeight: 600, color: "#B8CC9A", marginBottom: 14, fontFamily: fontDisplay }}>
           Are you an adult or a scout?
         </p>
 
         <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 20 }}>
           {[
-            { type: "adult", label: "Adult", img: "/icons/scoutguy280good.png", desc: "Parent, adviser, or crew leader" },
-            { type: "scout", label: "Scout", img: "/icons/scoutrope280good.png", desc: "Youth trekking crew member" },
-          ].map(opt => (
-            <button key={opt.type} onClick={() => setUserType(opt.type)} style={{
-              flex: 1, padding: "18px 14px", borderRadius: 14, cursor: "pointer", textAlign: "center",
-              background: userType === opt.type ? "rgba(91,122,58,0.15)" : "rgba(26,36,18,0.4)",
-              border: userType === opt.type ? "2px solid #5B7A3A" : "2px solid #3A4D2A",
-              transition: "all .2s",
-            }}>
-              <img src={opt.img} alt={opt.label} style={{ width: 64, height: 64, objectFit: "contain", marginBottom: 6, opacity: userType === opt.type ? 1 : 0.6, filter: userType === opt.type ? "brightness(1.4)" : "brightness(1.2)" }} />
-              <div style={{ fontSize: 14, fontWeight: 700, color: userType === opt.type ? "#FDFAF5" : "#8B8478", fontFamily: fontDisplay }}>{opt.label}</div>
-              <div style={{ fontSize: 11, color: "#7A9A5A", marginTop: 3 }}>{opt.desc}</div>
-            </button>
-          ))}
+            { type: "adult", label: "Adult", img: "/icons/scoutguy280good.png", desc: "Parent, adviser, or crew leader", needs18: true },
+            { type: "scout", label: "Scout", img: "/icons/scoutrope280good.png", desc: "Youth trekking crew member", needs18: false },
+          ].map(opt => {
+            const disabled = opt.needs18 && confirmedAge === "13+";
+            return (
+              <button key={opt.type} onClick={() => !disabled && setUserType(opt.type)} style={{
+                flex: 1, padding: "18px 14px", borderRadius: 14, cursor: disabled ? "not-allowed" : "pointer", textAlign: "center",
+                background: userType === opt.type ? "rgba(91,122,58,0.15)" : disabled ? "rgba(26,36,18,0.2)" : "rgba(26,36,18,0.4)",
+                border: userType === opt.type ? "2px solid #5B7A3A" : "2px solid #3A4D2A",
+                transition: "all .2s", opacity: disabled ? 0.4 : 1,
+              }}>
+                <img src={opt.img} alt={opt.label} style={{ width: 64, height: 64, objectFit: "contain", marginBottom: 6, opacity: userType === opt.type ? 1 : 0.6, filter: userType === opt.type ? "brightness(1.4)" : "brightness(1.2)" }} />
+                <div style={{ fontSize: 14, fontWeight: 700, color: userType === opt.type ? "#FDFAF5" : "#8B8478", fontFamily: fontDisplay }}>{opt.label}</div>
+                <div style={{ fontSize: 11, color: "#7A9A5A", marginTop: 3 }}>{opt.desc}</div>
+                {disabled && <div style={{ fontSize: 10, color: "#d08080", marginTop: 4 }}>Must be 18+</div>}
+              </button>
+            );
+          })}
         </div>
 
         {userType === "scout" && (
@@ -87,7 +186,7 @@ export default function ProfileSetup({ user, onComplete }) {
 
         {error && <div style={{ fontSize: 12, color: "#d08080", marginBottom: 10 }}>{error}</div>}
 
-        <button onClick={handleSubmit} disabled={loading || !userType} style={{
+        <button onClick={handleRoleSubmit} disabled={loading || !userType} style={{
           width: "100%", padding: "13px 0", borderRadius: 12, border: "none",
           background: userType ? "#5B7A3A" : "#3A4D2A", color: "#FDFAF5",
           fontSize: 14, fontWeight: 600, cursor: userType && !loading ? "pointer" : "default",
