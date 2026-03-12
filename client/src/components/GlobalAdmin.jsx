@@ -791,11 +791,13 @@ function ItemEditModal({ item, theme, onClose, onSave, simple }) {
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 9, color: theme.textDimmer, fontWeight: 600 }}>Crew Shared?</label>
-              <select value={form.is_crew_shared || 0} onChange={e => set("is_crew_shared", parseInt(e.target.value))}
+              <label style={{ fontSize: 9, color: theme.textDimmer, fontWeight: 600 }}>Sharing Type</label>
+              <select value={form.sharing_type || "personal"} onChange={e => { set("sharing_type", e.target.value); set("is_crew_shared", e.target.value !== "personal" ? 1 : 0); }}
                 style={{ display: "block", width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody }}>
-                <option value={0}>No</option>
-                <option value={1}>Yes</option>
+                <option value="personal">Personal</option>
+                <option value="crew">Crew Shared</option>
+                <option value="buddy">Buddy Split</option>
+                <option value="provided">Philmont Provided</option>
               </select>
             </div>
           </div>

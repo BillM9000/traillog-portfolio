@@ -25,6 +25,7 @@ import GlobalAdmin from "./components/GlobalAdmin";
 import ConfirmModal from "./components/ConfirmModal";
 import AdminPanel from "./components/AdminPanel";
 import TrainingEvents from "./components/TrainingEvents";
+import ProfilePage from "./components/ProfilePage";
 
 export default function App() {
   const { user, memberships, approvedTroops, loading, login, signup, logout, updateProfile, refresh } = useAuth();
@@ -36,6 +37,7 @@ export default function App() {
   const [wentBack, setWentBack] = useState(false);
   const [showLobby, setShowLobby] = useState(false);
   const [showGlobalAdmin, setShowGlobalAdmin] = useState(false);
+  const [showProfilePage, setShowProfilePage] = useState(false);
   const [lobbyTroop, setLobbyTroop] = useState(null); // troop data for global admin entering non-member troop
   const isGlobalAdmin = !!user?.is_global_admin;
 
@@ -57,6 +59,19 @@ export default function App() {
 
   if (!user) return <LoginPage onLogin={login} onSignup={signup} />;
   if (!user.age_confirmed || !user.user_type) return <ProfileSetup user={user} onComplete={updateProfile} />;
+
+  // Profile page — shown when user clicks "View Profile" from any context
+  if (showProfilePage) return (
+    <div style={{ minHeight: "100vh", background: theme.bg }}>
+      <ProfilePage
+        memberships={memberships}
+        onBack={() => setShowProfilePage(false)}
+        onEnterTroop={(id) => { setTroopId(id); setShowLobby(false); setShowProfilePage(false); }}
+        onLogout={logout}
+      />
+    </div>
+  );
+
   // Global admin with no troops: go straight to Platform Admin (unless they clicked Lobby)
   if (isGlobalAdmin && approvedTroops.length === 0 && !troopId && !showLobby) return (
     <>
@@ -119,12 +134,13 @@ export default function App() {
         onSelectAdventure={(id) => setAdventureId(id)}
         onLogout={logout}
         onRefresh={refresh}
+        onViewProfile={() => setShowProfilePage(true)}
       />
     </AdventureProvider>
   );
 }
 
-function MainView({ user, troopId, adventureId, memberships, approvedTroops, isAdmin, onSwitchTroop, onBackToAdventures, onSelectAdventure, onLogout, onRefresh }) {
+function MainView({ user, troopId, adventureId, memberships, approvedTroops, isAdmin, onSwitchTroop, onBackToAdventures, onSelectAdventure, onLogout, onRefresh, onViewProfile }) {
   const { theme } = useTheme();
   const { addToast } = useToast();
   const { adventure, members, skills, itinerary, trekDate, trekDates, achievements, loading: advLoading, refreshAll, refreshMembers, updateMemberLocally } = useAdventure();
@@ -388,6 +404,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
         onLogout={onLogout}
         onAdminClick={() => setShowAdmin(true)}
         onRefreshAuth={onRefresh}
+        onViewProfile={onViewProfile}
         achievements={achievements}
       />
 

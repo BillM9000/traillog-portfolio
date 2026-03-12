@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { ClipboardList, CircleCheckBig, Backpack } from "lucide-react";
+import { ClipboardList, CircleCheckBig, Backpack, Info } from "lucide-react";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAdventure } from "../contexts/AdventureContext";
@@ -37,6 +37,8 @@ export default function GearList({ troopId, adventureId, members, active, setAct
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState(new Set());
   const [saving, setSaving] = useState(false);
+  const [weightKey, setWeightKey] = useState(0);
+  const [showGearGuide, setShowGearGuide] = useState(false);
 
   const am = active !== null ? members?.[active] : null;
   const pColors = PRIORITY_COLORS[mode] || PRIORITY_COLORS.dark;
@@ -146,7 +148,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
       } else {
         await api.removeMemberGearItem(adventureId, am.user_id, gearCatalogId);
       }
-      await refreshMemberGear();
+      await refreshMemberGear(); setWeightKey(k => k + 1);
     } catch (e) {
       console.error(e);
       addToast("Failed to update gear", "error");
@@ -160,7 +162,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
     setSaving(true);
     try {
       await api.updateMemberGearItem(adventureId, am.user_id, gearCatalogId, { status });
-      await refreshMemberGear();
+      await refreshMemberGear(); setWeightKey(k => k + 1);
     } catch (e) {
       console.error(e);
       addToast("Failed to update gear", "error");
@@ -179,7 +181,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
         selected_option_id: optionId,
         custom_weight_oz: optionWeightOz || null,
       });
-      await refreshMemberGear();
+      await refreshMemberGear(); setWeightKey(k => k + 1);
     } catch (e) { console.error(e); }
     setSaving(false);
   }, [am, adventureId, myGearMap, refreshMemberGear]);
@@ -199,7 +201,55 @@ export default function GearList({ troopId, adventureId, members, active, setAct
   return (
     <div>
       {/* Pack Weight Widget */}
-      {am && <PackWeightWidget adventureId={adventureId} userId={am.user_id} memberName={am.name} />}
+      {am && <PackWeightWidget key={weightKey} adventureId={adventureId} userId={am.user_id} memberName={am.name} />}
+
+      {/* Gear Guide — explains sharing types and weight estimates */}
+      <div style={{ ...card(theme), padding: "10px 14px" }}>
+        <div onClick={() => setShowGearGuide(!showGearGuide)} style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Info size={14} color={theme.accent} />
+            <span style={{ fontSize: 12, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>Gear Guide</span>
+            <span style={{ fontSize: 9, color: theme.textDimmer }}>weight & sharing info</span>
+          </div>
+          <span style={{ fontSize: 14, color: theme.textDimmer, transform: showGearGuide ? "rotate(90deg)" : "none", transition: "transform .2s" }}>›</span>
+        </div>
+        {showGearGuide && (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 6, fontFamily: fontBody }}>
+              Gear Sharing Types
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 12 }}>
+              {[
+                { label: "PERSONAL", color: theme.heading, bg: theme.bgAlt, border: theme.borderLight, desc: "Your own gear — counted toward your pack weight" },
+                { label: "CREW", color: theme.accent, bg: theme.accentBg, border: theme.borderAccent, desc: "Shared crew gear — weight split among members on trail" },
+                { label: "BUDDY", color: "#3B6BB0", bg: "#E8F0FE", border: "#B0C8E8", desc: "Split between tent partners (e.g. one carries tent, other carries poles)" },
+                { label: "PROVIDED", color: "#B8740A", bg: "#FFF3E0", border: "#E8C896", desc: "Provided by Philmont on-site — you still carry it but don't buy it" },
+              ].map(t => (
+                <div key={t.label} style={{ padding: "6px 8px", borderRadius: 8, background: t.bg, border: `1px solid ${t.border}` }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: t.color, letterSpacing: 0.5 }}>{t.label}</div>
+                  <div style={{ fontSize: 9, color: theme.textDimmer, lineHeight: 1.3, marginTop: 2 }}>{t.desc}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 6, fontFamily: fontBody }}>
+              Pack Weight Estimates
+            </div>
+            <div style={{ fontSize: 10, color: theme.textMuted, lineHeight: 1.5 }}>
+              <div style={{ marginBottom: 4 }}>
+                <strong style={{ color: theme.heading }}>⚖️ Personal gear only</strong> — Only items you mark as "Packed" with type Personal count toward your pack weight.
+              </div>
+              <div style={{ marginBottom: 4 }}>
+                <strong style={{ color: theme.heading }}>🍽️ Food: ~1.75 lbs/day</strong> — Philmont provides all trail food in 2-person buddy bags (~0.50 lb breakfast, ~0.75 lb lunch, ~0.50 lb dinner). You carry 2-4 days of food between commissary pickups.
+              </div>
+              <div>
+                <strong style={{ color: theme.heading }}>💧 Water: ~6.6 lbs (3L)</strong> — Typical hiking carry. Philmont requires 4L minimum capacity. Dry camp days can be 11-13 lbs (5-6L).
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Crew gear readiness overview */}
       <div style={card(theme)}>
@@ -322,9 +372,19 @@ export default function GearList({ troopId, adventureId, members, active, setAct
                         fontSize: 8, fontWeight: 700, padding: "1px 5px", borderRadius: 3, textTransform: "uppercase",
                         background: p.bg, color: p.color, border: `1px solid ${p.border}`,
                       }}>{item.priority}</span>
-                      {item.is_crew_shared === 1 && (
+                      {(item.sharing_type === "crew") && (
                         <span style={{ fontSize: 8, fontWeight: 600, padding: "1px 5px", borderRadius: 3, background: theme.accentBg, color: theme.accent, border: `1px solid ${theme.borderAccent}` }}>
-                          CREW SHARED
+                          CREW
+                        </span>
+                      )}
+                      {(item.sharing_type === "buddy") && (
+                        <span style={{ fontSize: 8, fontWeight: 600, padding: "1px 5px", borderRadius: 3, background: "#E8F0FE", color: "#3B6BB0", border: "1px solid #B0C8E8" }}>
+                          BUDDY
+                        </span>
+                      )}
+                      {(item.sharing_type === "provided") && (
+                        <span style={{ fontSize: 8, fontWeight: 600, padding: "1px 5px", borderRadius: 3, background: "#FFF3E0", color: "#B8740A", border: "1px solid #E8C896" }}>
+                          PROVIDED
                         </span>
                       )}
                       {item.philmont_compliant === 0 && (
@@ -376,7 +436,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
                             e.stopPropagation();
                             if (isActive) {
                               // Toggle off — uncheck
-                              (async () => { setSaving(true); try { await api.removeMemberGearItem(adventureId, am.user_id, item.id); await refreshMemberGear(); } catch(err) { console.error(err); } setSaving(false); })();
+                              (async () => { setSaving(true); try { await api.removeMemberGearItem(adventureId, am.user_id, item.id); await refreshMemberGear(); setWeightKey(k => k + 1); } catch(err) { console.error(err); } setSaving(false); })();
                             } else {
                               setGearStatus(item.id, s.value);
                             }
@@ -482,7 +542,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
                         adventureId={adventureId}
                         userId={am.user_id}
                         theme={theme}
-                        onUpdate={refreshMemberGear}
+                        onUpdate={async () => { await refreshMemberGear(); setWeightKey(k => k + 1); }}
                       />
                     )}
                   </div>

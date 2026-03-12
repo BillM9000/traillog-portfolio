@@ -4,7 +4,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useAdventure } from "../contexts/AdventureContext";
 import { useToast } from "../contexts/ToastContext";
 import { api } from "../api";
-import { fontBody, fontDisplay, JOURNEY_WAYPOINTS } from "../utils/theme";
+import { fontBody, fontDisplay, JOURNEY_WAYPOINTS, TRAIL_BADGES } from "../utils/theme";
 import { computeCrewReadiness } from "../utils/readiness";
 import { ProgressRing } from "./ProgressWidgets";
 import { Settings, Sun, Moon } from "lucide-react";
@@ -12,11 +12,12 @@ import { ADVENTURE_TYPES } from "../utils/constants";
 import Logo from "./Logo";
 import TroopLogo from "./TroopLogo";
 
-export default function Header({ user, troop, adventure, members, analysis, trekDates, trekDate, saving, isAdmin, approvedTroops, onSwitchTroop, onBackToAdventures, onLogout, onAdminClick, onRefreshAuth, achievements }) {
+export default function Header({ user, troop, adventure, members, analysis, trekDates, trekDate, saving, isAdmin, approvedTroops, onSwitchTroop, onBackToAdventures, onLogout, onAdminClick, onRefreshAuth, onViewProfile, achievements }) {
   const countdown = useCountdown(trekDates || trekDate);
   const { theme, mode, toggle } = useTheme();
   const { addToast } = useToast();
   const [showProfile, setShowProfile] = useState(false);
+  const [showTrailGuide, setShowTrailGuide] = useState(false);
   const [editName, setEditName] = useState(user?.name || "");
   const [savingProfile, setSavingProfile] = useState(false);
   const profileRef = useRef(null);
@@ -115,7 +116,7 @@ export default function Header({ user, troop, adventure, members, analysis, trek
     backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
   };
 
-  return (
+  return (<>
     <div style={{
       background: theme.bgHeader,
       borderRadius: "0 0 24px 24px",
@@ -203,6 +204,11 @@ export default function Header({ user, troop, adventure, members, analysis, trek
                     {approvedTroops.map(t => <option key={t.troop_id} value={t.troop_id}>{t.troop_name}</option>)}
                   </select>
                 )}
+                <button onClick={() => { setShowProfile(false); onViewProfile?.(); }} style={{
+                  width: "100%", padding: "8px 0", borderRadius: 8, border: `1.5px solid ${theme.borderLight}`,
+                  background: theme.bgAlt, color: theme.accent, fontSize: 12, fontWeight: 600,
+                  cursor: "pointer", fontFamily: fontBody, marginBottom: 8,
+                }}>View Profile</button>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={saveProfile} disabled={savingProfile} style={{
                     flex: 1, padding: "8px 0", borderRadius: 8, border: "none",
@@ -274,11 +280,11 @@ export default function Header({ user, troop, adventure, members, analysis, trek
       </div>
 
       {/* ── ROW 3: Journey Progress Card (frosted glass) ── */}
-      <div style={{
+      <div onClick={() => setShowTrailGuide(true)} style={{
         display: "flex", alignItems: "center", gap: 16,
         background: "rgba(0,0,0,0.15)", backdropFilter: "blur(6px)",
         borderRadius: 16, padding: "16px 18px",
-        marginBottom: -28, position: "relative", zIndex: 2,
+        marginBottom: -28, position: "relative", zIndex: 2, cursor: "pointer",
       }}>
         <div style={{ position: "relative", flexShrink: 0 }}>
           <ProgressRing percent={crewReadiness} size={56} stroke={5} color="#B8CC9A" bgColor="rgba(255,255,255,0.15)" />
@@ -290,8 +296,9 @@ export default function Header({ user, troop, adventure, members, analysis, trek
           </div>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#FDFAF5", marginBottom: 4, fontFamily: fontBody }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#FDFAF5", marginBottom: 4, fontFamily: fontBody, display: "flex", alignItems: "center", gap: 6 }}>
             {currentWaypoint.name}
+            <span style={{ fontSize: 9, color: "rgba(184,204,154,0.5)", fontWeight: 400 }}>ⓘ</span>
           </div>
           <div style={{ fontSize: 11, color: "#D4E4B8", lineHeight: 1.4, fontFamily: fontBody }}>
             {currentWaypoint.message}
@@ -320,5 +327,97 @@ export default function Header({ user, troop, adventure, members, analysis, trek
         </div>
       </div>
     </div>
+
+    {/* ── Trail Guide Modal ── */}
+    {showTrailGuide && (
+      <div onClick={() => setShowTrailGuide(false)} style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: 20,
+      }}>
+        <div onClick={e => e.stopPropagation()} style={{
+          background: theme.bg, borderRadius: 20, padding: "24px 20px",
+          maxWidth: 400, width: "100%", maxHeight: "80vh", overflowY: "auto",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+          border: `1px solid ${theme.borderLight}`,
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay }}>
+              Trail Guide
+            </div>
+            <button onClick={() => setShowTrailGuide(false)} style={{
+              background: theme.bgAlt, border: `1px solid ${theme.borderLight}`,
+              borderRadius: 8, width: 28, height: 28, cursor: "pointer",
+              fontSize: 14, color: theme.textDim, display: "flex", alignItems: "center", justifyContent: "center",
+            }}>&times;</button>
+          </div>
+
+          {/* Journey Waypoints */}
+          <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 8, fontFamily: fontBody }}>
+            Journey Waypoints — Crew readiness milestones
+          </div>
+          {JOURNEY_WAYPOINTS.map((wp) => (
+            <div key={wp.pct} style={{
+              display: "flex", alignItems: "center", gap: 10, padding: "6px 10px",
+              borderRadius: 8, marginBottom: 3,
+              background: crewReadiness >= wp.pct ? theme.accentBg : "transparent",
+              border: crewReadiness >= wp.pct ? `1px solid ${theme.borderAccent}` : `1px solid transparent`,
+            }}>
+              <div style={{
+                width: 24, height: 24, borderRadius: "50%", flexShrink: 0,
+                background: crewReadiness >= wp.pct ? theme.accent : theme.progressBg,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 10, fontWeight: 700, color: crewReadiness >= wp.pct ? "#fff" : theme.textDimmer,
+              }}>
+                {wp.pct === 100 ? "\u2B50" : crewReadiness >= wp.pct ? "\u2713" : `${wp.pct}`}
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: crewReadiness >= wp.pct ? theme.heading : theme.textMuted, fontFamily: fontBody }}>
+                  {wp.pct}% — {wp.name}
+                </div>
+                <div style={{ fontSize: 10, color: theme.textDimmer, fontStyle: "italic", lineHeight: 1.3 }}>{wp.message}</div>
+              </div>
+            </div>
+          ))}
+
+          {/* Trail Badges */}
+          <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: 1.2, textTransform: "uppercase", marginTop: 16, marginBottom: 8, fontFamily: fontBody }}>
+            Trail Badges — Earn by completing each category
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+            {Object.entries(TRAIL_BADGES).map(([key, badge]) => {
+              const descriptions = {
+                gear_ready: "All gear items packed",
+                trail_medic: "All medical items done",
+                admin_pro: "All admin tasks done",
+                training_complete: "All training skills done",
+                fully_prepared: "All 4 categories at 100%!",
+              };
+              const earned = myBadges.some(b => b.badge_type === key);
+              return (
+                <div key={key} style={{
+                  display: "flex", alignItems: "center", gap: 8, padding: "8px 10px",
+                  borderRadius: 10, background: earned ? theme.accentBg : theme.bgAlt,
+                  border: `1px solid ${earned ? theme.borderAccent : theme.borderLight}`,
+                  opacity: earned ? 1 : 0.6,
+                }}>
+                  <span style={{ fontSize: 18, flexShrink: 0 }}>{badge.icon}</span>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: earned ? theme.heading : theme.textMuted }}>{badge.title}</div>
+                    <div style={{ fontSize: 9, color: theme.textDimmer, lineHeight: 1.3 }}>{descriptions[key]}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ fontSize: 10, color: theme.textDimmest, textAlign: "center", marginTop: 16, fontFamily: fontBody }}>
+            Your crew is at <strong style={{ color: theme.heading }}>{crewReadiness}%</strong> readiness — <strong style={{ color: theme.accent }}>{currentWaypoint.name}</strong>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

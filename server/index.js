@@ -3,6 +3,7 @@ import helmet from "helmet";
 import session from "express-session";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import passport, { hashPassword, generateVerificationToken } from "./auth.js";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -304,14 +305,33 @@ app.post("/api/auth/reset-password", authLimiter, async (req, res) => {
   } catch (e) { safeError(res, e); }
 });
 
+app.put("/api/auth/change-password", requireAuth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword || newPassword.length < 8) {
+      return res.status(400).json({ error: "Current password and new password (8+ chars) required" });
+    }
+    const user = findUserById(req.user.id);
+    if (!user.password_hash) {
+      return res.status(400).json({ error: "Your account uses Google sign-in. Password change is not available." });
+    }
+    const match = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!match) return res.status(400).json({ error: "Current password is incorrect" });
+    const hash = await hashPassword(newPassword);
+    updatePassword(user.id, hash);
+    res.json({ ok: true, message: "Password updated successfully" });
+  } catch (e) { safeError(res, e); }
+});
+
 app.get("/api/auth/me", (req, res) => {
   if (!req.isAuthenticated()) return res.json({ user: null });
   const { password_hash, verification_token, reset_token, reset_token_expires, ...safe } = req.user;
+  const has_password = !!password_hash;
   const memberships = getUserMemberships(req.user.id);
   const adventureMemberships = getUserAdventureMemberships(req.user.id);
   const adminEmail = process.env.ADMIN_EMAIL;
   const is_global_admin = !!(adminEmail && req.user.email === adminEmail);
-  res.json({ user: { ...safe, is_global_admin }, memberships, adventureMemberships });
+  res.json({ user: { ...safe, is_global_admin, has_password }, memberships, adventureMemberships });
 });
 
 app.put("/api/auth/profile", requireAuth, (req, res) => {

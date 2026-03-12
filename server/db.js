@@ -191,6 +191,7 @@ db.exec(`
     philmont_compliant INTEGER NOT NULL DEFAULT 1,
     compliance_notes TEXT,
     is_crew_shared INTEGER NOT NULL DEFAULT 0,
+    sharing_type TEXT NOT NULL DEFAULT 'personal',
     affiliate_priority TEXT DEFAULT 'Medium',
     sort_order INTEGER NOT NULL DEFAULT 0,
     active INTEGER NOT NULL DEFAULT 1,
@@ -266,6 +267,7 @@ db.exec(`
     weight_oz REAL,
     priority TEXT NOT NULL DEFAULT 'recommended',
     is_crew_shared INTEGER NOT NULL DEFAULT 0,
+    sharing_type TEXT NOT NULL DEFAULT 'personal',
     sort_order INTEGER NOT NULL DEFAULT 0,
     active INTEGER NOT NULL DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -294,7 +296,7 @@ db.exec(`
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 14;
+const CURRENT_SCHEMA_VERSION = 15;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -545,6 +547,23 @@ function migrate() {
     // ── v14 migration: TOS acceptance tracking ──
     if (version < 14) {
       tryAlter("ALTER TABLE users ADD COLUMN tos_accepted_at DATETIME");
+    }
+
+    // ── v15 migration: sharing_type replaces is_crew_shared boolean ──
+    if (version < 15) {
+      tryAlter("ALTER TABLE gear_catalog ADD COLUMN sharing_type TEXT NOT NULL DEFAULT 'personal'");
+      tryAlter("ALTER TABLE troop_custom_gear ADD COLUMN sharing_type TEXT NOT NULL DEFAULT 'personal'");
+      // Migrate existing is_crew_shared=1 items to 'crew' as baseline
+      try {
+        db.prepare("UPDATE gear_catalog SET sharing_type = 'crew' WHERE is_crew_shared = 1").run();
+        db.prepare("UPDATE troop_custom_gear SET sharing_type = 'crew' WHERE is_crew_shared = 1").run();
+        // Set buddy items (tents split between tent partners)
+        db.prepare("UPDATE gear_catalog SET sharing_type = 'buddy' WHERE name LIKE '%Tent%' AND name NOT LIKE '%Pole Repair%'").run();
+        // Set provided items (Philmont provides these on-site)
+        const provided = ["Cook Pot / Pot Set", "Bear Bag / Ursack", "Fuel Canisters (isobutane, 100g x4)", "Topographic Map (Philmont)"];
+        const setProvided = db.prepare("UPDATE gear_catalog SET sharing_type = 'provided' WHERE name = ?");
+        provided.forEach(n => setProvided.run(n));
+      } catch (e) { console.log("v15 sharing_type migration note:", e.message); }
     }
 
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
@@ -1010,14 +1029,39 @@ function seedGearCatalog() {
     ["Pencils (waterproof, 3-pack)", "Communication", "Documentation", 0.5, "optional", 0, "Pencils write in rain; pens fail in cold"],
   ];
 
+  // sharing_type overrides — items that are buddy, crew, or provided by Philmont
+  const sharingOverrides = {
+    "Backpacking Tent (2-3 person)": "buddy",
+    "Tent Footprint / Ground Cloth": "buddy",
+    "Tent Stakes (set of 10)": "buddy",
+    "Emergency Tarp": "crew",
+    "Topographic Map (Philmont)": "provided",
+    "Handheld GPS": "crew",
+    "Water Filter / Purifier": "crew",
+    "Chemical Water Treatment (backup)": "crew",
+    "Camp Stove (canister)": "crew",
+    "Fuel Canisters (isobutane, 100g x4)": "provided",
+    "Cook Pot / Pot Set": "provided",
+    "Bear Bag / Ursack": "provided",
+    "Trash Compactor Bags (2-pack)": "crew",
+    "Camp Lantern": "crew",
+    "SAM Splint": "crew",
+    "PLB / Satellite Communicator": "crew",
+    "Trowel (LNT cat hole)": "crew",
+    "Tent Pole Repair Sleeve": "crew",
+    "Paracord (50ft)": "crew",
+    "Portable Battery Bank": "crew",
+  };
+
   const insertItem = db.prepare(`
-    INSERT INTO gear_catalog (name, category, subcategory, description, weight_oz, priority, is_crew_shared, philmont_compliant, sort_order)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+    INSERT INTO gear_catalog (name, category, subcategory, description, weight_oz, priority, is_crew_shared, sharing_type, philmont_compliant, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
   `);
   const seedAll = db.transaction(() => {
     for (let i = 0; i < S.length; i++) {
       const [name, cat, sub, wt, pri, crew, desc] = S[i];
-      insertItem.run(name, cat, sub, desc, wt, pri, crew, i + 1);
+      const sType = sharingOverrides[name] || (crew ? "crew" : "personal");
+      insertItem.run(name, cat, sub, desc, wt, pri, crew, sType, i + 1);
     }
   });
   seedAll();
@@ -1766,7 +1810,7 @@ export function getGearCategories() {
 export function getMemberGear(adventureId, userId) {
   return db.prepare(`
     SELECT mg.*, gc.name as gear_name, gc.category, gc.weight_oz as default_weight_oz,
-           gc.priority, gc.is_crew_shared, gc.philmont_compliant, gc.compliance_notes,
+           gc.priority, gc.is_crew_shared, gc.sharing_type, gc.philmont_compliant, gc.compliance_notes,
            gpo.product_name as selected_product_name, gpo.weight_oz as selected_weight_oz,
            gpo.brand as selected_brand, gpo.price as selected_price
     FROM member_gear mg
@@ -1780,7 +1824,7 @@ export function getMemberGear(adventureId, userId) {
 export function getAdventureMemberGearAll(adventureId) {
   return db.prepare(`
     SELECT mg.*, gc.name as gear_name, gc.category, gc.weight_oz as default_weight_oz,
-           gc.priority, gc.is_crew_shared
+           gc.priority, gc.is_crew_shared, gc.sharing_type
     FROM member_gear mg
     JOIN gear_catalog gc ON mg.gear_catalog_id = gc.id
     WHERE mg.adventure_id = ?
@@ -1835,17 +1879,29 @@ export function getMemberPackWeight(adventureId, userId) {
   const gear = db.prepare(`
     SELECT mg.status, mg.custom_weight_oz,
            gc.category, gc.weight_oz as default_weight_oz, gc.is_crew_shared,
+           gc.sharing_type,
            gpo.weight_oz as option_weight_oz
     FROM member_gear mg
     JOIN gear_catalog gc ON mg.gear_catalog_id = gc.id
     LEFT JOIN gear_product_options gpo ON mg.selected_option_id = gpo.id
-    WHERE mg.adventure_id = ? AND mg.user_id = ?
+    WHERE mg.adventure_id = ? AND mg.user_id = ? AND mg.status = 'packed'
   `).all(adventureId, userId);
 
   const byCategory = {};
   let totalOz = 0;
+  let crewBuddyCount = 0;
+  let providedCount = 0;
 
   for (const g of gear) {
+    const sType = g.sharing_type || "personal";
+    // Only count personal items toward pack weight
+    // Crew/buddy gear weight is split and hard to estimate per-person; deferred
+    // Provided gear is on-site, no weight impact on travel
+    if (sType !== "personal") {
+      if (sType === "provided") providedCount++;
+      else crewBuddyCount++;
+      continue;
+    }
     // Use custom weight > selected option weight > default catalog weight
     const weight = g.custom_weight_oz || g.option_weight_oz || g.default_weight_oz || 0;
     if (!byCategory[g.category]) byCategory[g.category] = { weight_oz: 0, count: 0 };
@@ -1855,15 +1911,18 @@ export function getMemberPackWeight(adventureId, userId) {
   }
 
   const totalLbs = totalOz / 16;
-  // Estimates: food ~1.75 lbs/day × trek days, water ~4.4 lbs (2L)
+  // Estimates: food ~1.75 lbs/day × trek days, water ~6.6 lbs (3L typical hiking carry)
+  // Only add food/water when there are packed items
   const adventure = getAdventure(adventureId);
   let trekDays = 12; // default fallback
   if (adventure?.itinerary_id) {
     const itin = getItinerary(adventure.itinerary_id);
     if (itin?.days) trekDays = itin.days;
   }
-  const foodLbs = Math.round(1.75 * trekDays * 10) / 10;
-  const waterLbs = 4.4;
+  const personalCount = gear.length - crewBuddyCount - providedCount;
+  const hasPacked = personalCount > 0;
+  const foodLbs = hasPacked ? Math.round(1.75 * trekDays * 10) / 10 : 0;
+  const waterLbs = hasPacked ? 6.6 : 0;
   const grandTotalLbs = totalLbs + foodLbs + waterLbs;
 
   return {
@@ -1874,7 +1933,10 @@ export function getMemberPackWeight(adventureId, userId) {
     water_lbs: waterLbs,
     grand_total_lbs: Math.round(grandTotalLbs * 10) / 10,
     by_category: byCategory,
-    item_count: gear.length,
+    item_count: personalCount,
+    crew_buddy_count: crewBuddyCount,
+    provided_count: providedCount,
+    total_packed: gear.length,
     philmont_limit_lbs: 50,
     over_limit: grandTotalLbs > 50,
   };
@@ -1885,14 +1947,14 @@ export function getMemberPackWeight(adventureId, userId) {
 export function createGearCatalogItem(data) {
   const maxOrder = db.prepare("SELECT MAX(sort_order) as m FROM gear_catalog").get().m || 0;
   const result = db.prepare(`
-    INSERT INTO gear_catalog (name, category, subcategory, description, weight_oz, weight_class, priority, price_tier, msrp, rating_stars, rating_notes, philmont_compliant, compliance_notes, is_crew_shared, affiliate_priority, sort_order)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO gear_catalog (name, category, subcategory, description, weight_oz, weight_class, priority, price_tier, msrp, rating_stars, rating_notes, philmont_compliant, compliance_notes, is_crew_shared, sharing_type, affiliate_priority, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     data.name, data.category, data.subcategory || null, data.description || null,
     data.weight_oz || null, data.weight_class || null, data.priority || "recommended",
     data.price_tier || null, data.msrp || null, data.rating_stars || null, data.rating_notes || null,
     data.philmont_compliant ?? 1, data.compliance_notes || null,
-    data.is_crew_shared || 0, data.affiliate_priority || "Medium", maxOrder + 1
+    data.is_crew_shared || 0, data.sharing_type || "personal", data.affiliate_priority || "Medium", maxOrder + 1
   );
   return { id: result.lastInsertRowid, ...data };
 }
@@ -1902,7 +1964,7 @@ export function updateGearCatalogItem(id, data) {
   const vals = [];
   const fields = ["name", "category", "subcategory", "description", "weight_oz", "weight_class", "priority",
     "price_tier", "msrp", "rating_stars", "rating_notes", "philmont_compliant", "compliance_notes",
-    "is_crew_shared", "affiliate_priority", "sort_order", "active"];
+    "is_crew_shared", "sharing_type", "affiliate_priority", "sort_order", "active"];
   for (const f of fields) {
     if (data[f] !== undefined) { sets.push(`${f} = ?`); vals.push(data[f]); }
   }
@@ -2033,16 +2095,16 @@ export function getTroopCustomGear(troopId) {
 export function addTroopCustomGear(troopId, data) {
   const maxOrder = db.prepare("SELECT MAX(sort_order) as m FROM troop_custom_gear WHERE troop_id = ?").get(troopId).m || 0;
   const result = db.prepare(`
-    INSERT INTO troop_custom_gear (troop_id, name, category, subcategory, description, weight_oz, priority, is_crew_shared, sort_order)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(troopId, data.name, data.category, data.subcategory || null, data.description || null, data.weight_oz || null, data.priority || "recommended", data.is_crew_shared || 0, maxOrder + 1);
+    INSERT INTO troop_custom_gear (troop_id, name, category, subcategory, description, weight_oz, priority, is_crew_shared, sharing_type, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(troopId, data.name, data.category, data.subcategory || null, data.description || null, data.weight_oz || null, data.priority || "recommended", data.is_crew_shared || 0, data.sharing_type || "personal", maxOrder + 1);
   return { id: result.lastInsertRowid, troop_id: troopId, ...data };
 }
 
 export function updateTroopCustomGearItem(troopId, id, data) {
   const sets = [];
   const vals = [];
-  const fields = ["name", "category", "subcategory", "description", "weight_oz", "priority", "is_crew_shared", "sort_order", "active"];
+  const fields = ["name", "category", "subcategory", "description", "weight_oz", "priority", "is_crew_shared", "sharing_type", "sort_order", "active"];
   for (const f of fields) {
     if (data[f] !== undefined) { sets.push(`${f} = ?`); vals.push(data[f]); }
   }

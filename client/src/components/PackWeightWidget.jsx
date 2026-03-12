@@ -39,11 +39,17 @@ export default function PackWeightWidget({ adventureId, userId, memberName }) {
       </div>
 
       {/* Summary row */}
-      <div style={{ display: "flex", gap: 10, fontSize: 10, color: theme.textMuted, marginBottom: 4 }}>
-        <span>Base: <strong style={{ color: theme.text }}>{weight.base_weight_lbs} lbs</strong></span>
+      <div style={{ display: "flex", gap: 10, fontSize: 10, color: theme.textMuted, marginBottom: 4, flexWrap: "wrap" }}>
+        <span>Personal gear: <strong style={{ color: theme.text }}>{weight.base_weight_lbs} lbs</strong></span>
         <span>+Food: <strong style={{ color: theme.text }}>{weight.food_estimate_lbs} lbs</strong> <span style={{ color: theme.textDimmer }}>({weight.trek_days}d)</span></span>
-        <span>+Water: <strong style={{ color: theme.text }}>{weight.water_lbs} lbs</strong></span>
+        <span>+Water: <strong style={{ color: theme.text }}>{weight.water_lbs} lbs</strong> <span style={{ color: theme.textDimmer }}>(3L)</span></span>
       </div>
+      {(weight.crew_buddy_count > 0 || weight.provided_count > 0) && (
+        <div style={{ fontSize: 9, color: theme.textDimmer, marginBottom: 4, fontStyle: "italic" }}>
+          {weight.crew_buddy_count > 0 && <span>{weight.crew_buddy_count} crew/buddy items packed (weight split on trail) </span>}
+          {weight.provided_count > 0 && <span>· {weight.provided_count} Philmont-provided items</span>}
+        </div>
+      )}
 
       {weight.over_limit && (
         <div style={{ fontSize: 10, color: "#DC2626", fontWeight: 600, marginBottom: 4 }}>
