@@ -277,6 +277,8 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop })
   const [showCreate, setShowCreate] = useState(false);
   const [newTroop, setNewTroop] = useState({ name: "", council: "", city: "", state: "", description: "", is_public: true });
   const [creating, setCreating] = useState(false);
+  const [newLogoFile, setNewLogoFile] = useState(null);
+  const [newLogoPreview, setNewLogoPreview] = useState(null);
 
   const refreshMembers = async (troopId) => {
     try {
@@ -333,6 +335,15 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop })
     } catch (e) { addToast(e.message, "error"); }
   };
 
+  const handleLogoSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 500 * 1024) { addToast("Logo must be under 500KB", "error"); return; }
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) { addToast("PNG, JPG, or WebP only", "error"); return; }
+    setNewLogoFile(file);
+    setNewLogoPreview(URL.createObjectURL(file));
+  };
+
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!newTroop.name.trim()) { addToast("Troop name required", "error"); return; }
@@ -342,8 +353,25 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop })
     setCreating(true);
     try {
       const location = [newTroop.city.trim(), newTroop.state].filter(Boolean).join(", ");
-      await api.createTroop({ ...newTroop, location });
+      const created = await api.createTroop({ ...newTroop, location });
+
+      // Upload logo if one was selected
+      if (newLogoFile && created?.id) {
+        try {
+          const reader = new FileReader();
+          const base64 = await new Promise((resolve) => {
+            reader.onload = () => resolve(reader.result);
+            reader.readAsDataURL(newLogoFile);
+          });
+          await api.uploadTroopLogo(created.id, base64);
+        } catch (logoErr) {
+          console.warn("Logo upload failed, can set later:", logoErr);
+        }
+      }
+
       setNewTroop({ name: "", council: "", city: "", state: "", description: "", is_public: true });
+      setNewLogoFile(null);
+      setNewLogoPreview(null);
       setShowCreate(false);
       addToast("Troop created", "success");
       onRefresh();
@@ -378,6 +406,42 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop })
                 {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
+            {/* Logo upload (optional) */}
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                {newLogoPreview ? (
+                  <img src={newLogoPreview} alt="Logo preview"
+                    style={{ width: 40, height: 40, borderRadius: 6, objectFit: "cover", border: `1px solid ${theme.border}` }} />
+                ) : (
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 6, background: theme.accent + "20",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    border: `1px dashed ${theme.borderLight}`, fontSize: 14, color: theme.textDim,
+                  }}>📷</div>
+                )}
+                <div>
+                  <label style={{
+                    display: "inline-block", padding: "3px 10px", borderRadius: 5,
+                    border: `1px solid ${theme.borderAccent}`, background: theme.accentBg,
+                    color: theme.accentLight, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
+                  }}>
+                    {newLogoPreview ? "Change" : "Add Logo"}
+                    <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleLogoSelect}
+                      style={{ display: "none" }} />
+                  </label>
+                  {newLogoPreview && (
+                    <button type="button" onClick={() => { setNewLogoFile(null); setNewLogoPreview(null); }} style={{
+                      marginLeft: 4, padding: "2px 6px", borderRadius: 4, border: "none", background: "transparent",
+                      color: theme.textDim, fontSize: 9, cursor: "pointer", fontFamily: fontBody,
+                    }}>Remove</button>
+                  )}
+                  <div style={{ fontSize: 9, color: theme.textDimmer, fontStyle: "italic" }}>
+                    Optional · change later in Troop Settings
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div style={{ marginBottom: 8 }}>
               <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
                 <span style={{ fontSize: 10, fontWeight: 600, color: theme.textDim }}>Visibility:</span>

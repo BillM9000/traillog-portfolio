@@ -162,7 +162,7 @@ Every new user (Google OAuth or email/password) must confirm their age before pr
 | 1 | App directed at children under 13? | **No** | Directed at BSA high adventure crews (13+) |
 | 2 | Actual knowledge of under-13 users? | **No** | Age gate blocks under-13 at registration |
 | 3 | Collecting personal info from under-13? | **No** | Name, email collected — but only after age confirmation (13+) |
-| 4 | Privacy policy posted? | ⬜ Pending | Good practice regardless of COPPA. See GO_LIVE_CHECKLIST.md |
+| 4 | Privacy policy posted? | ✅ Done | `/privacy` standalone HTML page, no auth, crawlable. TOS at `/terms`. Checkbox consent on signup + age gate. `tos_accepted_at` audit trail. |
 | 5 | Parental consent mechanism? | **N/A** | Not required — age gate prevents under-13 accounts |
 | 6 | Age gate / age verification? | ✅ Implemented | Two-tier: "13 or older" / "18 or older" with role validation |
 | 7 | Data deletion mechanism? | ⬜ Pending | Not COPPA-required but good practice |
