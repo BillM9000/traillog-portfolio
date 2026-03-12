@@ -14,10 +14,12 @@ export default function ProfileSetup({ user, onComplete }) {
   const [parentEmail2, setParentEmail2] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [tosAccepted, setTosAccepted] = useState(false);
 
   const handleAgeConfirm = async () => {
     setError("");
     if (!ageChoice) return setError("Please confirm your age to continue");
+    if (!tosAccepted) return setError("You must agree to the Terms of Service and Privacy Policy");
     setLoading(true);
     try {
       await onComplete({ age_confirmed: ageChoice });
@@ -107,21 +109,32 @@ export default function ProfileSetup({ user, onComplete }) {
             This cannot be changed later. BSA High Adventure requires participants to be at least 13 years old.
           </p>
 
-          <p style={{ fontSize: 11, color: "#7A9A5A", marginBottom: 14, lineHeight: 1.5 }}>
-            By continuing, you agree to our{" "}
-            <a href="/terms" target="_blank" style={{ color: "#B8CC9A", textDecoration: "underline" }}>Terms of Service</a>
-            {" "}and{" "}
-            <a href="/privacy" target="_blank" style={{ color: "#B8CC9A", textDecoration: "underline" }}>Privacy Policy</a>.
-          </p>
+          <label style={{
+            display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 14,
+            fontSize: 11, color: "#B8CC9A", cursor: "pointer", lineHeight: 1.4, textAlign: "left",
+          }}>
+            <input
+              type="checkbox"
+              checked={tosAccepted}
+              onChange={e => setTosAccepted(e.target.checked)}
+              style={{ marginTop: 2, accentColor: "#5B7A3A", cursor: "pointer", flexShrink: 0 }}
+            />
+            <span>
+              I agree to the{" "}
+              <a href="/terms" target="_blank" style={{ color: "#D4E4B8", textDecoration: "underline" }}>Terms of Service</a>
+              {" "}and{" "}
+              <a href="/privacy" target="_blank" style={{ color: "#D4E4B8", textDecoration: "underline" }}>Privacy Policy</a>
+            </span>
+          </label>
 
           {error && <div style={{ fontSize: 12, color: "#d08080", marginBottom: 10 }}>{error}</div>}
 
-          <button onClick={handleAgeConfirm} disabled={loading || !ageChoice} style={{
+          <button onClick={handleAgeConfirm} disabled={loading || !ageChoice || !tosAccepted} style={{
             width: "100%", padding: "13px 0", borderRadius: 12, border: "none",
-            background: ageChoice ? "#5B7A3A" : "#3A4D2A", color: "#FDFAF5",
-            fontSize: 14, fontWeight: 600, cursor: ageChoice && !loading ? "pointer" : "default",
-            fontFamily: fontBody, opacity: !ageChoice || loading ? 0.6 : 1,
-            boxShadow: ageChoice ? "0 2px 8px rgba(58,77,42,0.3)" : "none",
+            background: (ageChoice && tosAccepted) ? "#5B7A3A" : "#3A4D2A", color: "#FDFAF5",
+            fontSize: 14, fontWeight: 600, cursor: (ageChoice && tosAccepted && !loading) ? "pointer" : "default",
+            fontFamily: fontBody, opacity: (!ageChoice || !tosAccepted || loading) ? 0.6 : 1,
+            boxShadow: (ageChoice && tosAccepted) ? "0 2px 8px rgba(58,77,42,0.3)" : "none",
           }}>
             {loading ? "..." : "Confirm & Continue"}
           </button>
