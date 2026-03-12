@@ -593,12 +593,12 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                   <img
                     src={logoUrl}
                     alt="Troop logo"
-                    style={{ width: 64, height: 64, borderRadius: 8, objectFit: "cover", border: `1px solid ${theme.border}` }}
+                    style={{ width: 80, height: 80, borderRadius: 8, objectFit: "cover", border: `1px solid ${theme.border}` }}
                     onError={() => setLogoError(true)}
                   />
                 ) : (
                   <div style={{
-                    width: 64, height: 64, borderRadius: 8, background: theme.accent + "30",
+                    width: 80, height: 80, borderRadius: 8, background: theme.accent + "30",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     fontSize: 24, fontWeight: 800, color: theme.accent, border: `1px dashed ${theme.border}`,
                   }}>
