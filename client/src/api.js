@@ -22,6 +22,8 @@ export const api = {
   signup: (name, email, password) => request("/auth/signup", { method: "POST", body: JSON.stringify({ name, email, password }) }),
   logout: () => request("/auth/logout", { method: "POST" }),
   updateProfile: (data) => request("/auth/profile", { method: "PUT", body: JSON.stringify(data) }),
+  forgotPassword: (email) => request("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
+  resetPassword: (token, password) => request("/auth/reset-password", { method: "POST", body: JSON.stringify({ token, password }) }),
 
   // Troops
   getTroops: () => request("/troops"),

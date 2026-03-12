@@ -342,7 +342,8 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 |---------|------|-------------|---------------|
 | v10 | 2026-03-10 | Itinerary system, multi-scout linking | `crew614-GOLDEN-pre-regression-20260310.db` |
 | v11 | 2026-03-12 | Time slot availability, training events | `crew614-GOLDEN-pre-timeslots-20260312.db` |
-| v12 | TBD | Age gate, session timeout | TBD |
+| v12 | 2026-03-13 | Age gate (COPPA), session timeout | `crew614-GOLDEN-pre-agegate-20260313.db` |
+| v13 | 2026-03-13 | Password reset tokens | N/A (additive, no data risk) |
 
 ### Deployment Log
 
@@ -351,7 +352,9 @@ Record every production deployment here.
 | Date | Changes | Risk | Deployed By | Verified | Notes |
 |------|---------|------|-------------|----------|-------|
 | 2026-03-12 | Schema v11: time slots + training events | High | Bill McCoy | ✅ | Fresh DB, golden backup taken |
-| | | | | | |
+| 2026-03-13 | Set 1: 7-day rolling session timeout | Medium | Bill McCoy | ✅ | Cookie flags hardened |
+| 2026-03-13 | Set 2: Age gate (schema v12, COPPA) | High | Bill McCoy | ✅ | Golden backup taken, browser tested |
+| 2026-03-13 | Set 3: Password reset (schema v13) | Medium | Bill McCoy | ✅ | API tested, manual email test pending |
 
 ### Golden Backup Registry
 

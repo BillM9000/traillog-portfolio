@@ -294,7 +294,7 @@ db.exec(`
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 12;
+const CURRENT_SCHEMA_VERSION = 13;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -534,6 +534,12 @@ function migrate() {
     if (version < 12) {
       tryAlter("ALTER TABLE users ADD COLUMN age_confirmed TEXT");
       tryAlter("ALTER TABLE users ADD COLUMN age_confirmed_at DATETIME");
+    }
+
+    // ── v13 migration: password reset tokens ──
+    if (version < 13) {
+      tryAlter("ALTER TABLE users ADD COLUMN reset_token TEXT");
+      tryAlter("ALTER TABLE users ADD COLUMN reset_token_expires DATETIME");
     }
 
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
@@ -1060,6 +1066,22 @@ export function verifyUserEmail(token) {
   if (!user) return null;
   db.prepare("UPDATE users SET email_verified = 1, verification_token = NULL WHERE id = ?").run(user.id);
   return user;
+}
+
+export function setResetToken(email, token, expiresAt) {
+  db.prepare("UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE email = ?").run(token, expiresAt, email.toLowerCase());
+}
+
+export function findUserByResetToken(token) {
+  return db.prepare("SELECT * FROM users WHERE reset_token = ? AND reset_token_expires > datetime('now')").get(token) || null;
+}
+
+export function clearResetToken(userId) {
+  db.prepare("UPDATE users SET reset_token = NULL, reset_token_expires = NULL WHERE id = ?").run(userId);
+}
+
+export function updatePassword(userId, passwordHash) {
+  db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(passwordHash, userId);
 }
 
 export function bindGoogleProfile(userId, googleId, avatarUrl) {

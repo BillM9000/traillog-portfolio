@@ -219,6 +219,26 @@ export async function sendBadgeEarnedEmail(toEmail, memberName, badgeName, adven
   });
 }
 
+export async function sendPasswordResetEmail(toEmail, token) {
+  const t = getTransporter();
+  if (!t) return console.log(`[email skip] Password reset for ${toEmail} (no SMTP configured)`);
+
+  const url = `${process.env.APP_URL || "https://traillog.gracezero.ai"}/?reset=${token}`;
+  await t.sendMail({
+    from: `"TrailLog" <${process.env.SMTP_USER}>`,
+    to: toEmail,
+    subject: "Reset your password — TrailLog",
+    html: `
+      <div style="font-family:sans-serif;max-width:500px">
+        <h2 style="color:#2d3830">Reset your password</h2>
+        <p>We received a request to reset your TrailLog password. Click below to choose a new password:</p>
+        <p><a href="${url}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Reset Password</a></p>
+        <p style="color:#888;font-size:13px">This link expires in 1 hour. If you didn't request this, you can safely ignore this email.</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendLinkRequestEmail(adminEmail, adminName, adultName, scoutName, adventureName) {
   const t = getTransporter();
   if (!t) return console.log(`[email skip] Link request: ${adultName} → ${scoutName} (no SMTP configured)`);

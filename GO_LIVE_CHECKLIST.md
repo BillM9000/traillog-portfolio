@@ -8,15 +8,15 @@ Pre-launch sign-off checklist. Items marked with the app name are specific to th
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 1.1 | Session expiration (idle timeout) | ⬜ | 7-day idle for TrailLog. Banking: 5–15 min, Healthcare: 15–20 min, General: 30 min–2 hr |
+| 1.1 | Session expiration (idle timeout) | ✅ | 7-day rolling idle timeout implemented (Set 1). Banking: 5–15 min, Healthcare: 15–20 min |
 | 1.2 | Absolute session timeout | ⬜ | Force re-auth after X hours regardless of activity. Critical for high-security apps |
-| 1.3 | Password reset / forgot password flow | ⬜ | Required if app has email/password auth |
+| 1.3 | Password reset / forgot password flow | ✅ | Implemented (Set 3). 1-hour token expiry, enumeration-safe, rate-limited |
 | 1.4 | Account lockout after failed attempts | ⬜ | TrailLog has rate limiting (20/15min). Apps with sensitive data should lock after 5–10 failures |
 | 1.5 | OAuth token refresh handling | ⬜ | If using OAuth (Google, GitHub, etc.) — ensure tokens refresh gracefully |
 | 1.6 | Multi-factor authentication (MFA) | N/A | Required for: financial, healthcare, enterprise. Not needed for TrailLog |
 | 1.7 | Password complexity requirements | ⬜ | TrailLog: 8 char min. Adjust per risk level |
 | 1.8 | Session invalidation on password change | ⬜ | If user changes password, kill all other sessions |
-| 1.9 | Secure cookie flags (httpOnly, secure, sameSite) | ⬜ | Verify cookies aren't accessible via JS and only sent over HTTPS |
+| 1.9 | Secure cookie flags (httpOnly, secure, sameSite) | ✅ | httpOnly, secure (prod), sameSite=lax — implemented in Set 1 |
 
 ## 2. Security
 

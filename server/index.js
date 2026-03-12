@@ -8,6 +8,7 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import db, {
   createSessionStore, findUserByEmail, findUserById, createUser, updateUserProfile, verifyUserEmail,
+  setResetToken, findUserByResetToken, clearResetToken, updatePassword,
   getTroops, getTroop, createTroop, updateTroop, updateTroopAffiliateTag,
   getTroopMembers, getTroopMember, getUserMemberships, getUserAdventureMemberships,
   requestJoinTroop, approveTroopMember, denyTroopMember, removeTroopMember,
@@ -41,7 +42,7 @@ import db, {
 import {
   sendJoinRequestEmail, sendParentNotificationEmail, sendVerificationEmail,
   sendInvitationEmail, sendMemberApprovedEmail, sendMemberDeniedEmail,
-  sendDateChangedEmail, sendItineraryChangedEmail, sendBadgeEarnedEmail, sendLinkRequestEmail,
+  sendDateChangedEmail, sendItineraryChangedEmail, sendBadgeEarnedEmail, sendLinkRequestEmail, sendPasswordResetEmail,
   sendTrainingScheduledEmail,
 } from "./email.js";
 
@@ -252,7 +253,7 @@ app.post("/api/auth/login", authLimiter, (req, res, next) => {
         }
         delete req.session.pendingInviteToken;
       }
-      const { password_hash, verification_token, ...safe } = user;
+      const { password_hash, verification_token, reset_token, reset_token_expires, ...safe } = user;
       res.json(safe);
     });
   })(req, res, next);
@@ -264,9 +265,43 @@ app.get("/api/auth/verify/:token", (req, res) => {
   res.redirect("/?verified=1");
 });
 
+// ── Password Reset ──
+app.post("/api/auth/forgot-password", authLimiter, (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email?.trim()) return res.status(400).json({ error: "Email is required" });
+
+    // Always respond success to prevent email enumeration
+    const user = findUserByEmail(email);
+    if (user && user.password_hash) {
+      const token = generateVerificationToken();
+      const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+      setResetToken(email, token, expires);
+      sendPasswordResetEmail(email, token).catch(e => console.error("Reset email failed:", e));
+    }
+    res.json({ ok: true, message: "If that email exists, a reset link has been sent" });
+  } catch (e) { safeError(res, e); }
+});
+
+app.post("/api/auth/reset-password", authLimiter, async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password || password.length < 8) {
+      return res.status(400).json({ error: "Valid token and password (8+ chars) required" });
+    }
+    const user = findUserByResetToken(token);
+    if (!user) return res.status(400).json({ error: "Invalid or expired reset link. Please request a new one." });
+
+    const hash = await hashPassword(password);
+    updatePassword(user.id, hash);
+    clearResetToken(user.id);
+    res.json({ ok: true, message: "Password updated. You can now sign in." });
+  } catch (e) { safeError(res, e); }
+});
+
 app.get("/api/auth/me", (req, res) => {
   if (!req.isAuthenticated()) return res.json({ user: null });
-  const { password_hash, verification_token, ...safe } = req.user;
+  const { password_hash, verification_token, reset_token, reset_token_expires, ...safe } = req.user;
   const memberships = getUserMemberships(req.user.id);
   const adventureMemberships = getUserAdventureMemberships(req.user.id);
   const adminEmail = process.env.ADMIN_EMAIL;

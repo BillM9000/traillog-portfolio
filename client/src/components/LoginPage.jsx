@@ -1,17 +1,21 @@
 import { useState } from "react";
+import { api } from "../api";
 import { fontBody, fontDisplay } from "../utils/theme";
 import Logo from "./Logo";
 
 export default function LoginPage({ onLogin, onSignup }) {
-  const [mode, setMode] = useState("login"); // "login" or "signup"
+  const params = new URLSearchParams(window.location.search);
+  const resetToken = params.get("reset");
+
+  const [mode, setMode] = useState(resetToken ? "reset" : "login"); // "login" | "signup" | "forgot" | "reset"
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const params = new URLSearchParams(window.location.search);
   const verified = params.get("verified");
   const authError = params.get("error");
 
@@ -26,6 +30,18 @@ export default function LoginPage({ onLogin, onSignup }) {
         setMessage(result.message || "Check your email to verify your account");
         setName(""); setEmail(""); setPassword("");
         setMode("login");
+      } else if (mode === "forgot") {
+        const result = await api.forgotPassword(email);
+        setMessage(result.message || "If that email exists, a reset link has been sent");
+        setEmail("");
+      } else if (mode === "reset") {
+        if (password !== password2) { setError("Passwords don't match"); setLoading(false); return; }
+        const result = await api.resetPassword(resetToken, password);
+        setMessage(result.message || "Password updated. You can now sign in.");
+        setPassword(""); setPassword2("");
+        // Clear reset token from URL
+        window.history.replaceState({}, "", "/");
+        setMode("login");
       } else {
         await onLogin(email, password);
       }
@@ -34,6 +50,12 @@ export default function LoginPage({ onLogin, onSignup }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const switchMode = (newMode) => {
+    setMode(newMode);
+    setError("");
+    setMessage("");
   };
 
   return (
@@ -59,7 +81,7 @@ export default function LoginPage({ onLogin, onSignup }) {
             by GraceZero.ai
           </div>
           <p style={{ fontSize: 14, color: "#D4E4B8", marginTop: 12, fontWeight: 500 }}>
-            Coordinate your crew's high adventure training
+            {mode === "forgot" ? "Reset your password" : mode === "reset" ? "Choose a new password" : "Coordinate your crew's high adventure training"}
           </p>
         </div>
 
@@ -76,42 +98,63 @@ export default function LoginPage({ onLogin, onSignup }) {
         )}
         {message && (
           <div style={{ background: "rgba(91,122,58,0.2)", border: "2px solid rgba(184,204,154,0.5)", borderRadius: 14, padding: "20px 18px", marginBottom: 16, textAlign: "center" }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>📧</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#D4E4B8", marginBottom: 6, fontFamily: fontDisplay }}>Check your email</div>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>{mode === "forgot" ? "📧" : "✅"}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#D4E4B8", marginBottom: 6, fontFamily: fontDisplay }}>
+              {mode === "forgot" ? "Check your email" : mode === "login" && !verified ? "Password updated" : "Check your email"}
+            </div>
             <div style={{ fontSize: 12, color: "#B8CC9A", lineHeight: 1.5 }}>
-              We sent a verification link to your inbox.<br />Click the link to activate your account, then come back here to sign in.
+              {message}
             </div>
           </div>
         )}
 
-        {/* Google Sign In */}
-        <a href="/auth/google" style={{
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-          width: "100%", padding: "13px 0", borderRadius: 12, background: "#FDFAF5", color: "#2C2416",
-          fontSize: 14, fontWeight: 600, textDecoration: "none", fontFamily: fontBody,
-          border: "none", cursor: "pointer", marginBottom: 16,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
-        }}>
-          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-          Sign in with Google
-        </a>
+        {/* Google Sign In — only on login/signup */}
+        {(mode === "login" || mode === "signup") && (
+          <>
+            <a href="/auth/google" style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+              width: "100%", padding: "13px 0", borderRadius: 12, background: "#FDFAF5", color: "#2C2416",
+              fontSize: 14, fontWeight: 600, textDecoration: "none", fontFamily: fontBody,
+              border: "none", cursor: "pointer", marginBottom: 16,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+              Sign in with Google
+            </a>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          <div style={{ flex: 1, height: 1, background: "rgba(184,204,154,0.15)" }} />
-          <span style={{ fontSize: 11, color: "#7A9A5A" }}>or</span>
-          <div style={{ flex: 1, height: 1, background: "rgba(184,204,154,0.15)" }} />
-        </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+              <div style={{ flex: 1, height: 1, background: "rgba(184,204,154,0.15)" }} />
+              <span style={{ fontSize: 11, color: "#7A9A5A" }}>or</span>
+              <div style={{ flex: 1, height: 1, background: "rgba(184,204,154,0.15)" }} />
+            </div>
+          </>
+        )}
 
-        {/* Email/Password Form */}
+        {/* Form */}
         <form onSubmit={handleSubmit}>
           {mode === "signup" && (
             <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name"
               style={inputStyle} required />
           )}
-          <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" type="email"
-            style={inputStyle} required />
-          <input value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" type="password"
-            style={inputStyle} required minLength={8} />
+
+          {(mode === "login" || mode === "signup" || mode === "forgot") && (
+            <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" type="email"
+              style={inputStyle} required />
+          )}
+
+          {(mode === "login" || mode === "signup") && (
+            <input value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" type="password"
+              style={inputStyle} required minLength={8} />
+          )}
+
+          {mode === "reset" && (
+            <>
+              <input value={password} onChange={e => setPassword(e.target.value)} placeholder="New password" type="password"
+                style={inputStyle} required minLength={8} />
+              <input value={password2} onChange={e => setPassword2(e.target.value)} placeholder="Confirm new password" type="password"
+                style={inputStyle} required minLength={8} />
+            </>
+          )}
 
           {error && (
             <div style={{ fontSize: 12, color: "#d08080", marginBottom: 8 }}>{error}</div>
@@ -123,15 +166,40 @@ export default function LoginPage({ onLogin, onSignup }) {
             cursor: loading ? "wait" : "pointer", fontFamily: fontBody, marginBottom: 12,
             opacity: loading ? 0.7 : 1, boxShadow: "0 2px 8px rgba(58,77,42,0.3)",
           }}>
-            {loading ? "..." : mode === "signup" ? "Create Account" : "Sign In"}
+            {loading ? "..." :
+              mode === "signup" ? "Create Account" :
+              mode === "forgot" ? "Send Reset Link" :
+              mode === "reset" ? "Set New Password" :
+              "Sign In"}
           </button>
         </form>
 
+        {/* Navigation links */}
         <div style={{ textAlign: "center" }}>
-          <button onClick={() => { setMode(mode === "login" ? "signup" : "login"); setError(""); setMessage(""); }}
-            style={{ background: "none", border: "none", color: "#B8CC9A", fontSize: 12, cursor: "pointer", fontFamily: fontBody }}>
-            {mode === "login" ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-          </button>
+          {mode === "login" && (
+            <>
+              <button onClick={() => switchMode("forgot")}
+                style={{ background: "none", border: "none", color: "#7A9A5A", fontSize: 11, cursor: "pointer", fontFamily: fontBody, marginBottom: 8, display: "block", width: "100%" }}>
+                Forgot password?
+              </button>
+              <button onClick={() => switchMode("signup")}
+                style={{ background: "none", border: "none", color: "#B8CC9A", fontSize: 12, cursor: "pointer", fontFamily: fontBody }}>
+                Don't have an account? Sign up
+              </button>
+            </>
+          )}
+          {mode === "signup" && (
+            <button onClick={() => switchMode("login")}
+              style={{ background: "none", border: "none", color: "#B8CC9A", fontSize: 12, cursor: "pointer", fontFamily: fontBody }}>
+              Already have an account? Sign in
+            </button>
+          )}
+          {(mode === "forgot" || mode === "reset") && (
+            <button onClick={() => { switchMode("login"); window.history.replaceState({}, "", "/"); }}
+              style={{ background: "none", border: "none", color: "#B8CC9A", fontSize: 12, cursor: "pointer", fontFamily: fontBody }}>
+              Back to sign in
+            </button>
+          )}
         </div>
       </div>
     </div>
