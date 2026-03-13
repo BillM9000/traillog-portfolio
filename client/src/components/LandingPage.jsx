@@ -329,6 +329,7 @@ const STEPS = [
 export default function LandingPage({ onLogin, onSignup }) {
   const isMobile = useIsMobile();
   const authRef = useRef(null);
+  const featuresRef = useRef(null);
 
   const scrollToAuth = () => {
     authRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -406,7 +407,10 @@ export default function LandingPage({ onLogin, onSignup }) {
 
         {/* Scroll indicator */}
         {!isMobile && (
-          <div style={{ textAlign: "center", marginTop: 32, position: "relative", zIndex: 1 }}>
+          <div
+            onClick={() => featuresRef.current?.scrollIntoView({ behavior: "smooth" })}
+            style={{ textAlign: "center", marginTop: 32, position: "relative", zIndex: 1, cursor: "pointer" }}
+          >
             <div style={{ fontSize: 11, color: "#7A9A5A", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 8, fontFamily: fontBody }}>
               See what's inside
             </div>
@@ -419,7 +423,7 @@ export default function LandingPage({ onLogin, onSignup }) {
       </section>
 
       {/* ── FEATURES ────────────────────────────────────── */}
-      <section style={{ background: "#FDFAF5", padding: isMobile ? "48px 20px" : "80px 40px" }}>
+      <section ref={featuresRef} style={{ background: "#FDFAF5", padding: isMobile ? "48px 20px" : "80px 40px" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <h2 style={{
             fontFamily: fontDisplay, fontSize: isMobile ? 24 : 32, fontWeight: 800,
