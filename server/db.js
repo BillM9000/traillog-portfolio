@@ -24,6 +24,11 @@ db.exec(`
     parent_email_2 TEXT,
     email_verified INTEGER NOT NULL DEFAULT 0,
     verification_token TEXT,
+    age_confirmed TEXT,
+    age_confirmed_at DATETIME,
+    reset_token TEXT,
+    reset_token_expires DATETIME,
+    tos_accepted_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -50,6 +55,9 @@ db.exec(`
     itinerary_overrides TEXT NOT NULL DEFAULT '{}',
     tier TEXT NOT NULL DEFAULT 'free',
     amazon_affiliate_tag TEXT,
+    council TEXT,
+    location TEXT NOT NULL DEFAULT '',
+    is_public INTEGER NOT NULL DEFAULT 1,
     created_by INTEGER REFERENCES users(id),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
@@ -60,7 +68,12 @@ db.exec(`
     name TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
     trek_date TEXT,
+    depart_date TEXT,
+    arrive_date TEXT,
+    return_date TEXT,
+    home_date TEXT,
     itinerary_id TEXT REFERENCES itineraries(id),
+    adventure_type TEXT NOT NULL DEFAULT 'philmont',
     status TEXT NOT NULL DEFAULT 'active',
     created_by INTEGER REFERENCES users(id),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -86,6 +99,8 @@ db.exec(`
     role TEXT NOT NULL DEFAULT 'member',
     participation TEXT NOT NULL DEFAULT 'trekking',
     linked_to INTEGER REFERENCES users(id),
+    linked_to_manual INTEGER,
+    linked_scouts TEXT NOT NULL DEFAULT '[]',
     is_manual INTEGER NOT NULL DEFAULT 0,
     manual_name TEXT,
     color_bg TEXT NOT NULL,
@@ -928,7 +943,7 @@ if (itinCount.c < 48) {
 }
 
 // ── Backfill: seed default skills for existing Philmont adventures that have none ──
-{
+try {
   const adventures = db.prepare("SELECT id, troop_id, adventure_type FROM adventures WHERE status = 'active'").all();
   for (const adv of adventures) {
     if ((adv.adventure_type || "philmont") === "philmont") {
@@ -938,6 +953,8 @@ if (itinCount.c < 48) {
       }
     }
   }
+} catch (e) {
+  // Fresh DB may not have adventures table or adventure_type column yet — safe to skip
 }
 
 // ── Seed default gear items ──
