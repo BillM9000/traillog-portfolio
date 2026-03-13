@@ -339,10 +339,11 @@ export default function LandingPage({ onLogin, onSignup }) {
 
       {/* ── HERO ────────────────────────────────────────── */}
       <section style={{
-        minHeight: isMobile ? "auto" : "100vh",
+        minHeight: isMobile ? "auto" : "auto",
         background: "linear-gradient(175deg, #1A2412 0%, #2A3620 40%, #1A1F16 100%)",
-        position: "relative", padding: isMobile ? "48px 20px 40px" : "0 40px",
+        position: "relative", padding: isMobile ? "48px 20px 40px" : "60px 40px 48px",
         display: "flex", alignItems: "center", justifyContent: "center",
+        flexDirection: "column",
       }}>
         {/* Texture overlay */}
         <div style={{
@@ -402,6 +403,19 @@ export default function LandingPage({ onLogin, onSignup }) {
             <AuthForm ref={authRef} onLogin={onLogin} onSignup={onSignup} />
           </div>
         </div>
+
+        {/* Scroll indicator */}
+        {!isMobile && (
+          <div style={{ textAlign: "center", marginTop: 32, position: "relative", zIndex: 1 }}>
+            <div style={{ fontSize: 11, color: "#7A9A5A", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 8, fontFamily: fontBody }}>
+              See what's inside
+            </div>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.6, animation: "bounce 2s infinite" }}>
+              <path d="M6 9 L12 15 L18 9" stroke="#B8CC9A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <style>{`@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }`}</style>
+          </div>
+        )}
       </section>
 
       {/* ── FEATURES ────────────────────────────────────── */}
