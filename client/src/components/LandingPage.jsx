@@ -122,6 +122,7 @@ const AuthForm = forwardRef(function AuthForm({ onLogin, onSignup }, ref) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [tosAccepted, setTosAccepted] = useState(false);
+  const [lastAction, setLastAction] = useState(null);
 
   const verified = params.get("verified");
   const authError = params.get("error");
@@ -136,6 +137,7 @@ const AuthForm = forwardRef(function AuthForm({ onLogin, onSignup }, ref) {
         const result = await onSignup(name, email, password, tosAccepted);
         setMessage(result.message || "Check your email to verify your account");
         setName(""); setEmail(""); setPassword(""); setTosAccepted(false);
+        setLastAction("signup");
         setMode("login");
       } else if (mode === "forgot") {
         const result = await api.forgotPassword(email);
@@ -147,6 +149,7 @@ const AuthForm = forwardRef(function AuthForm({ onLogin, onSignup }, ref) {
         setMessage(result.message || "Password updated. You can now sign in.");
         setPassword(""); setPassword2("");
         window.history.replaceState({}, "", "/");
+        setLastAction("reset");
         setMode("login");
       } else {
         await onLogin(email, password);
@@ -188,7 +191,7 @@ const AuthForm = forwardRef(function AuthForm({ onLogin, onSignup }, ref) {
         <div style={{ background: "rgba(91,122,58,0.2)", border: "2px solid rgba(184,204,154,0.5)", borderRadius: 14, padding: "16px 14px", marginBottom: 16, textAlign: "center" }}>
           <div style={{ fontSize: 28, marginBottom: 6 }}>{mode === "forgot" ? "📧" : "✅"}</div>
           <div style={{ fontSize: 14, fontWeight: 700, color: "#D4E4B8", marginBottom: 4, fontFamily: fontDisplay }}>
-            {mode === "forgot" ? "Check your email" : mode === "login" && !verified ? "Password updated" : "Check your email"}
+            {lastAction === "reset" ? "Password updated" : "Check your email"}
           </div>
           <div style={{ fontSize: 12, color: "#B8CC9A", lineHeight: 1.5 }}>{message}</div>
         </div>
@@ -274,14 +277,14 @@ const AuthForm = forwardRef(function AuthForm({ onLogin, onSignup }, ref) {
             <button onClick={() => switchMode("forgot")}
               style={linkBtnStyle}>Forgot password?</button>
             <button onClick={() => switchMode("signup")}
-              style={{ ...linkBtnStyle, color: "#B8CC9A", fontSize: 12, marginTop: 4 }}>
-              Don't have an account? <strong>Sign up</strong>
+              style={{ ...linkBtnStyle, color: "#B8CC9A", fontSize: 17, marginTop: 10, letterSpacing: 0.3 }}>
+              Don't have an account? <strong style={{ color: "#FDFAF5", fontSize: 18 }}>Sign up</strong>
             </button>
           </>
         )}
         {mode === "signup" && (
           <button onClick={() => switchMode("login")}
-            style={{ ...linkBtnStyle, color: "#B8CC9A", fontSize: 12 }}>
+            style={{ ...linkBtnStyle, color: "#B8CC9A", fontSize: 15, marginTop: 8 }}>
             Already have an account? <strong>Sign in</strong>
           </button>
         )}
