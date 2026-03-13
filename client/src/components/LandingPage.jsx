@@ -321,7 +321,7 @@ const FEATURES = [
 const STEPS = [
   { num: "1", title: "Create Your Troop", desc: "Sign in with Google or email. Set up your troop with your council and location in under a minute." },
   { num: "2", title: "Add Your Adventure", desc: "Pick Philmont (more bases coming soon), select your itinerary, and enter your trek dates." },
-  { num: "3", title: "Coordinate Together", desc: "Invite members. Everyone marks availability, checks off gear, and tracks readiness — all in one place." },
+  { num: "3", title: "Coordinate Together", desc: "Invite members. Everyone marks availability, checks off gear, and tracks readiness in one place." },
 ];
 
 // ── Main Landing Page ─────────────────────────────────────────────────
@@ -371,7 +371,7 @@ export default function LandingPage({ onLogin, onSignup }) {
               marginLeft: isMobile ? "auto" : 0, marginRight: isMobile ? "auto" : 0,
             }}>
               The training coordinator for Scouting America high adventure crews.
-              From first meeting to summit — get your crew organized.
+              From first meeting to summit, get your crew organized.
             </p>
             <div style={{
               display: "flex", gap: 20, marginTop: 20,
