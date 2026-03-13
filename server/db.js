@@ -334,7 +334,7 @@ function migrate() {
     const itin = db.prepare("SELECT id FROM itineraries WHERE id = '12-20'").get();
     if (itin) {
       db.prepare("UPDATE itineraries SET route_data = ?, global_info = ?, default_skills = ? WHERE id = '12-20'")
-        .run(JSON.stringify(ROUTE_DATA_12_20), JSON.stringify(GLOBAL_INFO_12_20), JSON.stringify(DEFAULT_SKILLS_12_20));
+        .run(JSON.stringify(ROUTE_DATA_12_20), JSON.stringify(GLOBAL_INFO_12_20), JSON.stringify(PHILMONT_DEFAULT_SKILLS));
     }
 
     // ── v2 migration: trek dates, participation, linking, manual members ──
@@ -843,7 +843,8 @@ const GLOBAL_INFO_12_20 = {
   staffed_camps: ["Miners Park", "Clarks Fork", "Head of Dean", "Pueblano"],
 };
 
-const DEFAULT_SKILLS_12_20 = [
+// Universal Philmont skills — applies to ALL Philmont itineraries (training/medical/admin prep is the same)
+export const PHILMONT_DEFAULT_SKILLS = [
   // Training skills
   { id: "loaded", name: "Loaded Pack Hike (8+ mi)", icon: "🎒", desc: "Full weight, terrain with elevation changes", category: "training" },
   { id: "elevation", name: "Elevation / Hill Training", icon: "⛰️", desc: "Stair repeats, hill sprints, incline hikes", category: "training" },
@@ -876,6 +877,28 @@ const TRAINING_PRIORITIES_12_20 = [
   { icon: "🏕️", label: "Shakedowns", detail: "Min 2 full overnights with loaded packs before arrival" },
 ];
 
+/**
+ * Seed default Philmont skills into an adventure.
+ * Safe to call multiple times — skips skills that already exist.
+ */
+export function seedAdventureSkills(adventureId, troopId) {
+  const existing = db.prepare("SELECT id FROM skills WHERE adventure_id = ?").all(adventureId);
+  const existingIds = new Set(existing.map(s => s.id));
+  const insertSkill = db.prepare(
+    "INSERT INTO skills (id, troop_id, adventure_id, name, icon, description, category, is_default, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)"
+  );
+  let seeded = 0;
+  PHILMONT_DEFAULT_SKILLS.forEach((s, i) => {
+    const skillId = `${adventureId}-${s.id}`;
+    if (!existingIds.has(skillId)) {
+      insertSkill.run(skillId, troopId, adventureId, s.name, s.icon || "📋", s.desc, s.category || "training", i);
+      seeded++;
+    }
+  });
+  if (seeded > 0) console.log(`[skills] Seeded ${seeded} default skills for adventure ${adventureId}`);
+  return seeded;
+}
+
 // ── Seed 2026 Philmont Itineraries (48 itineraries from official guidebook) ──
 const itinCount = db.prepare("SELECT COUNT(*) as c FROM itineraries").get();
 if (itinCount.c < 48) {
@@ -901,6 +924,19 @@ if (itinCount.c < 48) {
     console.log(`Seeded ${seedData.length} Philmont itineraries`);
   } catch (e) {
     console.error("Failed to seed itineraries:", e.message);
+  }
+}
+
+// ── Backfill: seed default skills for existing Philmont adventures that have none ──
+{
+  const adventures = db.prepare("SELECT id, troop_id, adventure_type FROM adventures WHERE status = 'active'").all();
+  for (const adv of adventures) {
+    if ((adv.adventure_type || "philmont") === "philmont") {
+      const skillCount = db.prepare("SELECT COUNT(*) as c FROM skills WHERE adventure_id = ?").get(adv.id);
+      if (skillCount.c === 0) {
+        seedAdventureSkills(adv.id, adv.troop_id);
+      }
+    }
   }
 }
 
@@ -1307,17 +1343,9 @@ export function createAdventure({ troop_id, name, description, trek_date, depart
   db.prepare("INSERT OR IGNORE INTO adventure_members (adventure_id, user_id, role, color_bg) VALUES (?, ?, 'admin', ?)")
     .run(advId, created_by, color);
 
-  // Seed default skills from itinerary
-  if (itinerary_id) {
-    const itin = getItinerary(itinerary_id);
-    if (itin?.default_skills) {
-      const insertSkill = db.prepare(
-        "INSERT INTO skills (id, troop_id, adventure_id, name, icon, description, category, is_default, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)"
-      );
-      itin.default_skills.forEach((s, i) => {
-        insertSkill.run(`${advId}-${s.id}`, troop_id, advId, s.name, s.icon || "📋", s.desc, s.category || "training", i);
-      });
-    }
+  // Seed universal Philmont skills for all Philmont adventures
+  if ((adventure_type || "philmont") === "philmont") {
+    seedAdventureSkills(advId, troop_id);
   }
 
   return { id: advId, troop_id, name, description: description || "", trek_date: trek_date || arrive_date, depart_date, arrive_date, return_date, home_date, itinerary_id, adventure_type: adventure_type || "philmont", status: "active" };

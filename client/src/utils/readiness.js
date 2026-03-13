@@ -27,7 +27,7 @@ export function computeCrewReadiness(members, skills, gearCatalog, memberGearMap
   const adminSkills    = skills.filter(s => s.category === "admin");
 
   const pct = (items, field) => {
-    if (items.length === 0) return 0; // no items defined = not ready yet
+    if (items.length === 0) return null; // no items defined = category not applicable
     const total = items.length * trekking.length;
     const done  = trekking.reduce((sum, m) =>
       sum + (m[field] || []).filter(id => items.some(s => s.id === id)).length, 0);
@@ -46,9 +46,11 @@ export function computeCrewReadiness(members, skills, gearCatalog, memberGearMap
   }, 0);
   const gear = gearTotal > 0 ? Math.round((gearDone / gearTotal) * 100) : 0;
 
-  const overall = Math.round((training + gear + medical + admin) / 4);
+  // Only average categories that have items defined — don't penalize for unconfigured categories
+  const activeCats = [training, gear, medical, admin].filter(v => v !== null);
+  const overall = activeCats.length > 0 ? Math.round(activeCats.reduce((s, v) => s + v, 0) / activeCats.length) : 0;
 
-  return { training, gear, medical, admin, overall };
+  return { training: training ?? 0, gear, medical: medical ?? 0, admin: admin ?? 0, overall };
 }
 
 /**
@@ -66,7 +68,7 @@ export function computeMemberReadiness(member, skills, gearCatalog, memberGearMa
   const adminSkills    = skills.filter(s => s.category === "admin");
 
   const pct = (items, field) => {
-    if (items.length === 0) return 0; // no items defined = not ready yet
+    if (items.length === 0) return null; // no items defined = category not applicable
     const done = (member[field] || []).filter(id => items.some(s => s.id === id)).length;
     return Math.round((done / items.length) * 100);
   };
@@ -81,5 +83,7 @@ export function computeMemberReadiness(member, skills, gearCatalog, memberGearMa
     ? Math.round((gearDone / gearCatalog.length) * 100)
     : 0;
 
-  return Math.round((training + gear + medical + admin) / 4);
+  // Only average categories that have items defined
+  const activeCats = [training, gear, medical, admin].filter(v => v !== null);
+  return activeCats.length > 0 ? Math.round(activeCats.reduce((s, v) => s + v, 0) / activeCats.length) : 0;
 }

@@ -22,7 +22,7 @@ import db, {
   updateAdventureMemberGear, updateAdventureMemberMedical, updateAdventureMemberAdmin,
   updateAdventureMemberRole, updateAdventureMemberParticipation, linkMember,
   addManualMember, removeManualMember,
-  getAdventureSkills, addAdventureSkill, removeAdventureSkill,
+  getAdventureSkills, addAdventureSkill, removeAdventureSkill, seedAdventureSkills,
   createInvitation, getInvitationByToken, getInvitations, updateInvitationStatus, getInvitationsByEmail,
   earnBadge, getBadges, getCrewMilestones, addCrewMilestone,
   autoLinkAdult, autoLinkScout,
@@ -720,6 +720,12 @@ app.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req
             .catch(e => console.error("Itinerary change email failed:", e));
         }
       });
+
+      // Seed default skills if adventure has none (e.g. switched from no itinerary)
+      const adv = getAdventure(adventureId);
+      if ((adv.adventure_type || "philmont") === "philmont") {
+        seedAdventureSkills(adventureId, adv.troop_id);
+      }
     }
 
     res.json({ ok: true });

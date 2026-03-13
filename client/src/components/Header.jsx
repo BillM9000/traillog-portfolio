@@ -298,7 +298,7 @@ export default function Header({ user, troop, adventure, members, analysis, trek
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#FDFAF5", marginBottom: 4, fontFamily: fontBody, display: "flex", alignItems: "center", gap: 6 }}>
             {currentWaypoint.name}
-            <span style={{ fontSize: 9, color: "rgba(184,204,154,0.5)", fontWeight: 400 }}>ⓘ</span>
+            <span style={{ fontSize: 9, color: "#fff", fontWeight: 400, fontStyle: "italic", opacity: 0.6 }}>Trail Guide</span>
           </div>
           <div style={{ fontSize: 11, color: "#D4E4B8", lineHeight: 1.4, fontFamily: fontBody }}>
             {currentWaypoint.message}

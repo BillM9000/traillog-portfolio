@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { ClipboardList, CircleCheckBig, Backpack, Info } from "lucide-react";
+import { ClipboardList, CircleCheckBig, Backpack, Info, Download, Printer } from "lucide-react";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
+import { useAuth } from "../contexts/AuthContext";
 import { useAdventure } from "../contexts/AdventureContext";
 import { useToast } from "../contexts/ToastContext";
 import { fontBody, fontDisplay, card, cardTitle, tag } from "../utils/theme";
+import { exportCSV, printHTML } from "../utils/exportUtils";
 import PackWeightWidget from "./PackWeightWidget";
 
 const PRIORITY_COLORS = {
@@ -28,8 +30,10 @@ const STATUS_OPTIONS = [
 
 export default function GearList({ troopId, adventureId, members, active, setActive, updateMemberLocally }) {
   const { theme, mode } = useTheme();
+  const { user } = useAuth();
   const { gearCatalog, memberGearMap, refreshMemberGear } = useAdventure();
   const { addToast } = useToast();
+  const currentUserId = user?.id;
 
   const [category, setCategory] = useState("all");
   const [priority, setPriority] = useState("all");
@@ -316,6 +320,69 @@ export default function GearList({ troopId, adventureId, members, active, setAct
                 <s.Icon size={11} strokeWidth={2.5} /> {s.label}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Export actions */}
+        {am && (
+          <div style={{ display: "flex", gap: 6, marginTop: 8, borderTop: `1px solid ${theme.borderLight}`, paddingTop: 8 }}>
+            <button onClick={() => {
+              const myGear = memberGearMap[currentUserId] || [];
+              const activeGear = gearCatalog.filter(g => g.active !== 0);
+              const rows = activeGear.map(g => {
+                const mg = myGear.find(item => item.gear_id === g.id);
+                return { Name: g.name, Category: g.category, Priority: g.priority || "", Status: mg?.status || "unchecked", Weight_oz: g.weight_oz || "", Type: g.sharing_type || "personal" };
+              });
+              exportCSV(rows, `my-gear-checklist-${new Date().toISOString().slice(0,10)}.csv`);
+              addToast("Gear checklist exported", "success");
+            }} style={{ ...pillStyle(theme, false), display: "flex", alignItems: "center", gap: 4 }}>
+              <Download size={10} /> CSV
+            </button>
+            <button onClick={() => {
+              const myGear = memberGearMap[currentUserId] || [];
+              const activeGear = gearCatalog.filter(g => g.active !== 0);
+              const gearByStatus = { packed: [], owned: [], need: [], unchecked: [] };
+              activeGear.forEach(g => {
+                const mg = myGear.find(item => item.gear_id === g.id);
+                const status = mg?.status || "unchecked";
+                const entry = { name: g.name, category: g.category, weight: g.weight_oz ? `${g.weight_oz} oz` : "—", sharing: g.sharing_type || "personal" };
+                if (status === "packed") gearByStatus.packed.push(entry);
+                else if (status === "owned") gearByStatus.owned.push(entry);
+                else if (status === "needed") gearByStatus.need.push(entry);
+                else gearByStatus.unchecked.push(entry);
+              });
+              const section = (title, items) => {
+                if (!items.length) return "";
+                return `<div class="section"><h3>${title} (${items.length})</h3><table>
+                  <tr><th>☐</th><th>Item</th><th>Category</th><th>Weight</th><th>Type</th></tr>
+                  ${items.map(i => `<tr><td>☐</td><td>${i.name}</td><td>${i.category}</td><td>${i.weight}</td><td>${i.sharing}</td></tr>`).join("")}
+                </table></div>`;
+              };
+              printHTML(`${am.name} — Gear Checklist`, `
+                <h1>${am.name} — Gear Checklist</h1>
+                <div class="meta">Generated ${new Date().toLocaleDateString()} · ${gearByStatus.packed.length} packed · ${gearByStatus.owned.length} owned · ${gearByStatus.need.length} need · ${gearByStatus.unchecked.length} unchecked</div>
+                ${section("✅ Packed", gearByStatus.packed)}
+                ${section("Owned (not packed yet)", gearByStatus.owned)}
+                ${section("Need to Get", gearByStatus.need)}
+                ${section("Unchecked", gearByStatus.unchecked)}
+              `);
+            }} style={{ ...pillStyle(theme, false), display: "flex", alignItems: "center", gap: 4 }}>
+              <Printer size={10} /> Print
+            </button>
+            <button onClick={() => {
+              const myGear = memberGearMap[currentUserId] || [];
+              const activeGear = gearCatalog.filter(g => g.active !== 0);
+              const needItems = activeGear.filter(g => {
+                const mg = myGear.find(item => item.gear_id === g.id);
+                if (!mg) return true;
+                return mg.status === "needed";
+              }).map(g => ({ Name: g.name, Category: g.category, Priority: g.priority || "", Weight_oz: g.weight_oz || "", Type: g.sharing_type || "personal" }));
+              if (!needItems.length) { addToast("Nothing left to get!", "success"); return; }
+              exportCSV(needItems, `still-need-${new Date().toISOString().slice(0,10)}.csv`);
+              addToast(`${needItems.length} items exported`, "success");
+            }} style={{ ...pillStyle(theme, false), display: "flex", alignItems: "center", gap: 4 }}>
+              <Download size={10} /> Still Need
+            </button>
           </div>
         )}
       </div>

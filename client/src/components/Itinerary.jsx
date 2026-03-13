@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { Download } from "lucide-react";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import { card, cardTitle, fontDisplay, fontBody } from "../utils/theme";
+import { exportCSV } from "../utils/exportUtils";
 import PrintCheatSheet from "./PrintCheatSheet";
 
 export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }) {
@@ -151,6 +153,17 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
           <div style={cardTitle(theme)}>{itin.name} Quick Reference</div>
           <div style={{ display: "flex", gap: 4 }}>
             <button onClick={() => setShowPrint(true)} style={{ ...tinyBtn(theme), background: theme.accent, color: "#fff", border: `1px solid ${theme.accent}` }}>Print</button>
+            <button onClick={() => {
+              const rows = route.map(d => ({
+                Day: d.day, Camp: d.camp || "", Type: d.type || "", Miles: d.miles || "",
+                Elevation: d.elevation || "", Gain: d.gain || "", Loss: d.loss || "",
+                Programs: (d.programs || []).map(p => typeof p === "string" ? p : p.name).join("; "),
+                Notes: d.notes || "", Warnings: (d.warnings || []).join("; "),
+              }));
+              exportCSV(rows, `itinerary-${itin.id || "export"}-${new Date().toISOString().slice(0,10)}.csv`);
+            }} style={{ ...tinyBtn(theme), display: "flex", alignItems: "center", gap: 3 }}>
+              <Download size={10} /> CSV
+            </button>
             <button onClick={expandAll} style={tinyBtn(theme)}>Expand All</button>
             <button onClick={collapseAll} style={tinyBtn(theme)}>Collapse</button>
           </div>
