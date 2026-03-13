@@ -370,7 +370,7 @@ export default function LandingPage({ onLogin, onSignup }) {
               fontWeight: 500, lineHeight: 1.5, maxWidth: 480,
               marginLeft: isMobile ? "auto" : 0, marginRight: isMobile ? "auto" : 0,
             }}>
-              The free training coordinator for Scouting America high adventure crews.
+              The training coordinator for Scouting America high adventure crews.
               From first meeting to summit — get your crew organized.
             </p>
             <div style={{
@@ -378,7 +378,7 @@ export default function LandingPage({ onLogin, onSignup }) {
               justifyContent: isMobile ? "center" : "flex-start",
               flexWrap: "wrap",
             }}>
-              {["Free forever", "No ads", "Built for Scouts"].map(label => (
+              {["Easy Setup", "Mobile Friendly", "Built for Scouts"].map(label => (
                 <span key={label} style={{
                   fontSize: 11, color: "#B8CC9A", fontWeight: 600, letterSpacing: 1,
                   textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6,
@@ -560,7 +560,7 @@ export default function LandingPage({ onLogin, onSignup }) {
             Ready to Get Your Crew Organized?
           </h2>
           <p style={{ fontSize: 14, color: "#B0A898", marginBottom: 28, maxWidth: 400, marginLeft: "auto", marginRight: "auto" }}>
-            Free for every troop. No credit card required.
+            Your crew's adventure starts here.
           </p>
           <button onClick={scrollToAuth} style={{
             padding: "14px 40px", borderRadius: 12, border: "none",
@@ -568,7 +568,7 @@ export default function LandingPage({ onLogin, onSignup }) {
             cursor: "pointer", fontFamily: fontBody,
             boxShadow: "0 4px 16px rgba(58,77,42,0.4)",
           }}>
-            Get Started — It's Free
+            Get Started
           </button>
 
           {/* Footer */}
