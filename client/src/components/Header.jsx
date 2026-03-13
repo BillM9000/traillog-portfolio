@@ -18,6 +18,7 @@ export default function Header({ user, troop, adventure, members, analysis, trek
   const { addToast } = useToast();
   const [showProfile, setShowProfile] = useState(false);
   const [showTrailGuide, setShowTrailGuide] = useState(false);
+  const [showLogoLightbox, setShowLogoLightbox] = useState(false);
   const [editName, setEditName] = useState(user?.name || "");
   const [savingProfile, setSavingProfile] = useState(false);
   const profileRef = useRef(null);
@@ -228,8 +229,8 @@ export default function Header({ user, troop, adventure, members, analysis, trek
 
       {/* ── ROW 2: Hero — Logo + Crew Identity + Dates + Countdown ── */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", position: "relative", marginBottom: 16, textAlign: "center" }}>
-        {/* Troop Logo — hero size */}
-        <div style={{ marginBottom: 8 }}>
+        {/* Troop Logo — hero size, clickable for lightbox */}
+        <div style={{ marginBottom: 8, cursor: "pointer" }} onClick={() => setShowLogoLightbox(true)}>
           <TroopLogo troopId={troop?.id} name={troopName} size={88} theme={{ bgAlt: "rgba(253,250,245,0.92)" }} />
         </div>
 
@@ -327,6 +328,43 @@ export default function Header({ user, troop, adventure, members, analysis, trek
         </div>
       </div>
     </div>
+
+    {/* ── Logo Lightbox ── */}
+    {showLogoLightbox && (
+      <div onClick={() => setShowLogoLightbox(false)} style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: 20, cursor: "pointer",
+      }}>
+        <div onClick={e => e.stopPropagation()} style={{
+          position: "relative", background: theme.bgCard, borderRadius: 20,
+          padding: 24, textAlign: "center", maxWidth: 340,
+          boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
+        }}>
+          <button onClick={() => setShowLogoLightbox(false)} style={{
+            position: "absolute", top: 10, right: 14, background: "none", border: "none",
+            fontSize: 20, color: theme.textDim, cursor: "pointer",
+          }}>✕</button>
+          <div style={{ marginBottom: 16 }}>
+            <TroopLogo troopId={troop?.id} name={troopName} size={200} theme={theme} />
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay, marginBottom: 4 }}>
+            {troopName}
+          </div>
+          {troop?.council && (
+            <div style={{ fontSize: 12, color: theme.textDim, fontFamily: fontBody }}>
+              {troop.council}{troop.location ? ` · ${troop.location}` : ""}
+            </div>
+          )}
+          {adventure?.name && (
+            <div style={{ fontSize: 13, fontWeight: 700, color: theme.accent, fontFamily: fontDisplay, marginTop: 8 }}>
+              {adventure.name}
+            </div>
+          )}
+        </div>
+      </div>
+    )}
 
     {/* ── Trail Guide Modal ── */}
     {showTrailGuide && (

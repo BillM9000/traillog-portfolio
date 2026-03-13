@@ -420,23 +420,24 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
         onApproveMember={approveMemberFn} onDenyMember={denyMemberFn}
         achievements={achievements}
         onRequestLink={requestLinkFn}
+        view={view}
       />
 
       {/* CTA Banner */}
       <CTABanner members={members} active={active} setView={setView} theme={theme} />
 
-      {/* Tabs — Pill Navigation */}
+      {/* Tabs — 3×2 Grid (all visible on mobile) */}
       <div style={{ padding: "0 16px", marginBottom: 16 }}>
-        <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
           {tabs.map(([k, l, Icon]) => (
             <button key={k} onClick={() => setView(k)} style={{
-              padding: "8px 16px", borderRadius: 20, border: "none", cursor: "pointer",
-              fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", fontFamily: fontBody,
+              padding: "7px 4px", borderRadius: 10, border: view === k ? `1.5px solid ${theme.accent}` : `1px solid ${theme.borderLight}`,
+              cursor: "pointer", fontSize: 11, fontWeight: view === k ? 700 : 600, fontFamily: fontBody,
               background: view === k ? theme.pillActiveBg : theme.pillInactiveBg,
               color: view === k ? theme.pillActiveText : theme.pillInactiveText,
-              boxShadow: view === k ? "0 2px 8px rgba(58,77,42,0.25)" : "none",
-              transition: "all 0.25s ease", display: "inline-flex", alignItems: "center", gap: 5,
-            }}><Icon size={14} strokeWidth={2.5} />{l}</button>
+              boxShadow: view === k ? "0 2px 8px rgba(58,77,42,0.18)" : "none",
+              transition: "all 0.2s ease", display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+            }}><Icon size={13} strokeWidth={2.5} />{l}</button>
           ))}
         </div>
       </div>
@@ -554,7 +555,7 @@ function CTABanner({ members, active, setView, theme }) {
     <div
       onClick={() => setView(item.tab)}
       style={{
-        margin: "44px 16px 12px 16px",
+        margin: "12px 16px 12px 16px",
         background: `linear-gradient(135deg, ${theme.urgencyBg} 0%, ${theme.urgencyBgEnd || theme.urgencyBg} 100%)`,
         border: `1.5px solid ${theme.borderAmber || theme.urgency}`,
         borderRadius: 14, padding: "14px 16px",

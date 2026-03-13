@@ -3,7 +3,7 @@ import { useAdventure } from "../contexts/AdventureContext";
 import { fontBody, fontDisplay, memberTypeBadge, TRAIL_BADGES } from "../utils/theme";
 import { computeMemberReadiness } from "../utils/readiness";
 
-export default function MemberBar({ members, active, setActive, pendingMembers, isAdmin, currentUserId, onConfirmDelete, onRemoveManual, onApproveMember, onDenyMember, achievements, onRequestLink }) {
+export default function MemberBar({ members, active, setActive, pendingMembers, isAdmin, currentUserId, onConfirmDelete, onRemoveManual, onApproveMember, onDenyMember, achievements, onRequestLink, view }) {
   const { theme } = useTheme();
   const { memberGearMap, skills, gearCatalog } = useAdventure();
   const am = active !== null ? members[active] : null;
@@ -188,10 +188,13 @@ export default function MemberBar({ members, active, setActive, pendingMembers, 
         );
       })()}
 
-      {/* Active member indicator */}
+      {/* Active member indicator — contextual hint per tab */}
       {am && (
         <div style={{ fontSize: 12, color: theme.textDim, marginTop: 10, fontFamily: fontBody }}>
-          Editing: <strong style={{ color: theme.accent, fontFamily: fontDisplay }}>{am.name}</strong> — click or drag dates
+          Editing: <strong style={{ color: theme.accent, fontFamily: fontDisplay }}>{am.name}</strong>
+          {view === "calendar" && " — tap dates to set availability"}
+          {view === "gear" && " — manage gear checklist below"}
+          {view === "skills" && " — check off readiness items"}
         </div>
       )}
     </div>
