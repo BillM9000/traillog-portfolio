@@ -9,7 +9,7 @@ import { getMonthsRange, daysInMonth, dateKey, parseDateKey, dayOfWeek, isPast }
 import { fontBody, fontDisplay } from "./utils/theme";
 
 import { Calendar as CalendarIcon, BarChart3, ClipboardCheck, Map, Backpack, FileText } from "lucide-react";
-import LoginPage from "./components/LoginPage";
+import LandingPage from "./components/LandingPage";
 import ProfileSetup from "./components/ProfileSetup";
 import Lobby from "./components/Lobby";
 import AdventurePicker from "./components/AdventurePicker";
@@ -58,7 +58,7 @@ export default function App() {
     );
   }
 
-  if (!user) return <LoginPage onLogin={login} onSignup={signup} />;
+  if (!user) return <LandingPage onLogin={login} onSignup={signup} />;
   if (!user.age_confirmed || !user.user_type) return <ProfileSetup user={user} onComplete={updateProfile} />;
 
   // Profile page — shown when user clicks "View Profile" from any context
