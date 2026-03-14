@@ -1,6 +1,6 @@
 # Threat Model
 
-Last updated: 2026-03-10
+Last updated: 2026-03-14
 
 This document describes the threat model for TrailLog using the STRIDE framework.
 TrailLog is a multi-troop collaborative platform for Scouting America high adventure
@@ -96,7 +96,7 @@ file server.
 |--------|-----------|------------|--------|
 | SQL injection | Very Low | 100% parameterized queries via better-sqlite3 prepared statements. Zero string concatenation in any SQL operation across all 89 routes. | Mitigated |
 | Request body manipulation | Low | Server-side validation on all inputs. parseId() returns null for non-integer route params. Enum validation on user_type and participation. express.json enforces 1MB body limit. | Mitigated |
-| Cross-site request forgery (CSRF) | Low | SameSite:lax cookies prevent cross-origin cookie submission. All API mutations use JSON Content-Type (not form-encoded), which cannot be triggered by HTML forms. | Mitigated |
+| Cross-site request forgery (CSRF) | Very Low | Double-submit cookie pattern: server generates a CSRF token in the session and sets an XSRF-TOKEN cookie; client sends the token as an X-CSRF-Token header on POST/PUT/DELETE/PATCH; server rejects mismatches with 403. Additionally, SameSite:lax cookies prevent cross-origin cookie submission, and JSON Content-Type prevents HTML form submissions. | Mitigated |
 | Cross-troop data modification | Low | Custom gear PUT/DELETE queries include `AND troop_id = ?`. Authorization middleware verifies troop membership before granting access. | Mitigated |
 
 ### Repudiation
@@ -186,9 +186,10 @@ recovery runbook with target RTO/RPO.
 **Risk:** Security events (login failures, permission changes, data deletions) are
 not formally tracked. Incident investigation and forensic analysis would be limited.
 
-**Current mitigation:** Console.log provides basic operational logging. Docker logs
-capture stdout/stderr.
+**Current mitigation:** Morgan (`short` format) logs all HTTP requests (method,
+URL, status, response time) to stdout, captured by Docker logs. Console.log
+provides additional operational logging for specific events.
 
-**Recommendation:** Implement structured logging (e.g., pino or winston) with
-security-relevant event categories: authentication, authorization failures,
-administrative actions, and data modifications.
+**Recommendation:** Supplement Morgan request logging with structured
+security-event logging (e.g., pino or winston) covering authentication,
+authorization failures, administrative actions, and data modifications.

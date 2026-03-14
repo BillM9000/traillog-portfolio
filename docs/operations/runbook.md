@@ -129,6 +129,10 @@ inspection).
 
 ## 3. View Application Logs
 
+TrailLog uses Morgan (`short` format) to log every HTTP request to stdout. Each
+log line includes the HTTP method, URL, status code, and response time in
+milliseconds. These logs are captured by Docker and accessible via `docker logs`.
+
 **Tail the last 100 lines and follow new output:**
 
 ```bash
@@ -147,6 +151,19 @@ docker logs crew614 2>&1 | grep -i error
 
 ```bash
 docker logs crew614 2>&1 | grep -i "sqlite\|ECONNREFUSED\|EACCES"
+```
+
+**Filter for specific HTTP status codes (e.g., 403 CSRF rejections or 429
+rate-limit hits):**
+
+```bash
+docker logs crew614 2>&1 | grep " 403 \| 429 "
+```
+
+**Filter for slow requests (useful for performance monitoring):**
+
+```bash
+docker logs crew614 2>&1 | grep -E "[0-9]{4,} ms"
 ```
 
 **Note:** Docker log rotation is configured with a max size of 10 MB and 3
@@ -439,6 +456,7 @@ volume is preserved.
 | Container status | `docker ps \| grep crew614` |
 | Tail logs | `docker logs crew614 --tail 100 -f` |
 | Error logs | `docker logs crew614 2>&1 \| grep -i error` |
+| CSRF/rate-limit rejections | `docker logs crew614 2>&1 \| grep " 403 \| 429 "` |
 | Restart | `cd /opt/crew614 && docker compose restart` |
 | Stop | `cd /opt/crew614 && docker compose stop` |
 | Start | `cd /opt/crew614 && docker compose start` |

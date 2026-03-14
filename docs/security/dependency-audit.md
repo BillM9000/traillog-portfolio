@@ -1,6 +1,6 @@
 # Dependency Audit
 
-Last updated: 2026-03-10
+Last updated: 2026-03-14
 
 This document records the results of the most recent dependency security audit,
 lists all production dependencies with their risk assessments, and describes the
@@ -153,11 +153,27 @@ cd server && npm update
 cd client && npm update
 ```
 
+### Dependabot (Automated)
+
+GitHub Dependabot is configured via `.github/dependabot.yml` to automatically
+open pull requests for outdated or vulnerable dependencies. Configuration:
+
+| Setting | Value |
+|---------|-------|
+| Ecosystems | npm (`/server`) and npm (`/client`) |
+| Schedule | Weekly |
+| PR creation | Automatic when updates are available |
+
+Dependabot PRs should be reviewed, tested locally, and merged promptly. Critical
+security updates raised by Dependabot should follow the same 72-hour patching
+SLA as manually discovered CVEs.
+
 ### Recommended Cadence
 
 | Activity | Frequency |
 |----------|-----------|
 | `npm audit` check | Monthly |
+| Dependabot PR review | Weekly (as PRs arrive) |
 | Dependency version review | Monthly |
 | Critical CVE patching | Within 72 hours of disclosure |
 | Major version upgrades | Quarterly review, upgrade when stable |

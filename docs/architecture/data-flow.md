@@ -28,12 +28,14 @@ Middleware executes in the following order for every request:
 |-------|-----------|---------|
 | 1 | `express.json({ limit: '1mb' })` | Parse JSON request bodies up to 1 MB |
 | 2 | `helmet()` | Set security-related HTTP headers (CSP, HSTS, X-Frame-Options, etc.) |
-| 3 | `authLimiter` | Rate limit authentication endpoints: 20 requests per 15 minutes |
-| 4 | `apiLimiter` | Rate limit general API endpoints: 100 requests per minute |
-| 5 | `express-session` | Establish or resume a session from the session cookie, backed by SQLite |
-| 6 | `passport.initialize()` / `passport.session()` | Deserialize the authenticated user from the session |
-| 7 | `express.static` | Serve the built React SPA and its assets from the `client/dist` directory |
-| 8 | Route handlers | Application logic, guarded by per-route auth middleware |
+| 3 | `morgan('short')` | Log every HTTP request (method, URL, status, response time) to stdout |
+| 4 | `authLimiter` | Rate limit authentication endpoints: 20 requests per 15 minutes |
+| 5 | `apiLimiter` | Rate limit general API endpoints: 100 requests per minute |
+| 6 | `express-session` | Establish or resume a session from the session cookie, backed by SQLite |
+| 7 | `passport.initialize()` / `passport.session()` | Deserialize the authenticated user from the session |
+| 8 | CSRF verification | Validate `X-CSRF-Token` header against session token on POST/PUT/DELETE/PATCH requests |
+| 9 | `express.static` | Serve the built React SPA and its assets from the `client/dist` directory |
+| 10 | Route handlers | Application logic, guarded by per-route auth middleware |
 
 ## Auth Middleware Functions
 

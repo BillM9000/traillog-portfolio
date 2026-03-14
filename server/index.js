@@ -1,5 +1,6 @@
 import express from "express";
 import helmet from "helmet";
+import morgan from "morgan";
 import session from "express-session";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
@@ -70,7 +71,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       imgSrc: ["'self'", "data:", "blob:", "https://*.googleusercontent.com"],
       connectSrc: ["'self'"],
@@ -82,6 +83,8 @@ app.use(helmet({
   },
   crossOriginEmbedderPolicy: false,
 }));
+
+app.use(morgan("short"));
 
 // ── Public settings (before rate limiter — must always be available) ──
 app.get("/api/public-settings", (req, res) => {
@@ -120,6 +123,31 @@ app.use(passport.session());
 
 // Serve static frontend in production
 app.use(express.static(join(__dirname, "../client/dist")));
+
+// ── CSRF Protection (double-submit cookie pattern) ──
+app.use((req, res, next) => {
+  // Generate token if session exists but has no token yet
+  if (req.session && !req.session.csrfToken) {
+    req.session.csrfToken = crypto.randomBytes(32).toString("hex");
+  }
+  // Set readable cookie so client can send it back as a header
+  if (req.session?.csrfToken) {
+    res.cookie("XSRF-TOKEN", req.session.csrfToken, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+    });
+  }
+  // Validate on state-changing methods
+  if (["POST", "PUT", "DELETE", "PATCH"].includes(req.method)) {
+    const token = req.headers["x-csrf-token"];
+    if (!req.session?.csrfToken || token !== req.session.csrfToken) {
+      return res.status(403).json({ error: "Invalid CSRF token" });
+    }
+  }
+  next();
+});
 
 // ── Middleware ──
 

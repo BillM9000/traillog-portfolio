@@ -1,9 +1,17 @@
 const BASE = "/api";
 
+function getCsrfToken() {
+  const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 async function request(path, options = {}) {
+  const csrfToken = getCsrfToken();
+  const headers = { "Content-Type": "application/json", ...options.headers };
+  if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
   const res = await fetch(`${BASE}${path}`, {
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...options.headers },
+    headers,
     ...options,
   });
   if (res.status === 401 && !path.includes("/auth/")) {

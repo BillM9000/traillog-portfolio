@@ -1,6 +1,6 @@
 # Data Protection
 
-Last updated: 2026-03-10
+Last updated: 2026-03-14
 
 This document describes how TrailLog classifies, stores, transmits, and protects
 user data. It covers encryption, cookie security, HTTP security headers, backup
@@ -121,16 +121,27 @@ over localhost (127.0.0.1). This is acceptable because:
 | `sameSite` | `"lax"` | Cookie is sent with same-site requests and top-level navigations. Prevents cross-site request forgery from form submissions on other domains. |
 | `maxAge` | 30 days | Session expires after 30 days, requiring re-authentication. |
 
-### CSRF Mitigation
+### CSRF Protection
 
-TrailLog does not use CSRF tokens. Instead, CSRF is mitigated by the combination of:
+TrailLog uses a double-submit cookie pattern for CSRF protection:
 
-1. **SameSite:lax cookies** -- The browser does not send cookies with cross-origin
-   POST, PUT, or DELETE requests.
-2. **JSON Content-Type** -- All API mutations accept `application/json`, which
-   cannot be submitted by plain HTML forms. Cross-origin `fetch` or `XMLHttpRequest`
-   with a JSON body triggers a CORS preflight, and CORS is not configured (same-origin
-   only).
+1. **Token generation:** The server generates a CSRF token and stores it in the
+   user's session. It also sets an `XSRF-TOKEN` cookie accessible to client-side
+   JavaScript.
+2. **Token submission:** The client reads the `XSRF-TOKEN` cookie and sends it
+   back as an `X-CSRF-Token` header on all state-changing requests (POST, PUT,
+   DELETE, PATCH).
+3. **Token verification:** The server compares the header value against the
+   session-stored token. If they do not match, the request is rejected with 403.
+
+This is layered on top of existing protections:
+
+- **SameSite:lax cookies** -- The browser does not send cookies with cross-origin
+  POST, PUT, or DELETE requests.
+- **JSON Content-Type** -- All API mutations accept `application/json`, which
+  cannot be submitted by plain HTML forms. Cross-origin `fetch` or `XMLHttpRequest`
+  with a JSON body triggers a CORS preflight, and CORS is not configured (same-origin
+  only).
 
 ---
 
@@ -144,7 +155,7 @@ All security headers are configured via Helmet.js v8.
 default-src 'self';
 script-src  'self';
 style-src   'self' 'unsafe-inline';
-img-src     'self' data: https://*.googleusercontent.com;
+img-src     'self' data: blob: https://*.googleusercontent.com;
 font-src    'self' fonts.googleapis.com fonts.gstatic.com;
 frame-src   'none';
 object-src  'none';
@@ -154,9 +165,9 @@ base-uri    'self';
 | Directive | Value | Rationale |
 |-----------|-------|-----------|
 | `default-src` | `'self'` | Only allow resources from the same origin by default |
-| `script-src` | `'self'` | No inline scripts, no external script sources |
+| `script-src` | `'self'` | No inline scripts, no external script sources. The theme initialization script was moved to `client/public/theme-init.js` to eliminate the need for `unsafe-inline`. |
 | `style-src` | `'self' 'unsafe-inline'` | Inline styles required by 21 React components using CSS-in-JS patterns |
-| `img-src` | `'self' data: https://*.googleusercontent.com` | Allows same-origin images, data URIs (for icons), and Google user avatars |
+| `img-src` | `'self' data: blob: https://*.googleusercontent.com` | Allows same-origin images, data URIs (for icons), blob URIs (for logo previews), and Google user avatars |
 | `font-src` | `'self' fonts.googleapis.com fonts.gstatic.com` | Google Fonts loaded from Google CDN |
 | `frame-src` | `'none'` | No iframes allowed; prevents clickjacking via embedded frames |
 | `object-src` | `'none'` | No plugins (Flash, Java applets) |
