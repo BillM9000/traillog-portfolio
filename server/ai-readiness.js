@@ -27,13 +27,17 @@ export async function generateReadinessPlan({ adventureType, itinerary, departur
 
   try {
     const response = await api.messages.create({
-      model: "claude-sonnet-4-5-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 2000,
       messages: [{ role: "user", content: prompt }],
       system: "You are a Philmont Scout Ranch trek readiness coach. You provide honest, practical, outcome-based training guidance personalized to each crew member's current fitness and time remaining. You never prescribe specific workouts — you describe benchmarks (\"can do 8 miles with 25lb pack\"). You adapt your tone and urgency based on time remaining. You respond ONLY with valid JSON, no markdown.",
     });
 
-    const text = response.content[0].text;
+    let text = response.content[0].text.trim();
+    // Strip markdown code fences if Claude wraps the JSON
+    if (text.startsWith("```")) {
+      text = text.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+    }
     const parsed = JSON.parse(text);
     return {
       plan: parsed.plan || parsed,

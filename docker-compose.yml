@@ -24,6 +24,7 @@ services:
       - ADMIN_EMAIL=${ADMIN_EMAIL}
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASS=${SMTP_PASS}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     labels:
       - traefik.enable=true
       # HTTPS router
