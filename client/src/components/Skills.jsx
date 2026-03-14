@@ -7,7 +7,7 @@ import { computeCrewReadiness, computeMemberReadiness } from "../utils/readiness
 
 export default function Skills({ members, active, skills, analysis, isAdmin, onToggleSkill, onAddSkill, onRemoveSkill, adventureId, updateMemberLocally, achievements }) {
   const { theme, mode } = useTheme();
-  const { gearCatalog, memberGearMap } = useAdventure();
+  const { gearCatalog, memberGearMap, selectedCrewId } = useAdventure();
   const [expandedCats, setExpandedCats] = useState(new Set(["training"]));
   const [newSkillName, setNewSkillName] = useState("");
   const [newSkillDesc, setNewSkillDesc] = useState("");
@@ -31,21 +31,21 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
     [members, skills, gearCatalog, memberGearMap]);
 
   const toggleMedical = async (skillId) => {
-    if (active === null || !adventureId) return;
+    if (active === null || !selectedCrewId) return;
     const m = members[active];
     const current = m.medical || [];
     const updated = current.includes(skillId) ? current.filter(s => s !== skillId) : [...current, skillId];
     if (updateMemberLocally) updateMemberLocally(m.user_id, { medical: updated });
-    try { await api.updateAdventureMedical(adventureId, m.user_id, updated); } catch (e) { console.error(e); }
+    try { await api.updateCrewMedical(selectedCrewId, m.user_id, updated); } catch (e) { console.error(e); }
   };
 
   const toggleAdmin = async (skillId) => {
-    if (active === null || !adventureId) return;
+    if (active === null || !selectedCrewId) return;
     const m = members[active];
     const current = m.admin_tasks || [];
     const updated = current.includes(skillId) ? current.filter(s => s !== skillId) : [...current, skillId];
     if (updateMemberLocally) updateMemberLocally(m.user_id, { admin_tasks: updated });
-    try { await api.updateAdventureAdmin(adventureId, m.user_id, updated); } catch (e) { console.error(e); }
+    try { await api.updateCrewAdmin(selectedCrewId, m.user_id, updated); } catch (e) { console.error(e); }
   };
 
   const [addError, setAddError] = useState("");

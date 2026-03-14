@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
+import { useAdventure } from "../contexts/AdventureContext";
 import { fontBody, fontDisplay, memberTypeBadge, participationBadge, toolbarBtn } from "../utils/theme";
 import { US_STATES, ADVENTURE_TYPES } from "../utils/constants";
 import Logo from "./Logo";
@@ -11,6 +12,7 @@ import CouncilPicker from "./CouncilPicker";
 export default function AdminPanel({ troop, adventure, troopMembers, adventureMembers, currentUserId, onClose, onRefresh, onSelectAdventure }) {
   const { theme } = useTheme();
   const { addToast } = useToast();
+  const { selectedCrewId } = useAdventure();
   const [tab, setTab] = useState("adventure");
   const [troopName, setTroopName] = useState(troop?.name || "");
   const [troopCouncilId, setTroopCouncilId] = useState(troop?.council_id || null);
@@ -158,24 +160,24 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   };
 
   const addMemberToAdventure = async (userId) => {
-    try { await api.addAdventureMember(adventure.id, userId, "member"); onRefresh(); addToast("Member added", "success"); }
+    try { await api.addCrewMember(selectedCrewId, userId, "member"); onRefresh(); addToast("Member added", "success"); }
     catch (e) { addToast(e.message, "error"); }
   };
 
   const removeMemberFromAdventure = async (userId) => {
-    try { await api.removeAdventureMember(adventure.id, userId); setConfirmRemoveMember(null); onRefresh(); addToast("Member removed", "success"); }
+    try { await api.removeCrewMember(selectedCrewId, userId); setConfirmRemoveMember(null); onRefresh(); addToast("Member removed", "success"); }
     catch (e) { addToast(e.message, "error"); }
   };
 
   const toggleRole = async (userId, currentRole) => {
     const newRole = currentRole === "admin" ? "member" : "admin";
-    try { await api.updateMemberRole(adventure.id, userId, newRole); onRefresh(); addToast(`Role: ${newRole}`, "success"); }
+    try { await api.updateCrewMemberRole(selectedCrewId, userId, newRole); onRefresh(); addToast(`Role: ${newRole}`, "success"); }
     catch (e) { addToast(e.message, "error"); }
   };
 
   const toggleParticipation = async (userId, current) => {
     const next = current === "trekking" ? "support" : "trekking";
-    try { await api.updateParticipation(adventure.id, userId, next); onRefresh(); addToast(`Set to ${next}`, "success"); }
+    try { await api.updateCrewParticipation(selectedCrewId, userId, next); onRefresh(); addToast(`Set to ${next}`, "success"); }
     catch (e) { addToast(e.message, "error"); }
   };
 
@@ -187,12 +189,12 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
 
   const handleAddScoutLink = async (userId, currentScouts, newScoutId) => {
     const updated = [...(currentScouts || []), newScoutId].slice(0, 3);
-    try { await api.linkMember(adventure.id, userId, updated); onRefresh(); }
+    try { await api.linkCrewMember(selectedCrewId, userId, updated); onRefresh(); }
     catch (e) { addToast(e.message, "error"); }
   };
   const handleRemoveScoutLink = async (userId, currentScouts, removeId) => {
     const updated = (currentScouts || []).filter(id => id !== removeId);
-    try { await api.linkMember(adventure.id, userId, updated); onRefresh(); }
+    try { await api.linkCrewMember(selectedCrewId, userId, updated); onRefresh(); }
     catch (e) { addToast(e.message, "error"); }
   };
 
@@ -213,14 +215,14 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
     if (!manualName.trim()) { addToast("Scout name is required", "error"); return; }
     setAddingManual(true);
     try {
-      await api.addManualMember(adventure.id, manualName.trim());
+      await api.addCrewManualMember(selectedCrewId, manualName.trim());
       setManualName(""); onRefresh(); addToast("Manual member added", "success");
     } catch (e) { addToast(e.message, "error"); }
     setAddingManual(false);
   };
 
   const removeManual = async (memberId) => {
-    try { await api.removeManualMember(adventure.id, memberId); setConfirmRemoveMember(null); onRefresh(); addToast("Manual member removed", "success"); }
+    try { await api.removeCrewManualMember(selectedCrewId, memberId); setConfirmRemoveMember(null); onRefresh(); addToast("Manual member removed", "success"); }
     catch (e) { addToast(e.message, "error"); }
   };
 

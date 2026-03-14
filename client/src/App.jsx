@@ -172,7 +172,7 @@ export default function App() {
 function MainView({ user, troopId, adventureId, memberships, approvedTroops, isAdmin, publicSettings, onSwitchTroop, onGoHome, onSelectAdventure, onLogout, onRefresh, onViewProfile, onHelpClick }) {
   const { theme } = useTheme();
   const { addToast } = useToast();
-  const { adventure, members, skills, itinerary, trekDate, trekDates, achievements, loading: advLoading, refreshAll, refreshMembers, updateMemberLocally } = useAdventure();
+  const { adventure, members, skills, itinerary, trekDate, trekDates, achievements, loading: advLoading, refreshAll, refreshMembers, updateMemberLocally, crews, selectedCrewId, selectedCrew, setSelectedCrewId, refreshCrews } = useAdventure();
 
   const [troopMembers, setTroopMembers] = useState([]);
   const [troop, setTroop] = useState(null);
@@ -297,20 +297,20 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
 
   // ── Member actions ──
   const removeMember = useCallback(async (idx) => {
-    if (!isAdmin) return;
+    if (!isAdmin || !selectedCrewId) return;
     const m = members[idx];
     try {
-      await api.removeAdventureMember(adventureId, m.user_id);
+      await api.removeCrewMember(selectedCrewId, m.user_id);
       refreshMembers();
       if (active === idx) setActive(null);
       else if (active > idx) setActive(active - 1);
       setConfirmDelete(null);
     } catch (e) { console.error(e); }
-  }, [isAdmin, adventureId, members, active, refreshMembers]);
+  }, [isAdmin, selectedCrewId, members, active, refreshMembers]);
 
-  // ── Date toggling (adventure-scoped) ──
+  // ── Date toggling (crew-scoped) ──
   const toggleDate = useCallback((key, mode, period) => {
-    if (active === null) return;
+    if (active === null || !selectedCrewId) return;
     const m = members[active];
     // Remove any existing entries for this date key
     let newDates = m.dates.filter(d => {
@@ -322,11 +322,11 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
       newDates.push(`${key}:${period}`);
     }
     updateMemberLocally(m.user_id, { dates: newDates });
-    debouncedSave(() => api.updateAdventureDates(adventureId, m.user_id, newDates));
-  }, [active, members, adventureId, debouncedSave, updateMemberLocally]);
+    debouncedSave(() => api.updateCrewDates(selectedCrewId, m.user_id, newDates));
+  }, [active, members, selectedCrewId, debouncedSave, updateMemberLocally]);
 
   const bulkSelect = useCallback((type) => {
-    if (active === null) return;
+    if (active === null || !selectedCrewId) return;
     const m = members[active];
     // Build set of existing date keys that already have entries
     const existingKeys = new Set();
@@ -348,25 +348,25 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
       }
     });
     updateMemberLocally(m.user_id, { dates: newDates });
-    debouncedSave(() => api.updateAdventureDates(adventureId, m.user_id, newDates));
-  }, [active, members, months, adventureId, debouncedSave, updateMemberLocally]);
+    debouncedSave(() => api.updateCrewDates(selectedCrewId, m.user_id, newDates));
+  }, [active, members, months, selectedCrewId, debouncedSave, updateMemberLocally]);
 
   const clearAll = useCallback(() => {
-    if (active === null) return;
+    if (active === null || !selectedCrewId) return;
     const m = members[active];
     updateMemberLocally(m.user_id, { dates: [] });
-    debouncedSave(() => api.updateAdventureDates(adventureId, m.user_id, []));
-  }, [active, members, adventureId, debouncedSave, updateMemberLocally]);
+    debouncedSave(() => api.updateCrewDates(selectedCrewId, m.user_id, []));
+  }, [active, members, selectedCrewId, debouncedSave, updateMemberLocally]);
 
-  // ── Skill toggling (adventure-scoped) ──
+  // ── Skill toggling (crew-scoped) ──
   const toggleSkill = useCallback((sid) => {
-    if (active === null) return;
+    if (active === null || !selectedCrewId) return;
     const m = members[active];
     const has = (m.skills || []).includes(sid);
     const newSkills = has ? m.skills.filter(s => s !== sid) : [...(m.skills || []), sid];
     updateMemberLocally(m.user_id, { skills: newSkills });
-    debouncedSave(() => api.updateAdventureSkills(adventureId, m.user_id, newSkills));
-  }, [active, members, adventureId, debouncedSave, updateMemberLocally]);
+    debouncedSave(() => api.updateCrewSkills(selectedCrewId, m.user_id, newSkills));
+  }, [active, members, selectedCrewId, debouncedSave, updateMemberLocally]);
 
   const addNewSkill = useCallback(async (name, desc, category = "training") => {
     if (!isAdmin) return;
@@ -534,7 +534,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
         <ConfirmModal
           memberName={confirmManualDelete.name}
           onConfirm={async () => {
-            try { await api.removeManualMember(adventureId, confirmManualDelete.id); refreshMembers(); } catch (e) { console.error(e); }
+            try { await api.removeCrewManualMember(selectedCrewId, confirmManualDelete.id); refreshMembers(); } catch (e) { console.error(e); }
             setConfirmManualDelete(null);
           }}
           onCancel={() => setConfirmManualDelete(null)}
