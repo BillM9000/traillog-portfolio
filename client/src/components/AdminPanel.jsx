@@ -42,6 +42,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   const [manualName, setManualName] = useState("");
   const [addingManual, setAddingManual] = useState(false);
   const [confirmDeleteAdv, setConfirmDeleteAdv] = useState(false);
+  const [confirmRemoveMember, setConfirmRemoveMember] = useState(null); // { userId, name, isManual, memberId }
 
   // New adventure creation
   const [showCreateAdv, setShowCreateAdv] = useState(false);
@@ -161,7 +162,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   };
 
   const removeMemberFromAdventure = async (userId) => {
-    try { await api.removeAdventureMember(adventure.id, userId); onRefresh(); addToast("Member removed", "success"); }
+    try { await api.removeAdventureMember(adventure.id, userId); setConfirmRemoveMember(null); onRefresh(); addToast("Member removed", "success"); }
     catch (e) { addToast(e.message, "error"); }
   };
 
@@ -218,7 +219,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   };
 
   const removeManual = async (memberId) => {
-    try { await api.removeManualMember(adventure.id, memberId); onRefresh(); addToast("Manual member removed", "success"); }
+    try { await api.removeManualMember(adventure.id, memberId); setConfirmRemoveMember(null); onRefresh(); addToast("Manual member removed", "success"); }
     catch (e) { addToast(e.message, "error"); }
   };
 
@@ -495,9 +496,9 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                         {m.role === "admin" && <span style={{ fontSize: 8, fontWeight: 700, color: theme.accent, background: theme.accentBg, padding: "1px 4px", borderRadius: 3 }}>ADMIN</span>}
                       </div>
                       {m.is_manual ? (
-                        <button onClick={() => removeManual(m.id)} style={{ fontSize: 10, color: theme.danger, background: "none", border: `1px solid ${theme.danger}40`, padding: "2px 8px", borderRadius: 4, cursor: "pointer", fontFamily: fontBody }}>Remove</button>
+                        <button onClick={() => setConfirmRemoveMember({ userId: null, name: m.name, isManual: true, memberId: m.id })} style={{ fontSize: 10, color: theme.danger, background: "none", border: `1px solid ${theme.danger}40`, padding: "2px 8px", borderRadius: 4, cursor: "pointer", fontFamily: fontBody }}>Remove</button>
                       ) : m.user_id !== currentUserId && m.role !== "admin" ? (
-                        <button onClick={() => removeMemberFromAdventure(m.user_id)} style={{ fontSize: 10, color: theme.danger, background: "none", border: `1px solid ${theme.danger}40`, padding: "2px 8px", borderRadius: 4, cursor: "pointer", fontFamily: fontBody }}>Remove</button>
+                        <button onClick={() => setConfirmRemoveMember({ userId: m.user_id, name: m.name, isManual: false })} style={{ fontSize: 10, color: theme.danger, background: "none", border: `1px solid ${theme.danger}40`, padding: "2px 8px", borderRadius: 4, cursor: "pointer", fontFamily: fontBody }}>Remove</button>
                       ) : null}
                     </div>
                     {!m.is_manual && (
@@ -683,6 +684,9 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
       )}
       {confirmItineraryChange && (
         <ConfirmModal title="Change Itinerary?" message="Changing the itinerary will update the trek plan for all crew members. Everyone will be notified by email." confirmLabel="Change Itinerary" onConfirm={() => { setConfirmItineraryChange(false); doSaveAdventure(); }} onCancel={() => { setConfirmItineraryChange(false); setAdvItinerary(adventure?.itinerary_id || ""); }} />
+      )}
+      {confirmRemoveMember && (
+        <ConfirmModal title="Remove Member?" message={`Remove ${confirmRemoveMember.name} from this adventure? They will lose all their gear selections and calendar dates.`} confirmLabel="Remove" onConfirm={() => confirmRemoveMember.isManual ? removeManual(confirmRemoveMember.memberId) : removeMemberFromAdventure(confirmRemoveMember.userId)} onCancel={() => setConfirmRemoveMember(null)} />
       )}
     </div>
   );

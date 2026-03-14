@@ -12,6 +12,7 @@ import { Calendar as CalendarIcon, BarChart3, ClipboardCheck, Map, Backpack, Fil
 import LandingPage from "./components/LandingPage";
 import ProfileSetup from "./components/ProfileSetup";
 import HomeDashboard from "./components/HomeDashboard";
+import HelpSystem from "./components/HelpSystem";
 import AdventurePicker from "./components/AdventurePicker";
 import Header from "./components/Header";
 import MemberBar from "./components/MemberBar";
@@ -54,6 +55,7 @@ export default function App() {
   const [adventureId, setAdventureId] = useState(null);
   const [showGlobalAdmin, setShowGlobalAdmin] = useState(false);
   const [showProfilePage, setShowProfilePage] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const isGlobalAdmin = !!user?.is_global_admin;
 
   // Go home = clear troop and adventure selection
@@ -123,11 +125,15 @@ export default function App() {
             // If aid is null (e.g. troop with no adventures), will show adventure picker
           }}
           onViewProfile={() => setShowProfilePage(true)}
+          onHelpClick={() => setShowHelp(true)}
         />
         {showGlobalAdmin && (
           <GlobalAdmin isGlobalAdmin={isGlobalAdmin} troopId={null} onClose={() => { setShowGlobalAdmin(false); refresh(); }}
             onEnterTroop={(id) => { setTroopId(id); setShowGlobalAdmin(false); }}
             onLogout={logout} user={user} alwaysOpen={false} />
+        )}
+        {showHelp && (
+          <HelpSystem onClose={() => setShowHelp(false)} user={user} isAdmin={false} isGlobalAdmin={isGlobalAdmin} />
         )}
       </>
     );
@@ -154,12 +160,16 @@ export default function App() {
         onLogout={logout}
         onRefresh={refresh}
         onViewProfile={() => setShowProfilePage(true)}
+        onHelpClick={() => setShowHelp(true)}
       />
+      {showHelp && (
+        <HelpSystem onClose={() => setShowHelp(false)} user={user} isAdmin={isAdmin} isGlobalAdmin={isGlobalAdmin} />
+      )}
     </AdventureProvider>
   );
 }
 
-function MainView({ user, troopId, adventureId, memberships, approvedTroops, isAdmin, publicSettings, onSwitchTroop, onGoHome, onSelectAdventure, onLogout, onRefresh, onViewProfile }) {
+function MainView({ user, troopId, adventureId, memberships, approvedTroops, isAdmin, publicSettings, onSwitchTroop, onGoHome, onSelectAdventure, onLogout, onRefresh, onViewProfile, onHelpClick }) {
   const { theme } = useTheme();
   const { addToast } = useToast();
   const { adventure, members, skills, itinerary, trekDate, trekDates, achievements, loading: advLoading, refreshAll, refreshMembers, updateMemberLocally } = useAdventure();
@@ -169,6 +179,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
   const [active, setActive] = useState(null);
   const [view, setView] = useState("calendar");
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [confirmManualDelete, setConfirmManualDelete] = useState(null); // { id, name }
   const [showAdmin, setShowAdmin] = useState(false);
   const [showGearAdmin, setShowGearAdmin] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
@@ -426,6 +437,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
         onAdminClick={() => setShowAdmin(true)}
         onRefreshAuth={onRefresh}
         onViewProfile={onViewProfile}
+        onHelpClick={onHelpClick}
         achievements={achievements}
       />
 
@@ -433,8 +445,9 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
         members={members} active={active} setActive={setActive}
         pendingMembers={pendingMembers} isAdmin={isAdmin} currentUserId={user.id}
         onConfirmDelete={setConfirmDelete}
-        onRemoveManual={async (memberId) => {
-          try { await api.removeManualMember(adventureId, memberId); refreshMembers(); } catch (e) { console.error(e); }
+        onRemoveManual={(memberId) => {
+          const m = members.find(x => x.id === memberId);
+          setConfirmManualDelete({ id: memberId, name: m?.name || "this member" });
         }}
         onApproveMember={approveMemberFn} onDenyMember={denyMemberFn}
         achievements={achievements}
@@ -515,6 +528,16 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
           memberName={members[confirmDelete]?.name}
           onConfirm={() => removeMember(confirmDelete)}
           onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+      {confirmManualDelete && (
+        <ConfirmModal
+          memberName={confirmManualDelete.name}
+          onConfirm={async () => {
+            try { await api.removeManualMember(adventureId, confirmManualDelete.id); refreshMembers(); } catch (e) { console.error(e); }
+            setConfirmManualDelete(null);
+          }}
+          onCancel={() => setConfirmManualDelete(null)}
         />
       )}
 

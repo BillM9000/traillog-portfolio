@@ -7,12 +7,12 @@ import { api } from "../api";
 import { fontBody, fontDisplay, JOURNEY_WAYPOINTS, TRAIL_BADGES } from "../utils/theme";
 import { computeCrewReadiness } from "../utils/readiness";
 import { ProgressRing } from "./ProgressWidgets";
-import { Settings, Sun, Moon } from "lucide-react";
+import { Settings, Sun, Moon, HelpCircle } from "lucide-react";
 import { ADVENTURE_TYPES } from "../utils/constants";
 import Logo from "./Logo";
 import TroopLogo from "./TroopLogo";
 
-export default function Header({ user, troop, adventure, members, analysis, trekDates, trekDate, saving, isAdmin, approvedTroops, onSwitchTroop, onGoHome, onLogout, onAdminClick, onRefreshAuth, onViewProfile, achievements }) {
+export default function Header({ user, troop, adventure, members, analysis, trekDates, trekDate, saving, isAdmin, approvedTroops, onSwitchTroop, onGoHome, onLogout, onAdminClick, onRefreshAuth, onViewProfile, onHelpClick, achievements }) {
   const countdown = useCountdown(trekDates || trekDate);
   const { theme, mode, toggle } = useTheme();
   const { addToast } = useToast();
@@ -161,6 +161,14 @@ export default function Header({ user, troop, adventure, members, analysis, trek
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             {mode === "dark" ? <Sun size={18} color="#FDFAF5" strokeWidth={2} /> : <Moon size={18} color="#FDFAF5" strokeWidth={2} />}
+          </button>
+          <button onClick={onHelpClick} title="Help" aria-label="Open Help" style={{
+            width: 32, height: 32, borderRadius: 10,
+            background: "rgba(255,255,255,0.1)", backdropFilter: "blur(4px)",
+            border: "none", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <HelpCircle size={18} color="#FDFAF5" strokeWidth={2} />
           </button>
           {isAdmin && (
             <button onClick={onAdminClick} title="Admin Panel" aria-label="Open Admin Panel" style={{

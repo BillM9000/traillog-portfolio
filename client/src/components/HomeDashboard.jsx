@@ -63,7 +63,7 @@ function ProgressRing({ pct, size = 40, stroke = 4, theme }) {
   );
 }
 
-export default function HomeDashboard({ user, memberships, onRefresh, onLogout, isGlobalAdmin, onGlobalAdminClick, onEnterAdventure, onViewProfile }) {
+export default function HomeDashboard({ user, memberships, onRefresh, onLogout, isGlobalAdmin, onGlobalAdminClick, onEnterAdventure, onViewProfile, onHelpClick }) {
   const { theme, toggle } = useTheme();
   const { addToast } = useToast();
 
@@ -180,6 +180,15 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
           <button onClick={toggle} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", padding: "2px 6px" }}>
             {theme.name === "dark" ? "☀️" : "🌙"}
           </button>
+          {onHelpClick && (
+            <button onClick={onHelpClick} title="Help" aria-label="Open Help" style={{
+              width: 30, height: 30, borderRadius: "50%", border: `2px solid ${theme.accent}40`,
+              background: theme.accent + "20", cursor: "pointer", padding: 0,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: theme.accent }}>?</span>
+            </button>
+          )}
           {onViewProfile && (
             <button onClick={onViewProfile} style={{
               width: 30, height: 30, borderRadius: "50%", border: `2px solid ${theme.accent}40`,
