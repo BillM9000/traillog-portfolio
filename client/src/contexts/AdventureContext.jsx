@@ -5,6 +5,8 @@ const AdventureContext = createContext(null);
 
 export function AdventureProvider({ adventureId, troopId, children }) {
   const [adventure, setAdventure] = useState(null);
+  const [crews, setCrews] = useState([]);
+  const [selectedCrewId, setSelectedCrewId] = useState(null);
   const [members, setMembers] = useState([]);
   const [skills, setSkills] = useState([]);
   const [itinerary, setItinerary] = useState(null);
@@ -13,32 +15,79 @@ export function AdventureProvider({ adventureId, troopId, children }) {
   const [memberGearMap, setMemberGearMap] = useState({});
   const [loading, setLoading] = useState(true);
 
+  // Selected crew object
+  const selectedCrew = useMemo(() => {
+    if (!selectedCrewId || crews.length === 0) return null;
+    return crews.find(c => c.id === selectedCrewId) || null;
+  }, [crews, selectedCrewId]);
+
   const refreshAdventure = useCallback(async () => {
     if (!adventureId) return;
     try {
       const adv = await api.getAdventure(adventureId);
       setAdventure(adv);
-      if (adv.itinerary_id) {
-        const itin = await api.getItinerary(adv.itinerary_id);
-        setItinerary(itin);
-      }
     } catch (e) {
       console.error("Failed to load adventure:", e);
     }
   }, [adventureId]);
 
-  const refreshMembers = useCallback(async () => {
+  const refreshCrews = useCallback(async () => {
     if (!adventureId) return;
     try {
-      setMembers(await api.getAdventureMembers(adventureId));
+      const crewList = await api.getCrews(adventureId);
+      setCrews(crewList);
+      // Auto-select first crew if none selected or current selection invalid
+      if (crewList.length > 0) {
+        setSelectedCrewId(prev => {
+          if (prev && crewList.some(c => c.id === prev)) return prev;
+          return crewList[0].id;
+        });
+      }
     } catch (e) {
-      console.error("Failed to load members:", e);
+      console.error("Failed to load crews:", e);
     }
   }, [adventureId]);
+
+  // Fetch itinerary when selected crew changes (crew owns itinerary_id)
+  useEffect(() => {
+    if (!selectedCrew) {
+      // Fallback: use adventure itinerary_id if no crew
+      if (adventure?.itinerary_id) {
+        api.getItinerary(adventure.itinerary_id).then(setItinerary).catch(() => setItinerary(null));
+      } else {
+        setItinerary(null);
+      }
+      return;
+    }
+    if (selectedCrew.itinerary_id) {
+      api.getItinerary(selectedCrew.itinerary_id).then(setItinerary).catch(() => setItinerary(null));
+    } else {
+      setItinerary(null);
+    }
+  }, [selectedCrew, adventure]);
+
+  const refreshMembers = useCallback(async () => {
+    if (!selectedCrewId) {
+      // Fallback to adventure members if no crew selected yet
+      if (!adventureId) return;
+      try {
+        setMembers(await api.getAdventureMembers(adventureId));
+      } catch (e) {
+        console.error("Failed to load members:", e);
+      }
+      return;
+    }
+    try {
+      setMembers(await api.getCrewMembers(selectedCrewId));
+    } catch (e) {
+      console.error("Failed to load crew members:", e);
+    }
+  }, [adventureId, selectedCrewId]);
 
   const refreshSkills = useCallback(async () => {
     if (!adventureId) return;
     try {
+      // Skills stay adventure-scoped (shared across crews)
       setSkills(await api.getAdventureSkills(adventureId));
     } catch (e) {
       console.error("Failed to load skills:", e);
@@ -48,6 +97,7 @@ export function AdventureProvider({ adventureId, troopId, children }) {
   const refreshAchievements = useCallback(async () => {
     if (!adventureId) return;
     try {
+      // Achievements stay adventure-scoped for now
       setAchievements(await api.getAchievements(adventureId));
     } catch (e) {
       console.error("Failed to load achievements:", e);
@@ -66,6 +116,7 @@ export function AdventureProvider({ adventureId, troopId, children }) {
   const refreshMemberGear = useCallback(async () => {
     if (!adventureId) return;
     try {
+      // Gear is still adventure-scoped in member_gear table
       const allGear = await api.getAdventureGearAll(adventureId);
       // Group by user_id
       const map = {};
@@ -80,32 +131,40 @@ export function AdventureProvider({ adventureId, troopId, children }) {
   }, [adventureId]);
 
   const refreshAll = useCallback(async () => {
-    await Promise.all([refreshAdventure(), refreshMembers(), refreshSkills(), refreshAchievements(), refreshGearCatalog(), refreshMemberGear()]);
-  }, [refreshAdventure, refreshMembers, refreshSkills, refreshAchievements, refreshGearCatalog, refreshMemberGear]);
+    await Promise.all([refreshAdventure(), refreshCrews(), refreshMembers(), refreshSkills(), refreshAchievements(), refreshGearCatalog(), refreshMemberGear()]);
+  }, [refreshAdventure, refreshCrews, refreshMembers, refreshSkills, refreshAchievements, refreshGearCatalog, refreshMemberGear]);
 
   // Initial load
   useEffect(() => {
     if (!adventureId) return;
     let cancelled = false;
     setLoading(true);
-    Promise.all([refreshAdventure(), refreshMembers(), refreshSkills(), refreshAchievements(), refreshGearCatalog(), refreshMemberGear()])
+    Promise.all([refreshAdventure(), refreshCrews()])
+      .then(() => Promise.all([refreshMembers(), refreshSkills(), refreshAchievements(), refreshGearCatalog(), refreshMemberGear()]))
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [adventureId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Smart trek dates from adventure
+  // Re-fetch members when selected crew changes (after initial load)
+  useEffect(() => {
+    if (loading || !selectedCrewId) return;
+    refreshMembers();
+  }, [selectedCrewId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Smart trek dates from selected crew (source of truth), fallback to adventure
   const trekDates = useMemo(() => {
-    if (!adventure) return null;
+    const src = selectedCrew || adventure;
+    if (!src) return null;
     const parse = (d) => d ? new Date(d + "T00:00:00") : null;
     return {
-      depart: parse(adventure.depart_date),
-      arrive: parse(adventure.arrive_date),
-      return: parse(adventure.return_date),
-      home: parse(adventure.home_date),
+      depart: parse(src.depart_date),
+      arrive: parse(src.arrive_date),
+      return: parse(src.return_date),
+      home: parse(src.home_date),
       // Legacy compat
-      trek: parse(adventure.trek_date || adventure.arrive_date),
+      trek: parse(src.trek_date || src.arrive_date),
     };
-  }, [adventure]);
+  }, [selectedCrew, adventure]);
 
   // Legacy compat
   const trekDate = trekDates?.trek || null;
@@ -128,6 +187,8 @@ export function AdventureProvider({ adventureId, troopId, children }) {
       achievements, trekkingMembers, supportMembers,
       adventureId, troopId,
       gearCatalog, memberGearMap,
+      // Crew state
+      crews, selectedCrewId, selectedCrew, setSelectedCrewId, refreshCrews,
       refreshAdventure, refreshMembers, refreshSkills, refreshAchievements,
       refreshGearCatalog, refreshMemberGear, refreshAll,
       updateMemberLocally,

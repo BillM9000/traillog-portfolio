@@ -168,6 +168,35 @@ export const api = {
   promoteAdmin: (userId) => request(`/admin/users/${userId}/promote`, { method: "PUT" }),
   demoteAdmin: (userId) => request(`/admin/users/${userId}/demote`, { method: "PUT" }),
 
+  // Crews
+  getCrews: (advId) => request(`/adventures/${advId}/crews`),
+  getCrew: (crewId) => request(`/crews/${crewId}`),
+  createCrew: (advId, data) => request(`/adventures/${advId}/crews`, { method: "POST", body: JSON.stringify(data) }),
+  updateCrew: (crewId, data) => request(`/crews/${crewId}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteCrew: (crewId) => request(`/crews/${crewId}`, { method: "DELETE" }),
+
+  // Crew Members
+  getCrewMembers: (crewId) => request(`/crews/${crewId}/members`),
+  addCrewMember: (crewId, user_id, role) => request(`/crews/${crewId}/members`, { method: "POST", body: JSON.stringify({ user_id, role }) }),
+  removeCrewMember: (crewId, userId) => request(`/crews/${crewId}/members/${userId}`, { method: "DELETE" }),
+  updateCrewDates: (crewId, userId, dates) => request(`/crews/${crewId}/members/${userId}/dates`, { method: "PUT", body: JSON.stringify({ dates }) }),
+  updateCrewSkills: (crewId, userId, skills) => request(`/crews/${crewId}/members/${userId}/skills`, { method: "PUT", body: JSON.stringify({ skills }) }),
+  updateCrewGear: (crewId, userId, gear) => request(`/crews/${crewId}/members/${userId}/gear`, { method: "PUT", body: JSON.stringify({ gear }) }),
+  updateCrewMedical: (crewId, userId, medical) => request(`/crews/${crewId}/members/${userId}/medical`, { method: "PUT", body: JSON.stringify({ medical }) }),
+  updateCrewAdmin: (crewId, userId, admin_tasks) => request(`/crews/${crewId}/members/${userId}/admin`, { method: "PUT", body: JSON.stringify({ admin_tasks }) }),
+  updateCrewMemberRole: (crewId, userId, role) => request(`/crews/${crewId}/members/${userId}/role`, { method: "PUT", body: JSON.stringify({ role }) }),
+  updateCrewParticipation: (crewId, userId, participation) => request(`/crews/${crewId}/members/${userId}/participation`, { method: "PUT", body: JSON.stringify({ participation }) }),
+  linkCrewMember: (crewId, userId, linked_scouts) => request(`/crews/${crewId}/members/${userId}/link`, { method: "PUT", body: JSON.stringify({ linked_scouts }) }),
+  addCrewManualMember: (crewId, name) => request(`/crews/${crewId}/manual-members`, { method: "POST", body: JSON.stringify({ name }) }),
+  removeCrewManualMember: (crewId, memberId) => request(`/crews/${crewId}/manual-members/${memberId}`, { method: "DELETE" }),
+
+  // Crew Gear
+  getCrewGearAll: (crewId) => request(`/crews/${crewId}/gear`),
+  getCrewMemberPackWeight: (crewId, userId) => request(`/crews/${crewId}/members/${userId}/pack-weight`),
+
+  // Crew Achievements
+  getCrewAchievements: (crewId) => request(`/crews/${crewId}/achievements`),
+
   // Councils
   getCouncils: () => request("/councils"),
 
