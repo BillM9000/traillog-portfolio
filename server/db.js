@@ -29,6 +29,7 @@ db.exec(`
     reset_token TEXT,
     reset_token_expires DATETIME,
     tos_accepted_at DATETIME,
+    is_admin INTEGER NOT NULL DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -311,7 +312,7 @@ db.exec(`
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 15;
+const CURRENT_SCHEMA_VERSION = 16;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -581,11 +582,22 @@ function migrate() {
       } catch (e) { console.log("v15 sharing_type migration note:", e.message); }
     }
 
+    // ── v16 migration: multi-admin support ──
+    if (version < 16) {
+      tryAlter("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0");
+    }
+
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
   });
 
   runMigration();
   console.log(`Migrated schema to version ${CURRENT_SCHEMA_VERSION}`);
+
+  // Seed ADMIN_EMAIL user as system admin (idempotent, runs every startup)
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (adminEmail) {
+    db.prepare("UPDATE users SET is_admin = 1 WHERE email = ? AND is_admin = 0").run(adminEmail);
+  }
 }
 
 // Ensure performance indexes exist (idempotent, runs every startup regardless of schema version)
@@ -1191,6 +1203,144 @@ export function updatePassword(userId, passwordHash) {
 
 export function bindGoogleProfile(userId, googleId, avatarUrl) {
   db.prepare("UPDATE users SET google_id = ?, avatar_url = ? WHERE id = ?").run(googleId, avatarUrl, userId);
+}
+
+// ── System Admin Management ──
+export function promoteToAdmin(userId) {
+  db.prepare("UPDATE users SET is_admin = 1 WHERE id = ?").run(userId);
+}
+
+export function demoteFromAdmin(userId) {
+  db.prepare("UPDATE users SET is_admin = 0 WHERE id = ?").run(userId);
+}
+
+export function getSystemAdmins() {
+  return db.prepare("SELECT id, email, name, is_admin, created_at FROM users WHERE is_admin = 1").all();
+}
+
+export function getAllUsers() {
+  return db.prepare("SELECT id, email, name, user_type, is_admin, created_at FROM users ORDER BY name").all();
+}
+
+// ── Dashboard Data ──
+
+export function getDashboardData(userId, isAdmin) {
+  // Get user's approved troop memberships
+  const memberships = db.prepare(`
+    SELECT tm.troop_id, tm.role, t.name, t.council, t.location, t.is_public
+    FROM troop_members tm JOIN troops t ON tm.troop_id = t.id
+    WHERE tm.user_id = ? AND tm.status = 'approved'
+  `).all(userId);
+
+  const troops = memberships.map(m => {
+    const adventures = db.prepare("SELECT * FROM adventures WHERE troop_id = ? AND status = 'active' ORDER BY created_at DESC").all(m.troop_id);
+    return {
+      id: m.troop_id, name: m.name, council: m.council, location: m.location,
+      role: m.role, is_public: m.is_public,
+      adventures: adventures.map(a => {
+        const memberCount = db.prepare("SELECT COUNT(*) as c FROM adventure_members WHERE adventure_id = ?").get(a.id).c;
+        const trekkingCount = db.prepare("SELECT COUNT(*) as c FROM adventure_members WHERE adventure_id = ? AND participation = 'trekking'").get(a.id).c;
+        return {
+          id: a.id, name: a.name, adventure_type: a.adventure_type,
+          depart_date: a.depart_date, arrive_date: a.arrive_date,
+          return_date: a.return_date, home_date: a.home_date,
+          itinerary_id: a.itinerary_id,
+          member_count: memberCount, trekking_count: trekkingCount,
+          crew_readiness: computeServerReadiness(a.id),
+          next_training: getNextTrainingEvent(a.id),
+        };
+      }),
+    };
+  });
+
+  // Pending join requests
+  const pending = db.prepare(`
+    SELECT tm.troop_id, t.name as troop_name, t.council
+    FROM troop_members tm JOIN troops t ON tm.troop_id = t.id
+    WHERE tm.user_id = ? AND tm.status = 'pending'
+  `).all(userId);
+
+  // Public troops the user is NOT a member of
+  const publicTroops = db.prepare(`
+    SELECT t.id, t.name, t.council, t.location
+    FROM troops t WHERE t.is_public = 1
+    AND t.id NOT IN (SELECT troop_id FROM troop_members WHERE user_id = ?)
+    ORDER BY t.name
+  `).all(userId);
+
+  const result = { troops, pending, public_troops: publicTroops };
+
+  // Platform stats for system admins
+  if (isAdmin) {
+    const totalUsers = db.prepare("SELECT COUNT(*) as c FROM users").get().c;
+    const totalTroops = db.prepare("SELECT COUNT(*) as c FROM troops").get().c;
+    const activeAdventures = db.prepare("SELECT COUNT(*) as c FROM adventures WHERE status = 'active'").get().c;
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const newThisWeek = db.prepare("SELECT COUNT(*) as c FROM users WHERE created_at >= ?").get(weekAgo).c;
+    result.platform_stats = { total_users: totalUsers, total_troops: totalTroops, active_adventures: activeAdventures, new_this_week: newThisWeek };
+  }
+
+  return result;
+}
+
+export function computeServerReadiness(adventureId) {
+  // Get trekking members with their skill/medical/admin completions
+  const members = db.prepare(`
+    SELECT am.user_id, am.skills, am.medical, am.admin_tasks, am.participation
+    FROM adventure_members am WHERE am.adventure_id = ? AND am.participation = 'trekking'
+  `).all(adventureId);
+
+  if (members.length === 0) return 0;
+
+  // Parse JSON fields
+  const parsed = members.map(m => ({
+    user_id: m.user_id,
+    skills: JSON.parse(m.skills || "[]"),
+    medical: JSON.parse(m.medical || "[]"),
+    admin_tasks: JSON.parse(m.admin_tasks || "[]"),
+  }));
+
+  // Get skill definitions for this adventure
+  const skills = db.prepare("SELECT id, category FROM skills WHERE adventure_id = ?").all(adventureId);
+  const trainingSkills = skills.filter(s => s.category === "training");
+  const medicalSkills = skills.filter(s => s.category === "medical");
+  const adminSkills = skills.filter(s => s.category === "admin");
+
+  const pct = (items, field) => {
+    if (items.length === 0) return null;
+    const total = items.length * parsed.length;
+    const done = parsed.reduce((sum, m) =>
+      sum + m[field].filter(id => items.some(s => s.id === id)).length, 0);
+    return total > 0 ? Math.round((done / total) * 100) : 0;
+  };
+
+  const training = pct(trainingSkills, "skills");
+  const medical = pct(medicalSkills, "medical");
+  const admin = pct(adminSkills, "admin_tasks");
+
+  // Gear readiness
+  const gearCount = db.prepare("SELECT COUNT(*) as c FROM gear_catalog WHERE active = 1").get().c;
+  let gear = 0;
+  if (gearCount > 0) {
+    const gearTotal = gearCount * parsed.length;
+    const gearDone = parsed.reduce((sum, m) => {
+      const done = db.prepare("SELECT COUNT(*) as c FROM member_gear WHERE adventure_id = ? AND user_id = ? AND (status = 'owned' OR status = 'packed')").get(adventureId, m.user_id).c;
+      return sum + done;
+    }, 0);
+    gear = Math.round((gearDone / gearTotal) * 100);
+  }
+
+  const activeCats = [training, gear, medical, admin].filter(v => v !== null);
+  return activeCats.length > 0 ? Math.round(activeCats.reduce((s, v) => s + v, 0) / activeCats.length) : 0;
+}
+
+export function getNextTrainingEvent(adventureId) {
+  const now = new Date().toISOString().split("T")[0];
+  const event = db.prepare(`
+    SELECT date, time_label, location FROM training_events
+    WHERE adventure_id = ? AND date >= ? ORDER BY date ASC LIMIT 1
+  `).get(adventureId, now);
+  return event || null;
 }
 
 export function updateUserNameAvatar(userId, name, avatarUrl) {

@@ -12,7 +12,7 @@ import { ADVENTURE_TYPES } from "../utils/constants";
 import Logo from "./Logo";
 import TroopLogo from "./TroopLogo";
 
-export default function Header({ user, troop, adventure, members, analysis, trekDates, trekDate, saving, isAdmin, approvedTroops, onSwitchTroop, onBackToAdventures, onLogout, onAdminClick, onRefreshAuth, onViewProfile, achievements }) {
+export default function Header({ user, troop, adventure, members, analysis, trekDates, trekDate, saving, isAdmin, approvedTroops, onSwitchTroop, onGoHome, onLogout, onAdminClick, onRefreshAuth, onViewProfile, achievements }) {
   const countdown = useCountdown(trekDates || trekDate);
   const { theme, mode, toggle } = useTheme();
   const { addToast } = useToast();
@@ -135,7 +135,7 @@ export default function Header({ user, troop, adventure, members, analysis, trek
         position: "relative", marginBottom: 14, paddingBottom: 12,
         borderBottom: "1px solid rgba(255,255,255,0.1)",
       }}>
-        <div onClick={onBackToAdventures} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }} role="button" aria-label="Back to adventures">
+        <div onClick={onGoHome} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }} role="button" aria-label="Go home">
           <Logo size={32} />
           <div>
             <div style={{
@@ -205,11 +205,18 @@ export default function Header({ user, troop, adventure, members, analysis, trek
                     {approvedTroops.map(t => <option key={t.troop_id} value={t.troop_id}>{t.troop_name}</option>)}
                   </select>
                 )}
-                <button onClick={() => { setShowProfile(false); onViewProfile?.(); }} style={{
-                  width: "100%", padding: "8px 0", borderRadius: 8, border: `1.5px solid ${theme.borderLight}`,
-                  background: theme.bgAlt, color: theme.accent, fontSize: 12, fontWeight: 600,
-                  cursor: "pointer", fontFamily: fontBody, marginBottom: 8,
-                }}>View Profile</button>
+                <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                  <button onClick={() => { setShowProfile(false); onGoHome(); }} style={{
+                    flex: 1, padding: "8px 0", borderRadius: 8, border: `1.5px solid ${theme.borderLight}`,
+                    background: theme.bgAlt, color: theme.text, fontSize: 12, fontWeight: 600,
+                    cursor: "pointer", fontFamily: fontBody,
+                  }}>Home</button>
+                  <button onClick={() => { setShowProfile(false); onViewProfile?.(); }} style={{
+                    flex: 1, padding: "8px 0", borderRadius: 8, border: `1.5px solid ${theme.borderLight}`,
+                    background: theme.bgAlt, color: theme.accent, fontSize: 12, fontWeight: 600,
+                    cursor: "pointer", fontFamily: fontBody,
+                  }}>Profile</button>
+                </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={saveProfile} disabled={savingProfile} style={{
                     flex: 1, padding: "8px 0", borderRadius: 8, border: "none",
@@ -235,7 +242,7 @@ export default function Header({ user, troop, adventure, members, analysis, trek
         </div>
 
         {/* Troop name + adventure type */}
-        <button onClick={onBackToAdventures} aria-label="Back to adventures" style={{
+        <button onClick={onGoHome} aria-label="Go home" style={{
           fontSize: 11, color: "rgba(255,255,255,0.85)", fontWeight: 700, letterSpacing: 1.5,
           textTransform: "uppercase", background: "none", border: "none", cursor: "pointer",
           fontFamily: fontBody, padding: 0, marginBottom: 2,

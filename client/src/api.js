@@ -156,6 +156,12 @@ export const api = {
   getAdminSettings: () => request("/admin/settings"),
   updateAdminSetting: (key, value) => request("/admin/settings", { method: "PUT", body: JSON.stringify({ key, value }) }),
   getAffiliateStats: () => request("/admin/affiliate-stats"),
+  getSystemAdmins: () => request("/admin/system-admins"),
+  promoteAdmin: (userId) => request(`/admin/users/${userId}/promote`, { method: "PUT" }),
+  demoteAdmin: (userId) => request(`/admin/users/${userId}/demote`, { method: "PUT" }),
+
+  // Dashboard
+  getDashboard: () => request("/dashboard"),
 
   // Affiliate tracking
   trackAffiliateClick: (productOptionId, gearCatalogId, url) =>

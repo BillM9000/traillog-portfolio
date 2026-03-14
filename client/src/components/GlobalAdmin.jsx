@@ -57,7 +57,7 @@ export default function GlobalAdmin({ isGlobalAdmin, troopId, onClose, onEnterTr
     if (tab === "troops" && !troopsLoaded) {
       api.getAdminTroops().then(d => { setTroops(d); setTroopsLoaded(true); }).catch(console.error);
     }
-    if (tab === "users" && users.length === 0) {
+    if ((tab === "users" || tab === "settings") && users.length === 0) {
       api.getAdminUsers().then(setUsers).catch(console.error);
     }
     if (tab === "settings" && !settingsLoaded) {
@@ -157,7 +157,7 @@ export default function GlobalAdmin({ isGlobalAdmin, troopId, onClose, onEnterTr
 
           {/* ── Platform Settings Tab ── */}
           {tab === "settings" && isGlobalAdmin && (
-            <SettingsTab settings={settings} loaded={settingsLoaded} setSettings={setSettings} theme={theme} addToast={addToast} />
+            <SettingsTab settings={settings} loaded={settingsLoaded} setSettings={setSettings} theme={theme} addToast={addToast} allUsers={users} />
           )}
 
           {/* ── Troop Overrides Tab ── */}
@@ -740,7 +740,7 @@ function StatCard({ label, value, theme }) {
 }
 
 // ─── Platform Settings Tab ───
-function SettingsTab({ settings, loaded, setSettings, theme, addToast }) {
+function SettingsTab({ settings, loaded, setSettings, theme, addToast, allUsers }) {
   if (!loaded) {
     return <div style={{ fontSize: 12, color: theme.textDimmer, fontStyle: "italic" }}>Loading settings...</div>;
   }
@@ -815,6 +815,8 @@ function SettingsTab({ settings, loaded, setSettings, theme, addToast }) {
         <input type="number" min="1" max="10" defaultValue={get("max_troops_per_user") || "2"} onBlur={(e) => save("max_troops_per_user", e.target.value)} style={{ ...inputStyle, width: 60 }} />
       </div>
 
+      <SystemAdminsSection allUsers={allUsers} theme={theme} addToast={addToast} />
+
       <SectionLabel>System</SectionLabel>
       {settings.filter(s => !["maintenance_mode", "maintenance_message", "registration_enabled", "announcement_enabled", "announcement_banner", "announcement_type", "max_troops_per_user"].includes(s.key)).map(s => (
         <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 6, marginBottom: 3, background: theme.bgAlt, border: `1px solid ${theme.borderLight}` }}>
@@ -823,6 +825,72 @@ function SettingsTab({ settings, loaded, setSettings, theme, addToast }) {
           <span style={{ fontSize: 9, color: theme.textDimmer, fontStyle: "italic" }}>system</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─── System Admins Section ───
+function SystemAdminsSection({ allUsers, theme, addToast }) {
+  const [admins, setAdmins] = useState([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addEmail, setAddEmail] = useState("");
+
+  useEffect(() => {
+    api.getSystemAdmins().then(setAdmins).catch(console.error);
+  }, []);
+
+  const handlePromote = async () => {
+    const email = addEmail.trim().toLowerCase();
+    if (!email) return;
+    const user = allUsers.find(u => u.email.toLowerCase() === email);
+    if (!user) { addToast("User not found. They must have an account first.", "error"); return; }
+    if (user.is_admin) { addToast("Already a system admin", "error"); return; }
+    try {
+      await api.promoteAdmin(user.id);
+      setAdmins(prev => [...prev, { ...user, is_admin: 1 }]);
+      setAddEmail("");
+      setShowAdd(false);
+      addToast(`${user.name || user.email} promoted to system admin`, "success");
+    } catch (e) { addToast(e.message, "error"); }
+  };
+
+  const handleDemote = async (userId, name) => {
+    if (!confirm(`Remove ${name} as system admin?`)) return;
+    try {
+      await api.demoteAdmin(userId);
+      setAdmins(prev => prev.filter(a => a.id !== userId));
+      addToast(`${name} removed as system admin`, "success");
+    } catch (e) { addToast(e.message, "error"); }
+  };
+
+  const inputStyle = { width: "100%", padding: "7px 10px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody, outline: "none", boxSizing: "border-box" };
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDimmer, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>System Administrators</div>
+      {admins.map(a => (
+        <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", borderRadius: 8, background: theme.bgAlt, border: `1px solid ${theme.borderLight}`, marginBottom: 4 }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{a.name || "Unnamed"}</div>
+            <div style={{ fontSize: 10, color: theme.textDimmer }}>{a.email}</div>
+          </div>
+          {admins.length > 1 && (
+            <button onClick={() => handleDemote(a.id, a.name || a.email)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 4, border: `1px solid ${theme.danger || "#dc3545"}`, background: "transparent", color: theme.danger || "#dc3545", cursor: "pointer", fontFamily: fontBody }}>Remove</button>
+          )}
+        </div>
+      ))}
+      {!showAdd ? (
+        <button onClick={() => setShowAdd(true)} style={{ fontSize: 11, padding: "6px 12px", borderRadius: 6, border: `1px dashed ${theme.borderLight}`, background: "transparent", color: theme.accent, cursor: "pointer", fontFamily: fontBody, marginTop: 4, width: "100%" }}>+ Add System Admin</button>
+      ) : (
+        <div style={{ padding: "8px 12px", marginTop: 4, borderRadius: 8, background: theme.bgAlt, border: `1px solid ${theme.borderLight}` }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: theme.textDim, marginBottom: 4 }}>Email of existing user to promote</div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input value={addEmail} onChange={e => setAddEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePromote()} placeholder="user@example.com" style={{ ...inputStyle, flex: 1 }} />
+            <button onClick={handlePromote} style={{ fontSize: 11, padding: "6px 12px", borderRadius: 6, background: theme.accent, color: "#fff", border: "none", cursor: "pointer", fontFamily: fontBody, whiteSpace: "nowrap" }}>Promote</button>
+            <button onClick={() => { setShowAdd(false); setAddEmail(""); }} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 6, background: "transparent", color: theme.textDim, border: `1px solid ${theme.borderLight}`, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

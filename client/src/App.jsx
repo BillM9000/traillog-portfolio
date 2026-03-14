@@ -11,7 +11,7 @@ import { fontBody, fontDisplay } from "./utils/theme";
 import { Calendar as CalendarIcon, BarChart3, ClipboardCheck, Map, Backpack, FileText } from "lucide-react";
 import LandingPage from "./components/LandingPage";
 import ProfileSetup from "./components/ProfileSetup";
-import Lobby from "./components/Lobby";
+import HomeDashboard from "./components/HomeDashboard";
 import AdventurePicker from "./components/AdventurePicker";
 import Header from "./components/Header";
 import MemberBar from "./components/MemberBar";
@@ -52,19 +52,12 @@ export default function App() {
   // ── Navigation state ──
   const [troopId, setTroopId] = useState(null);
   const [adventureId, setAdventureId] = useState(null);
-  const [wentBack, setWentBack] = useState(false);
-  const [showLobby, setShowLobby] = useState(false);
   const [showGlobalAdmin, setShowGlobalAdmin] = useState(false);
   const [showProfilePage, setShowProfilePage] = useState(false);
-  const [lobbyTroop, setLobbyTroop] = useState(null); // troop data for global admin entering non-member troop
   const isGlobalAdmin = !!user?.is_global_admin;
 
-  // Auto-select first approved troop (but not if user navigated to lobby)
-  useEffect(() => {
-    if (approvedTroops.length > 0 && !troopId && !showLobby) {
-      setTroopId(approvedTroops[0].troop_id);
-    }
-  }, [approvedTroops, troopId, showLobby]);
+  // Go home = clear troop and adventure selection
+  const goHome = () => { setTroopId(null); setAdventureId(null); };
 
   // ── Auth gates ──
   if (loading) {
@@ -84,58 +77,65 @@ export default function App() {
       <ProfilePage
         memberships={memberships}
         onBack={() => setShowProfilePage(false)}
-        onEnterTroop={(id) => { setTroopId(id); setShowLobby(false); setShowProfilePage(false); }}
+        onEnterTroop={(id) => { setTroopId(id); setAdventureId(null); setShowProfilePage(false); }}
         onLogout={logout}
       />
     </div>
   );
 
-  // Global admin with no troops: go straight to Platform Admin (unless they clicked Lobby)
-  if (isGlobalAdmin && approvedTroops.length === 0 && !troopId && !showLobby) return (
-    <>
-      <GlobalAdmin isGlobalAdmin={isGlobalAdmin} troopId={null}
-        onClose={() => { setShowLobby(true); }}
-        onEnterTroop={(id, troopData) => { setTroopId(id); setLobbyTroop(troopData || null); setShowLobby(false); }}
-        onLogout={logout} user={user}
-        alwaysOpen />
-    </>
-  );
-  if (approvedTroops.length === 0 || showLobby) return (
-    <>
-      <Lobby user={user} memberships={memberships} onRefresh={refresh} onLogout={logout}
-        isGlobalAdmin={isGlobalAdmin} onGlobalAdminClick={() => setShowGlobalAdmin(true)}
-        onEnterTroop={(id, troopData) => { setTroopId(id); setLobbyTroop(troopData || null); setShowLobby(false); }} />
-      {showGlobalAdmin && (
-        <GlobalAdmin isGlobalAdmin={isGlobalAdmin} troopId={null} onClose={() => { setShowGlobalAdmin(false); refresh(); }} />
-      )}
-    </>
-  );
+  // Home Dashboard — shown when no troop+adventure selected
+  if (!troopId || !adventureId) {
+    // If troopId is set but no adventureId, show adventure picker for that troop
+    if (troopId && !adventureId) {
+      const currentMembership = memberships.find(m => m.troop_id === troopId);
+      const isAdmin = currentMembership?.role === "admin" || isGlobalAdmin;
+      return (
+        <>
+          <AdventurePicker
+            user={user}
+            troop={{ id: troopId, name: currentMembership?.troop_name || "Troop", council: currentMembership?.troop_council, location: currentMembership?.troop_location }}
+            isAdmin={isAdmin}
+            onSelect={(id) => { setAdventureId(id); }}
+            onBack={goHome}
+            onLogout={logout}
+            skipAutoSelect={false}
+            isGlobalAdmin={isGlobalAdmin}
+            onGlobalAdminClick={() => setShowGlobalAdmin(true)}
+          />
+          {showGlobalAdmin && (
+            <GlobalAdmin isGlobalAdmin={isGlobalAdmin} troopId={troopId} onClose={() => setShowGlobalAdmin(false)} />
+          )}
+        </>
+      );
+    }
 
-  // Find selected troop membership (global admin can enter any troop)
-  const currentMembership = memberships.find(m => m.troop_id === troopId);
-  const isAdmin = currentMembership?.role === "admin" || isGlobalAdmin;
-
-  // Adventure picker gate
-  if (!adventureId) {
+    // No troop selected — show home dashboard
     return (
       <>
-        <AdventurePicker
-          user={user}
-          troop={{ id: troopId, name: currentMembership?.troop_name || lobbyTroop?.name || "Troop", council: currentMembership?.troop_council || lobbyTroop?.council, location: currentMembership?.troop_location || lobbyTroop?.location }}
-          isAdmin={isAdmin}
-          onSelect={(id) => { setAdventureId(id); setWentBack(false); }}
-          onBack={() => { setTroopId(null); setShowLobby(true); setWentBack(false); }}
-          onLogout={logout}
-          skipAutoSelect={wentBack}
+        <AnnouncementBanner settings={publicSettings} />
+        <HomeDashboard
+          user={user} memberships={memberships} onRefresh={refresh} onLogout={logout}
           isGlobalAdmin={isGlobalAdmin}
           onGlobalAdminClick={() => setShowGlobalAdmin(true)}
+          onEnterAdventure={(tid, aid) => {
+            setTroopId(tid);
+            if (aid) setAdventureId(aid);
+            // If aid is null (e.g. troop with no adventures), will show adventure picker
+          }}
+          onViewProfile={() => setShowProfilePage(true)}
         />
         {showGlobalAdmin && (
-          <GlobalAdmin isGlobalAdmin={isGlobalAdmin} troopId={troopId} onClose={() => setShowGlobalAdmin(false)} />
+          <GlobalAdmin isGlobalAdmin={isGlobalAdmin} troopId={null} onClose={() => { setShowGlobalAdmin(false); refresh(); }}
+            onEnterTroop={(id) => { setTroopId(id); setShowGlobalAdmin(false); }}
+            onLogout={logout} user={user} alwaysOpen={false} />
         )}
       </>
     );
   }
+
+  // Find selected troop membership (global admin can enter any troop)
+  const currentMembership = memberships.find(m => m.troop_id === troopId);
+  const isAdmin = currentMembership?.role === "admin" || isGlobalAdmin;
 
   // Main app wrapped in AdventureProvider
   return (
@@ -149,7 +149,7 @@ export default function App() {
         isAdmin={isAdmin}
         publicSettings={publicSettings}
         onSwitchTroop={(id) => { setTroopId(id); setAdventureId(null); }}
-        onBackToAdventures={() => { setAdventureId(null); setWentBack(true); }}
+        onGoHome={goHome}
         onSelectAdventure={(id) => setAdventureId(id)}
         onLogout={logout}
         onRefresh={refresh}
@@ -159,7 +159,7 @@ export default function App() {
   );
 }
 
-function MainView({ user, troopId, adventureId, memberships, approvedTroops, isAdmin, publicSettings, onSwitchTroop, onBackToAdventures, onSelectAdventure, onLogout, onRefresh, onViewProfile }) {
+function MainView({ user, troopId, adventureId, memberships, approvedTroops, isAdmin, publicSettings, onSwitchTroop, onGoHome, onSelectAdventure, onLogout, onRefresh, onViewProfile }) {
   const { theme } = useTheme();
   const { addToast } = useToast();
   const { adventure, members, skills, itinerary, trekDate, trekDates, achievements, loading: advLoading, refreshAll, refreshMembers, updateMemberLocally } = useAdventure();
@@ -421,7 +421,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
         user={user} troop={troop} adventure={adventure} members={members} analysis={analysis}
         trekDate={trekDate} trekDates={trekDates} saving={saving} isAdmin={isAdmin} approvedTroops={approvedTroops}
         onSwitchTroop={onSwitchTroop}
-        onBackToAdventures={onBackToAdventures}
+        onGoHome={onGoHome}
         onLogout={onLogout}
         onAdminClick={() => setShowAdmin(true)}
         onRefreshAuth={onRefresh}

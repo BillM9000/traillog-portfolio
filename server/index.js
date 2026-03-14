@@ -40,6 +40,7 @@ import db, {
   getAllTroopsAdmin, getAllUsersAdmin, getAllSettings, trackAffiliateClick, getAffiliateStats,
   deleteTroop, getTroopMembersAdmin,
   createTrainingEvent, getTrainingEvents, getTrainingEvent, deleteTrainingEvent, upsertTrainingRsvp,
+  promoteToAdmin, demoteFromAdmin, getSystemAdmins, getDashboardData,
 } from "./db.js";
 import {
   sendJoinRequestEmail, sendParentNotificationEmail, sendVerificationEmail,
@@ -126,9 +127,8 @@ app.use(express.static(join(__dirname, "../client/dist")));
 app.use("/api", (req, res, next) => {
   if (req.path === "/health" || req.path === "/public-settings") return next();
   if (getSetting("maintenance_mode") === "true") {
-    // Allow global admin through
-    const adminEmail = process.env.ADMIN_EMAIL;
-    if (req.isAuthenticated() && adminEmail && req.user?.email === adminEmail) return next();
+    // Allow system admins through
+    if (req.isAuthenticated() && req.user?.is_admin) return next();
     const msg = getSetting("maintenance_message") || "TrailLog is temporarily down for maintenance. Please check back soon.";
     return res.status(503).json({ error: msg, maintenance: true });
   }
@@ -141,8 +141,7 @@ function requireAuth(req, res, next) {
 }
 
 function isGlobalAdmin(req) {
-  const adminEmail = process.env.ADMIN_EMAIL;
-  return !!(adminEmail && req.user?.email === adminEmail);
+  return !!(req.user?.is_admin);
 }
 
 function requireTroopMember(requiredStatus = "approved") {
@@ -357,8 +356,7 @@ app.get("/api/auth/me", (req, res) => {
   const has_password = !!password_hash;
   const memberships = getUserMemberships(req.user.id);
   const adventureMemberships = getUserAdventureMemberships(req.user.id);
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const is_global_admin = !!(adminEmail && req.user.email === adminEmail);
+  const is_global_admin = !!req.user.is_admin;
   res.json({ user: { ...safe, is_global_admin, has_password }, memberships, adventureMemberships });
 });
 
@@ -976,8 +974,7 @@ app.get("/api/gear", requireAuth, (req, res) => {
 
 // Global admin middleware (platform owner)
 function requireGlobalAdmin(req, res, next) {
-  const adminEmail = process.env.ADMIN_EMAIL;
-  if (!adminEmail || req.user.email !== adminEmail) {
+  if (!req.user?.is_admin) {
     return res.status(403).json({ error: "Platform admin only" });
   }
   next();
@@ -1295,6 +1292,46 @@ app.put("/api/admin/settings", requireAuth, requireGlobalAdmin, (req, res) => {
     if (PROTECTED_KEYS.includes(key)) return res.status(403).json({ error: "This setting is system-managed and cannot be edited" });
     setSetting(key, value);
     res.json({ ok: true });
+  } catch (e) { safeError(res, e); }
+});
+
+// ── System Admin Promote / Demote ──
+app.put("/api/admin/users/:id/promote", requireAuth, requireGlobalAdmin, (req, res) => {
+  try {
+    const userId = parseId(req.params.id);
+    const user = findUserById(userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    promoteToAdmin(userId);
+    console.log(`[admin] ${req.user.email} promoted ${user.email} to system admin`);
+    res.json({ ok: true });
+  } catch (e) { safeError(res, e); }
+});
+
+app.put("/api/admin/users/:id/demote", requireAuth, requireGlobalAdmin, (req, res) => {
+  try {
+    const userId = parseId(req.params.id);
+    if (userId === req.user.id) return res.status(400).json({ error: "You cannot demote yourself" });
+    const user = findUserById(userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    const admins = getSystemAdmins();
+    if (admins.length <= 1) return res.status(400).json({ error: "Cannot demote the last system admin" });
+    demoteFromAdmin(userId);
+    console.log(`[admin] ${req.user.email} demoted ${user.email} from system admin`);
+    res.json({ ok: true });
+  } catch (e) { safeError(res, e); }
+});
+
+app.get("/api/admin/system-admins", requireAuth, requireGlobalAdmin, (req, res) => {
+  try {
+    res.json(getSystemAdmins());
+  } catch (e) { safeError(res, e); }
+});
+
+// ── Dashboard ──
+app.get("/api/dashboard", requireAuth, (req, res) => {
+  try {
+    const data = getDashboardData(req.user.id, !!req.user.is_admin);
+    res.json(data);
   } catch (e) { safeError(res, e); }
 });
 
