@@ -160,4 +160,7 @@ export const api = {
   // Affiliate tracking
   trackAffiliateClick: (productOptionId, gearCatalogId, url) =>
     request("/affiliate/click", { method: "POST", body: JSON.stringify({ product_option_id: productOptionId, gear_catalog_id: gearCatalogId, url }) }),
+
+  // Public settings (no auth)
+  getPublicSettings: () => fetch("/api/public-settings").then(r => r.json()),
 };

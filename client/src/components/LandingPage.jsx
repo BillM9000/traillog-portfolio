@@ -109,7 +109,7 @@ function useIsMobile(breakpoint = 768) {
 
 // ── Auth Form (extracted from old LoginPage — zero logic changes) ────
 
-const AuthForm = forwardRef(function AuthForm({ onLogin, onSignup }, ref) {
+const AuthForm = forwardRef(function AuthForm({ onLogin, onSignup, registrationEnabled = true }, ref) {
   const params = new URLSearchParams(window.location.search);
   const resetToken = params.get("reset");
 
@@ -276,10 +276,16 @@ const AuthForm = forwardRef(function AuthForm({ onLogin, onSignup }, ref) {
           <>
             <button onClick={() => switchMode("forgot")}
               style={linkBtnStyle}>Forgot password?</button>
-            <button onClick={() => switchMode("signup")}
-              style={{ ...linkBtnStyle, color: "#B8CC9A", fontSize: 17, marginTop: 10, letterSpacing: 0.3 }}>
-              Don't have an account? <strong style={{ color: "#FDFAF5", fontSize: 18 }}>Sign up</strong>
-            </button>
+            {registrationEnabled ? (
+              <button onClick={() => switchMode("signup")}
+                style={{ ...linkBtnStyle, color: "#B8CC9A", fontSize: 17, marginTop: 10, letterSpacing: 0.3 }}>
+                Don't have an account? <strong style={{ color: "#FDFAF5", fontSize: 18 }}>Sign up</strong>
+              </button>
+            ) : (
+              <div style={{ color: "#B8CC9A", fontSize: 13, marginTop: 10, fontStyle: "italic", opacity: 0.7 }}>
+                Registration is currently closed
+              </div>
+            )}
           </>
         )}
         {mode === "signup" && (
@@ -329,7 +335,7 @@ const STEPS = [
 
 // ── Main Landing Page ─────────────────────────────────────────────────
 
-export default function LandingPage({ onLogin, onSignup }) {
+export default function LandingPage({ onLogin, onSignup, registrationEnabled = true }) {
   const isMobile = useIsMobile();
   const authRef = useRef(null);
   const featuresRef = useRef(null);
@@ -404,7 +410,7 @@ export default function LandingPage({ onLogin, onSignup }) {
 
           {/* Right — Auth Form */}
           <div style={{ flex: isMobile ? "unset" : "0 0 360px", maxWidth: 400, width: "100%", margin: isMobile ? "0 auto" : 0 }}>
-            <AuthForm ref={authRef} onLogin={onLogin} onSignup={onSignup} />
+            <AuthForm ref={authRef} onLogin={onLogin} onSignup={onSignup} registrationEnabled={registrationEnabled} />
           </div>
         </div>
 

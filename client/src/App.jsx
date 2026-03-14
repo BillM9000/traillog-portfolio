@@ -28,9 +28,26 @@ import TrainingEvents from "./components/TrainingEvents";
 import ProfilePage from "./components/ProfilePage";
 import Reports from "./components/Reports";
 
+function AnnouncementBanner({ settings }) {
+  if (!settings?.announcement_enabled || !settings?.announcement_banner) return null;
+  const typeColors = { info: { bg: "#e8f4fd", border: "#b8daff", text: "#0c5460" }, warning: { bg: "#fff3cd", border: "#ffc107", text: "#856404" }, success: { bg: "#d4edda", border: "#c3e6cb", text: "#155724" } };
+  const c = typeColors[settings.announcement_type] || typeColors.info;
+  return (
+    <div style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.text, padding: "8px 16px", fontSize: 13, fontFamily: fontBody, fontWeight: 600, textAlign: "center" }}>
+      {settings.announcement_banner}
+    </div>
+  );
+}
+
 export default function App() {
   const { user, memberships, approvedTroops, loading, login, signup, logout, updateProfile, refresh } = useAuth();
   const { theme } = useTheme();
+
+  // ── Public settings (banner, registration, maintenance) ──
+  const [publicSettings, setPublicSettings] = useState(null);
+  useEffect(() => {
+    api.getPublicSettings().then(setPublicSettings).catch(() => {});
+  }, []);
 
   // ── Navigation state ──
   const [troopId, setTroopId] = useState(null);
@@ -58,7 +75,7 @@ export default function App() {
     );
   }
 
-  if (!user) return <LandingPage onLogin={login} onSignup={signup} />;
+  if (!user) return (<><AnnouncementBanner settings={publicSettings} /><LandingPage onLogin={login} onSignup={signup} registrationEnabled={publicSettings?.registration_enabled !== false} /></>);
   if (!user.age_confirmed || !user.user_type) return <ProfileSetup user={user} onComplete={updateProfile} />;
 
   // Profile page — shown when user clicks "View Profile" from any context
@@ -130,6 +147,7 @@ export default function App() {
         memberships={memberships}
         approvedTroops={approvedTroops}
         isAdmin={isAdmin}
+        publicSettings={publicSettings}
         onSwitchTroop={(id) => { setTroopId(id); setAdventureId(null); }}
         onBackToAdventures={() => { setAdventureId(null); setWentBack(true); }}
         onSelectAdventure={(id) => setAdventureId(id)}
@@ -141,7 +159,7 @@ export default function App() {
   );
 }
 
-function MainView({ user, troopId, adventureId, memberships, approvedTroops, isAdmin, onSwitchTroop, onBackToAdventures, onSelectAdventure, onLogout, onRefresh, onViewProfile }) {
+function MainView({ user, troopId, adventureId, memberships, approvedTroops, isAdmin, publicSettings, onSwitchTroop, onBackToAdventures, onSelectAdventure, onLogout, onRefresh, onViewProfile }) {
   const { theme } = useTheme();
   const { addToast } = useToast();
   const { adventure, members, skills, itinerary, trekDate, trekDates, achievements, loading: advLoading, refreshAll, refreshMembers, updateMemberLocally } = useAdventure();
@@ -398,6 +416,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
 
   return (
     <div style={{ fontFamily: fontBody, background: theme.bg, color: theme.text, minHeight: "100vh", userSelect: "none" }}>
+      <AnnouncementBanner settings={publicSettings} />
       <Header
         user={user} troop={troop} adventure={adventure} members={members} analysis={analysis}
         trekDate={trekDate} trekDates={trekDates} saving={saving} isAdmin={isAdmin} approvedTroops={approvedTroops}

@@ -3,7 +3,7 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as LocalStrategy } from "passport-local";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { findUserByGoogleId, findUserByEmail, findUserById, createUser, bindGoogleProfile, updateUserNameAvatar } from "./db.js";
+import { findUserByGoogleId, findUserByEmail, findUserById, createUser, bindGoogleProfile, updateUserNameAvatar, getSetting } from "./db.js";
 
 // ── Serialize / Deserialize ──
 passport.serializeUser((user, done) => done(null, user.id));
@@ -60,6 +60,10 @@ if (process.env.GOOGLE_CLIENT_ID) {
         return done(null, { ...user, google_id: googleId, avatar_url: avatar });
       }
 
+      // Check if registration is open
+      if (getSetting("registration_enabled") === "false") {
+        return done(null, false, { message: "Registration is currently closed" });
+      }
       // Create new user
       user = createUser({ google_id: googleId, email, name, avatar_url: avatar, email_verified: 1 });
       done(null, user);

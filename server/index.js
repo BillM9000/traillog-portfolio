@@ -82,6 +82,18 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
+// ── Public settings (before rate limiter — must always be available) ──
+app.get("/api/public-settings", (req, res) => {
+  res.json({
+    maintenance_mode: getSetting("maintenance_mode") === "true",
+    maintenance_message: getSetting("maintenance_message") || "",
+    registration_enabled: getSetting("registration_enabled") !== "false",
+    announcement_enabled: getSetting("announcement_enabled") === "true",
+    announcement_banner: getSetting("announcement_banner") || "",
+    announcement_type: getSetting("announcement_type") || "info",
+  });
+});
+
 // ── Rate Limiting ──
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { error: "Too many attempts, please try again later" }, standardHeaders: true, legacyHeaders: false });
 const apiLimiter = rateLimit({ windowMs: 60 * 1000, max: 100, message: { error: "Too many requests" }, standardHeaders: true, legacyHeaders: false });
@@ -109,6 +121,19 @@ app.use(passport.session());
 app.use(express.static(join(__dirname, "../client/dist")));
 
 // ── Middleware ──
+
+// Maintenance mode — blocks all API requests except health, public-settings, and admin settings for global admin
+app.use("/api", (req, res, next) => {
+  if (req.path === "/health" || req.path === "/public-settings") return next();
+  if (getSetting("maintenance_mode") === "true") {
+    // Allow global admin through
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (req.isAuthenticated() && adminEmail && req.user?.email === adminEmail) return next();
+    const msg = getSetting("maintenance_message") || "TrailLog is temporarily down for maintenance. Please check back soon.";
+    return res.status(503).json({ error: msg, maintenance: true });
+  }
+  next();
+});
 
 function requireAuth(req, res, next) {
   if (!req.isAuthenticated()) return res.status(401).json({ error: "Not authenticated" });
@@ -222,6 +247,9 @@ app.get("/auth/google/callback",
 
 app.post("/api/auth/signup", authLimiter, async (req, res) => {
   try {
+    if (getSetting("registration_enabled") === "false") {
+      return res.status(403).json({ error: "Registration is currently closed. Please check back later." });
+    }
     const { name, email, password, tos_accepted } = req.body;
     if (!name?.trim() || !email?.trim() || !password || password.length < 8) {
       return res.status(400).json({ error: "Name, email, and password (8+ chars) required" });
@@ -410,6 +438,14 @@ app.get("/api/troops/:troopId", requireAuth, requireTroopMember(), (req, res) =>
 app.post("/api/troops", requireAuth, (req, res) => {
   try {
     if (req.user.user_type === "scout") return res.status(403).json({ error: "Scouts cannot create troops" });
+    // Troop creation limit (global admin exempt)
+    if (!isGlobalAdmin(req)) {
+      const maxTroops = parseInt(getSetting("max_troops_per_user") || "2", 10);
+      const userTroops = getUserMemberships(req.user.id).filter(m => m.role === "admin" && m.status === "approved");
+      if (userTroops.length >= maxTroops) {
+        return res.status(403).json({ error: `You can create a maximum of ${maxTroops} troops` });
+      }
+    }
     const { name, description, council, location, is_public } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Troop name required" });
     if (!council?.trim()) return res.status(400).json({ error: "Council is required" });
@@ -1637,6 +1673,8 @@ app.post("/api/adventures/:adventureId/check-milestones", requireAuth, requireAd
     res.json({ newBadges, newMilestones });
   } catch (e) { safeError(res, e); }
 });
+
+// Public settings — moved before rate limiter (see top of file)
 
 // Health check (no auth — for uptime monitoring)
 const startedAt = new Date().toISOString();

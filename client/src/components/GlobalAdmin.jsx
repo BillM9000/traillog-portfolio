@@ -741,58 +741,88 @@ function StatCard({ label, value, theme }) {
 
 // ─── Platform Settings Tab ───
 function SettingsTab({ settings, loaded, setSettings, theme, addToast }) {
-  const [editKey, setEditKey] = useState(null);
-  const [editValue, setEditValue] = useState("");
+  if (!loaded) {
+    return <div style={{ fontSize: 12, color: theme.textDimmer, fontStyle: "italic" }}>Loading settings...</div>;
+  }
 
-  const saveSetting = async (key) => {
+  const get = (key) => (settings.find(s => s.key === key)?.value || "");
+  const isOn = (key, def = "true") => get(key) === "" ? def === "true" : get(key) === "true";
+
+  const save = async (key, value) => {
     try {
-      await api.updateAdminSetting(key, editValue);
-      setSettings(prev => prev.map(s => s.key === key ? { ...s, value: editValue } : s));
+      await api.updateAdminSetting(key, value);
+      setSettings(prev => {
+        const exists = prev.find(s => s.key === key);
+        if (exists) return prev.map(s => s.key === key ? { ...s, value } : s);
+        return [...prev, { key, value }];
+      });
       addToast(`Saved ${key}`, "success");
-      setEditKey(null);
     } catch (e) {
       addToast(e.message, "error");
     }
   };
 
-  if (!loaded) {
-    return <div style={{ fontSize: 12, color: theme.textDimmer, fontStyle: "italic" }}>Loading settings...</div>;
-  }
-  if (settings.length === 0) {
-    return <div style={{ fontSize: 12, color: theme.textDimmer, fontStyle: "italic" }}>No settings found.</div>;
-  }
+  const Toggle = ({ label, desc, checked, onChange }) => (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 8, background: theme.bgAlt, border: `1px solid ${theme.borderLight}`, marginBottom: 6 }}>
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: theme.text, fontFamily: fontBody }}>{label}</div>
+        {desc && <div style={{ fontSize: 10, color: theme.textDimmer, marginTop: 2 }}>{desc}</div>}
+      </div>
+      <div onClick={() => onChange(!checked)} style={{ width: 40, height: 22, borderRadius: 11, background: checked ? theme.accent : theme.borderLight, cursor: "pointer", position: "relative", transition: "background 0.2s" }}>
+        <div style={{ width: 18, height: 18, borderRadius: 9, background: "#fff", position: "absolute", top: 2, left: checked ? 20 : 2, transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+      </div>
+    </div>
+  );
 
-  const PROTECTED_KEYS = ["schema_version"];
+  const SectionLabel = ({ children }) => (
+    <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDimmer, textTransform: "uppercase", letterSpacing: 1, marginTop: 16, marginBottom: 6 }}>{children}</div>
+  );
+
+  const inputStyle = { width: "100%", padding: "7px 10px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody, outline: "none", boxSizing: "border-box" };
 
   return (
     <div>
-      <div style={{ fontSize: 10, color: theme.textDimmer, marginBottom: 8 }}>{settings.length} platform settings</div>
-      {settings.map(s => {
-        const isProtected = PROTECTED_KEYS.includes(s.key);
-        return (
-          <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 6, marginBottom: 3, background: theme.bgAlt, border: `1px solid ${theme.borderLight}` }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: theme.text, minWidth: 140 }}>{s.key}</span>
-            {editKey === s.key ? (
-              <>
-                <input value={editValue} onChange={e => setEditValue(e.target.value)}
-                  style={{ flex: 1, padding: "4px 6px", borderRadius: 4, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody, outline: "none" }} />
-                <button onClick={() => saveSetting(s.key)} style={{ padding: "2px 8px", borderRadius: 4, border: "none", background: theme.accent, color: "#fff", fontSize: 9, cursor: "pointer", fontFamily: fontBody }}>Save</button>
-                <button onClick={() => setEditKey(null)} style={{ padding: "2px 8px", borderRadius: 4, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.textDim, fontSize: 9, cursor: "pointer", fontFamily: fontBody }}>✕</button>
-              </>
-            ) : (
-              <>
-                <span style={{ flex: 1, fontSize: 11, color: theme.textMuted }}>{s.value}</span>
-                {isProtected ? (
-                  <span style={{ fontSize: 9, color: theme.textDimmer, fontStyle: "italic" }}>system</span>
-                ) : (
-                  <button onClick={() => { setEditKey(s.key); setEditValue(s.value); }}
-                    style={{ padding: "2px 8px", borderRadius: 4, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.textDim, fontSize: 9, cursor: "pointer", fontFamily: fontBody }}>Edit</button>
-                )}
-              </>
-            )}
-          </div>
-        );
-      })}
+      <SectionLabel>Site Access</SectionLabel>
+      <Toggle label="Maintenance Mode" desc="Only global admin can access the app" checked={isOn("maintenance_mode", "false")} onChange={(v) => save("maintenance_mode", v ? "true" : "false")} />
+      {isOn("maintenance_mode", "false") && (
+        <div style={{ padding: "8px 12px", marginBottom: 6 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: theme.textDim, marginBottom: 4 }}>Maintenance Message</div>
+          <input defaultValue={get("maintenance_message") || "TrailLog is temporarily down for maintenance. Please check back soon."} onBlur={(e) => save("maintenance_message", e.target.value)} style={inputStyle} />
+        </div>
+      )}
+
+      <Toggle label="Registration Open" desc="Allow new users to sign up" checked={isOn("registration_enabled", "true")} onChange={(v) => save("registration_enabled", v ? "true" : "false")} />
+
+      <SectionLabel>Announcement Banner</SectionLabel>
+      <Toggle label="Show Banner" desc="Display a banner at the top of every page" checked={isOn("announcement_enabled", "false")} onChange={(v) => save("announcement_enabled", v ? "true" : "false")} />
+      {isOn("announcement_enabled", "false") && (
+        <div style={{ padding: "8px 12px", marginBottom: 6 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: theme.textDim, marginBottom: 4 }}>Banner Message</div>
+          <input defaultValue={get("announcement_banner")} onBlur={(e) => save("announcement_banner", e.target.value)} placeholder="Enter announcement text..." style={{ ...inputStyle, marginBottom: 8 }} />
+          <div style={{ fontSize: 10, fontWeight: 600, color: theme.textDim, marginBottom: 4 }}>Banner Type</div>
+          <select value={get("announcement_type") || "info"} onChange={(e) => save("announcement_type", e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
+            <option value="info">Info (blue)</option>
+            <option value="warning">Warning (yellow)</option>
+            <option value="success">Success (green)</option>
+          </select>
+        </div>
+      )}
+
+      <SectionLabel>Limits</SectionLabel>
+      <div style={{ padding: "10px 12px", borderRadius: 8, background: theme.bgAlt, border: `1px solid ${theme.borderLight}`, marginBottom: 6 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: theme.text, fontFamily: fontBody }}>Max Troops per User</div>
+        <div style={{ fontSize: 10, color: theme.textDimmer, marginTop: 2, marginBottom: 6 }}>Global admin is exempt from this limit</div>
+        <input type="number" min="1" max="10" defaultValue={get("max_troops_per_user") || "2"} onBlur={(e) => save("max_troops_per_user", e.target.value)} style={{ ...inputStyle, width: 60 }} />
+      </div>
+
+      <SectionLabel>System</SectionLabel>
+      {settings.filter(s => !["maintenance_mode", "maintenance_message", "registration_enabled", "announcement_enabled", "announcement_banner", "announcement_type", "max_troops_per_user"].includes(s.key)).map(s => (
+        <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 6, marginBottom: 3, background: theme.bgAlt, border: `1px solid ${theme.borderLight}` }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: theme.text, minWidth: 140 }}>{s.key}</span>
+          <span style={{ flex: 1, fontSize: 11, color: theme.textMuted }}>{s.value}</span>
+          <span style={{ fontSize: 9, color: theme.textDimmer, fontStyle: "italic" }}>system</span>
+        </div>
+      ))}
     </div>
   );
 }
