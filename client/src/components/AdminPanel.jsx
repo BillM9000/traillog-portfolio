@@ -12,7 +12,7 @@ import CouncilPicker from "./CouncilPicker";
 export default function AdminPanel({ troop, adventure, troopMembers, adventureMembers, currentUserId, onClose, onRefresh, onSelectAdventure }) {
   const { theme } = useTheme();
   const { addToast } = useToast();
-  const { selectedCrewId } = useAdventure();
+  const { selectedCrewId, crews, selectedCrew, refreshCrews, refreshAll: refreshAdventureAll } = useAdventure();
   const [tab, setTab] = useState("adventure");
   const [troopName, setTroopName] = useState(troop?.name || "");
   const [troopCouncilId, setTroopCouncilId] = useState(troop?.council_id || null);
@@ -46,6 +46,15 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   const [addingManual, setAddingManual] = useState(false);
   const [confirmDeleteAdv, setConfirmDeleteAdv] = useState(false);
   const [confirmRemoveMember, setConfirmRemoveMember] = useState(null); // { userId, name, isManual, memberId }
+
+  // Crew management state
+  const [editingCrew, setEditingCrew] = useState(null); // crew object being edited
+  const [crewForm, setCrewForm] = useState({});
+  const [savingCrew, setSavingCrew] = useState(false);
+  const [showCreateCrew, setShowCreateCrew] = useState(false);
+  const [newCrew, setNewCrew] = useState({ name: "", depart_date: "", arrive_date: "", return_date: "", home_date: "", itinerary_id: "" });
+  const [creatingCrew, setCreatingCrew] = useState(false);
+  const [confirmDeleteCrew, setConfirmDeleteCrew] = useState(null); // crew id
 
   // New adventure creation
   const [showCreateAdv, setShowCreateAdv] = useState(false);
@@ -243,6 +252,49 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
     } catch (e) { addToast(e.message, "error"); }
   };
 
+  // Crew management functions
+  const startEditCrew = (crew) => {
+    setEditingCrew(crew.id);
+    setCrewForm({ name: crew.name, depart_date: crew.depart_date || "", arrive_date: crew.arrive_date || "", return_date: crew.return_date || "", home_date: crew.home_date || "", itinerary_id: crew.itinerary_id || "" });
+  };
+
+  const saveCrew = async () => {
+    if (!editingCrew) return;
+    if (!crewForm.name?.trim()) { addToast("Crew name is required", "error"); return; }
+    setSavingCrew(true);
+    try {
+      await api.updateCrew(editingCrew, crewForm);
+      refreshCrews();
+      refreshAdventureAll();
+      setEditingCrew(null);
+      addToast("Crew saved", "success");
+    } catch (e) { addToast(e.message, "error"); }
+    setSavingCrew(false);
+  };
+
+  const createNewCrew = async () => {
+    if (!newCrew.name?.trim()) { addToast("Crew name is required", "error"); return; }
+    setCreatingCrew(true);
+    try {
+      await api.createCrew(adventure.id, newCrew);
+      setNewCrew({ name: "", depart_date: "", arrive_date: "", return_date: "", home_date: "", itinerary_id: "" });
+      setShowCreateCrew(false);
+      refreshCrews();
+      addToast("Crew created", "success");
+    } catch (e) { addToast(e.message, "error"); }
+    setCreatingCrew(false);
+  };
+
+  const deleteCrew = async (crewId) => {
+    try {
+      await api.deleteCrew(crewId);
+      refreshCrews();
+      refreshAdventureAll();
+      setConfirmDeleteCrew(null);
+      addToast("Crew deleted", "success");
+    } catch (e) { addToast(e.message, "error"); setConfirmDeleteCrew(null); }
+  };
+
   useEffect(() => {
     api.getItineraries().then(setItineraries).catch(() => {});
   }, []);
@@ -283,7 +335,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
 
   const inputStyle = { width: "100%", padding: "9px 12px", borderRadius: 7, border: `1.5px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 12, fontFamily: fontBody, outline: "none", marginBottom: 8, boxSizing: "border-box" };
   const labelStyle = { fontSize: 10, fontWeight: 700, color: theme.textDim, textTransform: "uppercase", marginBottom: 4, display: "block" };
-  const tabs = [["adventure", "Adventure"], ["members", "Members"], ["troop", "Troop"]];
+  const tabs = [["adventure", "Adventure"], ["crews", "Crews"], ["members", "Members"], ["troop", "Troop"]];
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999 }} onClick={onClose}>
@@ -456,6 +508,103 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
               <div style={{ marginTop: 20, padding: 12, borderRadius: 8, border: `1.5px solid ${theme.danger}40`, background: theme.name === "dark" ? "#2a1a1a" : "#fdf0f0" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: theme.danger, textTransform: "uppercase", marginBottom: 8 }}>Danger Zone</div>
                 <button onClick={() => setConfirmDeleteAdv(true)} style={{ ...toolbarBtn(theme, "danger"), width: "100%", padding: "8px 0" }}>Delete Adventure</button>
+              </div>
+            </>
+          )}
+
+          {tab === "crews" && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 700, color: theme.heading, marginBottom: 8 }}>Crews ({crews.length})</div>
+              {crews.map(crew => (
+                <div key={crew.id} style={{ padding: "10px 12px", background: crew.id === selectedCrewId ? theme.accentBg : theme.bgAlt, borderRadius: 8, marginBottom: 6, border: `1.5px solid ${crew.id === selectedCrewId ? theme.borderAccent : theme.border}` }}>
+                  {editingCrew === crew.id ? (
+                    <>
+                      <label style={labelStyle}>Crew Name</label>
+                      <input value={crewForm.name || ""} onChange={e => setCrewForm({ ...crewForm, name: e.target.value.slice(0, 30) })} maxLength={30} style={inputStyle} />
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 6 }}>
+                        <div><label style={labelStyle}>{dateLabels.depart}</label><input value={crewForm.depart_date || ""} onChange={e => setCrewForm({ ...crewForm, depart_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                        <div><label style={labelStyle}>{dateLabels.arrive}</label><input value={crewForm.arrive_date || ""} onChange={e => setCrewForm({ ...crewForm, arrive_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                        <div><label style={labelStyle}>{dateLabels.return}</label><input value={crewForm.return_date || ""} onChange={e => setCrewForm({ ...crewForm, return_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                        <div><label style={labelStyle}>{dateLabels.home}</label><input value={crewForm.home_date || ""} onChange={e => setCrewForm({ ...crewForm, home_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                      </div>
+                      <label style={labelStyle}>Itinerary</label>
+                      <select value={crewForm.itinerary_id || ""} onChange={e => setCrewForm({ ...crewForm, itinerary_id: e.target.value })} style={{ ...inputStyle, color: crewForm.itinerary_id ? theme.text : theme.textDim }}>
+                        <option value="">Select itinerary...</option>
+                        {[12, 9, 7].map(days => {
+                          const group = itineraries.filter(it => it.days === days).sort((a, b) => {
+                            const na = parseInt(a.id.split("-")[1]) || 0, nb = parseInt(b.id.split("-")[1]) || 0;
+                            return na - nb;
+                          });
+                          return group.length > 0 ? (
+                            <optgroup key={days} label={`${days}-Day Treks`}>
+                              {group.map(it => <option key={it.id} value={it.id}>{it.name} — {it.miles} mi, {it.rating}</option>)}
+                            </optgroup>
+                          ) : null;
+                        })}
+                      </select>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button onClick={() => setEditingCrew(null)} style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgAlt, color: theme.textMuted, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
+                        <button onClick={saveCrew} disabled={savingCrew} style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: "none", background: theme.accent, color: "#fff", fontSize: 11, fontWeight: 600, cursor: savingCrew ? "wait" : "pointer", fontFamily: fontBody }}>{savingCrew ? "Saving..." : "Save"}</button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>{crew.name}</div>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <button onClick={() => startEditCrew(crew)} style={{ fontSize: 9, color: theme.accent, background: "none", border: `1px solid ${theme.borderAccent}`, padding: "2px 8px", borderRadius: 4, cursor: "pointer", fontFamily: fontBody }}>Edit</button>
+                          {crews.length > 1 && (
+                            <button onClick={() => setConfirmDeleteCrew(crew.id)} style={{ fontSize: 9, color: theme.danger, background: "none", border: `1px solid ${theme.danger}40`, padding: "2px 8px", borderRadius: 4, cursor: "pointer", fontFamily: fontBody }}>Delete</button>
+                          )}
+                        </div>
+                      </div>
+                      {crew.itinerary_id && <div style={{ fontSize: 10, color: theme.textDim }}>Itinerary: {crew.itinerary_id}</div>}
+                      {crew.depart_date && crew.home_date && (
+                        <div style={{ fontSize: 10, color: theme.textDim }}>
+                          {new Date(crew.depart_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })} — {new Date(crew.home_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
+
+              {/* Create new crew */}
+              <div style={{ marginTop: 10, padding: 12, borderRadius: 8, border: `1.5px solid ${theme.borderAccent}`, background: theme.name === "dark" ? "#1e2418" : "#f4f9ee" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: theme.accent, textTransform: "uppercase", marginBottom: 8 }}>Add Crew</div>
+                {!showCreateCrew ? (
+                  <button onClick={() => setShowCreateCrew(true)} style={{ width: "100%", padding: "10px 0", borderRadius: 7, border: `1.5px dashed ${theme.borderAccent}`, background: "transparent", color: theme.accent, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>+ Add Sister Crew</button>
+                ) : (
+                  <>
+                    <label style={labelStyle}>Crew Name</label>
+                    <input value={newCrew.name} onChange={e => setNewCrew({ ...newCrew, name: e.target.value.slice(0, 30) })} maxLength={30} style={inputStyle} placeholder="e.g. Crew 614-B" />
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 6 }}>
+                      <div><label style={labelStyle}>{dateLabels.depart}</label><input value={newCrew.depart_date} onChange={e => setNewCrew({ ...newCrew, depart_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                      <div><label style={labelStyle}>{dateLabels.arrive}</label><input value={newCrew.arrive_date} onChange={e => setNewCrew({ ...newCrew, arrive_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                      <div><label style={labelStyle}>{dateLabels.return}</label><input value={newCrew.return_date} onChange={e => setNewCrew({ ...newCrew, return_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                      <div><label style={labelStyle}>{dateLabels.home}</label><input value={newCrew.home_date} onChange={e => setNewCrew({ ...newCrew, home_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                    </div>
+                    <label style={labelStyle}>Itinerary</label>
+                    <select value={newCrew.itinerary_id} onChange={e => setNewCrew({ ...newCrew, itinerary_id: e.target.value })} style={{ ...inputStyle, color: newCrew.itinerary_id ? theme.text : theme.textDim }}>
+                      <option value="">Select itinerary...</option>
+                      {[12, 9, 7].map(days => {
+                        const group = itineraries.filter(it => it.days === days).sort((a, b) => {
+                          const na = parseInt(a.id.split("-")[1]) || 0, nb = parseInt(b.id.split("-")[1]) || 0;
+                          return na - nb;
+                        });
+                        return group.length > 0 ? (
+                          <optgroup key={days} label={`${days}-Day Treks`}>
+                            {group.map(it => <option key={it.id} value={it.id}>{it.name} — {it.miles} mi, {it.rating}</option>)}
+                          </optgroup>
+                        ) : null;
+                      })}
+                    </select>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => setShowCreateCrew(false)} style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgAlt, color: theme.textMuted, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
+                      <button onClick={createNewCrew} disabled={creatingCrew} style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: "none", background: theme.accent, color: "#fff", fontSize: 11, fontWeight: 600, cursor: creatingCrew ? "wait" : "pointer", fontFamily: fontBody }}>{creatingCrew ? "Creating..." : "Create Crew"}</button>
+                    </div>
+                  </>
+                )}
               </div>
             </>
           )}
@@ -690,6 +839,9 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
       )}
       {confirmRemoveMember && (
         <ConfirmModal title="Remove Member?" message={`Remove ${confirmRemoveMember.name} from this adventure? They will lose all their gear selections and calendar dates.`} confirmLabel="Remove" onConfirm={() => confirmRemoveMember.isManual ? removeManual(confirmRemoveMember.memberId) : removeMemberFromAdventure(confirmRemoveMember.userId)} onCancel={() => setConfirmRemoveMember(null)} />
+      )}
+      {confirmDeleteCrew && (
+        <ConfirmModal title="Delete Crew?" message="This permanently deletes this crew and all its member data. Members will need to be re-added to another crew." confirmLabel="Delete Crew" onConfirm={() => deleteCrew(confirmDeleteCrew)} onCancel={() => setConfirmDeleteCrew(null)} />
       )}
     </div>
   );

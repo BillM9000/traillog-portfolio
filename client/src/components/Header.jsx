@@ -62,7 +62,8 @@ export default function Header({ user, troop, adventure, members, analysis, trek
   };
 
   // Compute crew readiness using shared calculation (single source of truth)
-  const { skills: advSkills, gearCatalog, memberGearMap } = useAdventure();
+  const { skills: advSkills, gearCatalog, memberGearMap, crews, selectedCrew } = useAdventure();
+  const hasMultipleCrews = crews && crews.length > 1;
   const crewReadiness = computeCrewReadiness(members, advSkills, gearCatalog, memberGearMap).overall;
   const trekkingMembers = members.filter(m => m.participation === "trekking");
 
@@ -264,7 +265,7 @@ export default function Header({ user, troop, adventure, members, analysis, trek
           fontSize: 24, fontWeight: 900, color: "#fff", margin: "0 0 4px 0", lineHeight: 1.15,
           fontFamily: fontDisplay, textShadow: "0 2px 6px rgba(0,0,0,0.35)",
         }}>
-          {adventureName}
+          {hasMultipleCrews && selectedCrew ? selectedCrew.name : adventureName}
         </h1>
 
         {/* Date range */}

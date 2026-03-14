@@ -441,6 +441,25 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
         achievements={achievements}
       />
 
+      {/* Crew picker — only when multiple crews */}
+      {crews.length > 1 && (
+        <div style={{ padding: "0 16px", marginBottom: 8 }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {crews.map(c => (
+              <button key={c.id} onClick={() => setSelectedCrewId(c.id)} style={{
+                padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700,
+                fontFamily: fontBody, cursor: "pointer", transition: "all 0.15s ease",
+                border: c.id === selectedCrewId ? `2px solid ${theme.accent}` : `1.5px solid ${theme.borderLight}`,
+                background: c.id === selectedCrewId ? theme.accentBg : theme.bgAlt,
+                color: c.id === selectedCrewId ? theme.accent : theme.textDim,
+              }}>
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <MemberBar
         members={members} active={active} setActive={setActive}
         pendingMembers={pendingMembers} isAdmin={isAdmin} currentUserId={user.id}
