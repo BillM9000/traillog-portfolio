@@ -89,17 +89,23 @@ is malformed"), failed queries, or unexpected empty results.
    docker cp /opt/crew614/backups/<most-recent-backup>.db crew614:/app/data/crew614.db
    ```
 
-5. Start the container:
+5. **Fix file ownership** — `docker cp` sets files to `root`, but the app runs
+   as `appuser` (uid 1001). Without this step the database will be read-only:
+   ```bash
+   chown 1001:1001 /var/lib/docker/volumes/crew614_crew614_data/_data/crew614.db
+   ```
+
+6. Start the container:
    ```bash
    docker compose start
    ```
 
-6. Verify the application and data:
+7. Verify the application and data:
    ```bash
    curl https://traillog.gracezero.ai/api/health
    ```
 
-7. Spot-check data by querying the database:
+8. Spot-check data by querying the database:
    ```bash
    docker exec -it crew614 sqlite3 /app/data/crew614.db "SELECT count(*) FROM users;"
    ```
@@ -108,6 +114,7 @@ is malformed"), failed queries, or unexpected empty results.
 
 ```bash
 docker cp /opt/crew614/crew614-GOLDEN-pre-crew-layer-20260314.db crew614:/app/data/crew614.db
+chown 1001:1001 /var/lib/docker/volumes/crew614_crew614_data/_data/crew614.db
 docker compose start
 ```
 
@@ -127,8 +134,11 @@ Note: The app runs migrations on startup, so restoring an older backup
 created after the golden snapshot date will be lost.
 
 **Restore verified:** 2026-03-14. Tested `docker compose stop` → `docker cp`
-golden backup → `docker compose start`. App booted clean, schema migrated,
-data intact.
+golden backup → `chown 1001:1001` → `docker compose start`. App booted clean,
+schema migrated, data intact. **Note:** The `chown` step is critical — `docker cp`
+sets file ownership to root, but the app runs as appuser (uid 1001). Without it
+the database becomes read-only and all writes fail with `SqliteError: attempt to
+write a readonly database`.
 
 ---
 
@@ -192,6 +202,7 @@ backup copies are stored at `C:\Users\billm\220claudsession\philmont_app\crew614
 8. **Restore the database** from the most recent available backup:
    ```bash
    docker cp <path-to-backup>.db crew614:/app/data/crew614.db
+   chown 1001:1001 /var/lib/docker/volumes/crew614_crew614_data/_data/crew614.db
    docker compose restart
    ```
 
