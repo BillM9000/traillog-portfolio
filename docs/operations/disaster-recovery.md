@@ -104,14 +104,31 @@ is malformed"), failed queries, or unexpected empty results.
    docker exec -it crew614 sqlite3 /app/data/crew614.db "SELECT count(*) FROM users;"
    ```
 
-**If no automated backup is usable**, restore from the golden backup:
+**If no automated backup is usable**, restore from a golden backup:
 
 ```bash
-docker cp /opt/crew614/crew614-GOLDEN-pre-regression-20260310.db crew614:/app/data/crew614.db
+docker cp /opt/crew614/crew614-GOLDEN-pre-crew-layer-20260314.db crew614:/app/data/crew614.db
+docker compose start
 ```
 
-Note: The golden backup may be older than rolling backups. Data created after
-the golden snapshot date will be lost.
+**Available golden backups (newest first):**
+
+| File | Date | Contents |
+|------|------|----------|
+| `crew614-GOLDEN-pre-crew-layer-20260314.db` | 2026-03-14 | Schema v17, councils, 1 user, clean state. **Also stored locally** at `C:\Users\billm\...\crew614\backups\` |
+| `crew614-GOLDEN-pre-phase1-20260314.db` | 2026-03-14 | Schema v16, pre-councils |
+| `crew614-GOLDEN-pre-platform-settings-20260314.db` | 2026-03-14 | Pre-platform settings |
+| `crew614-GOLDEN-pre-agegate-20260313.db` | 2026-03-13 | Pre-age gate |
+| `crew614-GOLDEN-pre-timeslots-20260312.db` | 2026-03-12 | Pre-time slots |
+| `crew614-GOLDEN-pre-regression-20260310.db` | 2026-03-10 | Original baseline |
+
+Note: The app runs migrations on startup, so restoring an older backup
+(e.g. schema v16) with current code (schema v17) will auto-migrate. Data
+created after the golden snapshot date will be lost.
+
+**Restore verified:** 2026-03-14. Tested `docker compose stop` → `docker cp`
+golden backup → `docker compose start`. App booted clean, schema migrated,
+data intact.
 
 ---
 
@@ -121,8 +138,9 @@ the golden snapshot date will be lost.
 the VPS are down.
 
 **Prerequisites:** Access to GitHub repository, a backup of the `.env` file
-(from off-site storage or the backup set), and a database backup (off-site copy
-or golden backup stored elsewhere).
+(from off-site storage or the backup set), and a database backup. Local golden
+backup copies are stored at `C:\Users\billm\220claudsession\philmont_app\crew614\backups\`
+— these survive a total VPS loss.
 
 **Recovery:**
 
