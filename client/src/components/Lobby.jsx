@@ -3,7 +3,7 @@ import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import { fontBody, fontDisplay, card, cardTitle } from "../utils/theme";
-import { US_STATES } from "../utils/constants";
+import { US_STATES, ADVENTURE_TYPES } from "../utils/constants";
 import Logo from "./Logo";
 import TroopLogo from "./TroopLogo";
 
@@ -17,6 +17,11 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
   const [newLogoPreview, setNewLogoPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [createStep, setCreateStep] = useState(1);
+  const [createdTroopId, setCreatedTroopId] = useState(null);
+  const [createdTroopName, setCreatedTroopName] = useState("");
+  const [advForm, setAdvForm] = useState({ name: "", depart_date: "", arrive_date: "", return_date: "", home_date: "", itinerary_id: "", adventure_type: "philmont" });
+  const [itineraries, setItineraries] = useState([]);
 
   useEffect(() => {
     api.getTroops().then(setTroops).catch(console.error);
@@ -73,8 +78,15 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
         }
       }
 
-      await onRefresh();
-      if (onEnterTroop && created?.id) onEnterTroop(created.id);
+      // Move to Step 2: adventure creation (don't refresh App yet — it would unmount Lobby)
+      setCreatedTroopId(created.id);
+      setCreatedTroopName(newTroop.name.trim());
+      setCreateStep(2);
+      setError("");
+      // Refresh troop list locally so it appears
+      try { setTroops(await api.getTroops()); } catch {}
+      // Pre-fetch itineraries
+      try { setItineraries(await api.getItineraries()); } catch {}
     } catch (e) {
       setError(e.message);
     } finally {
@@ -144,7 +156,7 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
         <div style={card(theme)}>
           <div style={cardTitle(theme)}>Available Troops</div>
           {troops.length === 0 ? (
-            <p style={{ fontSize: 12, color: theme.textDim, fontStyle: "italic" }}>No troops yet. Create one to get started!</p>
+            <p style={{ fontSize: 12, color: theme.textDim, fontStyle: "italic" }}>{user.user_type === "scout" ? "No troops yet. A troop leader will need to create one." : "No troops yet. Create one to get started!"}</p>
           ) : (
             troops.map(t => {
               const membership = memberships.find(m => m.troop_id === t.id);
@@ -168,11 +180,15 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
                   </div>
                   {membership ? (
                     membership.status === "approved" && onEnterTroop ? (
+                      showCreate && createStep === 2 && t.id === createdTroopId ? (
+                        <span style={{ fontSize: 10, fontWeight: 600, color: theme.textDim, fontStyle: "italic" }}>Finish setup below ↓</span>
+                      ) : (
                       <button onClick={() => onEnterTroop(t.id, t)} style={{
-                        padding: "5px 12px", borderRadius: 6, border: `1px solid ${theme.borderAccent}`,
-                        background: theme.accentBg, color: theme.accentLight, fontSize: 11, fontWeight: 600,
-                        cursor: "pointer", fontFamily: fontBody,
+                        padding: "5px 12px", borderRadius: 6, border: "none",
+                        background: theme.accent, color: "#fff", fontSize: 11, fontWeight: 700,
+                        cursor: "pointer", fontFamily: fontDisplay,
                       }}>Enter →</button>
+                      )
                     ) : (
                       <span style={{
                         fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: 5,
@@ -182,9 +198,9 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
                     )
                   ) : isGlobalAdmin ? (
                     <button onClick={() => onEnterTroop(t.id, t)} style={{
-                      padding: "5px 12px", borderRadius: 6, border: `1px solid ${theme.borderAccent}`,
-                      background: theme.accentBg, color: theme.accentLight, fontSize: 11, fontWeight: 600,
-                      cursor: "pointer", fontFamily: fontBody,
+                      padding: "5px 12px", borderRadius: 6, border: "none",
+                      background: theme.accent, color: "#fff", fontSize: 11, fontWeight: 700,
+                      cursor: "pointer", fontFamily: fontDisplay,
                     }}>Enter →</button>
                   ) : (
                     <button onClick={() => handleJoin(t.id)} style={{
@@ -198,13 +214,113 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
           )}
         </div>
 
-        {!showCreate ? (
-          <button onClick={() => setShowCreate(true)} style={{
+        {!showCreate && user.user_type !== "scout" && (
+          <button onClick={() => { setShowCreate(true); setCreateStep(1); }} style={{
             width: "100%", padding: "12px 0", borderRadius: 8, border: `1.5px dashed ${theme.borderLight}`,
             background: "transparent", color: theme.accent, fontSize: 13, fontWeight: 600,
             cursor: "pointer", fontFamily: fontBody,
           }}>+ Create a New Troop</button>
-        ) : (
+        )}
+        {showCreate && createStep === 2 ? (
+          <div style={card(theme)}>
+            <div style={cardTitle(theme)}>Set Up Your First Adventure</div>
+            <div style={{ fontSize: 12, color: theme.textDim, marginBottom: 14 }}>
+              <strong style={{ color: theme.heading }}>{createdTroopName}</strong> is ready! Now create your first adventure so members can join.
+            </div>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!advForm.name.trim()) return setError("Adventure name required");
+              setLoading(true);
+              setError("");
+              try {
+                await api.createAdventure(createdTroopId, advForm);
+                await onRefresh();
+                if (onEnterTroop) onEnterTroop(createdTroopId);
+              } catch (e) {
+                setError(e.message);
+              } finally {
+                setLoading(false);
+              }
+            }}>
+              {/* Adventure Type Selector */}
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase", marginBottom: 4, display: "block" }}>Adventure Type</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                  {ADVENTURE_TYPES.map(t => (
+                    <button key={t.id} type="button" disabled={!t.enabled}
+                      onClick={() => t.enabled && setAdvForm({ ...advForm, adventure_type: t.id })}
+                      style={{
+                        padding: "10px 12px", borderRadius: 8, cursor: t.enabled ? "pointer" : "default",
+                        border: advForm.adventure_type === t.id ? `2px solid ${theme.accent}` : `1.5px solid ${theme.borderLight}`,
+                        background: advForm.adventure_type === t.id ? theme.accentBg : t.enabled ? theme.bgAlt : theme.bgAlt,
+                        opacity: t.enabled ? 1 : 0.45, textAlign: "left", fontFamily: fontBody,
+                        position: "relative",
+                      }}>
+                      <div style={{ fontSize: 14, marginBottom: 2 }}>{t.icon}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: t.enabled ? theme.heading : theme.textDim }}>{t.name}</div>
+                      <div style={{ fontSize: 10, color: theme.textDim }}>{t.location}</div>
+                      {!t.enabled && (
+                        <div style={{
+                          position: "absolute", top: 6, right: 8, fontSize: 8, fontWeight: 700,
+                          color: theme.textDim, background: theme.border, padding: "2px 6px", borderRadius: 4,
+                          textTransform: "uppercase", letterSpacing: 0.5,
+                        }}>Coming Soon</div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <input value={advForm.name} onChange={e => setAdvForm({ ...advForm, name: e.target.value })}
+                placeholder={`Crew name (e.g. ${(ADVENTURE_TYPES.find(t => t.id === advForm.adventure_type)?.name || "Philmont")} 2026)`}
+                style={inputStyle} required />
+              {(() => {
+                const labels = ADVENTURE_TYPES.find(t => t.id === advForm.adventure_type)?.dateLabels || ADVENTURE_TYPES[0].dateLabels;
+                return (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
+                    <div>
+                      <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>{labels.depart}</label>
+                      <input value={advForm.depart_date} onChange={e => setAdvForm({ ...advForm, depart_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>{labels.arrive}</label>
+                      <input value={advForm.arrive_date} onChange={e => setAdvForm({ ...advForm, arrive_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>{labels.return}</label>
+                      <input value={advForm.return_date} onChange={e => setAdvForm({ ...advForm, return_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>{labels.home}</label>
+                      <input value={advForm.home_date} onChange={e => setAdvForm({ ...advForm, home_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+                    </div>
+                  </div>
+                );
+              })()}
+              <select value={advForm.itinerary_id} onChange={e => setAdvForm({ ...advForm, itinerary_id: e.target.value })}
+                style={{ ...inputStyle, color: advForm.itinerary_id ? theme.text : theme.textDim }}>
+                <option value="">Select itinerary (optional)...</option>
+                {[12, 9, 7].map(days => {
+                  const group = itineraries.filter(it => it.days === days).sort((a, b) => {
+                    const na = parseInt(a.id.split("-")[1]) || 0, nb = parseInt(b.id.split("-")[1]) || 0;
+                    return na - nb;
+                  });
+                  return group.length > 0 ? (
+                    <optgroup key={days} label={`${days}-Day Treks`}>
+                      {group.map(it => <option key={it.id} value={it.id}>{it.name} ({it.miles} mi, {it.rating})</option>)}
+                    </optgroup>
+                  ) : null;
+                })}
+              </select>
+              {error && <div style={{ fontSize: 12, color: theme.danger, marginBottom: 8 }}>{error}</div>}
+              <button type="submit" disabled={loading} style={{
+                width: "100%", padding: "10px 0", borderRadius: 7, border: "none",
+                background: theme.accent, color: "#fff", fontSize: 12, fontWeight: 600,
+                cursor: loading ? "wait" : "pointer", fontFamily: fontBody,
+              }}>{loading ? "..." : "Create Adventure & Enter"}</button>
+            </form>
+          </div>
+        ) : showCreate && createStep === 1 ? (
           <div style={card(theme)}>
             <div style={cardTitle(theme)}>Create a Troop</div>
             <form onSubmit={handleCreate}>
@@ -221,15 +337,13 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
                   {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
-              <input value={newTroop.description} onChange={e => setNewTroop({ ...newTroop, description: e.target.value })}
-                placeholder="Description (optional)" style={inputStyle} />
-
               {/* Logo upload (optional) */}
               <div style={{ marginBottom: 10 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
                   {newLogoPreview ? (
                     <img src={newLogoPreview} alt="Logo preview"
-                      style={{ width: 56, height: 56, borderRadius: 8, objectFit: "contain", background: theme.bgAlt, border: `1px solid ${theme.border}` }} />
+                      onError={() => { setNewLogoPreview(null); setNewLogoFile(null); }}
+                      style={{ width: 100, height: 100, borderRadius: 8, objectFit: "contain", background: theme.bgAlt, border: `1px solid ${theme.border}` }} />
                   ) : (
                     <div style={{
                       width: 56, height: 56, borderRadius: 8, background: theme.accent + "20",
@@ -240,8 +354,8 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
                   <div>
                     <label style={{
                       display: "inline-block", padding: "5px 12px", borderRadius: 6,
-                      border: `1px solid ${theme.borderAccent}`, background: theme.accentBg,
-                      color: theme.accentLight, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
+                      border: "none", background: theme.accent,
+                      color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: fontDisplay,
                     }}>
                       {newLogoPreview ? "Change" : "Add Logo"}
                       <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleLogoSelect}
@@ -292,19 +406,19 @@ export default function Lobby({ user, memberships, onRefresh, onLogout, isGlobal
 
               {error && <div style={{ fontSize: 12, color: theme.danger, marginBottom: 8 }}>{error}</div>}
               <div style={{ display: "flex", gap: 8 }}>
-                <button type="button" onClick={() => setShowCreate(false)} style={{
+                <button type="button" onClick={() => { setShowCreate(false); setCreateStep(1); setCreatedTroopId(null); }} style={{
                   flex: 1, padding: "10px 0", borderRadius: 7, border: `1px solid ${theme.borderLight}`,
                   background: theme.bgAlt, color: theme.textMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
                 }}>Cancel</button>
                 <button type="submit" disabled={loading} style={{
                   flex: 1, padding: "10px 0", borderRadius: 7, border: "none",
-                  background: theme.accent, color: "#fff", fontSize: 12, fontWeight: 600,
-                  cursor: loading ? "wait" : "pointer", fontFamily: fontBody,
+                  background: theme.accent, color: "#fff", fontSize: 13, fontWeight: 700,
+                  cursor: loading ? "wait" : "pointer", fontFamily: fontDisplay, letterSpacing: 0.3,
                 }}>{loading ? "..." : "Create"}</button>
               </div>
             </form>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

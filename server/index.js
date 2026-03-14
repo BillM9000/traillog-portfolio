@@ -69,9 +69,9 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https://*.googleusercontent.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      imgSrc: ["'self'", "data:", "blob:", "https://*.googleusercontent.com"],
       connectSrc: ["'self'"],
       fontSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
       frameSrc: ["'none'"],
@@ -409,6 +409,7 @@ app.get("/api/troops/:troopId", requireAuth, requireTroopMember(), (req, res) =>
 
 app.post("/api/troops", requireAuth, (req, res) => {
   try {
+    if (req.user.user_type === "scout") return res.status(403).json({ error: "Scouts cannot create troops" });
     const { name, description, council, location, is_public } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Troop name required" });
     if (!council?.trim()) return res.status(400).json({ error: "Council is required" });

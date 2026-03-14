@@ -154,15 +154,15 @@ export default function ProfileSetup({ user, onComplete }) {
           {user.name}, one more step!
         </h1>
         <p style={{ fontSize: 14, color: "#D4E4B8", marginBottom: 28 }}>
-          Are you an adult or a scout?
+          {confirmedAge === "18+" ? "Confirm your role to continue" : confirmedAge === "13+" ? "Confirm your role to continue" : "Are you an adult or a scout?"}
         </p>
 
         <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 20 }}>
           {[
-            { type: "adult", label: "Adult", img: "/icons/scoutguy280good.png", desc: "Parent, adviser, or crew leader", needs18: true },
-            { type: "scout", label: "Scout", img: "/icons/scoutrope280good.png", desc: "Youth trekking crew member", needs18: false },
+            { type: "adult", label: "Adult", img: "/icons/scoutguy280good.png", desc: "Parent, adviser, or crew leader" },
+            { type: "scout", label: "Scout", img: "/icons/scoutrope280good.png", desc: "Youth trekking crew member" },
           ].map(opt => {
-            const disabled = opt.needs18 && confirmedAge === "13+";
+            const disabled = (opt.type === "scout" && confirmedAge === "18+") || (opt.type === "adult" && confirmedAge === "13+");
             return (
               <button key={opt.type} onClick={() => !disabled && setUserType(opt.type)} style={{
                 flex: 1, padding: "18px 14px", borderRadius: 14, cursor: disabled ? "not-allowed" : "pointer", textAlign: "center",
@@ -173,7 +173,8 @@ export default function ProfileSetup({ user, onComplete }) {
                 <img src={opt.img} alt={opt.label} style={{ width: 64, height: 64, objectFit: "contain", marginBottom: 6, opacity: userType === opt.type ? 1 : 0.6, filter: userType === opt.type ? "brightness(1.4)" : "brightness(1.2)" }} />
                 <div style={{ fontSize: 14, fontWeight: 700, color: userType === opt.type ? "#FDFAF5" : "#8B8478", fontFamily: fontDisplay }}>{opt.label}</div>
                 <div style={{ fontSize: 11, color: "#7A9A5A", marginTop: 3 }}>{opt.desc}</div>
-                {disabled && <div style={{ fontSize: 10, color: "#d08080", marginTop: 4 }}>Must be 18+</div>}
+                {opt.type === "scout" && disabled && <div style={{ fontSize: 10, color: "#d08080", marginTop: 4 }}>Under 18 only</div>}
+                {opt.type === "adult" && disabled && <div style={{ fontSize: 10, color: "#d08080", marginTop: 4 }}>18+ only</div>}
               </button>
             );
           })}

@@ -55,10 +55,10 @@ export async function sendParentNotificationEmail(parentEmail, scoutName, troopN
     html: `
       <div style="font-family:sans-serif;max-width:500px">
         <h2 style="color:#2d3830">Your scout requested to join a troop</h2>
-        <p><strong>${esc(scoutName)}</strong> has requested to join <strong>${esc(troopName)}</strong> on TrailLog, a Scouting America high adventure preparation platform.</p>
-        <p>A troop leader will review and approve the request. You listed as the parent/guardian contact for this scout.</p>
-        <p>You can view the platform here:</p>
-        <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrailLog</a></p>
+        <p><strong>${esc(scoutName)}</strong> has requested to join <strong>${esc(troopName)}</strong> on TrailLog, a high adventure preparation platform.</p>
+        <p>A troop leader will review and approve the request. You are listed as the parent/guardian contact for this scout.</p>
+        <p>We recommend creating your own TrailLog account so you can stay informed on your scout's progress, view gear lists, training schedules, and more.</p>
+        <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Sign Up on TrailLog</a></p>
         <p style="color:#888;font-size:13px">If you were not expecting this, please contact your troop leader.</p>
       </div>
     `,

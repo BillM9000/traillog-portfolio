@@ -3,7 +3,7 @@ import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import { fontBody, fontDisplay, card, cardTitle, toolbarBtn } from "../utils/theme";
-import { US_STATES } from "../utils/constants";
+import { US_STATES, ADVENTURE_TYPES } from "../utils/constants";
 
 export default function GlobalAdmin({ isGlobalAdmin, troopId, onClose, onEnterTroop, onLogout, user, alwaysOpen }) {
   const { theme } = useTheme();
@@ -275,10 +275,15 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop })
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [deleteInput, setDeleteInput] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [createStep, setCreateStep] = useState(1);
+  const [createdTroopId, setCreatedTroopId] = useState(null);
+  const [createdTroopName, setCreatedTroopName] = useState("");
   const [newTroop, setNewTroop] = useState({ name: "", council: "", city: "", state: "", description: "", is_public: true });
   const [creating, setCreating] = useState(false);
   const [newLogoFile, setNewLogoFile] = useState(null);
   const [newLogoPreview, setNewLogoPreview] = useState(null);
+  const [advForm, setAdvForm] = useState({ name: "", adventure_type: "philmont", depart_date: "", arrive_date: "", return_date: "", home_date: "", itinerary_id: "" });
+  const [gaItineraries, setGaItineraries] = useState([]);
 
   const refreshMembers = async (troopId) => {
     try {
@@ -369,12 +374,14 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop })
         }
       }
 
-      setNewTroop({ name: "", council: "", city: "", state: "", description: "", is_public: true });
+      setCreatedTroopId(created.id);
+      setCreatedTroopName(newTroop.name.trim());
+      setCreateStep(2);
       setNewLogoFile(null);
       setNewLogoPreview(null);
-      setShowCreate(false);
-      addToast("Troop created", "success");
+      addToast("Troop created! Now set up the first adventure.", "success");
       onRefresh();
+      try { setGaItineraries(await api.getItineraries()); } catch {}
     } catch (e) { addToast(e.message, "error"); }
     finally { setCreating(false); }
   };
@@ -393,7 +400,91 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop })
         )}
       </div>
 
-      {showCreate && (
+      {showCreate && createStep === 2 && (
+        <div style={{ marginBottom: 12, padding: 14, borderRadius: 10, border: `1.5px solid ${theme.borderAccent}`, background: theme.bgAlt }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: theme.heading, marginBottom: 4, fontFamily: fontDisplay }}>Set Up First Adventure</div>
+          <div style={{ fontSize: 10, color: theme.textDim, marginBottom: 10 }}>
+            <strong style={{ color: theme.heading }}>{createdTroopName}</strong> is ready! Now create the first adventure so members can join.
+          </div>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            if (!advForm.name.trim()) { addToast("Adventure name required", "error"); return; }
+            setCreating(true);
+            try {
+              await api.createAdventure(createdTroopId, advForm);
+              setShowCreate(false);
+              setCreateStep(1);
+              setCreatedTroopId(null);
+              setCreatedTroopName("");
+              setNewTroop({ name: "", council: "", city: "", state: "", description: "", is_public: true });
+              setAdvForm({ name: "", adventure_type: "philmont", depart_date: "", arrive_date: "", return_date: "", home_date: "", itinerary_id: "" });
+              addToast("Adventure created!", "success");
+              onRefresh();
+            } catch (err) { addToast(err.message, "error"); }
+            finally { setCreating(false); }
+          }}>
+            <div style={{ marginBottom: 6 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase", marginBottom: 4 }}>Adventure Type</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
+                {ADVENTURE_TYPES.map(t => (
+                  <button key={t.id} type="button" disabled={!t.enabled}
+                    onClick={() => t.enabled && setAdvForm({ ...advForm, adventure_type: t.id })}
+                    style={{
+                      padding: "8px 10px", borderRadius: 6, cursor: t.enabled ? "pointer" : "default",
+                      border: advForm.adventure_type === t.id ? `2px solid ${theme.accent}` : `1px solid ${theme.borderLight}`,
+                      background: advForm.adventure_type === t.id ? theme.accentBg : theme.bgInput,
+                      opacity: t.enabled ? 1 : 0.45, textAlign: "left", fontFamily: fontBody, position: "relative",
+                    }}>
+                    <div style={{ fontSize: 12, marginBottom: 1 }}>{t.icon}</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: t.enabled ? theme.heading : theme.textDim }}>{t.name}</div>
+                    <div style={{ fontSize: 9, color: theme.textDim }}>{t.location}</div>
+                    {!t.enabled && <div style={{ position: "absolute", top: 4, right: 6, fontSize: 7, fontWeight: 700, color: theme.textDim, background: theme.border, padding: "1px 4px", borderRadius: 3, textTransform: "uppercase" }}>Soon</div>}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <input value={advForm.name} onChange={e => setAdvForm({ ...advForm, name: e.target.value })}
+              placeholder={`Crew name (e.g. ${(ADVENTURE_TYPES.find(t => t.id === advForm.adventure_type)?.name || "Philmont")} 2026)`}
+              style={inputStyle} required />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 6 }}>
+              {(() => {
+                const labels = ADVENTURE_TYPES.find(t => t.id === advForm.adventure_type)?.dateLabels || ADVENTURE_TYPES[0].dateLabels;
+                return [
+                  { key: "depart_date", label: labels.depart },
+                  { key: "arrive_date", label: labels.arrive },
+                  { key: "return_date", label: labels.return },
+                  { key: "home_date", label: labels.home },
+                ].map(d => (
+                  <div key={d.key}>
+                    <label style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>{d.label}</label>
+                    <input value={advForm[d.key]} onChange={e => setAdvForm({ ...advForm, [d.key]: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+                  </div>
+                ));
+              })()}
+            </div>
+            <select value={advForm.itinerary_id} onChange={e => setAdvForm({ ...advForm, itinerary_id: e.target.value })}
+              style={{ ...inputStyle, color: advForm.itinerary_id ? theme.text : theme.textDim }}>
+              <option value="">Select itinerary (optional)...</option>
+              {[12, 9, 7].map(days => {
+                const group = gaItineraries.filter(it => it.days === days).sort((a, b) => {
+                  const na = parseInt(a.id.split("-")[1]) || 0, nb = parseInt(b.id.split("-")[1]) || 0;
+                  return na - nb;
+                });
+                return group.length > 0 ? (
+                  <optgroup key={days} label={`${days}-Day Treks`}>
+                    {group.map(it => <option key={it.id} value={it.id}>{it.name} ({it.miles} mi, {it.rating})</option>)}
+                  </optgroup>
+                ) : null;
+              })}
+            </select>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button type="submit" disabled={creating} style={{ flex: 1, padding: "7px 0", borderRadius: 6, border: "none", background: theme.accent, color: "#fff", fontSize: 11, fontWeight: 700, cursor: creating ? "wait" : "pointer", fontFamily: fontDisplay }}>{creating ? "..." : "Create Adventure"}</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {showCreate && createStep === 1 && (
         <div style={{ marginBottom: 12, padding: 14, borderRadius: 10, border: `1.5px solid ${theme.borderAccent}`, background: theme.bgAlt }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: theme.heading, marginBottom: 8, fontFamily: fontDisplay }}>Create a Troop</div>
           <form onSubmit={handleCreate}>
@@ -411,19 +502,20 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop })
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                 {newLogoPreview ? (
                   <img src={newLogoPreview} alt="Logo preview"
-                    style={{ width: 40, height: 40, borderRadius: 6, objectFit: "contain", background: theme.bgAlt, border: `1px solid ${theme.border}` }} />
+                    onError={() => { setNewLogoPreview(null); setNewLogoFile(null); }}
+                    style={{ width: 100, height: 100, borderRadius: 6, objectFit: "contain", background: theme.bgAlt, border: `1px solid ${theme.border}` }} />
                 ) : (
                   <div style={{
-                    width: 40, height: 40, borderRadius: 6, background: theme.accent + "20",
+                    width: 56, height: 56, borderRadius: 6, background: theme.accent + "20",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     border: `1px dashed ${theme.borderLight}`, fontSize: 14, color: theme.textDim,
                   }}>📷</div>
                 )}
                 <div>
                   <label style={{
-                    display: "inline-block", padding: "3px 10px", borderRadius: 5,
-                    border: `1px solid ${theme.borderAccent}`, background: theme.accentBg,
-                    color: theme.accentLight, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
+                    display: "inline-block", padding: "4px 12px", borderRadius: 5,
+                    border: "none", background: theme.accent,
+                    color: "#fff", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: fontDisplay,
                   }}>
                     {newLogoPreview ? "Change" : "Add Logo"}
                     <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleLogoSelect}
@@ -460,8 +552,8 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop })
               </div>
             </div>
             <div style={{ display: "flex", gap: 6 }}>
-              <button type="button" onClick={() => setShowCreate(false)} style={{ flex: 1, padding: "7px 0", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.textDim, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
-              <button type="submit" disabled={creating} style={{ flex: 1, padding: "7px 0", borderRadius: 6, border: "none", background: theme.accent, color: "#fff", fontSize: 11, fontWeight: 600, cursor: creating ? "wait" : "pointer", fontFamily: fontBody }}>{creating ? "..." : "Create"}</button>
+              <button type="button" onClick={() => { setShowCreate(false); setCreateStep(1); }} style={{ flex: 1, padding: "7px 0", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.textDim, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
+              <button type="submit" disabled={creating} style={{ flex: 1, padding: "7px 0", borderRadius: 6, border: "none", background: theme.accent, color: "#fff", fontSize: 11, fontWeight: 700, cursor: creating ? "wait" : "pointer", fontFamily: fontDisplay }}>{creating ? "..." : "Create"}</button>
             </div>
           </form>
         </div>

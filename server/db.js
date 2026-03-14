@@ -1165,9 +1165,11 @@ export function updateUserProfile(id, { name, user_type, parent_email, parent_em
 }
 
 export function verifyUserEmail(token) {
-  const user = db.prepare("SELECT id FROM users WHERE verification_token = ?").get(token);
+  const user = db.prepare("SELECT id, email_verified FROM users WHERE verification_token = ?").get(token);
   if (!user) return null;
-  db.prepare("UPDATE users SET email_verified = 1, verification_token = NULL WHERE id = ?").run(user.id);
+  if (!user.email_verified) {
+    db.prepare("UPDATE users SET email_verified = 1 WHERE id = ?").run(user.id);
+  }
   return user;
 }
 
