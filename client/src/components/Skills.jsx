@@ -1,13 +1,16 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAdventure } from "../contexts/AdventureContext";
+import { useAuth } from "../contexts/AuthContext";
 import { card, cardTitle, fontBody, fontDisplay, TRAIL_BADGES, JOURNEY_WAYPOINTS, memberTypeBadge } from "../utils/theme";
 import { computeCrewReadiness, computeMemberReadiness } from "../utils/readiness";
+import { Activity, Mountain, Footprints, Backpack, RefreshCw, ChevronRight, Target, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 export default function Skills({ members, active, skills, analysis, isAdmin, onToggleSkill, onAddSkill, onRemoveSkill, adventureId, updateMemberLocally, achievements }) {
   const { theme, mode } = useTheme();
   const { gearCatalog, memberGearMap, selectedCrewId } = useAdventure();
+  const { user } = useAuth();
   const [expandedCats, setExpandedCats] = useState(new Set(["training"]));
   const [newSkillName, setNewSkillName] = useState("");
   const [newSkillDesc, setNewSkillDesc] = useState("");
@@ -15,6 +18,85 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
   const [addCategory, setAddCategory] = useState("training");
   const [confirmDeleteSkill, setConfirmDeleteSkill] = useState(null);
   const [showBadgeLegend, setShowBadgeLegend] = useState(false);
+
+  // AI Readiness Engine state
+  const [showAssessment, setShowAssessment] = useState(false);
+  const [assessment, setAssessment] = useState(null);
+  const [assessmentLoading, setAssessmentLoading] = useState(true);
+  const [assessmentForm, setAssessmentForm] = useState({ current_distance_miles: 3, pack_experience: "none", elevation_access: "flat_only", activity_level: "lightly_active" });
+  const [assessmentSaving, setAssessmentSaving] = useState(false);
+  const [plan, setPlan] = useState(null);
+  const [priorities, setPriorities] = useState([]);
+  const [progress, setProgress] = useState([]);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [showPhases, setShowPhases] = useState(false);
+
+  // Load assessment + plan on mount
+  const loadAIReadiness = useCallback(async () => {
+    if (!selectedCrewId || !user) return;
+    setAssessmentLoading(true);
+    try {
+      const { assessment: a } = await api.getAssessment(selectedCrewId);
+      setAssessment(a);
+      if (a) {
+        setAssessmentForm({ current_distance_miles: a.current_distance_miles, pack_experience: a.pack_experience, elevation_access: a.elevation_access, activity_level: a.activity_level });
+        // Load plan
+        setPlanLoading(true);
+        try {
+          const result = await api.getReadinessPlan(selectedCrewId, user.id);
+          setPlan(result.plan);
+          setPriorities(result.priorities || []);
+          setProgress(result.progress || []);
+        } catch (e) {
+          // No plan yet — that's OK, will be generated
+          console.log("No plan yet:", e.message);
+        }
+        setPlanLoading(false);
+      }
+    } catch (e) { console.error("Error loading AI readiness:", e); }
+    setAssessmentLoading(false);
+  }, [selectedCrewId, user]);
+
+  useEffect(() => { loadAIReadiness(); }, [loadAIReadiness]);
+
+  const submitAssessment = async () => {
+    if (!selectedCrewId || assessmentSaving) return;
+    setAssessmentSaving(true);
+    try {
+      const result = await api.submitAssessment(selectedCrewId, assessmentForm);
+      setAssessment(result.assessment);
+      setShowAssessment(false);
+      // Generate plan
+      setPlanLoading(true);
+      const planResult = await api.getReadinessPlan(selectedCrewId, user.id);
+      setPlan(planResult.plan);
+      setPriorities(planResult.priorities || []);
+      setProgress(planResult.progress || []);
+      setPlanLoading(false);
+    } catch (e) { console.error(e); }
+    setAssessmentSaving(false);
+  };
+
+  const handleRegenerate = async () => {
+    if (!selectedCrewId || regenerating) return;
+    setRegenerating(true);
+    try {
+      const result = await api.regenerateReadinessPlan(selectedCrewId);
+      setPlan(result.plan);
+      setPriorities(result.priorities || []);
+      setProgress([]);
+    } catch (e) { console.error(e); }
+    setRegenerating(false);
+  };
+
+  const updatePhaseProgress = async (phaseNumber, status) => {
+    if (!selectedCrewId) return;
+    try {
+      const result = await api.updateReadinessProgress(selectedCrewId, { phase_number: phaseNumber, status });
+      setProgress(result.progress || []);
+    } catch (e) { console.error(e); }
+  };
 
   const am = active !== null ? members[active] : null;
 
@@ -73,8 +155,362 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
   // Current waypoint
   const currentWaypoint = JOURNEY_WAYPOINTS.reduce((best, wp) => readiness.overall >= wp.pct ? wp : best, JOURNEY_WAYPOINTS[0]);
 
+  // Leader dashboard state
+  const [leaderDashboard, setLeaderDashboard] = useState(null);
+  const [showLeaderView, setShowLeaderView] = useState(false);
+
+  useEffect(() => {
+    if (!selectedCrewId || !isAdmin) return;
+    api.getReadinessDashboard(selectedCrewId).then(r => setLeaderDashboard(r.dashboard)).catch(() => {});
+  }, [selectedCrewId, isAdmin]);
+
+  const urgencyColor = (u) => u === "red" ? theme.danger : u === "yellow" ? theme.gold : theme.accent;
+  const urgencyIcon = (u) => u === "red" ? <AlertTriangle size={14} /> : u === "yellow" ? <Target size={14} /> : <CheckCircle2 size={14} />;
+  const phaseStatus = (num) => progress.find(p => p.phase_number === num)?.status || "not_started";
+  const phaseStatusColor = (s) => s === "complete" ? theme.accent : s === "working" ? theme.gold : theme.textDimmest;
+
+  // Determine member AI risk status from leader dashboard
+  const getMemberRisk = (memberData) => {
+    if (!memberData.assessment) return { level: "none", label: "No Assessment" };
+    if (!memberData.plan) return { level: "none", label: "No Plan" };
+    const plan = memberData.plan.plan;
+    const prog = memberData.progress || [];
+    if (!plan?.phases) return { level: "green", label: "Plan Generated" };
+    const totalPhases = plan.phases.length;
+    const completed = prog.filter(p => p.status === "complete").length;
+    const working = prog.filter(p => p.status === "working").length;
+    // Simple heuristic: if behind expected phase, show risk
+    if (completed === totalPhases) return { level: "green", label: "On Track" };
+    if (completed + working > 0) return { level: "yellow", label: `Phase ${completed + 1}/${totalPhases}` };
+    return { level: "red", label: "Not Started" };
+  };
+  const riskColor = (level) => level === "red" ? theme.danger : level === "yellow" ? theme.gold : level === "green" ? theme.accent : theme.textDimmest;
+
   return (
     <div>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      {/* Self-Assessment Prompt — show if no assessment and not loading */}
+      {!assessmentLoading && !assessment && !showAssessment && selectedCrewId && (
+        <div style={{ ...card(theme), marginBottom: 10, textAlign: "center", border: `2px solid ${theme.accent}` }}>
+          <div style={{ fontSize: 20, marginBottom: 6 }}><Activity size={24} color={theme.accent} /></div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay, marginBottom: 4 }}>AI Readiness Coach</div>
+          <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 10, lineHeight: 1.4 }}>
+            Take a 30-second self-assessment and get a personalized training plan based on your itinerary and departure date.
+          </div>
+          <button onClick={() => setShowAssessment(true)} style={{
+            padding: "10px 24px", borderRadius: 8, border: "none", background: theme.accent, color: "#fff",
+            fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: fontBody,
+          }}>Start Assessment</button>
+        </div>
+      )}
+
+      {/* Assessment Modal */}
+      {showAssessment && (
+        <div style={{ ...card(theme), marginBottom: 10, border: `2px solid ${theme.accent}` }}>
+          <div style={{ ...cardTitle(theme), display: "flex", alignItems: "center", gap: 8 }}>
+            <Activity size={16} color={theme.accent} />
+            Self-Assessment
+          </div>
+          <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 12 }}>No judgment — just where you are today. You can retake this anytime.</div>
+
+          {/* Distance slider */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+              <Footprints size={14} color={theme.textDim} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: theme.heading }}>Comfortable hiking distance</span>
+            </div>
+            <input type="range" min="1" max="15" step="0.5" value={assessmentForm.current_distance_miles}
+              onChange={e => setAssessmentForm(f => ({ ...f, current_distance_miles: parseFloat(e.target.value) }))}
+              style={{ width: "100%", accentColor: theme.accent }} />
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: theme.textDimmer }}>
+              <span>1 mi</span>
+              <span style={{ fontWeight: 700, color: theme.accent, fontSize: 13 }}>{assessmentForm.current_distance_miles} miles</span>
+              <span>15 mi</span>
+            </div>
+          </div>
+
+          {/* Pack experience */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+              <Backpack size={14} color={theme.textDim} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: theme.heading }}>Pack experience</span>
+            </div>
+            {[["none", "None", "Never carried a loaded pack"], ["day_pack", "Some", "Day pack weight (10-15 lbs)"], ["loaded", "Loaded", "Overnight weight (30+ lbs)"]].map(([val, label, desc]) => (
+              <div key={val} onClick={() => setAssessmentForm(f => ({ ...f, pack_experience: val }))}
+                style={{
+                  padding: "8px 10px", borderRadius: 6, marginBottom: 3, cursor: "pointer",
+                  border: assessmentForm.pack_experience === val ? `2px solid ${theme.accent}` : `1px solid ${theme.border}`,
+                  background: assessmentForm.pack_experience === val ? theme.accentBg : theme.bgAlt,
+                }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: assessmentForm.pack_experience === val ? theme.accent : theme.text }}>{label}</div>
+                <div style={{ fontSize: 10, color: theme.textDimmer }}>{desc}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Elevation access */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+              <Mountain size={14} color={theme.textDim} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: theme.heading }}>Elevation/incline access</span>
+            </div>
+            {[["flat_only", "Flat terrain only", "No hills available for training"], ["some_hills", "Some hills", "Moderate inclines available"], ["real_elevation", "Real elevation", "Mountains or steep terrain nearby"]].map(([val, label, desc]) => (
+              <div key={val} onClick={() => setAssessmentForm(f => ({ ...f, elevation_access: val }))}
+                style={{
+                  padding: "8px 10px", borderRadius: 6, marginBottom: 3, cursor: "pointer",
+                  border: assessmentForm.elevation_access === val ? `2px solid ${theme.accent}` : `1px solid ${theme.border}`,
+                  background: assessmentForm.elevation_access === val ? theme.accentBg : theme.bgAlt,
+                }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: assessmentForm.elevation_access === val ? theme.accent : theme.text }}>{label}</div>
+                <div style={{ fontSize: 10, color: theme.textDimmer }}>{desc}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Activity level */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+              <Activity size={14} color={theme.textDim} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: theme.heading }}>Current activity level</span>
+            </div>
+            {[["sedentary", "Sedentary", "Mostly desk/couch"], ["lightly_active", "Lightly active", "Walk regularly, some activity"], ["regularly_active", "Regularly active", "Exercise 3-4x/week"], ["very_active", "Very active", "Daily exercise or physical job"]].map(([val, label, desc]) => (
+              <div key={val} onClick={() => setAssessmentForm(f => ({ ...f, activity_level: val }))}
+                style={{
+                  padding: "8px 10px", borderRadius: 6, marginBottom: 3, cursor: "pointer",
+                  border: assessmentForm.activity_level === val ? `2px solid ${theme.accent}` : `1px solid ${theme.border}`,
+                  background: assessmentForm.activity_level === val ? theme.accentBg : theme.bgAlt,
+                }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: assessmentForm.activity_level === val ? theme.accent : theme.text }}>{label}</div>
+                <div style={{ fontSize: 10, color: theme.textDimmer }}>{desc}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", gap: 6 }}>
+            <button onClick={() => setShowAssessment(false)} style={{
+              flex: 1, padding: "10px 0", borderRadius: 8, border: `1px solid ${theme.borderLight}`,
+              background: theme.bgAlt, color: theme.textMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
+            }}>Cancel</button>
+            <button onClick={submitAssessment} disabled={assessmentSaving} style={{
+              flex: 1, padding: "10px 0", borderRadius: 8, border: "none",
+              background: theme.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: fontBody,
+              opacity: assessmentSaving ? 0.6 : 1,
+            }}>{assessmentSaving ? "Saving..." : assessment ? "Update Assessment" : "Generate My Plan"}</button>
+          </div>
+        </div>
+      )}
+
+      {/* Priority Now Card */}
+      {priorities.length > 0 && !showAssessment && (
+        <div style={{ ...card(theme), marginBottom: 10, border: `1.5px solid ${urgencyColor(priorities[0]?.urgency)}` }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <Target size={14} color={theme.accent} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>Priority Now</span>
+            </div>
+            <div style={{ display: "flex", gap: 4 }}>
+              {assessment && (
+                <button onClick={() => setShowAssessment(true)} style={{
+                  fontSize: 9, color: theme.textDimmer, background: "none", border: `1px solid ${theme.border}`,
+                  borderRadius: 4, padding: "2px 6px", cursor: "pointer", fontFamily: fontBody,
+                }}>Retake</button>
+              )}
+              <button onClick={handleRegenerate} disabled={regenerating} style={{
+                fontSize: 9, color: theme.textDimmer, background: "none", border: `1px solid ${theme.border}`,
+                borderRadius: 4, padding: "2px 6px", cursor: "pointer", fontFamily: fontBody, display: "flex", alignItems: "center", gap: 3,
+              }}><RefreshCw size={9} style={regenerating ? { animation: "spin 1s linear infinite" } : {}} /> {regenerating ? "..." : "Refresh"}</button>
+            </div>
+          </div>
+          {priorities.map((p, i) => (
+            <div key={i} style={{
+              display: "flex", gap: 8, padding: "8px 10px", borderRadius: 6, marginBottom: 4,
+              background: theme.bgAlt, border: `1px solid ${theme.border}`,
+            }}>
+              <div style={{ color: urgencyColor(p.urgency), flexShrink: 0, paddingTop: 1 }}>{urgencyIcon(p.urgency)}</div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: urgencyColor(p.urgency) }}>{p.title}</div>
+                <div style={{ fontSize: 11, color: theme.textMuted, lineHeight: 1.4 }}>{p.detail}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Plan loading indicator */}
+      {planLoading && (
+        <div style={{ ...card(theme), marginBottom: 10, textAlign: "center" }}>
+          <div style={{ fontSize: 12, color: theme.textMuted }}>Generating your personalized plan...</div>
+        </div>
+      )}
+
+      {/* Training Phases */}
+      {plan && plan.phases && !showAssessment && (
+        <div style={{ ...card(theme), marginBottom: 10 }}>
+          <div onClick={() => setShowPhases(!showPhases)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Mountain size={14} color={theme.accent} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>Training Plan</span>
+              <span style={{ fontSize: 10, color: theme.textDimmer }}>{plan.total_phases || plan.phases.length} phases</span>
+            </div>
+            <span style={{ fontSize: 14, color: theme.textDimmer, transform: showPhases ? "rotate(90deg)" : "none", transition: "transform .2s" }}>›</span>
+          </div>
+
+          {plan.summary && (
+            <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 6, fontStyle: "italic", lineHeight: 1.4 }}>{plan.summary}</div>
+          )}
+
+          {/* Phase summary pills */}
+          <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
+            {plan.phases.map(phase => {
+              const status = phaseStatus(phase.number);
+              return (
+                <div key={phase.number} style={{
+                  padding: "4px 10px", borderRadius: 12, fontSize: 10, fontWeight: 700, fontFamily: fontBody,
+                  border: `1.5px solid ${phaseStatusColor(status)}`,
+                  background: status === "complete" ? theme.accentBg : status === "working" ? `${theme.gold}15` : theme.bgAlt,
+                  color: phaseStatusColor(status), cursor: "pointer",
+                }} onClick={(e) => { e.stopPropagation(); setShowPhases(true); }}>
+                  {status === "complete" ? "\u2713" : status === "working" ? "\u25B6" : phase.number} {phase.name}
+                </div>
+              );
+            })}
+          </div>
+
+          {showPhases && (
+            <div style={{ marginTop: 10 }}>
+              {plan.phases.map(phase => {
+                const status = phaseStatus(phase.number);
+                return (
+                  <div key={phase.number} style={{
+                    padding: "10px 12px", borderRadius: 8, marginBottom: 6,
+                    background: theme.bgAlt, border: `1px solid ${status === "working" ? theme.gold : status === "complete" ? theme.accent : theme.border}`,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                      <div>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: theme.heading }}>Phase {phase.number}: {phase.name}</span>
+                        <span style={{ fontSize: 10, color: theme.textDimmer, marginLeft: 8 }}>Weeks {phase.weeks}</span>
+                      </div>
+                      <select value={status} onChange={(e) => updatePhaseProgress(phase.number, e.target.value)}
+                        style={{
+                          fontSize: 10, fontWeight: 600, fontFamily: fontBody, borderRadius: 4, padding: "2px 6px",
+                          border: `1px solid ${phaseStatusColor(status)}`, color: phaseStatusColor(status),
+                          background: theme.bg, cursor: "pointer", outline: "none",
+                        }}>
+                        <option value="not_started">Not Started</option>
+                        <option value="working">In Progress</option>
+                        <option value="complete">Done</option>
+                      </select>
+                    </div>
+                    <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 4 }}>{phase.focus}</div>
+                    {phase.pack_weight && (
+                      <div style={{ fontSize: 10, color: theme.accent, fontWeight: 600, marginBottom: 4 }}>Pack: {phase.pack_weight}</div>
+                    )}
+                    {phase.benchmarks && (
+                      <div>
+                        {phase.benchmarks.map((b, i) => (
+                          <div key={i} style={{ display: "flex", gap: 6, marginBottom: 2 }}>
+                            <ChevronRight size={10} color={theme.textDimmer} style={{ flexShrink: 0, marginTop: 2 }} />
+                            <span style={{ fontSize: 10, color: theme.textDim, lineHeight: 1.4 }}>{b}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Leader AI Readiness Dashboard */}
+      {isAdmin && leaderDashboard && leaderDashboard.length > 0 && !showAssessment && (
+        <div style={{ ...card(theme), marginBottom: 10 }}>
+          <div onClick={() => setShowLeaderView(!showLeaderView)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Activity size={14} color={theme.accent} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>Crew AI Readiness</span>
+              <span style={{ fontSize: 10, color: theme.textDimmer }}>
+                {leaderDashboard.filter(m => m.assessment).length}/{leaderDashboard.filter(m => m.participation === "trekking").length} assessed
+              </span>
+            </div>
+            <span style={{ fontSize: 14, color: theme.textDimmer, transform: showLeaderView ? "rotate(90deg)" : "none", transition: "transform .2s" }}>›</span>
+          </div>
+
+          {/* Always show risk summary pills */}
+          <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
+            {leaderDashboard.filter(m => m.participation === "trekking").map(m => {
+              const risk = getMemberRisk(m);
+              return (
+                <div key={m.user_id} title={`${m.name}: ${risk.label}`} style={{
+                  padding: "3px 8px", borderRadius: 10, fontSize: 9, fontWeight: 700, fontFamily: fontBody,
+                  border: `1.5px solid ${riskColor(risk.level)}`,
+                  background: risk.level === "green" ? theme.accentBg : risk.level === "yellow" ? `${theme.gold}15` : risk.level === "red" ? `${theme.danger}15` : theme.bgAlt,
+                  color: riskColor(risk.level),
+                }}>
+                  {m.name.split(" ")[0]}
+                </div>
+              );
+            })}
+          </div>
+
+          {showLeaderView && (
+            <div style={{ marginTop: 10 }}>
+              {leaderDashboard.filter(m => m.participation === "trekking").map(m => {
+                const risk = getMemberRisk(m);
+                const plan = m.plan?.plan;
+                const prog = m.progress || [];
+                return (
+                  <div key={m.user_id} style={{
+                    padding: "8px 10px", borderRadius: 6, marginBottom: 4,
+                    background: theme.bgAlt, border: `1px solid ${riskColor(risk.level)}`,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        {m.avatar_url ? (
+                          <img src={m.avatar_url} alt="" style={{ width: 20, height: 20, borderRadius: "50%" }} />
+                        ) : (
+                          <div style={{ width: 20, height: 20, borderRadius: "50%", background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#fff", fontWeight: 700 }}>
+                            {m.name[0]}
+                          </div>
+                        )}
+                        <span style={{ fontSize: 12, fontWeight: 600, color: theme.heading }}>{m.name}</span>
+                      </div>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: riskColor(risk.level) }}>{risk.label}</span>
+                    </div>
+                    {m.assessment && (
+                      <div style={{ fontSize: 10, color: theme.textDimmer, marginTop: 4 }}>
+                        {m.assessment.current_distance_miles}mi · {m.assessment.pack_experience.replace("_", " ")} · {m.assessment.activity_level.replace(/_/g, " ")}
+                      </div>
+                    )}
+                    {plan?.phases && (
+                      <div style={{ display: "flex", gap: 3, marginTop: 4 }}>
+                        {plan.phases.map(phase => {
+                          const ps = prog.find(p => p.phase_number === phase.number)?.status || "not_started";
+                          return (
+                            <div key={phase.number} style={{
+                              width: 18, height: 18, borderRadius: "50%", fontSize: 8, fontWeight: 700,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              background: ps === "complete" ? theme.accent : ps === "working" ? theme.gold : theme.progressBg,
+                              color: ps !== "not_started" ? "#fff" : theme.textDimmest,
+                            }}>
+                              {ps === "complete" ? "\u2713" : phase.number}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {!m.assessment && (
+                      <div style={{ fontSize: 10, color: theme.warn, marginTop: 4 }}>Has not completed self-assessment</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Journey Progress Trail */}
       {trekkingMembers.length > 0 && (
         <div style={{ ...card(theme), marginBottom: 10, textAlign: "center" }}>

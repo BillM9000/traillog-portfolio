@@ -355,10 +355,46 @@ db.exec(`
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(event_id, user_id)
   );
+
+  -- ══ AI Readiness Engine Tables ══
+
+  CREATE TABLE IF NOT EXISTS member_assessments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    crew_id INTEGER NOT NULL REFERENCES crews(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    current_distance_miles REAL,
+    pack_experience TEXT CHECK(pack_experience IN ('none', 'day_pack', 'loaded')),
+    elevation_access TEXT CHECK(elevation_access IN ('flat_only', 'some_hills', 'real_elevation')),
+    activity_level TEXT CHECK(activity_level IN ('sedentary', 'lightly_active', 'regularly_active', 'very_active')),
+    assessed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(crew_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS readiness_plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    crew_id INTEGER NOT NULL REFERENCES crews(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    plan_json TEXT NOT NULL DEFAULT '{}',
+    priorities_json TEXT NOT NULL DEFAULT '[]',
+    weeks_at_generation INTEGER,
+    generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(crew_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS readiness_progress (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    crew_id INTEGER NOT NULL REFERENCES crews(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    phase_number INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'not_started' CHECK(status IN ('not_started', 'working', 'complete')),
+    note TEXT,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(crew_id, user_id, phase_number)
+  );
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 18;
+const CURRENT_SCHEMA_VERSION = 19;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -720,6 +756,47 @@ function migrate() {
       console.log(`[v18] Migrated ${allAdventures.length} adventures to crew layer`);
     }
 
+    // ── v19 migration: AI Readiness Engine tables ──
+    if (version < 19) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS member_assessments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          crew_id INTEGER NOT NULL REFERENCES crews(id) ON DELETE CASCADE,
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          current_distance_miles REAL,
+          pack_experience TEXT CHECK(pack_experience IN ('none', 'day_pack', 'loaded')),
+          elevation_access TEXT CHECK(elevation_access IN ('flat_only', 'some_hills', 'real_elevation')),
+          activity_level TEXT CHECK(activity_level IN ('sedentary', 'lightly_active', 'regularly_active', 'very_active')),
+          assessed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(crew_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS readiness_plans (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          crew_id INTEGER NOT NULL REFERENCES crews(id) ON DELETE CASCADE,
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          plan_json TEXT NOT NULL DEFAULT '{}',
+          priorities_json TEXT NOT NULL DEFAULT '[]',
+          weeks_at_generation INTEGER,
+          generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(crew_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS readiness_progress (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          crew_id INTEGER NOT NULL REFERENCES crews(id) ON DELETE CASCADE,
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          phase_number INTEGER NOT NULL,
+          status TEXT NOT NULL DEFAULT 'not_started' CHECK(status IN ('not_started', 'working', 'complete')),
+          note TEXT,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(crew_id, user_id, phase_number)
+        );
+        CREATE INDEX IF NOT EXISTS idx_member_assessments_crew ON member_assessments(crew_id);
+        CREATE INDEX IF NOT EXISTS idx_readiness_plans_crew ON readiness_plans(crew_id);
+        CREATE INDEX IF NOT EXISTS idx_readiness_progress_crew ON readiness_progress(crew_id, user_id);
+      `);
+      console.log("[v19] AI Readiness Engine tables created");
+    }
+
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
   });
 
@@ -764,6 +841,9 @@ function ensureIndexes() {
     CREATE INDEX IF NOT EXISTS idx_crew_members_crew ON crew_members(crew_id);
     CREATE INDEX IF NOT EXISTS idx_crew_members_user ON crew_members(user_id);
     CREATE INDEX IF NOT EXISTS idx_member_gear_crew ON member_gear(crew_id, user_id);
+    CREATE INDEX IF NOT EXISTS idx_member_assessments_crew ON member_assessments(crew_id);
+    CREATE INDEX IF NOT EXISTS idx_readiness_plans_crew ON readiness_plans(crew_id);
+    CREATE INDEX IF NOT EXISTS idx_readiness_progress_crew ON readiness_progress(crew_id, user_id);
   `);
   console.log("Performance indexes ensured");
 }
@@ -2868,6 +2948,119 @@ export function upsertTrainingRsvp(eventId, userId, status) {
   db.prepare(
     "INSERT INTO training_rsvps (event_id, user_id, status, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(event_id, user_id) DO UPDATE SET status = ?, updated_at = CURRENT_TIMESTAMP"
   ).run(eventId, userId, status, status);
+}
+
+// ══════════════════════════════════════════
+// AI READINESS ENGINE
+// ══════════════════════════════════════════
+
+export function getAssessment(crewId, userId) {
+  return db.prepare("SELECT * FROM member_assessments WHERE crew_id = ? AND user_id = ?").get(crewId, userId) || null;
+}
+
+export function upsertAssessment(crewId, userId, data) {
+  db.prepare(`
+    INSERT INTO member_assessments (crew_id, user_id, current_distance_miles, pack_experience, elevation_access, activity_level, assessed_at)
+    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(crew_id, user_id) DO UPDATE SET
+      current_distance_miles = ?, pack_experience = ?, elevation_access = ?, activity_level = ?, assessed_at = CURRENT_TIMESTAMP
+  `).run(crewId, userId, data.current_distance_miles, data.pack_experience, data.elevation_access, data.activity_level,
+    data.current_distance_miles, data.pack_experience, data.elevation_access, data.activity_level);
+}
+
+export function getCrewAssessments(crewId) {
+  return db.prepare(`
+    SELECT ma.*, u.name, u.avatar_url FROM member_assessments ma
+    JOIN users u ON ma.user_id = u.id
+    WHERE ma.crew_id = ?
+  `).all(crewId);
+}
+
+export function getReadinessPlan(crewId, userId) {
+  const row = db.prepare("SELECT * FROM readiness_plans WHERE crew_id = ? AND user_id = ?").get(crewId, userId);
+  if (!row) return null;
+  return { ...row, plan: JSON.parse(row.plan_json), priorities: JSON.parse(row.priorities_json) };
+}
+
+export function upsertReadinessPlan(crewId, userId, planObj, prioritiesArr, weeksAtGen) {
+  db.prepare(`
+    INSERT INTO readiness_plans (crew_id, user_id, plan_json, priorities_json, weeks_at_generation, generated_at)
+    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(crew_id, user_id) DO UPDATE SET
+      plan_json = ?, priorities_json = ?, weeks_at_generation = ?, generated_at = CURRENT_TIMESTAMP
+  `).run(crewId, userId, JSON.stringify(planObj), JSON.stringify(prioritiesArr), weeksAtGen,
+    JSON.stringify(planObj), JSON.stringify(prioritiesArr), weeksAtGen);
+}
+
+export function getReadinessProgress(crewId, userId) {
+  return db.prepare("SELECT * FROM readiness_progress WHERE crew_id = ? AND user_id = ? ORDER BY phase_number").all(crewId, userId);
+}
+
+export function upsertReadinessProgress(crewId, userId, phaseNumber, status, note) {
+  db.prepare(`
+    INSERT INTO readiness_progress (crew_id, user_id, phase_number, status, note, updated_at)
+    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(crew_id, user_id, phase_number) DO UPDATE SET
+      status = ?, note = ?, updated_at = CURRENT_TIMESTAMP
+  `).run(crewId, userId, phaseNumber, status, note, status, note);
+}
+
+export function getCrewReadinessDashboard(crewId) {
+  const members = db.prepare(`
+    SELECT cm.user_id, cm.participation, u.name, u.avatar_url
+    FROM crew_members cm JOIN users u ON cm.user_id = u.id
+    WHERE cm.crew_id = ? AND cm.is_manual = 0
+  `).all(crewId);
+
+  const assessments = db.prepare("SELECT * FROM member_assessments WHERE crew_id = ?").all(crewId);
+  const plans = db.prepare("SELECT user_id, plan_json, priorities_json, weeks_at_generation, generated_at FROM readiness_plans WHERE crew_id = ?").all(crewId);
+  const progress = db.prepare("SELECT * FROM readiness_progress WHERE crew_id = ? ORDER BY phase_number").all(crewId);
+
+  const assessmentMap = {};
+  for (const a of assessments) assessmentMap[a.user_id] = a;
+  const planMap = {};
+  for (const p of plans) planMap[p.user_id] = { ...p, plan: JSON.parse(p.plan_json), priorities: JSON.parse(p.priorities_json) };
+  const progressMap = {};
+  for (const p of progress) {
+    if (!progressMap[p.user_id]) progressMap[p.user_id] = [];
+    progressMap[p.user_id].push(p);
+  }
+
+  return members.map(m => ({
+    user_id: m.user_id,
+    name: m.name,
+    avatar_url: m.avatar_url,
+    participation: m.participation,
+    assessment: assessmentMap[m.user_id] || null,
+    plan: planMap[m.user_id] || null,
+    progress: progressMap[m.user_id] || [],
+  }));
+}
+
+export function deleteReadinessPlan(crewId, userId) {
+  db.prepare("DELETE FROM readiness_plans WHERE crew_id = ? AND user_id = ?").run(crewId, userId);
+  db.prepare("DELETE FROM readiness_progress WHERE crew_id = ? AND user_id = ?").run(crewId, userId);
+}
+
+export function getGearStatusSummary(crewId, userId) {
+  const crew = db.prepare("SELECT adventure_id FROM crews WHERE id = ?").get(crewId);
+  if (!crew) return { total: 0, needed: 0, owned: 0, packed: 0 };
+  const rows = db.prepare(`
+    SELECT mg.status, COUNT(*) as c FROM member_gear mg
+    JOIN gear_catalog gc ON mg.gear_catalog_id = gc.id
+    WHERE mg.adventure_id = ? AND mg.user_id = ? AND gc.active = 1
+    GROUP BY mg.status
+  `).all(crew.adventure_id, userId);
+  const result = { total: 0, needed: 0, owned: 0, packed: 0 };
+  for (const r of rows) {
+    result[r.status] = r.c;
+    result.total += r.c;
+  }
+  // Count items not yet in member_gear as "needed"
+  const catalogCount = db.prepare("SELECT COUNT(*) as c FROM gear_catalog WHERE active = 1").get().c;
+  result.needed += (catalogCount - result.total);
+  result.total = catalogCount;
+  return result;
 }
 
 export default db;

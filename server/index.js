@@ -50,6 +50,11 @@ import db, {
   updateCrewMemberMedical, updateCrewMemberAdmin, updateCrewMemberRole,
   updateCrewMemberParticipation, linkCrewMember,
   addCrewManualMember, removeCrewManualMember,
+  // AI Readiness Engine
+  getAssessment, upsertAssessment, getCrewAssessments,
+  getReadinessPlan, upsertReadinessPlan, deleteReadinessPlan,
+  getReadinessProgress, upsertReadinessProgress,
+  getCrewReadinessDashboard, getGearStatusSummary,
 } from "./db.js";
 import {
   sendJoinRequestEmail, sendParentNotificationEmail, sendVerificationEmail,
@@ -57,6 +62,7 @@ import {
   sendDateChangedEmail, sendItineraryChangedEmail, sendBadgeEarnedEmail, sendLinkRequestEmail, sendPasswordResetEmail,
   sendTrainingScheduledEmail,
 } from "./email.js";
+import { generateReadinessPlan } from "./ai-readiness.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -1080,6 +1086,147 @@ app.post("/api/crews/:crewId/check-milestones", requireAuth, requireCrewMember, 
     req.adventureMembership = getAdventureMember(adventureId, req.user.id);
     // Reuse the existing milestone check (handled by the adventure route above)
     res.json({ message: "Use POST /api/adventures/:advId/check-milestones for now" });
+  } catch (e) { safeError(res, e); }
+});
+
+// ═══════════════════════════════════════════
+// AI READINESS ENGINE ROUTES
+// ═══════════════════════════════════════════
+
+// Submit or update self-assessment
+app.post("/api/crews/:crewId/readiness/assess", requireAuth, requireCrewMember, (req, res) => {
+  try {
+    const { current_distance_miles, pack_experience, elevation_access, activity_level } = req.body;
+    if (current_distance_miles == null || !pack_experience || !elevation_access || !activity_level) {
+      return res.status(400).json({ error: "All assessment fields required" });
+    }
+    const validPack = ["none", "day_pack", "loaded"];
+    const validElev = ["flat_only", "some_hills", "real_elevation"];
+    const validActivity = ["sedentary", "lightly_active", "regularly_active", "very_active"];
+    if (!validPack.includes(pack_experience)) return res.status(400).json({ error: "Invalid pack_experience" });
+    if (!validElev.includes(elevation_access)) return res.status(400).json({ error: "Invalid elevation_access" });
+    if (!validActivity.includes(activity_level)) return res.status(400).json({ error: "Invalid activity_level" });
+    const dist = parseFloat(current_distance_miles);
+    if (isNaN(dist) || dist < 0 || dist > 50) return res.status(400).json({ error: "Distance must be 0-50 miles" });
+
+    upsertAssessment(req.crew.id, req.user.id, { current_distance_miles: dist, pack_experience, elevation_access, activity_level });
+    // Clear any existing plan so it regenerates with new assessment
+    deleteReadinessPlan(req.crew.id, req.user.id);
+    res.json({ message: "Assessment saved", assessment: getAssessment(req.crew.id, req.user.id) });
+  } catch (e) { safeError(res, e); }
+});
+
+// Get self-assessment for current user
+app.get("/api/crews/:crewId/readiness/assess", requireAuth, requireCrewMember, (req, res) => {
+  try {
+    const assessment = getAssessment(req.crew.id, req.user.id);
+    res.json({ assessment });
+  } catch (e) { safeError(res, e); }
+});
+
+// Get or generate readiness plan for a member
+app.get("/api/crews/:crewId/readiness/plan/:userId", requireAuth, requireCrewMember, async (req, res) => {
+  try {
+    const userId = parseId(req.params.userId);
+    if (!userId) return res.status(400).json({ error: "Invalid user ID" });
+
+    // Check if plan exists and is recent enough
+    let plan = getReadinessPlan(req.crew.id, userId);
+    if (plan) {
+      const progress = getReadinessProgress(req.crew.id, userId);
+      return res.json({ plan: plan.plan, priorities: plan.priorities, progress, generated_at: plan.generated_at, cached: true });
+    }
+
+    // Need to generate — check assessment exists
+    const assessment = getAssessment(req.crew.id, userId);
+    if (!assessment) {
+      return res.status(404).json({ error: "No assessment found. Complete the self-assessment first." });
+    }
+
+    // Get crew/adventure/itinerary context
+    const crew = req.crew;
+    const adventure = getAdventure(crew.adventure_id);
+    const itinerary = crew.itinerary_id ? getItinerary(crew.itinerary_id) : null;
+    const departureDate = crew.depart_date || adventure?.depart_date;
+    if (!departureDate) {
+      return res.status(400).json({ error: "No departure date set for this crew" });
+    }
+
+    const gearStatus = getGearStatusSummary(req.crew.id, userId);
+
+    const result = await generateReadinessPlan({
+      adventureType: adventure?.adventure_type || "philmont",
+      itinerary,
+      departureDate,
+      assessment,
+      gearStatus,
+    });
+
+    const weeksRemaining = Math.max(0, Math.round((new Date(departureDate) - new Date()) / (7 * 24 * 60 * 60 * 1000)));
+    upsertReadinessPlan(req.crew.id, userId, result.plan, result.priorities, weeksRemaining);
+
+    const progress = getReadinessProgress(req.crew.id, userId);
+    res.json({ plan: result.plan, priorities: result.priorities, progress, generated_at: new Date().toISOString(), cached: false, tokens_used: result.tokens_used });
+  } catch (e) { safeError(res, e); }
+});
+
+// Update phase progress
+app.put("/api/crews/:crewId/readiness/progress", requireAuth, requireCrewMember, (req, res) => {
+  try {
+    const { phase_number, status, note } = req.body;
+    if (phase_number == null || !status) return res.status(400).json({ error: "phase_number and status required" });
+    const validStatuses = ["not_started", "working", "complete"];
+    if (!validStatuses.includes(status)) return res.status(400).json({ error: "Invalid status" });
+    const phaseNum = parseInt(phase_number);
+    if (isNaN(phaseNum) || phaseNum < 1 || phaseNum > 10) return res.status(400).json({ error: "Invalid phase number" });
+
+    upsertReadinessProgress(req.crew.id, req.user.id, phaseNum, status, note || null);
+    const progress = getReadinessProgress(req.crew.id, req.user.id);
+    res.json({ progress });
+  } catch (e) { safeError(res, e); }
+});
+
+// Crew readiness dashboard (leader view)
+app.get("/api/crews/:crewId/readiness/dashboard", requireAuth, requireCrewMember, (req, res) => {
+  try {
+    const dashboard = getCrewReadinessDashboard(req.crew.id);
+    res.json({ dashboard });
+  } catch (e) { safeError(res, e); }
+});
+
+// Force regenerate plan for a member
+app.post("/api/crews/:crewId/readiness/regenerate", requireAuth, requireCrewMember, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const assessment = getAssessment(req.crew.id, userId);
+    if (!assessment) {
+      return res.status(404).json({ error: "No assessment found. Complete the self-assessment first." });
+    }
+
+    // Delete old plan + progress
+    deleteReadinessPlan(req.crew.id, userId);
+
+    const crew = req.crew;
+    const adventure = getAdventure(crew.adventure_id);
+    const itinerary = crew.itinerary_id ? getItinerary(crew.itinerary_id) : null;
+    const departureDate = crew.depart_date || adventure?.depart_date;
+    if (!departureDate) {
+      return res.status(400).json({ error: "No departure date set" });
+    }
+
+    const gearStatus = getGearStatusSummary(req.crew.id, userId);
+    const result = await generateReadinessPlan({
+      adventureType: adventure?.adventure_type || "philmont",
+      itinerary,
+      departureDate,
+      assessment,
+      gearStatus,
+    });
+
+    const weeksRemaining = Math.max(0, Math.round((new Date(departureDate) - new Date()) / (7 * 24 * 60 * 60 * 1000)));
+    upsertReadinessPlan(req.crew.id, userId, result.plan, result.priorities, weeksRemaining);
+
+    res.json({ plan: result.plan, priorities: result.priorities, progress: [], generated_at: new Date().toISOString(), tokens_used: result.tokens_used });
   } catch (e) { safeError(res, e); }
 });
 

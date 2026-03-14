@@ -197,6 +197,14 @@ export const api = {
   // Crew Achievements
   getCrewAchievements: (crewId) => request(`/crews/${crewId}/achievements`),
 
+  // AI Readiness
+  getAssessment: (crewId) => request(`/crews/${crewId}/readiness/assess`),
+  submitAssessment: (crewId, data) => request(`/crews/${crewId}/readiness/assess`, { method: "POST", body: JSON.stringify(data) }),
+  getReadinessPlan: (crewId, userId) => request(`/crews/${crewId}/readiness/plan/${userId}`),
+  updateReadinessProgress: (crewId, data) => request(`/crews/${crewId}/readiness/progress`, { method: "PUT", body: JSON.stringify(data) }),
+  getReadinessDashboard: (crewId) => request(`/crews/${crewId}/readiness/dashboard`),
+  regenerateReadinessPlan: (crewId) => request(`/crews/${crewId}/readiness/regenerate`, { method: "POST" }),
+
   // Councils
   getCouncils: () => request("/councils"),
 
