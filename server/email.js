@@ -65,18 +65,40 @@ export async function sendParentNotificationEmail(parentEmail, scoutName, troopN
   });
 }
 
-export async function sendInvitationEmail(toEmail, inviterName, troopName, adventureName, inviteUrl) {
+const ADVENTURE_TYPE_NAMES = {
+  philmont: "Philmont Scout Ranch",
+  northern_tier: "Northern Tier",
+  sea_base: "Florida Sea Base",
+  summit: "Summit Bechtel Reserve",
+};
+
+export async function sendInvitationEmail(toEmail, inviterName, troopName, adventureName, inviteUrl, { council, location, adventureType, departDate, returnDate } = {}) {
   const t = getTransporter();
   if (!t) return console.log(`[email skip] Invitation to ${toEmail} (no SMTP configured)`);
+
+  const detailRows = [];
+  if (troopName) detailRows.push(`<strong>Troop:</strong> ${esc(troopName)}`);
+  if (council) detailRows.push(`<strong>Council:</strong> ${esc(council)}`);
+  if (adventureName) detailRows.push(`<strong>Crew:</strong> ${esc(adventureName)}`);
+  if (adventureType) detailRows.push(`<strong>Adventure Base:</strong> ${esc(ADVENTURE_TYPE_NAMES[adventureType] || adventureType)}`);
+  if (departDate) {
+    const fmt = d => { try { return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); } catch { return d; } };
+    detailRows.push(`<strong>Dates:</strong> ${fmt(departDate)}${returnDate ? ` – ${fmt(returnDate)}` : ""}`);
+  }
+
+  const detailsHtml = detailRows.length > 0
+    ? `<table style="margin:12px 0;border-collapse:collapse">${detailRows.map(r => `<tr><td style="padding:3px 0;font-size:14px;color:#2d3830">${r}</td></tr>`).join("")}</table>`
+    : "";
 
   await t.sendMail({
     from: `"TrailLog" <${process.env.SMTP_USER}>`,
     to: toEmail,
-    subject: `You're invited to join ${adventureName || troopName} on TrailLog!`,
+    subject: `You're invited to join ${troopName} on TrailLog!`,
     html: `
       <div style="font-family:sans-serif;max-width:500px">
         <h2 style="color:#2d3830">You're invited! 🏔️</h2>
-        <p><strong>${esc(inviterName)}</strong> has invited you to join <strong>${esc(adventureName || troopName)}</strong> on TrailLog — a platform to help your crew prepare for high adventure.</p>
+        <p><strong>${esc(inviterName)}</strong> has invited you to join <strong>${esc(troopName)}</strong> on TrailLog — a platform to help your crew prepare for high adventure.</p>
+        ${detailsHtml}
         <p>Click below to accept the invitation and join the crew:</p>
         <p><a href="${esc(inviteUrl)}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Accept Invitation</a></p>
         <p style="color:#888;font-size:13px">You can sign in with Google or create an account with your email. If you weren't expecting this, you can ignore this email.</p>
@@ -85,9 +107,22 @@ export async function sendInvitationEmail(toEmail, inviterName, troopName, adven
   });
 }
 
-export async function sendMemberApprovedEmail(toEmail, memberName, troopName) {
+export async function sendMemberApprovedEmail(toEmail, memberName, troopName, { council, adventureName, adventureType, departDate, returnDate } = {}) {
   const t = getTransporter();
   if (!t) return console.log(`[email skip] Approval for ${toEmail} (no SMTP configured)`);
+
+  const detailRows = [];
+  if (troopName) detailRows.push(`<strong>Troop:</strong> ${esc(troopName)}`);
+  if (council) detailRows.push(`<strong>Council:</strong> ${esc(council)}`);
+  if (adventureName) detailRows.push(`<strong>Crew:</strong> ${esc(adventureName)}`);
+  if (adventureType) detailRows.push(`<strong>Adventure Base:</strong> ${esc(ADVENTURE_TYPE_NAMES[adventureType] || adventureType)}`);
+  if (departDate) {
+    const fmt = d => { try { return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); } catch { return d; } };
+    detailRows.push(`<strong>Dates:</strong> ${fmt(departDate)}${returnDate ? ` – ${fmt(returnDate)}` : ""}`);
+  }
+  const detailsHtml = detailRows.length > 0
+    ? `<table style="margin:12px 0;border-collapse:collapse">${detailRows.map(r => `<tr><td style="padding:3px 0;font-size:14px;color:#2d3830">${r}</td></tr>`).join("")}</table>`
+    : "";
 
   await t.sendMail({
     from: `"TrailLog" <${process.env.SMTP_USER}>`,
@@ -97,6 +132,7 @@ export async function sendMemberApprovedEmail(toEmail, memberName, troopName) {
       <div style="font-family:sans-serif;max-width:500px">
         <h2 style="color:#2d3830">You're in! 🎉</h2>
         <p>Hey <strong>${esc(memberName)}</strong>, your request to join <strong>${esc(troopName)}</strong> has been approved!</p>
+        ${detailsHtml}
         <p>Log in to start coordinating with your crew:</p>
         <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrailLog</a></p>
       </div>
@@ -122,9 +158,11 @@ export async function sendMemberDeniedEmail(toEmail, memberName, troopName) {
   });
 }
 
-export async function sendDateChangedEmail(toEmail, memberName, adventureName, changes) {
+export async function sendDateChangedEmail(toEmail, memberName, adventureName, changes, { troopName } = {}) {
   const t = getTransporter();
   if (!t) return console.log(`[email skip] Date change for ${toEmail} (no SMTP configured)`);
+
+  const troopLine = troopName ? `<p style="color:#666;font-size:13px">${esc(troopName)}</p>` : "";
 
   await t.sendMail({
     from: `"TrailLog" <${process.env.SMTP_USER}>`,
@@ -134,7 +172,8 @@ export async function sendDateChangedEmail(toEmail, memberName, adventureName, c
       <div style="font-family:sans-serif;max-width:500px">
         <h2 style="color:#2d3830">Trek dates updated 📅</h2>
         <p>Hey <strong>${esc(memberName)}</strong>, the trek dates for <strong>${esc(adventureName)}</strong> have been updated.</p>
-        <p>${changes}</p>
+        ${troopLine}
+        <div style="background:#f5f5f0;padding:12px 16px;border-radius:8px;margin:12px 0">${changes}</div>
         <p>Check the latest details:</p>
         <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrailLog</a></p>
       </div>
@@ -142,9 +181,11 @@ export async function sendDateChangedEmail(toEmail, memberName, adventureName, c
   });
 }
 
-export async function sendItineraryChangedEmail(toEmail, memberName, adventureName, oldItineraryName, newItineraryName) {
+export async function sendItineraryChangedEmail(toEmail, memberName, adventureName, oldItineraryName, newItineraryName, { troopName } = {}) {
   const t = getTransporter();
   if (!t) return console.log(`[email skip] Itinerary change for ${toEmail} (no SMTP configured)`);
+
+  const troopLine = troopName ? `<p style="color:#666;font-size:13px">${esc(troopName)}</p>` : "";
 
   await t.sendMail({
     from: `"TrailLog" <${process.env.SMTP_USER}>`,
@@ -154,32 +195,39 @@ export async function sendItineraryChangedEmail(toEmail, memberName, adventureNa
       <div style="font-family:sans-serif;max-width:500px">
         <h2 style="color:#2d3830">Itinerary changed 🗺️</h2>
         <p>Hey <strong>${esc(memberName)}</strong>, the itinerary for <strong>${esc(adventureName)}</strong> has been updated.</p>
-        <p><strong>Previous:</strong> ${esc(oldItineraryName)}<br><strong>New:</strong> ${esc(newItineraryName)}</p>
-        <p>Please review the updated day-by-day plan:</p>
+        ${troopLine}
+        <div style="background:#f5f5f0;padding:12px 16px;border-radius:8px;margin:12px 0">
+          <strong>Previous:</strong> ${esc(oldItineraryName)}<br><strong>New:</strong> ${esc(newItineraryName)}
+        </div>
+        <p>Please review the updated day-by-day plan and check your gear list — items may have changed.</p>
         <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrailLog</a></p>
       </div>
     `,
   });
 }
 
-export async function sendTrainingScheduledEmail(toEmail, memberName, adventureName, date, periodLabel, timeLabel, location, notes) {
+export async function sendTrainingScheduledEmail(toEmail, memberName, adventureName, date, periodLabel, timeLabel, location, notes, { troopName } = {}) {
   const t = getTransporter();
   if (!t) return console.log(`[email skip] Training scheduled for ${toEmail} (no SMTP configured)`);
 
+  const fmt = d => { try { return new Date(d + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }); } catch { return d; } };
   const details = [];
-  details.push(`<strong>Date:</strong> ${esc(date)}`);
+  details.push(`<strong>Date:</strong> ${esc(fmt(date))}`);
   details.push(`<strong>Time:</strong> ${esc(periodLabel)}${timeLabel ? ` — ${esc(timeLabel)}` : ""}`);
   if (location) details.push(`<strong>Location:</strong> ${esc(location)}`);
   if (notes) details.push(`<strong>Notes:</strong> ${esc(notes)}`);
 
+  const troopLine = troopName ? `<p style="color:#666;font-size:13px">${esc(troopName)}</p>` : "";
+
   await t.sendMail({
     from: `"TrailLog" <${process.env.SMTP_USER}>`,
     to: toEmail,
-    subject: `Training scheduled for ${adventureName}`,
+    subject: `Training session scheduled for ${adventureName}`,
     html: `
       <div style="font-family:sans-serif;max-width:500px">
-        <h2 style="color:#2d3830">Training Hike Scheduled 🥾</h2>
+        <h2 style="color:#2d3830">Training Session Scheduled 🥾</h2>
         <p>Hey <strong>${esc(memberName)}</strong>, a training session has been scheduled for <strong>${esc(adventureName)}</strong>.</p>
+        ${troopLine}
         <div style="background:#f5f5f0;padding:12px 16px;border-radius:8px;margin:12px 0">
           ${details.join("<br>")}
         </div>
@@ -190,7 +238,7 @@ export async function sendTrainingScheduledEmail(toEmail, memberName, adventureN
   });
 }
 
-export async function sendBadgeEarnedEmail(toEmail, memberName, badgeName, adventureName) {
+export async function sendBadgeEarnedEmail(toEmail, memberName, badgeName, adventureName, { troopName } = {}) {
   const t = getTransporter();
   if (!t) return console.log(`[email skip] Badge earned for ${toEmail} (no SMTP configured)`);
 
@@ -203,6 +251,8 @@ export async function sendBadgeEarnedEmail(toEmail, memberName, badgeName, adven
   };
   const badge = badges[badgeName] || { icon: "🏆", title: badgeName };
 
+  const troopLine = troopName ? `<p style="color:#666;font-size:13px">${esc(troopName)}</p>` : "";
+
   await t.sendMail({
     from: `"TrailLog" <${process.env.SMTP_USER}>`,
     to: toEmail,
@@ -212,6 +262,7 @@ export async function sendBadgeEarnedEmail(toEmail, memberName, badgeName, adven
         <div style="font-size:48px;margin:20px 0">${badge.icon}</div>
         <h2 style="color:#2d3830">${badge.title}!</h2>
         <p>Way to go, <strong>${esc(memberName)}</strong>! You've earned the <strong>${esc(badge.title)}</strong> badge for <strong>${esc(adventureName)}</strong>.</p>
+        ${troopLine}
         <p style="color:#4a7a55;font-weight:bold;font-size:14px">"A Scout is Prepared"</p>
         <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">View Your Badges</a></p>
       </div>

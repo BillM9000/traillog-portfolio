@@ -582,11 +582,15 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop })
               <span style={{ fontSize: 10, color: theme.textMuted }}>{t.adventure_count} adv</span>
               <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 3, fontWeight: 600, background: t.is_public ? theme.accentBg : `${theme.warn}20`, color: t.is_public ? theme.accent : theme.warn }}>{t.is_public ? "Public" : "Private"}</span>
               {onEnterTroop && (
-                <button onClick={(e) => { e.stopPropagation(); onEnterTroop(t.id, t); }} style={{
-                  padding: "3px 10px", borderRadius: 5, border: `1px solid ${theme.borderAccent}`,
-                  background: theme.accentBg, color: theme.accentLight, fontSize: 10, fontWeight: 600,
-                  cursor: "pointer", fontFamily: fontBody,
-                }}>Enter →</button>
+                showCreate && createStep === 2 && t.id === createdTroopId ? (
+                  <span style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, fontStyle: "italic" }}>Finish setup ↓</span>
+                ) : (
+                  <button onClick={(e) => { e.stopPropagation(); onEnterTroop(t.id, t); }} style={{
+                    padding: "3px 10px", borderRadius: 5, border: `1px solid ${theme.borderAccent}`,
+                    background: theme.accentBg, color: theme.accentLight, fontSize: 10, fontWeight: 600,
+                    cursor: "pointer", fontFamily: fontBody,
+                  }}>Enter →</button>
+                )
               )}
             </div>
           </div>

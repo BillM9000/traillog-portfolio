@@ -529,9 +529,12 @@ app.put("/api/troops/:troopId/members/:userId/approve", requireAuth, requireTroo
     }
     const user = findUserById(userId);
     const troop = getTroop(troopId);
+    const firstAdv = adventures[0];
     if (user?.email) {
-      sendMemberApprovedEmail(user.email, user.name, troop.name)
-        .catch(e => console.error("Approval email failed:", e));
+      sendMemberApprovedEmail(user.email, user.name, troop.name, {
+        council: troop.council, adventureName: firstAdv?.name,
+        adventureType: firstAdv?.adventure_type, departDate: firstAdv?.depart_date, returnDate: firstAdv?.return_date,
+      }).catch(e => console.error("Approval email failed:", e));
     }
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
@@ -672,6 +675,7 @@ app.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req
     const safeType = adventure_type && validTypes.includes(adventure_type) ? adventure_type : undefined;
     // Validate date sequence: depart ≤ arrive ≤ return ≤ home
     const oldAdv = getAdventure(adventureId);
+    const troop = getTroop(oldAdv.troop_id);
     const effDates = [
       depart_date !== undefined ? depart_date : oldAdv.depart_date,
       arrive_date !== undefined ? arrive_date : oldAdv.arrive_date,
@@ -701,7 +705,7 @@ app.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req
       const changeSummary = changes.join("<br>");
       members.forEach(m => {
         if (m.email && !m.is_manual) {
-          sendDateChangedEmail(m.email, m.name, oldAdv.name, changeSummary)
+          sendDateChangedEmail(m.email, m.name, oldAdv.name, changeSummary, { troopName: troop?.name })
             .catch(e => console.error("Date change email failed:", e));
         }
       });
@@ -717,7 +721,7 @@ app.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req
       const members = getAdventureMembers(adventureId);
       members.forEach(m => {
         if (m.email && !m.is_manual) {
-          sendItineraryChangedEmail(m.email, m.name, oldAdv.name, oldName, newName)
+          sendItineraryChangedEmail(m.email, m.name, oldAdv.name, oldName, newName, { troopName: troop?.name })
             .catch(e => console.error("Itinerary change email failed:", e));
         }
       });
@@ -874,12 +878,13 @@ app.post("/api/adventures/:adventureId/training-events", requireAuth, requireAdv
 
     // Email all members about the scheduled training
     const adventure = getAdventure(advId);
+    const troopForEmail = adventure ? getTroop(adventure.troop_id) : null;
     const members = getAdventureMembers(advId).filter(m => !m.is_manual);
     const periodLabel = period === "am" ? "Morning" : period === "pm" ? "Afternoon" : "All Day";
     for (const m of members) {
       const user = findUserById(m.user_id);
       if (user?.email) {
-        sendTrainingScheduledEmail(user.email, user.name, adventure?.name || "Adventure", date, periodLabel, time_label, location, notes).catch(console.error);
+        sendTrainingScheduledEmail(user.email, user.name, adventure?.name || "Adventure", date, periodLabel, time_label, location, notes, { troopName: troopForEmail?.name }).catch(console.error);
       }
     }
     console.log(`[training event] Adventure ${advId}: ${date} (${periodLabel}) at ${location || "TBD"} — ${members.length} members notified`);
@@ -1299,7 +1304,10 @@ app.post("/api/adventures/:adventureId/invitations", requireAuth, requireAdventu
     const token = crypto.randomUUID();
     createInvitation({ troop_id: adv.troop_id, adventure_id: adventureId, email: email.trim(), invited_by: req.user.id, token });
     const inviteUrl = `${process.env.APP_URL || "https://traillog.gracezero.ai"}/api/invitations/${token}`;
-    sendInvitationEmail(email.trim(), req.user.name, troop.name, adv.name, inviteUrl)
+    sendInvitationEmail(email.trim(), req.user.name, troop.name, adv.name, inviteUrl, {
+      council: troop.council, location: troop.location, adventureType: adv.adventure_type,
+      departDate: adv.depart_date, returnDate: adv.return_date,
+    })
       .catch(e => console.error("Invitation email failed:", e));
     res.status(201).json({ ok: true, token });
   } catch (e) { safeError(res, e); }
@@ -1499,6 +1507,7 @@ app.post("/api/adventures/:adventureId/check-milestones", requireAuth, requireAd
     const adventureId = parseId(req.params.adventureId);
     const members = getAdventureMembers(adventureId);
     const adv = getAdventure(adventureId);
+    const badgeTroop = adv ? getTroop(adv.troop_id) : null;
     const skills = getAdventureSkills(adventureId);
     const newBadges = [];
     const newMilestones = [];
@@ -1542,7 +1551,7 @@ app.post("/api/adventures/:adventureId/check-milestones", requireAuth, requireAd
           if (earned) {
             newBadges.push({ user_id: m.user_id, name: m.name, badge });
             if (m.email) {
-              sendBadgeEarnedEmail(m.email, m.name, badge, adv.name)
+              sendBadgeEarnedEmail(m.email, m.name, badge, adv.name, { troopName: badgeTroop?.name })
                 .catch(e => console.error("Badge email failed:", e));
             }
           }
@@ -1556,7 +1565,7 @@ app.post("/api/adventures/:adventureId/check-milestones", requireAuth, requireAd
         if (earned) {
           newBadges.push({ user_id: m.user_id, name: m.name, badge: "fully_prepared" });
           if (m.email) {
-            sendBadgeEarnedEmail(m.email, m.name, "fully_prepared", adv.name)
+            sendBadgeEarnedEmail(m.email, m.name, "fully_prepared", adv.name, { troopName: badgeTroop?.name })
               .catch(e => console.error("Badge email failed:", e));
           }
         }
