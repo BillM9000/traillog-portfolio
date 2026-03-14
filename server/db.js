@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import { existsSync, mkdirSync, readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import { BSA_COUNCILS } from "./councils.js";
 
 const DATA_DIR = process.env.DATA_DIR || "./data";
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
@@ -47,6 +48,13 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
+  CREATE TABLE IF NOT EXISTS councils (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    city TEXT,
+    state TEXT
+  );
+
   CREATE TABLE IF NOT EXISTS troops (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -57,6 +65,7 @@ db.exec(`
     tier TEXT NOT NULL DEFAULT 'free',
     amazon_affiliate_tag TEXT,
     council TEXT,
+    council_id INTEGER REFERENCES councils(id),
     location TEXT NOT NULL DEFAULT '',
     is_public INTEGER NOT NULL DEFAULT 1,
     created_by INTEGER REFERENCES users(id),
@@ -312,7 +321,7 @@ db.exec(`
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 16;
+const CURRENT_SCHEMA_VERSION = 17;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -587,17 +596,45 @@ function migrate() {
       tryAlter("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0");
     }
 
+    // ── v17 migration: councils lookup table ──
+    if (version < 17) {
+      tryAlter("ALTER TABLE troops ADD COLUMN council_id INTEGER REFERENCES councils(id)");
+      seedCouncils();
+      // Migrate existing freeform council text → council_id
+      const troopsWithCouncil = db.prepare("SELECT id, council FROM troops WHERE council IS NOT NULL AND council != '' AND council_id IS NULL").all();
+      for (const t of troopsWithCouncil) {
+        const match = db.prepare("SELECT id FROM councils WHERE name = ? COLLATE NOCASE").get(t.council.trim());
+        if (match) {
+          db.prepare("UPDATE troops SET council_id = ? WHERE id = ?").run(match.id, t.id);
+        }
+      }
+    }
+
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
   });
 
   runMigration();
   console.log(`Migrated schema to version ${CURRENT_SCHEMA_VERSION}`);
 
+  // Seed councils on every startup (idempotent — INSERT OR IGNORE)
+  seedCouncils();
+
   // Seed ADMIN_EMAIL user as system admin (idempotent, runs every startup)
   const adminEmail = process.env.ADMIN_EMAIL;
   if (adminEmail) {
     db.prepare("UPDATE users SET is_admin = 1 WHERE email = ? AND is_admin = 0").run(adminEmail);
   }
+}
+
+function seedCouncils() {
+  const count = db.prepare("SELECT COUNT(*) as c FROM councils").get().c;
+  if (count >= BSA_COUNCILS.length) return;
+  const ins = db.prepare("INSERT OR IGNORE INTO councils (name, city, state) VALUES (?, ?, ?)");
+  const runAll = db.transaction(() => {
+    for (const c of BSA_COUNCILS) ins.run(c.name, c.city, c.state);
+  });
+  runAll();
+  console.log(`Seeded ${BSA_COUNCILS.length} BSA councils`);
 }
 
 // Ensure performance indexes exist (idempotent, runs every startup regardless of schema version)
@@ -1227,15 +1264,16 @@ export function getAllUsers() {
 export function getDashboardData(userId, isAdmin) {
   // Get user's approved troop memberships
   const memberships = db.prepare(`
-    SELECT tm.troop_id, tm.role, t.name, t.council, t.location, t.is_public
+    SELECT tm.troop_id, tm.role, t.name, t.council, t.council_id, c.name as council_name, t.location, t.is_public
     FROM troop_members tm JOIN troops t ON tm.troop_id = t.id
+    LEFT JOIN councils c ON t.council_id = c.id
     WHERE tm.user_id = ? AND tm.status = 'approved'
   `).all(userId);
 
   const troops = memberships.map(m => {
     const adventures = db.prepare("SELECT * FROM adventures WHERE troop_id = ? AND status = 'active' ORDER BY created_at DESC").all(m.troop_id);
     return {
-      id: m.troop_id, name: m.name, council: m.council, location: m.location,
+      id: m.troop_id, name: m.name, council: m.council_name || m.council, council_id: m.council_id, location: m.location,
       role: m.role, is_public: m.is_public,
       adventures: adventures.map(a => {
         const memberCount = db.prepare("SELECT COUNT(*) as c FROM adventure_members WHERE adventure_id = ?").get(a.id).c;
@@ -1255,15 +1293,17 @@ export function getDashboardData(userId, isAdmin) {
 
   // Pending join requests
   const pending = db.prepare(`
-    SELECT tm.troop_id, t.name as troop_name, t.council
+    SELECT tm.troop_id, t.name as troop_name, COALESCE(c.name, t.council) as council
     FROM troop_members tm JOIN troops t ON tm.troop_id = t.id
+    LEFT JOIN councils c ON t.council_id = c.id
     WHERE tm.user_id = ? AND tm.status = 'pending'
   `).all(userId);
 
   // Public troops the user is NOT a member of
   const publicTroops = db.prepare(`
-    SELECT t.id, t.name, t.council, t.location
-    FROM troops t WHERE t.is_public = 1
+    SELECT t.id, t.name, COALESCE(c.name, t.council) as council, t.location
+    FROM troops t LEFT JOIN councils c ON t.council_id = c.id
+    WHERE t.is_public = 1
     AND t.id NOT IN (SELECT troop_id FROM troop_members WHERE user_id = ?)
     ORDER BY t.name
   `).all(userId);
@@ -1367,12 +1407,19 @@ export function getItinerary(id) {
   };
 }
 
+// ── Council Queries ──
+
+export function getCouncils() {
+  return db.prepare("SELECT id, name, city, state FROM councils ORDER BY name").all();
+}
+
 // ── Troop Queries ──
 
 export function getTroops(userId) {
   return db.prepare(`
-    SELECT DISTINCT t.id, t.name, t.description, t.council, t.location, t.is_public, t.tier
+    SELECT DISTINCT t.id, t.name, t.description, t.council, t.council_id, c.name as council_name, t.location, t.is_public, t.tier
     FROM troops t
+    LEFT JOIN councils c ON t.council_id = c.id
     LEFT JOIN troop_members tm ON t.id = tm.troop_id AND tm.user_id = ? AND tm.status != 'denied'
     WHERE t.is_public = 1 OR tm.user_id IS NOT NULL
     ORDER BY t.id
@@ -1385,25 +1432,38 @@ export function getTroop(id) {
   return { ...r, itinerary_overrides: JSON.parse(r.itinerary_overrides) };
 }
 
-export function createTroop({ name, description, council, location, is_public, created_by }) {
+export function createTroop({ name, description, council, council_id, location, is_public, created_by }) {
+  // Resolve council name from council_id if provided
+  let councilName = council || "";
+  if (council_id) {
+    const c = db.prepare("SELECT name FROM councils WHERE id = ?").get(council_id);
+    if (c) councilName = c.name;
+  }
   const result = db.prepare(
-    "INSERT INTO troops (name, description, council, location, is_public, created_by) VALUES (?, ?, ?, ?, ?, ?)"
-  ).run(name, description || "", council || "", location || "", is_public !== undefined ? (is_public ? 1 : 0) : 1, created_by);
+    "INSERT INTO troops (name, description, council, council_id, location, is_public, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)"
+  ).run(name, description || "", councilName, council_id || null, location || "", is_public !== undefined ? (is_public ? 1 : 0) : 1, created_by);
   const troopId = result.lastInsertRowid;
 
   const memberCount = db.prepare("SELECT COUNT(*) as c FROM troop_members WHERE troop_id = ?").get(troopId).c;
   db.prepare("INSERT INTO troop_members (user_id, troop_id, role, status, color_bg) VALUES (?, ?, 'admin', 'approved', ?)")
     .run(created_by, troopId, COLORS[memberCount % COLORS.length]);
 
-  return { id: troopId, name, description: description || "", council: council || "", location: location || "", is_public: is_public !== undefined ? (is_public ? 1 : 0) : 1 };
+  return { id: troopId, name, description: description || "", council: councilName, council_id: council_id || null, location: location || "", is_public: is_public !== undefined ? (is_public ? 1 : 0) : 1 };
 }
 
-export function updateTroop(troopId, { name, description, council, location, is_public }) {
+export function updateTroop(troopId, { name, description, council, council_id, location, is_public }) {
   const sets = [];
   const vals = [];
   if (name !== undefined) { sets.push("name = ?"); vals.push(name); }
   if (description !== undefined) { sets.push("description = ?"); vals.push(description); }
-  if (council !== undefined) { sets.push("council = ?"); vals.push(council); }
+  if (council_id !== undefined) {
+    sets.push("council_id = ?"); vals.push(council_id);
+    // Also update the text council field for backwards compatibility
+    const c = db.prepare("SELECT name FROM councils WHERE id = ?").get(council_id);
+    if (c) { sets.push("council = ?"); vals.push(c.name); }
+  } else if (council !== undefined) {
+    sets.push("council = ?"); vals.push(council);
+  }
   if (location !== undefined) { sets.push("location = ?"); vals.push(location); }
   if (is_public !== undefined) { sets.push("is_public = ?"); vals.push(is_public ? 1 : 0); }
   if (sets.length === 0) return;
@@ -1439,8 +1499,10 @@ export function getTroopMember(troopId, userId) {
 export function getUserMemberships(userId) {
   return db.prepare(`
     SELECT tm.troop_id, tm.role, tm.status, t.name as troop_name, t.trek_date, t.itinerary_id,
-           t.council as troop_council, t.location as troop_location
-    FROM troop_members tm JOIN troops t ON tm.troop_id = t.id WHERE tm.user_id = ?
+           COALESCE(c.name, t.council) as troop_council, t.council_id as troop_council_id, t.location as troop_location
+    FROM troop_members tm JOIN troops t ON tm.troop_id = t.id
+    LEFT JOIN councils c ON t.council_id = c.id
+    WHERE tm.user_id = ?
   `).all(userId);
 }
 

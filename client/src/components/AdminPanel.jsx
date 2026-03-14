@@ -6,13 +6,14 @@ import { fontBody, fontDisplay, memberTypeBadge, participationBadge, toolbarBtn 
 import { US_STATES, ADVENTURE_TYPES } from "../utils/constants";
 import Logo from "./Logo";
 import ConfirmModal from "./ConfirmModal";
+import CouncilPicker from "./CouncilPicker";
 
 export default function AdminPanel({ troop, adventure, troopMembers, adventureMembers, currentUserId, onClose, onRefresh, onSelectAdventure }) {
   const { theme } = useTheme();
   const { addToast } = useToast();
   const [tab, setTab] = useState("adventure");
   const [troopName, setTroopName] = useState(troop?.name || "");
-  const [troopCouncil, setTroopCouncil] = useState(troop?.council || "");
+  const [troopCouncilId, setTroopCouncilId] = useState(troop?.council_id || null);
   const [troopCity, setTroopCity] = useState(() => {
     const loc = troop?.location || "";
     const parts = loc.split(",").map(s => s.trim());
@@ -101,11 +102,11 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
 
   const saveTroop = async () => {
     if (!troopName.trim()) { addToast("Troop name is required", "error"); return; }
-    if (!troopCouncil.trim()) { addToast("Council is required", "error"); return; }
+    if (!troopCouncilId) { addToast("Council is required", "error"); return; }
     setSaving(true);
     try {
       const location = [troopCity.trim(), troopState].filter(Boolean).join(", ");
-      await api.updateTroop(troop.id, { name: normalize(troopName), council: normalize(troopCouncil), location: normalize(location), description: normalize(troopDesc), is_public: troopPublic });
+      await api.updateTroop(troop.id, { name: normalize(troopName), council_id: troopCouncilId, location: normalize(location), description: normalize(troopDesc), is_public: troopPublic });
       onRefresh(); addToast("Troop saved", "success");
     } catch (e) { addToast(e.message, "error"); }
     setSaving(false);
@@ -609,7 +610,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
               <label style={labelStyle}>Troop Name</label>
               <input value={troopName} onChange={e => setTroopName(e.target.value)} style={inputStyle} />
               <label style={labelStyle}>Council</label>
-              <input value={troopCouncil} onChange={e => setTroopCouncil(e.target.value)} style={inputStyle} placeholder="e.g. Northeast Illinois Council" maxLength={60} />
+              <CouncilPicker value={troopCouncilId} onChange={id => setTroopCouncilId(id)} />
               <label style={labelStyle}>Location</label>
               <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
                 <input value={troopCity} onChange={e => setTroopCity(e.target.value)} style={{ ...inputStyle, flex: 1, marginBottom: 0 }} placeholder="City" />

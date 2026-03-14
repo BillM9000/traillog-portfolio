@@ -168,6 +168,9 @@ export const api = {
   promoteAdmin: (userId) => request(`/admin/users/${userId}/promote`, { method: "PUT" }),
   demoteAdmin: (userId) => request(`/admin/users/${userId}/demote`, { method: "PUT" }),
 
+  // Councils
+  getCouncils: () => request("/councils"),
+
   // Dashboard
   getDashboard: () => request("/dashboard"),
 

@@ -4,6 +4,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import { fontBody, fontDisplay, card, cardTitle, toolbarBtn } from "../utils/theme";
 import { US_STATES, ADVENTURE_TYPES } from "../utils/constants";
+import CouncilPicker from "./CouncilPicker";
 
 export default function GlobalAdmin({ isGlobalAdmin, troopId, onClose, onEnterTroop, onLogout, user, alwaysOpen }) {
   const { theme } = useTheme();
@@ -278,7 +279,7 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop })
   const [createStep, setCreateStep] = useState(1);
   const [createdTroopId, setCreatedTroopId] = useState(null);
   const [createdTroopName, setCreatedTroopName] = useState("");
-  const [newTroop, setNewTroop] = useState({ name: "", council: "", city: "", state: "", description: "", is_public: true });
+  const [newTroop, setNewTroop] = useState({ name: "", council_id: null, city: "", state: "", description: "", is_public: true });
   const [creating, setCreating] = useState(false);
   const [newLogoFile, setNewLogoFile] = useState(null);
   const [newLogoPreview, setNewLogoPreview] = useState(null);
@@ -352,7 +353,7 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop })
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!newTroop.name.trim()) { addToast("Troop name required", "error"); return; }
-    if (!newTroop.council.trim()) { addToast("Council is required", "error"); return; }
+    if (!newTroop.council_id) { addToast("Council is required", "error"); return; }
     if (!newTroop.city.trim()) { addToast("City is required", "error"); return; }
     if (!newTroop.state) { addToast("State is required", "error"); return; }
     setCreating(true);
@@ -416,7 +417,7 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop })
               setCreateStep(1);
               setCreatedTroopId(null);
               setCreatedTroopName("");
-              setNewTroop({ name: "", council: "", city: "", state: "", description: "", is_public: true });
+              setNewTroop({ name: "", council_id: null, city: "", state: "", description: "", is_public: true });
               setAdvForm({ name: "", adventure_type: "philmont", depart_date: "", arrive_date: "", return_date: "", home_date: "", itinerary_id: "" });
               addToast("Adventure created!", "success");
               onRefresh();
@@ -489,7 +490,7 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop })
           <div style={{ fontSize: 12, fontWeight: 700, color: theme.heading, marginBottom: 8, fontFamily: fontDisplay }}>Create a Troop</div>
           <form onSubmit={handleCreate}>
             <input value={newTroop.name} onChange={e => setNewTroop({ ...newTroop, name: e.target.value })} placeholder="Troop name (e.g. Troop 444)" style={inputStyle} required />
-            <input value={newTroop.council} onChange={e => setNewTroop({ ...newTroop, council: e.target.value })} placeholder="Council (required)" style={inputStyle} required maxLength={60} />
+            <CouncilPicker value={newTroop.council_id} onChange={id => setNewTroop({ ...newTroop, council_id: id })} />
             <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
               <input value={newTroop.city} onChange={e => setNewTroop({ ...newTroop, city: e.target.value })} placeholder="City (required)" style={{ ...inputStyle, flex: 1, marginBottom: 0 }} required />
               <select value={newTroop.state} onChange={e => setNewTroop({ ...newTroop, state: e.target.value })} style={{ ...inputStyle, width: 70, marginBottom: 0, cursor: "pointer" }} required>

@@ -6,6 +6,7 @@ import { fontBody, fontDisplay, card, cardTitle } from "../utils/theme";
 import { US_STATES, ADVENTURE_TYPES } from "../utils/constants";
 import Logo from "./Logo";
 import TroopLogo from "./TroopLogo";
+import CouncilPicker from "./CouncilPicker";
 
 const ADVENTURE_TYPE_NAMES = {
   philmont: "Philmont Scout Ranch",
@@ -76,7 +77,7 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
   const [createStep, setCreateStep] = useState(1);
   const [createdTroopId, setCreatedTroopId] = useState(null);
   const [createdTroopName, setCreatedTroopName] = useState("");
-  const [newTroop, setNewTroop] = useState({ name: "", council: "", city: "", state: "", is_public: true });
+  const [newTroop, setNewTroop] = useState({ name: "", council_id: null, city: "", state: "", is_public: true });
   const [newLogoFile, setNewLogoFile] = useState(null);
   const [newLogoPreview, setNewLogoPreview] = useState(null);
   const [advForm, setAdvForm] = useState({ name: "", depart_date: "", arrive_date: "", return_date: "", home_date: "", itinerary_id: "", adventure_type: "philmont" });
@@ -116,7 +117,7 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
   const handleCreateTroop = async (e) => {
     e.preventDefault();
     if (!newTroop.name.trim()) return setError("Troop name required");
-    if (!newTroop.council.trim()) return setError("Council is required");
+    if (!newTroop.council_id) return setError("Council is required");
     if (!newTroop.city.trim()) return setError("City is required");
     if (!newTroop.state) return setError("State is required");
     setFormLoading(true);
@@ -468,8 +469,7 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
             <form onSubmit={handleCreateTroop}>
               <input value={newTroop.name} onChange={e => setNewTroop({ ...newTroop, name: e.target.value })}
                 placeholder="Troop or crew name (e.g. Troop 10, Crew 614)" style={inputStyle} required />
-              <input value={newTroop.council} onChange={e => setNewTroop({ ...newTroop, council: e.target.value })}
-                placeholder="Council (e.g. Northeast Illinois Council)" style={inputStyle} required maxLength={60} />
+              <CouncilPicker value={newTroop.council_id} onChange={id => setNewTroop({ ...newTroop, council_id: id })} />
               <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                 <input value={newTroop.city} onChange={e => setNewTroop({ ...newTroop, city: e.target.value })}
                   placeholder="City (required)" style={{ ...inputStyle, flex: 1, marginBottom: 0 }} required />

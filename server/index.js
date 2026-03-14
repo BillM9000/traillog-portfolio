@@ -42,6 +42,7 @@ import db, {
   deleteTroop, getTroopMembersAdmin,
   createTrainingEvent, getTrainingEvents, getTrainingEvent, deleteTrainingEvent, upsertTrainingRsvp,
   promoteToAdmin, demoteFromAdmin, getSystemAdmins, getDashboardData,
+  getCouncils,
 } from "./db.js";
 import {
   sendJoinRequestEmail, sendParentNotificationEmail, sendVerificationEmail,
@@ -96,6 +97,11 @@ app.get("/api/public-settings", (req, res) => {
     announcement_banner: getSetting("announcement_banner") || "",
     announcement_type: getSetting("announcement_type") || "info",
   });
+});
+
+// ── Councils list (public, no auth — needed for troop creation forms) ──
+app.get("/api/councils", (req, res) => {
+  res.json(getCouncils());
 });
 
 // ── Rate Limiting ──
@@ -153,7 +159,7 @@ app.use((req, res, next) => {
 
 // Maintenance mode — blocks all API requests except health, public-settings, and admin settings for global admin
 app.use("/api", (req, res, next) => {
-  if (req.path === "/health" || req.path === "/public-settings") return next();
+  if (req.path === "/health" || req.path === "/public-settings" || req.path === "/councils") return next();
   if (getSetting("maintenance_mode") === "true") {
     // Allow system admins through
     if (req.isAuthenticated() && req.user?.is_admin) return next();
@@ -472,20 +478,20 @@ app.post("/api/troops", requireAuth, (req, res) => {
         return res.status(403).json({ error: `You can create a maximum of ${maxTroops} troops` });
       }
     }
-    const { name, description, council, location, is_public } = req.body;
+    const { name, description, council, council_id, location, is_public } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Troop name required" });
-    if (!council?.trim()) return res.status(400).json({ error: "Council is required" });
-    if (council.trim().length > 60) return res.status(400).json({ error: "Council name too long (60 char max)" });
-    const troop = createTroop({ name: name.trim(), description, council: council.trim(), location: location?.trim(), is_public, created_by: req.user.id });
+    if (!council_id && !council?.trim()) return res.status(400).json({ error: "Council is required" });
+    if (council && council.trim().length > 60) return res.status(400).json({ error: "Council name too long (60 char max)" });
+    const troop = createTroop({ name: name.trim(), description, council: council?.trim(), council_id, location: location?.trim(), is_public, created_by: req.user.id });
     res.status(201).json(troop);
   } catch (e) { safeError(res, e); }
 });
 
 app.put("/api/troops/:troopId", requireAuth, requireTroopAdmin, (req, res) => {
   try {
-    const { name, description, council, location, is_public } = req.body;
-    if (council !== undefined && !council?.trim()) return res.status(400).json({ error: "Council is required" });
-    updateTroop(parseId(req.params.troopId), { name, description, council, location, is_public });
+    const { name, description, council, council_id, location, is_public } = req.body;
+    if (council_id === undefined && council !== undefined && !council?.trim()) return res.status(400).json({ error: "Council is required" });
+    updateTroop(parseId(req.params.troopId), { name, description, council, council_id, location, is_public });
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
