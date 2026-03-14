@@ -124,7 +124,9 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
     setError("");
     try {
       const location = [newTroop.city.trim(), newTroop.state].filter(Boolean).join(", ");
-      const created = await api.createTroop({ ...newTroop, location });
+      const isCustomCouncil = typeof newTroop.council_id === "string" && newTroop.council_id.startsWith("custom:");
+      const councilPayload = isCustomCouncil ? { council: newTroop.council_id.slice(7), council_id: null } : { council_id: newTroop.council_id };
+      const created = await api.createTroop({ ...newTroop, ...councilPayload, location });
       if (newLogoFile && created?.id) {
         try {
           const reader = new FileReader();

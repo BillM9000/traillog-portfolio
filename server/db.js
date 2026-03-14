@@ -51,6 +51,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS councils (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
+    council_num INTEGER,
     city TEXT,
     state TEXT
   );
@@ -394,7 +395,7 @@ db.exec(`
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 19;
+const CURRENT_SCHEMA_VERSION = 20;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -797,6 +798,11 @@ function migrate() {
       console.log("[v19] AI Readiness Engine tables created");
     }
 
+    if (version < 20) {
+      tryAlter("ALTER TABLE councils ADD COLUMN council_num INTEGER");
+      console.log("[v20] Added council_num to councils table");
+    }
+
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
   });
 
@@ -814,14 +820,23 @@ function migrate() {
 }
 
 function seedCouncils() {
+  // Check if councils need updating (new data has council_num field)
+  const sample = db.prepare("SELECT council_num FROM councils LIMIT 1").get();
+  const needsRefresh = !sample || sample.council_num === null;
   const count = db.prepare("SELECT COUNT(*) as c FROM councils").get().c;
-  if (count >= BSA_COUNCILS.length) return;
-  const ins = db.prepare("INSERT OR IGNORE INTO councils (name, city, state) VALUES (?, ?, ?)");
+
+  if (!needsRefresh && count >= BSA_COUNCILS.length) return;
+
+  // Preserve any troops referencing old council IDs by updating in-place where possible
+  const upsert = db.prepare(`
+    INSERT INTO councils (name, council_num, city, state) VALUES (?, ?, ?, ?)
+    ON CONFLICT(name) DO UPDATE SET council_num = excluded.council_num, city = excluded.city, state = excluded.state
+  `);
   const runAll = db.transaction(() => {
-    for (const c of BSA_COUNCILS) ins.run(c.name, c.city, c.state);
+    for (const c of BSA_COUNCILS) upsert.run(c.name, c.num, c.city, c.state);
   });
   runAll();
-  console.log(`Seeded ${BSA_COUNCILS.length} BSA councils`);
+  console.log(`Seeded/updated ${BSA_COUNCILS.length} BSA councils (with council numbers)`);
 }
 
 // Ensure performance indexes exist (idempotent, runs every startup regardless of schema version)
@@ -1620,7 +1635,7 @@ export function getItinerary(id) {
 // ── Council Queries ──
 
 export function getCouncils() {
-  return db.prepare("SELECT id, name, city, state FROM councils ORDER BY name").all();
+  return db.prepare("SELECT id, name, council_num, city, state FROM councils ORDER BY name").all();
 }
 
 // ── Troop Queries ──

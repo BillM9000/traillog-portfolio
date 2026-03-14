@@ -117,7 +117,9 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
     setSaving(true);
     try {
       const location = [troopCity.trim(), troopState].filter(Boolean).join(", ");
-      await api.updateTroop(troop.id, { name: normalize(troopName), council_id: troopCouncilId, location: normalize(location), description: normalize(troopDesc), is_public: troopPublic });
+      const isCustomCouncil = typeof troopCouncilId === "string" && troopCouncilId.startsWith("custom:");
+      const councilPayload = isCustomCouncil ? { council: troopCouncilId.slice(7), council_id: null } : { council_id: troopCouncilId };
+      await api.updateTroop(troop.id, { name: normalize(troopName), ...councilPayload, location: normalize(location), description: normalize(troopDesc), is_public: troopPublic });
       onRefresh(); addToast("Troop saved", "success");
     } catch (e) { addToast(e.message, "error"); }
     setSaving(false);
