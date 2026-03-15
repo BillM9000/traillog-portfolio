@@ -394,10 +394,23 @@ db.exec(`
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(crew_id, user_id, phase_number)
   );
+
+  -- ══ AI Gear Recommendations Cache ══
+
+  CREATE TABLE IF NOT EXISTS ai_gear_recommendations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    gear_catalog_id INTEGER NOT NULL,
+    adventure_type TEXT NOT NULL DEFAULT 'philmont',
+    recommendations TEXT NOT NULL,
+    generated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL,
+    tokens_used INTEGER DEFAULT 0,
+    UNIQUE(gear_catalog_id, adventure_type)
+  );
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 21;
+const CURRENT_SCHEMA_VERSION = 22;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -809,6 +822,23 @@ function migrate() {
       tryAlter("ALTER TABLE troop_members ADD COLUMN participation TEXT NOT NULL DEFAULT 'trekking'");
       tryAlter("ALTER TABLE troop_members ADD COLUMN requested_adventures TEXT");
       console.log("[v21] Added participation + requested_adventures to troop_members");
+    }
+
+    // ── v22 migration: AI gear recommendations cache ──
+    if (version < 22) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS ai_gear_recommendations (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          gear_catalog_id INTEGER NOT NULL,
+          adventure_type TEXT NOT NULL DEFAULT 'philmont',
+          recommendations TEXT NOT NULL,
+          generated_at TEXT NOT NULL DEFAULT (datetime('now')),
+          expires_at TEXT NOT NULL,
+          tokens_used INTEGER DEFAULT 0,
+          UNIQUE(gear_catalog_id, adventure_type)
+        );
+      `);
+      console.log("[v22] AI gear recommendations cache table created");
     }
 
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
@@ -3098,6 +3128,45 @@ export function getGearStatusSummary(crewId, userId) {
   result.needed += (catalogCount - result.total);
   result.total = catalogCount;
   return result;
+}
+
+// ── AI Gear Recommendations Cache ──
+
+export function getCachedGearRec(gearCatalogId, adventureType = "philmont") {
+  const row = db.prepare(
+    "SELECT * FROM ai_gear_recommendations WHERE gear_catalog_id = ? AND adventure_type = ? AND expires_at > datetime('now')"
+  ).get(gearCatalogId, adventureType);
+  if (!row) return null;
+  return { ...row, recommendations: JSON.parse(row.recommendations) };
+}
+
+export function upsertGearRec(gearCatalogId, adventureType, recommendations, tokensUsed, expiresAt) {
+  db.prepare(`
+    INSERT INTO ai_gear_recommendations (gear_catalog_id, adventure_type, recommendations, tokens_used, generated_at, expires_at)
+    VALUES (?, ?, ?, ?, datetime('now'), ?)
+    ON CONFLICT(gear_catalog_id, adventure_type) DO UPDATE SET
+      recommendations = excluded.recommendations,
+      tokens_used = excluded.tokens_used,
+      generated_at = datetime('now'),
+      expires_at = excluded.expires_at
+  `).run(gearCatalogId, adventureType, JSON.stringify(recommendations), tokensUsed, expiresAt);
+}
+
+export function getExpiredGearRecs() {
+  return db.prepare(
+    "SELECT * FROM ai_gear_recommendations WHERE expires_at <= datetime('now')"
+  ).all();
+}
+
+export function getAllGearCatalogItems() {
+  return db.prepare("SELECT * FROM gear_catalog WHERE active = 1 ORDER BY sort_order").all();
+}
+
+export function getLastGearRefreshTime() {
+  const row = db.prepare(
+    "SELECT MAX(generated_at) as last_refresh FROM ai_gear_recommendations"
+  ).get();
+  return row?.last_refresh || null;
 }
 
 export default db;

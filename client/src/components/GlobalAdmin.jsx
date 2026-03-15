@@ -818,6 +818,8 @@ function SettingsTab({ settings, loaded, setSettings, theme, addToast, allUsers 
         <input defaultValue={get("amazon_affiliate_tag") || "traillog-20"} onBlur={(e) => save("amazon_affiliate_tag", e.target.value)} placeholder="e.g. traillog-20" style={{ ...inputStyle, width: 200 }} />
       </div>
 
+      <GearRefreshSection theme={theme} addToast={addToast} />
+
       <SectionLabel>Limits</SectionLabel>
       <div style={{ padding: "10px 12px", borderRadius: 8, background: theme.bgAlt, border: `1px solid ${theme.borderLight}`, marginBottom: 6 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: theme.text, fontFamily: fontBody }}>Max Troops per User</div>
@@ -840,6 +842,57 @@ function SettingsTab({ settings, loaded, setSettings, theme, addToast, allUsers 
 }
 
 // ─── System Admins Section ───
+function GearRefreshSection({ theme, addToast }) {
+  const [status, setStatus] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    api.getGearRefreshStatus().then(setStatus).catch(() => {});
+  }, []);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await api.refreshGearRecs();
+      addToast("Gear recommendation refresh started in background", "success");
+      // Poll status after a short delay
+      setTimeout(() => {
+        api.getGearRefreshStatus().then(setStatus).catch(() => {});
+      }, 2000);
+    } catch (e) {
+      addToast("Failed to start refresh: " + (e.message || "unknown error"), "error");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const lastRefresh = status?.last_refresh
+    ? new Date(status.last_refresh + "Z").toLocaleString()
+    : "Never";
+
+  return (
+    <div style={{ padding: "10px 12px", borderRadius: 8, background: theme.bgAlt, border: `1px solid ${theme.borderLight}`, marginBottom: 6 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: theme.text, fontFamily: fontBody }}>AI Gear Recommendations</div>
+      <div style={{ fontSize: 10, color: theme.textDimmer, marginTop: 2, marginBottom: 6 }}>
+        Background job refreshes cached recommendations every 7 days. Last refresh: {lastRefresh}
+        {status?.in_progress && <span style={{ color: "#f59e0b", marginLeft: 6 }}>(refresh in progress)</span>}
+      </div>
+      <button
+        onClick={handleRefresh}
+        disabled={refreshing || status?.in_progress}
+        style={{
+          padding: "6px 14px", borderRadius: 6, border: "none", fontSize: 11, fontWeight: 600,
+          fontFamily: fontBody, cursor: refreshing ? "not-allowed" : "pointer",
+          background: refreshing ? theme.borderLight : "#10b981", color: "#fff",
+          opacity: refreshing || status?.in_progress ? 0.6 : 1,
+        }}
+      >
+        {refreshing || status?.in_progress ? "Refreshing..." : "Refresh AI Gear Recommendations"}
+      </button>
+    </div>
+  );
+}
+
 function SystemAdminsSection({ allUsers, theme, addToast }) {
   const [admins, setAdmins] = useState([]);
   const [showAdd, setShowAdd] = useState(false);

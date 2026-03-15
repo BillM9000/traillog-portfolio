@@ -38,6 +38,7 @@ import db, {
   setTroopGearOverride, getTroopGearOverrides,
   getTroopCustomGear, addTroopCustomGear, updateTroopCustomGearItem, deleteTroopCustomGear,
   logAIQuery, getAIUsage,
+  getCachedGearRec, upsertGearRec, getLastGearRefreshTime,
   getAllTroopsAdmin, getAllUsersAdmin, getAllSettings, trackAffiliateClick, getAffiliateStats,
   deleteTroop, getTroopMembersAdmin,
   createTrainingEvent, getTrainingEvents, getTrainingEvent, deleteTrainingEvent, upsertTrainingRsvp,
@@ -63,6 +64,7 @@ import {
   sendTrainingScheduledEmail,
 } from "./email.js";
 import { generateReadinessPlan } from "./ai-readiness.js";
+import { refreshAllGearRecommendations, startGearRefreshSchedule, isRefreshInProgress } from "./gear-ai.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -1541,7 +1543,7 @@ app.get("/api/gear-catalog/:id", requireAuth, (req, res) => {
   } catch (e) { safeError(res, e); }
 });
 
-// AI Gear Recommendation — uses Claude to suggest top products for a gear item
+// AI Gear Recommendation — uses cached recs or generates on-demand
 app.post("/api/gear-catalog/:id/ai-recommend", requireAuth, async (req, res) => {
   try {
     const gearId = parseId(req.params.id);
@@ -1550,14 +1552,50 @@ app.post("/api/gear-catalog/:id/ai-recommend", requireAuth, async (req, res) => 
     const item = getGearCatalogItem(gearId);
     if (!item) return res.status(404).json({ error: "Gear item not found" });
 
-    // Import Anthropic SDK (same pattern as ai-readiness.js)
+    const adventureType = req.body.adventureType || "philmont";
+
+    // Check cache first
+    const cached = getCachedGearRec(gearId, adventureType);
+    if (cached) {
+      // Build buy_url with current affiliate tag for cached recs
+      const tag = getSetting("amazon_affiliate_tag") || "traillog-20";
+      const recommendations = cached.recommendations.map(r => ({
+        ...r,
+        buy_url: r.amazon_search_url || `https://www.amazon.com/s?k=${encodeURIComponent((r.product_name || "") + " " + (r.brand || ""))}&tag=${encodeURIComponent(tag)}`,
+      }));
+
+      // Award badge (same logic regardless of cache)
+      let badge_earned = null;
+      const adventureId = parseId(req.body.adventureId);
+      if (adventureId) {
+        const earned = earnBadge(adventureId, req.user.id, "ai_gear");
+        if (earned) {
+          badge_earned = "ai_gear";
+          const badgeUser = findUserById(req.user.id);
+          const adventure = getAdventure(adventureId);
+          const badgeTroop = adventure ? getTroop(adventure.troop_id) : null;
+          if (badgeUser?.email) {
+            sendBadgeEarnedEmail(badgeUser.email, badgeUser.name, "ai_gear", adventure?.name || "your adventure", {
+              troopName: badgeTroop?.name, troopId: badgeTroop?.id, adventureId,
+            }).catch(err => console.error("[email] Badge email failed:", err.message));
+          }
+        }
+      }
+
+      // Artificial delay so the "AI generating" animation still plays
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      return res.json({ recommendations, badge_earned, cached: true, generated_at: cached.generated_at });
+    }
+
+    // Not cached — generate on-demand with Sonnet
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
     if (!process.env.ANTHROPIC_API_KEY) {
       return res.status(503).json({ error: "AI recommendations unavailable — API key not configured" });
     }
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-    const prompt = `You are an expert gear advisor for high-adventure Scouting treks like Philmont. For the gear item "${item.name}" (category: ${item.category}), recommend the top 3 products that are highly rated, popular with Philmont/high-adventure trekkers, and currently available. For each product include: product_name, brand, estimated_price (as a string like "$45"), weight_oz (number, if applicable, otherwise null), why_recommended (1-2 sentences), and a buy_url placeholder (just put "PLACEHOLDER"). Focus on durability, weight, and trail-proven performance. Respond ONLY with valid JSON in this format: { "recommendations": [ { "product_name": "...", "brand": "...", "estimated_price": "...", "weight_oz": ..., "why_recommended": "...", "buy_url": "PLACEHOLDER" } ] }`;
+    const tag = getSetting("amazon_affiliate_tag") || "traillog-20";
+    const prompt = `You are an expert gear advisor for high-adventure Scouting treks like Philmont. For the gear item "${item.name}" (category: ${item.category}), recommend the top 3 products that are highly rated, popular with Philmont/high-adventure trekkers, and currently available. For each product include: product_name, brand, price_range (as a string like "$45"), weight_oz (number, if applicable, otherwise null), why_recommended (1-2 sentences), and amazon_search_url as https://www.amazon.com/s?k=ENCODED_SEARCH_TERMS&tag=${tag}. Focus on durability, weight, and trail-proven performance. Respond ONLY with valid JSON in this format: { "recommendations": [ { "product_name": "...", "brand": "...", "price_range": "...", "weight_oz": ..., "why_recommended": "...", "amazon_search_url": "..." } ] }`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -1567,18 +1605,20 @@ app.post("/api/gear-catalog/:id/ai-recommend", requireAuth, async (req, res) => 
     });
 
     let text = response.content[0].text.trim();
-    // Strip markdown code fences if Claude wraps the JSON
     if (text.startsWith("```")) {
       text = text.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
     }
     const parsed = JSON.parse(text);
+    const tokensUsed = (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0);
 
-    // Build Amazon search URLs with affiliate tag
-    const tag = getSetting("amazon_affiliate_tag") || "traillog-20";
     const recommendations = (parsed.recommendations || []).map(r => ({
       ...r,
-      buy_url: `https://www.amazon.com/s?k=${encodeURIComponent(r.product_name + " " + r.brand)}&tag=${encodeURIComponent(tag)}`,
+      buy_url: r.amazon_search_url || `https://www.amazon.com/s?k=${encodeURIComponent((r.product_name || "") + " " + (r.brand || ""))}&tag=${encodeURIComponent(tag)}`,
     }));
+
+    // Cache the result (expires in 7 days)
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().replace("T", " ").slice(0, 19);
+    upsertGearRec(gearId, adventureType, parsed.recommendations || [], tokensUsed, expiresAt);
 
     // Award ai_gear badge if adventureId provided
     let badge_earned = null;
@@ -1598,7 +1638,7 @@ app.post("/api/gear-catalog/:id/ai-recommend", requireAuth, async (req, res) => 
       }
     }
 
-    res.json({ recommendations, badge_earned });
+    res.json({ recommendations, badge_earned, cached: false });
   } catch (e) {
     console.error("[AI Gear Recommend] Error:", e.message);
     safeError(res, e);
@@ -1926,6 +1966,27 @@ app.put("/api/admin/users/:id/demote", requireAuth, requireGlobalAdmin, (req, re
 app.get("/api/admin/system-admins", requireAuth, requireGlobalAdmin, (req, res) => {
   try {
     res.json(getSystemAdmins());
+  } catch (e) { safeError(res, e); }
+});
+
+// Admin: Refresh AI gear recommendations (triggers background job)
+app.post("/api/admin/refresh-gear-recs", requireAuth, requireGlobalAdmin, (req, res) => {
+  try {
+    if (isRefreshInProgress()) {
+      return res.json({ ok: true, message: "Refresh already in progress" });
+    }
+    // Fire and forget — runs in background
+    refreshAllGearRecommendations().catch(e =>
+      console.error("[gear-ai] Admin-triggered refresh error:", e.message)
+    );
+    res.json({ ok: true, message: "Gear recommendation refresh started" });
+  } catch (e) { safeError(res, e); }
+});
+
+// Admin: Get last gear refresh time
+app.get("/api/admin/gear-refresh-status", requireAuth, requireGlobalAdmin, (req, res) => {
+  try {
+    res.json({ last_refresh: getLastGearRefreshTime(), in_progress: isRefreshInProgress() });
   } catch (e) { safeError(res, e); }
 });
 
@@ -2477,4 +2538,5 @@ app.get("*", (req, res) => {
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`TrailLog running on port ${PORT}`);
+  startGearRefreshSchedule();
 });
