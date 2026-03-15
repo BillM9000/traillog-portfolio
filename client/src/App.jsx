@@ -72,11 +72,11 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false);
   const isGlobalAdmin = !!user?.is_global_admin;
 
-  // Apply deep link after auth loads
+  // Apply deep link after auth loads — keep ref alive until MainView reads the tab
   useEffect(() => {
     if (user && deepLinkRef.current && !troopId && !adventureId) {
       const dl = deepLinkRef.current;
-      deepLinkRef.current = null;
+      // Don't null the ref yet — MainView needs to read dl.tab on first render
       setTroopId(dl.troopId);
       setAdventureId(dl.adventureId);
     }
@@ -178,7 +178,7 @@ export default function App() {
         approvedTroops={approvedTroops}
         isAdmin={isAdmin}
         publicSettings={publicSettings}
-        initialTab={deepLinkRef.current?.tab || null}
+        initialTab={(() => { const t = deepLinkRef.current?.tab || null; deepLinkRef.current = null; return t; })()}
         onSwitchTroop={(id) => { setTroopId(id); setAdventureId(null); }}
         onGoHome={goHome}
         onSelectAdventure={(id) => setAdventureId(id)}

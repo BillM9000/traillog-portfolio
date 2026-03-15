@@ -559,15 +559,21 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
           </h2>
           <p style={{
             fontSize: 14, color: "#6B5D4D", textAlign: "center", margin: "0 0 12px 0",
-            maxWidth: 520, marginLeft: "auto", marginRight: "auto", lineHeight: 1.6,
+            maxWidth: 560, marginLeft: "auto", marginRight: "auto", lineHeight: 1.6,
           }}>
             There is nothing else like this for high adventure crews. No spreadsheets, no group text chaos, no guesswork.
           </p>
           <p style={{
-            fontSize: 13, color: "#8A7A6A", textAlign: "center", margin: "0 0 40px 0",
+            fontSize: 13, color: "#8A7A6A", textAlign: "center", margin: "0 0 8px 0",
             fontWeight: 600,
           }}>
             No subscription. No monthly fees. Just pay per adventure.
+          </p>
+          <p style={{
+            fontSize: 12, color: "#8A7A6A", textAlign: "center", margin: "0 0 40px 0",
+            fontStyle: "italic",
+          }}>
+            One price covers your entire crew — unlimited members, one flat cost.
           </p>
 
           <div style={{
@@ -601,6 +607,7 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
               <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px 0" }}>
                 {[
                   "AI-powered training plans",
+                  "AI gear recommendations",
                   "Gear tracking & pack weight",
                   "Training calendar & scheduling",
                   "Itinerary viewer & cheat sheets",
@@ -660,14 +667,14 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
                 </span>
               </div>
               <p style={{ fontSize: 13, color: "#B0A898", marginBottom: 20, lineHeight: 1.5 }}>
-                Same full features. One-time payment, not a subscription. Less than a single piece of gear.
+                One-time payment — not per person, not per month. Less than a single piece of gear.
               </p>
               <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px 0" }}>
                 {[
                   "Everything in Free",
                   "AI coaching for every trek",
                   "Multiple concurrent adventures",
-                  "Full crew coordination tools",
+                  "Sister crews & split itineraries",
                   "All future feature updates",
                   "Pay once, prepare forever",
                 ].map(item => (
@@ -693,6 +700,107 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
             </div>
           </div>
 
+          {/* Per-adventure explainer */}
+          <div style={{
+            marginTop: 40, maxWidth: 720, marginLeft: "auto", marginRight: "auto",
+            background: "#F3F0E8", border: "1px solid #DDD6C8", borderRadius: 16,
+            padding: isMobile ? "24px 18px" : "32px 28px",
+          }}>
+            <h3 style={{
+              fontFamily: fontDisplay, fontSize: isMobile ? 16 : 18, fontWeight: 800,
+              color: "#2C2416", margin: "0 0 6px 0", textAlign: "center",
+            }}>
+              What counts as an "adventure"?
+            </h3>
+            <p style={{
+              fontSize: 13, color: "#6B5D4D", textAlign: "center", margin: "0 0 20px 0",
+              lineHeight: 1.5, maxWidth: 480, marginLeft: "auto", marginRight: "auto",
+            }}>
+              An adventure is one trip to one base — like Philmont 2026. Everyone going on that trip shares one adventure. You never pay per person.
+            </p>
+
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+              gap: 14,
+            }}>
+              {[
+                {
+                  icon: "🏕️",
+                  title: "One crew, one trek",
+                  desc: "12 people heading to Philmont together? That's one adventure. $0 the first time, $29 after that. All 12 members included.",
+                },
+                {
+                  icon: "👥",
+                  title: "Sister crews, same trip",
+                  desc: "Your troop sends two crews to Philmont the same summer? Each crew is its own adventure with its own itinerary and gear lists.",
+                },
+                {
+                  icon: "🗺️",
+                  title: "Different bases, different trips",
+                  desc: "Philmont this year and Northern Tier next year? Two separate adventures. The first is always free.",
+                },
+                {
+                  icon: "🔄",
+                  title: "Same base, new year",
+                  desc: "Going back to Philmont in 2027? That's a new adventure with fresh dates, new crew members, and a new training plan.",
+                },
+              ].map((s) => (
+                <div key={s.title} style={{
+                  background: "#FDFAF5", borderRadius: 12, padding: "16px 14px",
+                  border: "1px solid #E8E2D6",
+                }}>
+                  <div style={{ fontSize: 22, marginBottom: 6 }}>{s.icon}</div>
+                  <div style={{
+                    fontFamily: fontDisplay, fontSize: 13, fontWeight: 700,
+                    color: "#2C2416", marginBottom: 4,
+                  }}>
+                    {s.title}
+                  </div>
+                  <p style={{ fontSize: 12, color: "#6B5D4D", margin: 0, lineHeight: 1.5 }}>
+                    {s.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Quick setup process */}
+            <div style={{
+              marginTop: 20, padding: "16px 14px",
+              background: "#FDFAF5", borderRadius: 12, border: "1px solid #E8E2D6",
+            }}>
+              <div style={{
+                fontFamily: fontDisplay, fontSize: 13, fontWeight: 700,
+                color: "#2C2416", marginBottom: 10, textAlign: "center",
+              }}>
+                Setup takes 2 minutes
+              </div>
+              <div style={{
+                display: "flex", flexDirection: isMobile ? "column" : "row",
+                gap: isMobile ? 8 : 4, alignItems: "center", justifyContent: "center",
+              }}>
+                {[
+                  { step: "1", text: "Create your troop" },
+                  { step: "2", text: "Add an adventure & pick your itinerary" },
+                  { step: "3", text: "Invite crew members" },
+                  { step: "4", text: "Everyone coordinates from one place" },
+                ].map((s, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: "50%", background: "#5B7A3A",
+                      color: "#fff", fontSize: 11, fontWeight: 700, display: "flex",
+                      alignItems: "center", justifyContent: "center", flexShrink: 0,
+                    }}>
+                      {s.step}
+                    </div>
+                    <span style={{ fontSize: 12, color: "#4A3A2A", whiteSpace: "nowrap" }}>{s.text}</span>
+                    {!isMobile && i < 3 && <span style={{ color: "#C8C0B4", margin: "0 4px" }}>→</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
           {/* Trust signals below pricing */}
           <div style={{
             display: "flex", flexDirection: isMobile ? "column" : "row",
@@ -701,7 +809,7 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
           }}>
             {[
               { bold: "Your trek date is set", rest: " — start preparing now" },
-              { bold: "Replaces spreadsheets", rest: ", group texts, and guesswork" },
+              { bold: "Never per-user", rest: " — your whole crew is covered" },
               { bold: "Join crews", rest: " already using TrailLog" },
             ].map((s, i) => (
               <p key={i} style={{ fontSize: 12, color: "#8A7A6A", margin: 0, lineHeight: 1.5 }}>
