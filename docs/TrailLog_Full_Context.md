@@ -160,8 +160,8 @@
 
 # PART 3: newfeatures.md (Backlog & Roadmap)
 
-## P1 — Security Hardening (TODO)
-- CSRF protection, strict CSP, npm audit + Dependabot
+## P1 — Security Hardening (DONE ✅)
+- ✅ CSRF protection (double-submit cookie), strict CSP (no unsafe-inline), npm audit (0 vulns), Dependabot (.github/dependabot.yml)
 
 ## P2 — Stability & Quality (TODO)
 - Input validation library (express-validator or zod)
@@ -187,13 +187,17 @@
 - Subscription pricing (~$39/year per troop)
 - Email upgrade (Resend or Postmark)
 
-## Already Done (28 items)
+## Already Done (40+ items)
 - SSH key-only auth, automated backups, rate limiting, Helmet.js, parameterized SQL
 - bcrypt hashing, Docker non-root, session security, 15-phase automated test
 - Landing page, scout restrictions, 2-step troop creation, age gate
 - Email enrichment, maintenance mode, registration toggle, announcement banner
 - Troop limit, Platform Settings tab, multi-admin, Home Dashboard
 - Logo→Home navigation, System Admins management, Help System, member removal confirmation
+- CSRF protection, strict CSP, Dependabot, Morgan logging, file upload validation
+- Favicon, container restart policy, rollback plan, golden backups, off-site backups
+- Council picker overhaul (238 BSA councils), AI Readiness Engine (Claude API)
+- Schema v17-v20 (councils table, council_num, AI readiness)
 
 ---
 

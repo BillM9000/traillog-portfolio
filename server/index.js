@@ -453,6 +453,13 @@ app.put("/api/auth/change-password", requireAuth, async (req, res) => {
     if (!match) return res.status(400).json({ error: "Current password is incorrect" });
     const hash = await hashPassword(newPassword);
     updatePassword(user.id, hash);
+    // Invalidate all other sessions for this user
+    try {
+      const pattern = `%"passport":{"user":${user.id}}%`;
+      db.prepare("DELETE FROM sessions WHERE sid != ? AND sess LIKE ?").run(req.sessionID, pattern);
+    } catch (sessionErr) {
+      console.error("[change-password] Failed to invalidate other sessions:", sessionErr.message);
+    }
     res.json({ ok: true, message: "Password updated successfully" });
   } catch (e) { safeError(res, e); }
 });
