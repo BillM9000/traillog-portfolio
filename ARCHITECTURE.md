@@ -1,6 +1,6 @@
 # TrailLog Architecture
 
-> **Schema Version:** 7 | **Last Updated:** 2026-03-10
+> **Schema Version:** 20 | **Last Updated:** 2026-03-14
 
 ## System Overview
 
@@ -35,6 +35,9 @@
                         ├─────────────────────────────────────┤
                         │  Google OAuth    │  Gmail SMTP      │
                         │  (Passport.js)   │  (Nodemailer)    │
+                        ├─────────────────────────────────────┤
+                        │  Anthropic Claude API               │
+                        │  (AI Readiness Engine)              │
                         └─────────────────────────────────────┘
 ```
 
@@ -63,7 +66,7 @@ Backup Strategy:
   └─────────────────────────────────────────────────────────────┘
 ```
 
-## Data Model (Schema v7)
+## Data Model (Schema v20)
 
 ```
 ┌─────────────────────────┐

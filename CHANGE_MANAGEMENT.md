@@ -345,6 +345,12 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 | v12 | 2026-03-13 | Age gate (COPPA), session timeout | `crew614-GOLDEN-pre-agegate-20260313.db` |
 | v13 | 2026-03-13 | Password reset tokens | N/A (additive, no data risk) |
 | v14 | 2026-03-13 | TOS acceptance tracking (tos_accepted_at) | N/A (additive, no data risk) |
+| v15 | 2026-03-13 | Gear sharing types (personal/crew/buddy/provided) | N/A (additive) |
+| v16 | 2026-03-14 | Multi-admin (`users.is_admin`) | `crew614-GOLDEN-pre-phase1-20260314.db` |
+| v17 | 2026-03-14 | Councils lookup table (350+ BSA councils) | `crew614-GOLDEN-pre-crew-layer-20260314.db` |
+| v18 | 2026-03-14 | Crew layer (crews table, crew_members) | `crew614-GOLDEN-post-crew-layer-20260314.db` |
+| v19 | 2026-03-14 | AI Readiness Engine (readiness tables) | `crew614-GOLDEN-post-ai-readiness-20260314.db` |
+| v20 | 2026-03-14 | Council numbers (`council_num` column) | `crew614-GOLDEN-post-council-overhaul-20260314.db` |
 
 ### Deployment Log
 
@@ -360,6 +366,11 @@ Record every production deployment here.
 | 2026-03-13 | TOS acceptance tracking (schema v14) | Medium | Bill McCoy | ✅ | Explicit checkbox on both signup paths, tos_accepted_at in DB |
 | 2026-03-13 | Set 7: Troop logo upload + display | Low | Bill McCoy | ✅ | File-based storage, AdminPanel upload, Lobby display, TroopLogo component |
 | 2026-03-13 | Set 7 polish: date validation, header redesign, logo hero | Low | Bill McCoy | ✅ | Date cascade auto-clear, objectFit contain, 88px hero logo, depart→home date range |
+| 2026-03-14 | Sets 8-14: Profile, platform settings, CSRF, CSP, multi-admin | High | Bill McCoy | ✅ | Golden backups at each stage |
+| 2026-03-14 | Crew layer: multi-crew architecture (schema v17-v18) | High | Bill McCoy | ✅ | 4-stage rollout, full GUI test |
+| 2026-03-14 | AI Readiness Engine (schema v19) | High | Bill McCoy | ✅ | Claude API integration, personalized coaching |
+| 2026-03-14 | Council overhaul: 238 BSA councils (schema v20) | Medium | Bill McCoy | ✅ | Upsert pattern, custom entry |
+| 2026-03-14 | Go-live audit: session invalidation, checklist, prod test | Medium | Bill McCoy | ✅ | 90+ routes audited, all tabs tested |
 
 ### Golden Backup Registry
 
@@ -367,7 +378,12 @@ Record every production deployment here.
 |-------|------|----------|----------|
 | pre-regression | 2026-03-10 | `/opt/crew614/crew614-GOLDEN-pre-regression-20260310.db` | Schema v10, test data |
 | pre-timeslots | 2026-03-12 | `/opt/crew614/crew614-GOLDEN-pre-timeslots-20260312.db` | Schema v11, pre-training-events |
-| | | | |
+| pre-agegate | 2026-03-13 | `/opt/crew614/crew614-GOLDEN-pre-agegate-20260313.db` | Schema v11, pre-age-gate |
+| pre-phase1 | 2026-03-14 | `/opt/crew614/crew614-GOLDEN-pre-phase1-20260314.db` | Schema v14, pre-platform-settings |
+| pre-crew-layer | 2026-03-14 | `/opt/crew614/crew614-GOLDEN-pre-crew-layer-20260314.db` | Schema v16, pre-crews |
+| post-crew-layer | 2026-03-14 | `/opt/crew614/crew614-GOLDEN-post-crew-layer-20260314.db` | Schema v18, crews working |
+| post-ai-readiness | 2026-03-14 | `/opt/crew614/crew614-GOLDEN-post-ai-readiness-20260314.db` | Schema v19, AI engine |
+| post-council-overhaul | 2026-03-14 | `/opt/crew614/crew614-GOLDEN-post-council-overhaul-20260314.db` | Schema v20, 238 councils |
 
 ---
 
@@ -413,4 +429,4 @@ docker system df
 
 ---
 
-*Last updated: 2026-03-13*
+*Last updated: 2026-03-14*
