@@ -811,6 +811,13 @@ function SettingsTab({ settings, loaded, setSettings, theme, addToast, allUsers 
         </div>
       )}
 
+      <SectionLabel>Affiliate</SectionLabel>
+      <div style={{ padding: "10px 12px", borderRadius: 8, background: theme.bgAlt, border: `1px solid ${theme.borderLight}`, marginBottom: 6 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: theme.text, fontFamily: fontBody }}>Amazon Affiliate Tag</div>
+        <div style={{ fontSize: 10, color: theme.textDimmer, marginTop: 2, marginBottom: 6 }}>Used in AI gear recommendation buy links</div>
+        <input defaultValue={get("amazon_affiliate_tag") || "traillog-20"} onBlur={(e) => save("amazon_affiliate_tag", e.target.value)} placeholder="e.g. traillog-20" style={{ ...inputStyle, width: 200 }} />
+      </div>
+
       <SectionLabel>Limits</SectionLabel>
       <div style={{ padding: "10px 12px", borderRadius: 8, background: theme.bgAlt, border: `1px solid ${theme.borderLight}`, marginBottom: 6 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: theme.text, fontFamily: fontBody }}>Max Troops per User</div>
@@ -821,7 +828,7 @@ function SettingsTab({ settings, loaded, setSettings, theme, addToast, allUsers 
       <SystemAdminsSection allUsers={allUsers} theme={theme} addToast={addToast} />
 
       <SectionLabel>System</SectionLabel>
-      {settings.filter(s => !["maintenance_mode", "maintenance_message", "registration_enabled", "announcement_enabled", "announcement_banner", "announcement_type", "max_troops_per_user"].includes(s.key)).map(s => (
+      {settings.filter(s => !["maintenance_mode", "maintenance_message", "registration_enabled", "announcement_enabled", "announcement_banner", "announcement_type", "max_troops_per_user", "amazon_affiliate_tag"].includes(s.key)).map(s => (
         <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 6, marginBottom: 3, background: theme.bgAlt, border: `1px solid ${theme.borderLight}` }}>
           <span style={{ fontSize: 11, fontWeight: 600, color: theme.text, minWidth: 140 }}>{s.key}</span>
           <span style={{ flex: 1, fontSize: 11, color: theme.textMuted }}>{s.value}</span>

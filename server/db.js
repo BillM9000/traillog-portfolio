@@ -133,6 +133,8 @@ db.exec(`
     color_bg TEXT NOT NULL,
     dates TEXT NOT NULL DEFAULT '[]',
     skills TEXT NOT NULL DEFAULT '[]',
+    participation TEXT NOT NULL DEFAULT 'trekking',
+    requested_adventures TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, troop_id)
   );
@@ -395,7 +397,7 @@ db.exec(`
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 20;
+const CURRENT_SCHEMA_VERSION = 21;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -801,6 +803,12 @@ function migrate() {
     if (version < 20) {
       tryAlter("ALTER TABLE councils ADD COLUMN council_num INTEGER");
       console.log("[v20] Added council_num to councils table");
+    }
+
+    if (version < 21) {
+      tryAlter("ALTER TABLE troop_members ADD COLUMN participation TEXT NOT NULL DEFAULT 'trekking'");
+      tryAlter("ALTER TABLE troop_members ADD COLUMN requested_adventures TEXT");
+      console.log("[v21] Added participation + requested_adventures to troop_members");
     }
 
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
@@ -1512,11 +1520,15 @@ export function getDashboardData(userId, isAdmin) {
 
   // Pending join requests
   const pending = db.prepare(`
-    SELECT tm.troop_id, t.name as troop_name, COALESCE(c.name, t.council) as council
+    SELECT tm.troop_id, t.name as troop_name, COALESCE(c.name, t.council) as council,
+           tm.participation, tm.requested_adventures
     FROM troop_members tm JOIN troops t ON tm.troop_id = t.id
     LEFT JOIN councils c ON t.council_id = c.id
     WHERE tm.user_id = ? AND tm.status = 'pending'
-  `).all(userId);
+  `).all(userId).map(p => ({
+    ...p,
+    requested_adventures: p.requested_adventures ? JSON.parse(p.requested_adventures) : null,
+  }));
 
   // Public troops the user is NOT a member of
   const publicTroops = db.prepare(`
@@ -1712,13 +1724,19 @@ export function getTroopMembers(troopId, statusFilter) {
     name: r.name, email: r.email, avatar_url: r.avatar_url, user_type: r.user_type,
     role: r.role, status: r.status, color: { bg: r.color_bg },
     dates: JSON.parse(r.dates), skills: JSON.parse(r.skills),
+    participation: r.participation || "trekking",
+    requested_adventures: r.requested_adventures ? JSON.parse(r.requested_adventures) : null,
   }));
 }
 
 export function getTroopMember(troopId, userId) {
   const r = db.prepare("SELECT * FROM troop_members WHERE troop_id = ? AND user_id = ?").get(troopId, userId);
   if (!r) return null;
-  return { ...r, dates: JSON.parse(r.dates), skills: JSON.parse(r.skills), color: { bg: r.color_bg } };
+  return {
+    ...r, dates: JSON.parse(r.dates), skills: JSON.parse(r.skills), color: { bg: r.color_bg },
+    participation: r.participation || "trekking",
+    requested_adventures: r.requested_adventures ? JSON.parse(r.requested_adventures) : null,
+  };
 }
 
 export function getUserMemberships(userId) {
@@ -1742,10 +1760,12 @@ export function getUserAdventureMemberships(userId) {
   `).all(userId);
 }
 
-export function requestJoinTroop(userId, troopId) {
+export function requestJoinTroop(userId, troopId, { participation, requestedAdventures } = {}) {
   const memberCount = db.prepare("SELECT COUNT(*) as c FROM troop_members WHERE troop_id = ?").get(troopId).c;
-  db.prepare("INSERT INTO troop_members (user_id, troop_id, role, status, color_bg) VALUES (?, ?, 'member', 'pending', ?)")
-    .run(userId, troopId, COLORS[memberCount % COLORS.length]);
+  const part = participation === "support" ? "support" : "trekking";
+  const reqAdvJson = Array.isArray(requestedAdventures) && requestedAdventures.length > 0 ? JSON.stringify(requestedAdventures) : null;
+  db.prepare("INSERT INTO troop_members (user_id, troop_id, role, status, color_bg, participation, requested_adventures) VALUES (?, ?, 'member', 'pending', ?, ?, ?)")
+    .run(userId, troopId, COLORS[memberCount % COLORS.length], part, reqAdvJson);
 }
 
 export function approveTroopMember(troopId, userId) {
@@ -2012,17 +2032,18 @@ export function getCrewMember(crewId, userId) {
   };
 }
 
-export function addCrewMember(crewId, userId, role = "member") {
+export function addCrewMember(crewId, userId, role = "member", participation = "trekking") {
   const crew = db.prepare("SELECT adventure_id FROM crews WHERE id = ?").get(crewId);
   if (!crew) return null;
   const adv = db.prepare("SELECT troop_id FROM adventures WHERE id = ?").get(crew.adventure_id);
   if (!adv) return null;
-  const troopMember = db.prepare("SELECT color_bg FROM troop_members WHERE troop_id = ? AND user_id = ?").get(adv.troop_id, userId);
+  const troopMember = db.prepare("SELECT color_bg, participation as tp FROM troop_members WHERE troop_id = ? AND user_id = ?").get(adv.troop_id, userId);
   const existingCount = db.prepare("SELECT COUNT(*) as c FROM crew_members WHERE crew_id = ?").get(crewId).c;
   const color = troopMember?.color_bg || COLORS[existingCount % COLORS.length];
-  db.prepare("INSERT OR IGNORE INTO crew_members (crew_id, user_id, role, color_bg) VALUES (?, ?, ?, ?)").run(crewId, userId, role, color);
+  const part = participation || troopMember?.tp || "trekking";
+  db.prepare("INSERT OR IGNORE INTO crew_members (crew_id, user_id, role, color_bg, participation) VALUES (?, ?, ?, ?, ?)").run(crewId, userId, role, color, part);
   // Dual-write to adventure_members for backward compat
-  db.prepare("INSERT OR IGNORE INTO adventure_members (adventure_id, user_id, role, color_bg) VALUES (?, ?, ?, ?)").run(crew.adventure_id, userId, role, color);
+  db.prepare("INSERT OR IGNORE INTO adventure_members (adventure_id, user_id, role, color_bg, participation) VALUES (?, ?, ?, ?, ?)").run(crew.adventure_id, userId, role, color, part);
 }
 
 export function removeCrewMember(crewId, userId) {
@@ -2170,16 +2191,17 @@ export function getAdventureMember(adventureId, userId) {
   };
 }
 
-export function addAdventureMember(adventureId, userId, role = "member") {
+export function addAdventureMember(adventureId, userId, role = "member", participation = "trekking") {
   const crew = getDefaultCrew(adventureId);
-  if (crew) return addCrewMember(crew.id, userId, role);
+  if (crew) return addCrewMember(crew.id, userId, role, participation);
   // Fallback: write directly (shouldn't happen after migration)
   const adv = db.prepare("SELECT troop_id FROM adventures WHERE id = ?").get(adventureId);
   if (!adv) return null;
-  const troopMember = db.prepare("SELECT color_bg FROM troop_members WHERE troop_id = ? AND user_id = ?").get(adv.troop_id, userId);
+  const troopMember = db.prepare("SELECT color_bg, participation as tp FROM troop_members WHERE troop_id = ? AND user_id = ?").get(adv.troop_id, userId);
   const existingCount = db.prepare("SELECT COUNT(*) as c FROM adventure_members WHERE adventure_id = ?").get(adventureId).c;
   const color = troopMember?.color_bg || COLORS[existingCount % COLORS.length];
-  db.prepare("INSERT OR IGNORE INTO adventure_members (adventure_id, user_id, role, color_bg) VALUES (?, ?, ?, ?)").run(adventureId, userId, role, color);
+  const part = participation || troopMember?.tp || "trekking";
+  db.prepare("INSERT OR IGNORE INTO adventure_members (adventure_id, user_id, role, color_bg, participation) VALUES (?, ?, ?, ?, ?)").run(adventureId, userId, role, color, part);
 }
 
 export function removeAdventureMember(adventureId, userId) {

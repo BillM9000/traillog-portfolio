@@ -180,7 +180,7 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
           ].map(([val, label]) => (
             <div key={label} style={{ background: theme.statBg, borderRadius: 6, padding: "6px 10px", textAlign: "center" }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>{val}</div>
-              <div style={{ fontSize: 9, color: theme.textDimmer }}>{label}</div>
+              <div style={{ fontSize: 10, color: theme.textDimmer }}>{label}</div>
             </div>
           ))}
         </div>
@@ -226,7 +226,7 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
               cursor: hasDetail ? "pointer" : "default",
             }}>
               <div style={{ width: 32, textAlign: "center", flexShrink: 0 }}>
-                <div style={{ fontSize: 8, color: theme.textDimmer, fontWeight: 700 }}>DAY</div>
+                <div style={{ fontSize: 10, color: theme.textDimmer, fontWeight: 700 }}>DAY</div>
                 <div style={{ fontSize: 20, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>{day.day}</div>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -234,7 +234,7 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
                   <span style={{ fontSize: 14, fontWeight: 700, color: typeColor(day.type) }}>{day.camp}</span>
                   {day.elevation && <span style={{ fontSize: 9, color: theme.textDimmer }}>{day.elevation.toLocaleString()}'</span>}
                 </div>
-                <div style={{ fontSize: 11, color: theme.textDim, marginTop: 1 }}>{day.notes}</div>
+                <div style={{ fontSize: 12, color: theme.textDim, marginTop: 1 }}>{day.notes}</div>
                 {/* Indicator badges */}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginTop: 4 }}>
                   {hasWater && <Badge color={theme.warn} bg={theme.warnBg}>DRY CAMP</Badge>}
@@ -347,7 +347,7 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
           <div style={{ fontSize: 11, fontWeight: 700, color: theme.heading, marginBottom: 4 }}>Daypack Essentials</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginBottom: 8 }}>
             {global.baldy_guide.daypack_essentials.map(item => (
-              <span key={item} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: theme.statBg, color: theme.textMuted }}>{item}</span>
+              <span key={item} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: theme.statBg, color: theme.textMuted }}>{item}</span>
             ))}
           </div>
           <div style={{ fontSize: 11, color: theme.danger, background: mode === "dark" ? "#3a2020" : "#fde8e0", padding: "8px 10px", borderRadius: 6, marginBottom: 4 }}>

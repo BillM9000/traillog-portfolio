@@ -15,6 +15,179 @@ const ADVENTURE_TYPE_NAMES = {
   summit: "Summit Bechtel Reserve",
 };
 
+function JoinModal({ troopId, troopName, theme, onClose, onSubmit }) {
+  const [step, setStep] = useState(1);
+  const [participation, setParticipation] = useState("trekking");
+  const [adventures, setAdventures] = useState([]);
+  const [selectedAdventures, setSelectedAdventures] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    api.getTroopJoinInfo(troopId).then(data => {
+      setAdventures(data.adventures || []);
+      // If only one adventure, auto-select it
+      if (data.adventures?.length === 1) {
+        setSelectedAdventures([data.adventures[0].id]);
+      }
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [troopId]);
+
+  const formatDate = (d) => {
+    if (!d) return "";
+    try { return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }); } catch { return d; }
+  };
+
+  const toggleAdventure = (advId) => {
+    setSelectedAdventures(prev =>
+      prev.includes(advId) ? prev.filter(id => id !== advId) : [...prev, advId]
+    );
+  };
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    // If troop has adventures and user hasn't selected any, select all
+    const advIds = adventures.length > 0
+      ? (selectedAdventures.length > 0 ? selectedAdventures : adventures.map(a => a.id))
+      : [];
+    await onSubmit({ participation, adventure_ids: advIds });
+    setSubmitting(false);
+  };
+
+  const needsAdventureStep = adventures.length > 1;
+  const canProceed = step === 1 || selectedAdventures.length > 0;
+
+  const inputLabel = { fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, display: "block" };
+  const radioBtn = (selected) => ({
+    display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px",
+    borderRadius: 8, cursor: "pointer", border: selected ? `2px solid ${theme.accent}` : `1.5px solid ${theme.borderLight}`,
+    background: selected ? theme.accentBg : theme.bgAlt, marginBottom: 6, transition: "all 0.15s",
+  });
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 9999,
+      background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center",
+      padding: 20,
+    }} onClick={onClose}>
+      <div style={{
+        background: theme.bg, borderRadius: 14, padding: "24px 20px",
+        maxWidth: 440, width: "100%", maxHeight: "80vh", overflowY: "auto",
+        border: `1px solid ${theme.border}`, boxShadow: "0 8px 30px rgba(0,0,0,0.25)",
+      }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <h3 style={{ fontFamily: fontDisplay, fontSize: 18, fontWeight: 800, color: theme.heading, margin: 0 }}>
+            Join {troopName}
+          </h3>
+          <button onClick={onClose} style={{
+            background: "none", border: "none", fontSize: 18, color: theme.textDim, cursor: "pointer", padding: "2px 6px",
+          }}>&times;</button>
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: "center", padding: 20, color: theme.textDim, fontSize: 12 }}>Loading...</div>
+        ) : (
+          <>
+            {/* Step 1: Participation */}
+            {step === 1 && (
+              <div>
+                <label style={inputLabel}>How will you participate?</label>
+                <div onClick={() => setParticipation("trekking")} style={radioBtn(participation === "trekking")}>
+                  <div style={{
+                    width: 18, height: 18, borderRadius: "50%", border: `2px solid ${participation === "trekking" ? theme.accent : theme.borderLight}`,
+                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1,
+                  }}>
+                    {participation === "trekking" && <div style={{ width: 10, height: 10, borderRadius: "50%", background: theme.accent }} />}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: theme.heading }}>Trekker</div>
+                    <div style={{ fontSize: 11, color: theme.textDim, marginTop: 2 }}>Going on the adventure</div>
+                  </div>
+                </div>
+                <div onClick={() => setParticipation("support")} style={radioBtn(participation === "support")}>
+                  <div style={{
+                    width: 18, height: 18, borderRadius: "50%", border: `2px solid ${participation === "support" ? theme.accent : theme.borderLight}`,
+                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1,
+                  }}>
+                    {participation === "support" && <div style={{ width: 10, height: 10, borderRadius: "50%", background: theme.accent }} />}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: theme.heading }}>Support Crew</div>
+                    <div style={{ fontSize: 11, color: theme.textDim, marginTop: 2 }}>Helping from home</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Adventure selection (multi-adventure troops only) */}
+            {step === 2 && needsAdventureStep && (
+              <div>
+                <label style={inputLabel}>Which adventure(s) are you joining?</label>
+                <div style={{ fontSize: 11, color: theme.textDim, marginBottom: 10 }}>
+                  Select one or more adventures you want to participate in.
+                </div>
+                {adventures.map(adv => {
+                  const selected = selectedAdventures.includes(adv.id);
+                  const dateRange = [formatDate(adv.arrive_date), formatDate(adv.return_date)].filter(Boolean).join(" - ");
+                  return (
+                    <div key={adv.id} onClick={() => toggleAdventure(adv.id)} style={{
+                      ...radioBtn(selected),
+                      cursor: "pointer",
+                    }}>
+                      <div style={{
+                        width: 18, height: 18, borderRadius: 4, border: `2px solid ${selected ? theme.accent : theme.borderLight}`,
+                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1,
+                        background: selected ? theme.accent : "transparent",
+                      }}>
+                        {selected && <span style={{ color: "#fff", fontSize: 12, fontWeight: 700, lineHeight: 1 }}>&#10003;</span>}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: theme.heading }}>{adv.name}</div>
+                        <div style={{ fontSize: 10, color: theme.textDim, marginTop: 2 }}>
+                          {ADVENTURE_TYPE_NAMES[adv.adventure_type] || adv.adventure_type}
+                          {dateRange && ` \u00b7 ${dateRange}`}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Buttons */}
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              {step > 1 && (
+                <button onClick={() => setStep(step - 1)} style={{
+                  flex: 1, padding: "10px 0", borderRadius: 7, border: `1px solid ${theme.borderLight}`,
+                  background: theme.bgAlt, color: theme.textMuted, fontSize: 12, fontWeight: 600,
+                  cursor: "pointer", fontFamily: fontBody,
+                }}>Back</button>
+              )}
+              {step === 1 && needsAdventureStep ? (
+                <button onClick={() => setStep(2)} style={{
+                  flex: 1, padding: "10px 0", borderRadius: 7, border: "none",
+                  background: theme.accent, color: "#fff", fontSize: 13, fontWeight: 700,
+                  cursor: "pointer", fontFamily: fontDisplay,
+                }}>Next</button>
+              ) : (
+                <button onClick={handleSubmit} disabled={submitting || !canProceed} style={{
+                  flex: 1, padding: "10px 0", borderRadius: 7, border: "none",
+                  background: canProceed ? theme.accent : theme.borderLight,
+                  color: canProceed ? "#fff" : theme.textDim,
+                  fontSize: 13, fontWeight: 700,
+                  cursor: submitting ? "wait" : canProceed ? "pointer" : "default",
+                  fontFamily: fontDisplay,
+                }}>{submitting ? "Sending..." : "Request to Join"}</button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function daysUntil(dateStr) {
   if (!dateStr) return null;
   const d = new Date(dateStr + "T00:00:00");
@@ -85,6 +258,9 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Join modal state
+  const [joinModal, setJoinModal] = useState(null); // { troopId, troopName }
+
   const refreshDashboard = useCallback(async () => {
     try {
       const data = await api.getDashboard();
@@ -95,9 +271,14 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
 
   useEffect(() => { refreshDashboard(); }, [refreshDashboard]);
 
-  const handleJoin = async (troopId) => {
+  const handleJoinClick = (troopId, troopName) => {
+    setJoinModal({ troopId, troopName });
+  };
+
+  const handleJoinSubmit = async ({ participation, adventure_ids }) => {
     try {
-      await api.joinTroop(troopId);
+      await api.joinTroop(joinModal.troopId, { participation, adventure_ids });
+      setJoinModal(null);
       await onRefresh();
       refreshDashboard();
       addToast("Join request sent", "success");
@@ -246,7 +427,11 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
             <div style={{ ...cardTitle(theme), color: theme.gold }}>Pending Requests</div>
             {pendingRequests.map(p => (
               <div key={p.troop_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>
-                <span><strong>{p.troop_name}</strong> — waiting for admin approval...</span>
+                <span>
+                  <strong>{p.troop_name}</strong>
+                  {p.participation === "support" && <span style={{ fontSize: 9, color: theme.textDim, marginLeft: 4 }}>(support)</span>}
+                  {" "}&mdash; waiting for admin approval...
+                </span>
                 <button onClick={async () => {
                   try { await api.leaveTroop(p.troop_id); await onRefresh(); refreshDashboard(); addToast("Request withdrawn", "success"); }
                   catch (e) { addToast(e.message, "error"); }
@@ -387,7 +572,7 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
                     color: "#fff", fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
                   }}>Enter →</button>
                 ) : (
-                  <button onClick={() => handleJoin(t.id)} style={{
+                  <button onClick={() => handleJoinClick(t.id, t.name)} style={{
                     padding: "4px 10px", borderRadius: 5, border: "none", background: theme.accent,
                     color: "#fff", fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
                   }}>Request to Join</button>
@@ -542,6 +727,17 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
           </div>
         )}
       </div>
+
+      {/* Join Modal */}
+      {joinModal && (
+        <JoinModal
+          troopId={joinModal.troopId}
+          troopName={joinModal.troopName}
+          theme={theme}
+          onClose={() => setJoinModal(null)}
+          onSubmit={handleJoinSubmit}
+        />
+      )}
     </div>
   );
 }

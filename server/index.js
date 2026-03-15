@@ -482,27 +482,33 @@ app.put("/api/auth/profile", requireAuth, (req, res) => {
     if (age_confirmed !== undefined) {
       if (!["13+", "18+"].includes(age_confirmed)) return res.status(400).json({ error: "age_confirmed must be '13+' or '18+'" });
       if (req.user.age_confirmed) return res.status(400).json({ error: "Age confirmation cannot be changed" });
-      // Record TOS acceptance if not already set (Google OAuth users accept during age gate)
-      const updates = { age_confirmed };
-      const currentUser = findUserById(req.user.id);
-      if (!currentUser.tos_accepted_at) {
-        updates.tos_accepted_at = new Date().toISOString();
-      }
-      updateUserProfile(req.user.id, updates);
-      return res.json({ ok: true });
     }
 
     if (user_type && !["adult", "scout"].includes(user_type)) return res.status(400).json({ error: "user_type must be 'adult' or 'scout'" });
 
-    // Age gate enforcement: must confirm age before setting role
     const currentUser = findUserById(req.user.id);
-    if (user_type && !currentUser.age_confirmed) return res.status(400).json({ error: "You must confirm your age before selecting a role" });
+    const effectiveAge = age_confirmed || currentUser.age_confirmed;
+
+    // Age gate enforcement: must confirm age before setting role (either already set or being set now)
+    if (user_type && !effectiveAge) return res.status(400).json({ error: "You must confirm your age before selecting a role" });
 
     // 18+ required for adult role
-    if (user_type === "adult" && currentUser.age_confirmed === "13+") return res.status(400).json({ error: "You must be 18 or older to register as an adult leader" });
+    if (user_type === "adult" && effectiveAge === "13+") return res.status(400).json({ error: "You must be 18 or older to register as an adult leader" });
+
+    // 13+ (youth) must be scout
+    if (user_type === "scout" && effectiveAge === "18+") return res.status(400).json({ error: "Adults (18+) cannot register as scouts" });
 
     if (user_type === "scout" && !parent_email?.trim()) return res.status(400).json({ error: "Scouts must provide parent/guardian email" });
-    updateUserProfile(req.user.id, { name: name?.trim(), user_type, parent_email, parent_email_2: parent_email_2?.trim() || null });
+
+    // Build update object
+    const updates = { name: name?.trim(), user_type, parent_email, parent_email_2: parent_email_2?.trim() || null };
+    if (age_confirmed && !currentUser.age_confirmed) {
+      updates.age_confirmed = age_confirmed;
+      if (!currentUser.tos_accepted_at) {
+        updates.tos_accepted_at = new Date().toISOString();
+      }
+    }
+    updateUserProfile(req.user.id, updates);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
@@ -624,20 +630,56 @@ app.put("/api/troops/:troopId/logo", requireAuth, requireTroopAdmin, (req, res) 
   } catch (e) { safeError(res, e); }
 });
 
+// Get troop info for join modal (adventures list)
+app.get("/api/troops/:troopId/join-info", requireAuth, (req, res) => {
+  try {
+    const troopId = parseId(req.params.troopId);
+    const troop = getTroop(troopId);
+    if (!troop) return res.status(404).json({ error: "Troop not found" });
+    const adventures = getAdventures(troopId).filter(a => a.status === "active").map(a => ({
+      id: a.id, name: a.name, adventure_type: a.adventure_type,
+      depart_date: a.depart_date, arrive_date: a.arrive_date,
+      return_date: a.return_date, home_date: a.home_date,
+    }));
+    res.json({ troop: { id: troop.id, name: troop.name }, adventures });
+  } catch (e) { safeError(res, e); }
+});
+
 app.post("/api/troops/:troopId/join", requireAuth, (req, res) => {
   try {
     const troopId = parseId(req.params.troopId);
     const existing = getTroopMember(troopId, req.user.id);
     if (existing) return res.status(409).json({ error: "Already requested or joined", status: existing.status });
 
-    requestJoinTroop(req.user.id, troopId);
+    const { participation, adventure_ids } = req.body || {};
+    const validParticipation = participation === "support" ? "support" : "trekking";
+    // Validate adventure_ids if provided
+    let validAdventureIds = null;
+    if (Array.isArray(adventure_ids) && adventure_ids.length > 0) {
+      const troopAdventures = getAdventures(troopId).filter(a => a.status === "active");
+      const troopAdvIds = new Set(troopAdventures.map(a => a.id));
+      validAdventureIds = adventure_ids.map(id => parseId(id)).filter(id => troopAdvIds.has(id));
+      if (validAdventureIds.length === 0) validAdventureIds = null;
+    }
+
+    requestJoinTroop(req.user.id, troopId, { participation: validParticipation, requestedAdventures: validAdventureIds });
 
     const troop = getTroop(troopId);
     const admins = getTroopAdmins(troopId);
     const user = findUserById(req.user.id);
+
+    // Build adventure names for email
+    let adventureNames = [];
+    if (validAdventureIds) {
+      const allAdv = getAdventures(troopId);
+      adventureNames = validAdventureIds.map(id => allAdv.find(a => a.id === id)?.name).filter(Boolean);
+    }
+
     admins.forEach(admin => {
-      sendJoinRequestEmail(admin.email, admin.name, user.name, user.user_type, troop.name, user.parent_email)
-        .catch(e => console.error("Join notification failed:", e));
+      sendJoinRequestEmail(admin.email, admin.name, user.name, user.user_type, troop.name, user.parent_email, {
+        participation: validParticipation,
+        adventureNames,
+      }).catch(e => console.error("Join notification failed:", e));
     });
 
     // Notify parent/guardian if scout has parent_email
@@ -668,20 +710,34 @@ app.put("/api/troops/:troopId/members/:userId/approve", requireAuth, requireTroo
   try {
     const troopId = parseId(req.params.troopId);
     const userId = parseId(req.params.userId);
+
+    // Check if the member requested specific adventures
+    const membership = getTroopMember(troopId, userId);
+    const requestedAdvIds = membership?.requested_adventures || null;
+
     approveTroopMember(troopId, userId);
-    // Auto-add to all active adventures in this troop
-    const adventures = getAdventures(troopId).filter(a => a.status === "active");
-    for (const adv of adventures) {
+
+    // Add to requested adventures only, or all if none specified
+    const allAdventures = getAdventures(troopId).filter(a => a.status === "active");
+    const adventuresToJoin = requestedAdvIds
+      ? allAdventures.filter(a => requestedAdvIds.includes(a.id))
+      : allAdventures;
+
+    // Set participation type from join request
+    const participation = membership?.participation || "trekking";
+
+    for (const adv of adventuresToJoin) {
       const existing = getAdventureMember(adv.id, userId);
-      if (!existing) addAdventureMember(adv.id, userId, "member");
+      if (!existing) addAdventureMember(adv.id, userId, "member", participation);
     }
     const user = findUserById(userId);
     const troop = getTroop(troopId);
-    const firstAdv = adventures[0];
+    const firstAdv = adventuresToJoin[0] || allAdventures[0];
     if (user?.email) {
       sendMemberApprovedEmail(user.email, user.name, troop.name, {
         council: troop.council, adventureName: firstAdv?.name,
         adventureType: firstAdv?.adventure_type, departDate: firstAdv?.depart_date, returnDate: firstAdv?.return_date,
+        troopId, adventureId: firstAdv?.id,
       }).catch(e => console.error("Approval email failed:", e));
     }
     res.json({ ok: true });
@@ -853,7 +909,7 @@ app.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req
       const changeSummary = changes.join("<br>");
       members.forEach(m => {
         if (m.email && !m.is_manual) {
-          sendDateChangedEmail(m.email, m.name, oldAdv.name, changeSummary, { troopName: troop?.name })
+          sendDateChangedEmail(m.email, m.name, oldAdv.name, changeSummary, { troopName: troop?.name, troopId: oldAdv.troop_id, adventureId })
             .catch(e => console.error("Date change email failed:", e));
         }
       });
@@ -869,7 +925,7 @@ app.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req
       const members = getAdventureMembers(adventureId);
       members.forEach(m => {
         if (m.email && !m.is_manual) {
-          sendItineraryChangedEmail(m.email, m.name, oldAdv.name, oldName, newName, { troopName: troop?.name })
+          sendItineraryChangedEmail(m.email, m.name, oldAdv.name, oldName, newName, { troopName: troop?.name, troopId: oldAdv.troop_id, adventureId })
             .catch(e => console.error("Itinerary change email failed:", e));
         }
       });
@@ -1172,8 +1228,20 @@ app.get("/api/crews/:crewId/readiness/plan/:userId", requireAuth, requireCrewMem
     const weeksRemaining = Math.max(0, Math.round((new Date(departureDate) - new Date()) / (7 * 24 * 60 * 60 * 1000)));
     upsertReadinessPlan(req.crew.id, userId, result.plan, result.priorities, weeksRemaining);
 
+    // Award AI Ready badge on first plan generation
+    const badgeEarned = earnBadge(crew.adventure_id, userId, "ai_ready");
+    if (badgeEarned) {
+      const badgeUser = findUserById(userId);
+      const badgeTroop = adventure ? getTroop(adventure.troop_id) : null;
+      if (badgeUser?.email) {
+        sendBadgeEarnedEmail(badgeUser.email, badgeUser.name, "ai_ready", adventure?.name || "Adventure", { troopName: badgeTroop?.name, troopId: adventure?.troop_id, adventureId: crew.adventure_id })
+          .catch(e => console.error("AI Ready badge email failed:", e));
+      }
+      console.log(`[badge] AI Ready earned by user ${userId} in adventure ${crew.adventure_id}`);
+    }
+
     const progress = getReadinessProgress(req.crew.id, userId);
-    res.json({ plan: result.plan, priorities: result.priorities, progress, generated_at: new Date().toISOString(), cached: false, tokens_used: result.tokens_used });
+    res.json({ plan: result.plan, priorities: result.priorities, progress, generated_at: new Date().toISOString(), cached: false, tokens_used: result.tokens_used, badge_earned: badgeEarned ? "ai_ready" : null });
   } catch (e) { safeError(res, e); }
 });
 
@@ -1233,7 +1301,19 @@ app.post("/api/crews/:crewId/readiness/regenerate", requireAuth, requireCrewMemb
     const weeksRemaining = Math.max(0, Math.round((new Date(departureDate) - new Date()) / (7 * 24 * 60 * 60 * 1000)));
     upsertReadinessPlan(req.crew.id, userId, result.plan, result.priorities, weeksRemaining);
 
-    res.json({ plan: result.plan, priorities: result.priorities, progress: [], generated_at: new Date().toISOString(), tokens_used: result.tokens_used });
+    // Award AI Ready badge (INSERT OR IGNORE — only fires once)
+    const badgeEarned = earnBadge(crew.adventure_id, userId, "ai_ready");
+    if (badgeEarned) {
+      const badgeUser = findUserById(userId);
+      const badgeTroop = adventure ? getTroop(adventure.troop_id) : null;
+      if (badgeUser?.email) {
+        sendBadgeEarnedEmail(badgeUser.email, badgeUser.name, "ai_ready", adventure?.name || "Adventure", { troopName: badgeTroop?.name, troopId: adventure?.troop_id, adventureId: crew.adventure_id })
+          .catch(e => console.error("AI Ready badge email failed:", e));
+      }
+      console.log(`[badge] AI Ready earned by user ${userId} in adventure ${crew.adventure_id}`);
+    }
+
+    res.json({ plan: result.plan, priorities: result.priorities, progress: [], generated_at: new Date().toISOString(), tokens_used: result.tokens_used, badge_earned: badgeEarned ? "ai_ready" : null });
   } catch (e) { safeError(res, e); }
 });
 
@@ -1376,7 +1456,7 @@ app.post("/api/adventures/:adventureId/training-events", requireAuth, requireAdv
     for (const m of members) {
       const user = findUserById(m.user_id);
       if (user?.email) {
-        sendTrainingScheduledEmail(user.email, user.name, adventure?.name || "Adventure", date, periodLabel, time_label, location, notes, { troopName: troopForEmail?.name }).catch(console.error);
+        sendTrainingScheduledEmail(user.email, user.name, adventure?.name || "Adventure", date, periodLabel, time_label, location, notes, { troopName: troopForEmail?.name, troopId: adventure?.troop_id, adventureId: advId }).catch(console.error);
       }
     }
     console.log(`[training event] Adventure ${advId}: ${date} (${periodLabel}) at ${location || "TBD"} — ${members.length} members notified`);
@@ -1459,6 +1539,70 @@ app.get("/api/gear-catalog/:id", requireAuth, (req, res) => {
     if (!item) return res.status(404).json({ error: "Gear item not found" });
     res.json(item);
   } catch (e) { safeError(res, e); }
+});
+
+// AI Gear Recommendation — uses Claude to suggest top products for a gear item
+app.post("/api/gear-catalog/:id/ai-recommend", requireAuth, async (req, res) => {
+  try {
+    const gearId = parseId(req.params.id);
+    if (!gearId) return res.status(400).json({ error: "Invalid gear item ID" });
+
+    const item = getGearCatalogItem(gearId);
+    if (!item) return res.status(404).json({ error: "Gear item not found" });
+
+    // Import Anthropic SDK (same pattern as ai-readiness.js)
+    const { default: Anthropic } = await import("@anthropic-ai/sdk");
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.status(503).json({ error: "AI recommendations unavailable — API key not configured" });
+    }
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+    const prompt = `You are an expert gear advisor for high-adventure Scouting treks like Philmont. For the gear item "${item.name}" (category: ${item.category}), recommend the top 3 products that are highly rated, popular with Philmont/high-adventure trekkers, and currently available. For each product include: product_name, brand, estimated_price (as a string like "$45"), weight_oz (number, if applicable, otherwise null), why_recommended (1-2 sentences), and a buy_url placeholder (just put "PLACEHOLDER"). Focus on durability, weight, and trail-proven performance. Respond ONLY with valid JSON in this format: { "recommendations": [ { "product_name": "...", "brand": "...", "estimated_price": "...", "weight_oz": ..., "why_recommended": "...", "buy_url": "PLACEHOLDER" } ] }`;
+
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1500,
+      messages: [{ role: "user", content: prompt }],
+      system: "You are a knowledgeable outdoor gear expert specializing in Philmont Scout Ranch and BSA high-adventure trek gear. You respond ONLY with valid JSON, no markdown.",
+    });
+
+    let text = response.content[0].text.trim();
+    // Strip markdown code fences if Claude wraps the JSON
+    if (text.startsWith("```")) {
+      text = text.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+    }
+    const parsed = JSON.parse(text);
+
+    // Build Amazon search URLs with affiliate tag
+    const tag = getSetting("amazon_affiliate_tag") || "traillog-20";
+    const recommendations = (parsed.recommendations || []).map(r => ({
+      ...r,
+      buy_url: `https://www.amazon.com/s?k=${encodeURIComponent(r.product_name + " " + r.brand)}&tag=${encodeURIComponent(tag)}`,
+    }));
+
+    // Award ai_gear badge if adventureId provided
+    let badge_earned = null;
+    const adventureId = parseId(req.body.adventureId);
+    if (adventureId) {
+      const earned = earnBadge(adventureId, req.user.id, "ai_gear");
+      if (earned) {
+        badge_earned = "ai_gear";
+        const badgeUser = findUserById(req.user.id);
+        const adventure = getAdventure(adventureId);
+        const badgeTroop = adventure ? getTroop(adventure.troop_id) : null;
+        if (badgeUser?.email) {
+          sendBadgeEarnedEmail(badgeUser.email, badgeUser.name, "ai_gear", adventure?.name || "your adventure", {
+            troopName: badgeTroop?.name, troopId: badgeTroop?.id, adventureId,
+          }).catch(err => console.error("[email] Badge email failed:", err.message));
+        }
+      }
+    }
+
+    res.json({ recommendations, badge_earned });
+  } catch (e) {
+    console.error("[AI Gear Recommend] Error:", e.message);
+    safeError(res, e);
+  }
 });
 
 // Admin: Create gear item
@@ -2082,7 +2226,7 @@ app.post("/api/adventures/:adventureId/check-milestones", requireAuth, requireAd
           if (earned) {
             newBadges.push({ user_id: m.user_id, name: m.name, badge });
             if (m.email) {
-              sendBadgeEarnedEmail(m.email, m.name, badge, adv.name, { troopName: badgeTroop?.name })
+              sendBadgeEarnedEmail(m.email, m.name, badge, adv.name, { troopName: badgeTroop?.name, troopId: adv.troop_id, adventureId })
                 .catch(e => console.error("Badge email failed:", e));
             }
           }
@@ -2096,7 +2240,7 @@ app.post("/api/adventures/:adventureId/check-milestones", requireAuth, requireAd
         if (earned) {
           newBadges.push({ user_id: m.user_id, name: m.name, badge: "fully_prepared" });
           if (m.email) {
-            sendBadgeEarnedEmail(m.email, m.name, "fully_prepared", adv.name, { troopName: badgeTroop?.name })
+            sendBadgeEarnedEmail(m.email, m.name, "fully_prepared", adv.name, { troopName: badgeTroop?.name, troopId: adv.troop_id, adventureId })
               .catch(e => console.error("Badge email failed:", e));
           }
         }

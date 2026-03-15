@@ -354,7 +354,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
         {/* Tab bar */}
         <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${theme.border}` }}>
           {tabs.map(([k, l]) => (
-            <button key={k} onClick={() => setTab(k)} style={{ flex: 1, padding: "9px 0", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody, background: tab === k ? theme.bgAlt : "transparent", color: tab === k ? theme.text : theme.textDimmer, border: "none", borderBottom: tab === k ? `2px solid ${theme.accent}` : "2px solid transparent" }}>{l}</button>
+            <button key={k} onClick={() => setTab(k)} style={{ flex: 1, padding: "9px 0", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody, background: tab === k ? theme.bgAlt : "transparent", color: tab === k ? theme.text : theme.textMuted, border: "none", borderBottom: tab === k ? `2px solid ${theme.accent}` : "2px solid transparent" }}>{l}</button>
           ))}
         </div>
 
@@ -499,7 +499,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                       })}
                     </select>
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button type="button" onClick={() => setShowCreateAdv(false)} style={{ flex: 1, padding: "10px 0", borderRadius: 7, border: `1px solid ${theme.borderLight}`, background: theme.bgAlt, color: theme.textMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
+                      <button type="button" onClick={() => setShowCreateAdv(false)} style={{ flex: 1, padding: "10px 0", borderRadius: 7, border: `1px solid ${theme.borderLight}`, background: theme.bgAlt, color: theme.text, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
                       <button onClick={createNewAdventure} disabled={creatingAdv} style={{ flex: 1, padding: "10px 0", borderRadius: 7, border: "none", background: theme.accent, color: "#fff", fontSize: 12, fontWeight: 600, cursor: creatingAdv ? "wait" : "pointer", fontFamily: fontBody }}>{creatingAdv ? "Creating..." : "Create Adventure"}</button>
                     </div>
                   </>
@@ -545,7 +545,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                         })}
                       </select>
                       <div style={{ display: "flex", gap: 6 }}>
-                        <button onClick={() => setEditingCrew(null)} style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgAlt, color: theme.textMuted, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
+                        <button onClick={() => setEditingCrew(null)} style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgAlt, color: theme.text, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
                         <button onClick={saveCrew} disabled={savingCrew} style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: "none", background: theme.accent, color: "#fff", fontSize: 11, fontWeight: 600, cursor: savingCrew ? "wait" : "pointer", fontFamily: fontBody }}>{savingCrew ? "Saving..." : "Save"}</button>
                       </div>
                     </>
@@ -602,7 +602,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                       })}
                     </select>
                     <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={() => setShowCreateCrew(false)} style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgAlt, color: theme.textMuted, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
+                      <button onClick={() => setShowCreateCrew(false)} style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgAlt, color: theme.text, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
                       <button onClick={createNewCrew} disabled={creatingCrew} style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: "none", background: theme.accent, color: "#fff", fontSize: 11, fontWeight: 600, cursor: creatingCrew ? "wait" : "pointer", fontFamily: fontBody }}>{creatingCrew ? "Creating..." : "Create Crew"}</button>
                     </div>
                   </>
@@ -618,11 +618,21 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                 <div style={{ marginBottom: 14, padding: "10px 12px", background: theme.name === "dark" ? "#2a2820" : "#faf5e8", border: `1px solid ${theme.gold}40`, borderRadius: 8 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: theme.gold, textTransform: "uppercase", marginBottom: 6 }}>Pending Join Requests</div>
                   {(troopMembers || []).filter(m => m.status === "pending").map(m => (
-                    <div key={m.user_id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 0", borderBottom: `1px solid ${theme.border}` }}>
-                      <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: theme.text, fontFamily: fontBody }}>{m.name}</span>
-                      <span style={memberTypeBadge(theme, m.user_type)}>{(m.user_type || "?").toUpperCase()}</span>
-                      <button onClick={async () => { try { await api.approveMember(troop.id, m.user_id); onRefresh(); addToast(`${m.name} approved`, "success"); } catch (e) { addToast(e.message, "error"); } }} style={{ fontSize: 10, fontWeight: 600, color: theme.accent, background: theme.accentBg, border: `1px solid ${theme.borderAccent}`, padding: "3px 10px", borderRadius: 6, cursor: "pointer", fontFamily: fontBody }}>Approve</button>
-                      <button onClick={async () => { try { await api.denyMember(troop.id, m.user_id); onRefresh(); addToast(`${m.name} denied`, "success"); } catch (e) { addToast(e.message, "error"); } }} style={{ fontSize: 10, fontWeight: 600, color: "#c08080", background: theme.name === "dark" ? "#3a2020" : "#fde8e8", border: "1px solid #5a3030", padding: "3px 10px", borderRadius: 6, cursor: "pointer", fontFamily: fontBody }}>Deny</button>
+                    <div key={m.user_id} style={{ padding: "6px 0", borderBottom: `1px solid ${theme.border}` }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: theme.text, fontFamily: fontBody }}>{m.name}</span>
+                        <span style={memberTypeBadge(theme, m.user_type)}>{(m.user_type || "?").toUpperCase()}</span>
+                        {m.participation === "support" && (
+                          <span style={{ fontSize: 8, fontWeight: 700, color: "#6c757d", background: "#6c757d20", padding: "1px 5px", borderRadius: 3 }}>SUPPORT</span>
+                        )}
+                        <button onClick={async () => { try { await api.approveMember(troop.id, m.user_id); onRefresh(); addToast(`${m.name} approved`, "success"); } catch (e) { addToast(e.message, "error"); } }} style={{ fontSize: 10, fontWeight: 600, color: theme.accent, background: theme.accentBg, border: `1px solid ${theme.borderAccent}`, padding: "3px 10px", borderRadius: 6, cursor: "pointer", fontFamily: fontBody }}>Approve</button>
+                        <button onClick={async () => { try { await api.denyMember(troop.id, m.user_id); onRefresh(); addToast(`${m.name} denied`, "success"); } catch (e) { addToast(e.message, "error"); } }} style={{ fontSize: 10, fontWeight: 600, color: "#c08080", background: theme.name === "dark" ? "#3a2020" : "#fde8e8", border: "1px solid #5a3030", padding: "3px 10px", borderRadius: 6, cursor: "pointer", fontFamily: fontBody }}>Deny</button>
+                      </div>
+                      {m.requested_adventures && m.requested_adventures.length > 0 && (
+                        <div style={{ fontSize: 9, color: theme.textDim, marginTop: 2, paddingLeft: 2 }}>
+                          Requested {m.requested_adventures.length} adventure{m.requested_adventures.length > 1 ? "s" : ""}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -639,7 +649,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                         {m.is_manual ? (
                           <>
                             <span style={memberTypeBadge(theme, "scout")}>SCOUT</span>
-                            <span style={{ fontSize: 7, fontWeight: 600, color: theme.textDim, background: theme.bgAlt, padding: "1px 4px", borderRadius: 3, border: `1px solid ${theme.borderLight}` }}>manual</span>
+                            <span style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, background: theme.bgAlt, padding: "1px 4px", borderRadius: 3, border: `1px solid ${theme.borderLight}` }}>manual</span>
                           </>
                         ) : (
                           <>
@@ -657,10 +667,10 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                     </div>
                     {!m.is_manual && (
                       <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
-                        {m.email && <span style={{ fontSize: 9, color: theme.textDimmest }}>{m.email}</span>}
-                        <button onClick={() => toggleRole(m.user_id, m.role)} style={{ fontSize: 9, color: theme.accent, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontFamily: fontBody }}>{m.role === "admin" ? "Demote" : "Make Admin"}</button>
-                        <button onClick={() => toggleUserType(m.user_id, m.user_type)} style={{ fontSize: 9, color: m.user_type === "adult" ? "#5080b0" : "#508050", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontFamily: fontBody }}>{m.user_type === "adult" ? "Change to Scout" : "Change to Adult"}</button>
-                        <button onClick={() => toggleParticipation(m.user_id, m.participation)} style={{ fontSize: 9, color: "#8a6d3b", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontFamily: fontBody }}>{m.participation === "trekking" ? "Set Support" : "Set Trekking"}</button>
+                        {m.email && <span style={{ fontSize: 10, color: theme.textDimmest }}>{m.email}</span>}
+                        <button onClick={() => toggleRole(m.user_id, m.role)} style={{ fontSize: 10, color: theme.accent, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontFamily: fontBody }}>{m.role === "admin" ? "Demote" : "Make Admin"}</button>
+                        <button onClick={() => toggleUserType(m.user_id, m.user_type)} style={{ fontSize: 10, color: m.user_type === "adult" ? "#5080b0" : "#508050", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontFamily: fontBody }}>{m.user_type === "adult" ? "Change to Scout" : "Change to Adult"}</button>
+                        <button onClick={() => toggleParticipation(m.user_id, m.participation)} style={{ fontSize: 10, color: "#8a6d3b", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontFamily: fontBody }}>{m.participation === "trekking" ? "Set Support" : "Set Trekking"}</button>
                         {m.user_type === "adult" && (() => {
                           const scouts = m.linked_scouts || [];
                           const linkedScoutIds = new Set(scouts);
@@ -734,7 +744,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                   <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, textTransform: "uppercase", marginBottom: 6 }}>Pending Invitations</div>
                   {invitations.filter(i => i.status === "pending").map(inv => (
                     <div key={inv.id} style={{ fontSize: 11, color: theme.textMuted, padding: "4px 0", borderBottom: `1px solid ${theme.border}` }}>
-                      {inv.email} <span style={{ fontSize: 9, color: theme.textDimmest }}>sent {new Date(inv.created_at).toLocaleDateString()}</span>
+                      {inv.email} <span style={{ fontSize: 10, color: theme.textDimmest }}>sent {new Date(inv.created_at).toLocaleDateString()}</span>
                     </div>
                   ))}
                 </div>
@@ -806,11 +816,11 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                   {logoUrl && !logoError && (
                     <button onClick={handleLogoDelete} disabled={uploadingLogo} style={{
                       padding: "3px 8px", borderRadius: 4, border: "none", background: "transparent",
-                      color: theme.textDim, fontSize: 10, cursor: "pointer", fontFamily: fontBody,
+                      color: theme.textDim, fontSize: 11, cursor: "pointer", fontFamily: fontBody,
                     }}>Remove</button>
                   )}
                 </div>
-                <span style={{ fontSize: 10, color: theme.textDim }}>PNG, JPG, or WebP · Max 500KB</span>
+                <span style={{ fontSize: 11, color: theme.textDim }}>PNG, JPG, or WebP · Max 500KB</span>
               </div>
 
               <label style={labelStyle}>Visibility</label>

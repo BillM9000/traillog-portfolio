@@ -108,7 +108,7 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
           <button onClick={() => onBulkSelect("all")} style={toolbarBtn(theme)}>+ All Days</button>
           <button onClick={onClearAll} style={toolbarBtn(theme)}>Clear Mine</button>
           <span style={{ flex: 1 }} />
-          <span style={{ fontSize: 10, color: theme.textDimmest }}>Tap to cycle · Drag to select</span>
+          <span style={{ fontSize: 11, color: theme.textDimmest }}>Tap to cycle · Drag to select</span>
         </div>
       )}
 
@@ -139,7 +139,7 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 36px)", gap: 2 }}>
                 {DAYS_ABBR.map((d, i) => (
-                  <div key={i} style={{ width: 36, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: theme.textDimmest }}>{d}</div>
+                  <div key={i} style={{ width: 36, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: theme.textDimmest }}>{d}</div>
                 ))}
                 {cells.map((d, i) => {
                   if (!d) return <div key={`e${i}`} />;
@@ -243,30 +243,30 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
 
       {/* Legend */}
       <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 6, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 10, color: theme.textDimmest }}>Overlap:</span>
+        <span style={{ fontSize: 11, color: theme.textDimmest }}>Overlap:</span>
         {[[theme.heatLow, "Some"], [theme.heatMed, "Most"], [theme.heatHigh, "All"]].map(([c, l]) => (
           <div key={l} style={{ display: "flex", alignItems: "center", gap: 3 }}>
             <div style={{ width: 12, height: 12, borderRadius: 3, background: c }} />
-            <span style={{ fontSize: 10, color: theme.textDimmer }}>{l}</span>
+            <span style={{ fontSize: 11, color: theme.textDimmer }}>{l}</span>
           </div>
         ))}
         <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
           <div style={{ width: 12, height: 12, borderRadius: 3, background: `linear-gradient(to bottom, ${theme.heatMed} 50%, transparent 50%)`, border: `1px solid ${theme.border}` }} />
-          <span style={{ fontSize: 10, color: theme.textDimmer }}>AM only</span>
+          <span style={{ fontSize: 11, color: theme.textDimmer }}>AM only</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
           <div style={{ width: 12, height: 12, borderRadius: 3, background: `linear-gradient(to bottom, transparent 50%, ${theme.heatMed} 50%)`, border: `1px solid ${theme.border}` }} />
-          <span style={{ fontSize: 10, color: theme.textDimmer }}>PM only</span>
+          <span style={{ fontSize: 11, color: theme.textDimmer }}>PM only</span>
         </div>
         {trekDateSet.size > 0 && (
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
               <span style={{ fontSize: 10 }}>⛺</span>
-              <span style={{ fontSize: 10, color: theme.textDimmer }}>On Trek</span>
+              <span style={{ fontSize: 11, color: theme.textDimmer }}>On Trek</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
               <span style={{ fontSize: 10 }}>🚐</span>
-              <span style={{ fontSize: 10, color: theme.textDimmer }}>Travel</span>
+              <span style={{ fontSize: 11, color: theme.textDimmer }}>Travel</span>
             </div>
           </>
         )}

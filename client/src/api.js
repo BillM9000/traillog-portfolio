@@ -39,7 +39,8 @@ export const api = {
   getTroop: (id) => request(`/troops/${id}`),
   createTroop: (data) => request("/troops", { method: "POST", body: JSON.stringify(data) }),
   updateTroop: (id, data) => request(`/troops/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-  joinTroop: (id) => request(`/troops/${id}/join`, { method: "POST" }),
+  joinTroop: (id, data) => request(`/troops/${id}/join`, { method: "POST", body: JSON.stringify(data || {}) }),
+  getTroopJoinInfo: (id) => request(`/troops/${id}/join-info`),
   uploadTroopLogo: (id, image) => request(`/troops/${id}/logo`, { method: "PUT", body: JSON.stringify({ image }) }),
   deleteTroopLogo: (id) => request(`/troops/${id}/logo`, { method: "PUT", body: JSON.stringify({}) }),
   updateTroopSettings: (id, data) => request(`/troops/${id}/settings`, { method: "PUT", body: JSON.stringify(data) }),
@@ -155,6 +156,9 @@ export const api = {
   aiWeightLookup: (productName) => request("/gear/ai/weight-lookup", { method: "POST", body: JSON.stringify({ product_name: productName }) }),
   aiGearChat: (message, adventureId) => request("/gear/ai/chat", { method: "POST", body: JSON.stringify({ message, adventure_id: adventureId }) }),
   getAIUsage: () => request("/gear/ai/usage"),
+
+  // AI Gear Recommendations
+  getAIGearRecommendation: (gearId, adventureId) => request(`/gear-catalog/${gearId}/ai-recommend`, { method: "POST", body: JSON.stringify({ adventureId }) }),
 
   // Global Admin
   getAdminTroops: () => request("/admin/troops"),

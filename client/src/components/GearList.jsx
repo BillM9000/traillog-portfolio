@@ -43,6 +43,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
   const [saving, setSaving] = useState(false);
   const [weightKey, setWeightKey] = useState(0);
   const [showGearGuide, setShowGearGuide] = useState(false);
+  const [aiRecs, setAiRecs] = useState({});       // { [gearId]: { loading, recommendations, badge_earned, error } }
 
   const am = active !== null ? members?.[active] : null;
   const pColors = PRIORITY_COLORS[mode] || PRIORITY_COLORS.dark;
@@ -199,6 +200,22 @@ export default function GearList({ troopId, adventureId, members, active, setAct
       return next;
     });
   };
+
+  // Fetch AI gear recommendations for a catalog item
+  const fetchAIRecommendation = useCallback(async (gearId) => {
+    if (!adventureId) return;
+    setAiRecs(prev => ({ ...prev, [gearId]: { loading: true, recommendations: null, badge_earned: null, error: null } }));
+    try {
+      const data = await api.getAIGearRecommendation(gearId, adventureId);
+      setAiRecs(prev => ({ ...prev, [gearId]: { loading: false, recommendations: data.recommendations, badge_earned: data.badge_earned, error: null } }));
+      if (data.badge_earned) {
+        addToast("🎖️ AI Gear Badge Earned!", "success");
+      }
+    } catch (e) {
+      setAiRecs(prev => ({ ...prev, [gearId]: { loading: false, recommendations: null, badge_earned: null, error: e.message } }));
+      addToast("AI recommendation failed: " + e.message, "error");
+    }
+  }, [adventureId, addToast]);
 
   const catKeys = Object.keys(categories);
 
@@ -600,6 +617,93 @@ export default function GearList({ troopId, adventureId, members, active, setAct
                         ))}
                       </div>
                     )}
+
+                    {/* AI Gear Recommendation */}
+                    {am && adventureId && (() => {
+                      const rec = aiRecs[item.id];
+                      return (
+                        <div style={{ marginBottom: 8 }}>
+                          <button
+                            onClick={() => fetchAIRecommendation(item.id)}
+                            disabled={rec?.loading}
+                            style={{
+                              padding: "6px 14px", borderRadius: 6, border: `1.5px solid ${theme.borderLight}`,
+                              background: rec?.loading ? theme.bgAlt : theme.forestDeep || theme.accent,
+                              color: rec?.loading ? theme.textDimmer : "#fff",
+                              fontSize: 11, fontWeight: 700, cursor: rec?.loading ? "wait" : "pointer",
+                              fontFamily: fontBody, display: "flex", alignItems: "center", gap: 6,
+                              transition: "all .15s",
+                            }}
+                          >
+                            {rec?.loading ? (
+                              <><span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⏳</span> AI is thinking...</>
+                            ) : (
+                              <>🤖 AI Recommend</>
+                            )}
+                          </button>
+
+                          {rec?.badge_earned && (
+                            <div style={{
+                              marginTop: 6, padding: "6px 10px", borderRadius: 6,
+                              background: theme.accentBg, border: `1px solid ${theme.borderAccent}`,
+                              fontSize: 11, fontWeight: 700, color: theme.accent,
+                            }}>
+                              🎖️ AI Gear Badge Earned!
+                            </div>
+                          )}
+
+                          {rec?.error && (
+                            <div style={{ marginTop: 6, fontSize: 10, color: theme.danger }}>
+                              Error: {rec.error}
+                            </div>
+                          )}
+
+                          {rec?.recommendations && (
+                            <div style={{ marginTop: 8 }}>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: theme.heading, marginBottom: 6, fontFamily: fontDisplay }}>
+                                AI Recommendations for {item.name}
+                              </div>
+                              {rec.recommendations.map((r, idx) => (
+                                <div key={idx} style={{
+                                  padding: "8px 10px", borderRadius: 8, marginBottom: 4,
+                                  background: theme.bgAlt, border: `1px solid ${theme.borderLight}`,
+                                }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                                    <div>
+                                      <div style={{ fontSize: 12, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>
+                                        {r.product_name}
+                                      </div>
+                                      <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 1 }}>
+                                        {r.brand}{r.estimated_price ? ` · ${r.estimated_price}` : ""}{r.weight_oz ? ` · ${r.weight_oz} oz` : ""}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 4, lineHeight: 1.4 }}>
+                                    {r.why_recommended}
+                                  </div>
+                                  <a
+                                    href={r.buy_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      api.trackAffiliateClick(null, item.id, r.buy_url).catch(() => {});
+                                    }}
+                                    style={{
+                                      display: "inline-block", marginTop: 4, padding: "3px 10px", borderRadius: 5,
+                                      background: theme.accent, color: "#fff", fontSize: 9, fontWeight: 600,
+                                      textDecoration: "none", fontFamily: fontBody,
+                                    }}
+                                  >
+                                    🛒 Buy on Amazon
+                                  </a>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Custom gear entry */}
                     {am && (

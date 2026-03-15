@@ -146,7 +146,7 @@ export default function Header({ user, troop, adventure, members, analysis, trek
               Trail<span style={{ color: "#B8CC9A" }}>Log</span>
             </div>
             <div style={{
-              fontSize: 8.5, color: "rgba(184,204,154,0.6)", fontWeight: 600,
+              fontSize: 9, color: "rgba(184,204,154,0.7)", fontWeight: 600,
               letterSpacing: 2, textTransform: "uppercase", fontFamily: fontBody,
             }}>
               by GraceZero.ai
@@ -315,7 +315,7 @@ export default function Header({ user, troop, adventure, members, analysis, trek
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#FDFAF5", marginBottom: 4, fontFamily: fontBody, display: "flex", alignItems: "center", gap: 6 }}>
             {currentWaypoint.name}
-            <span style={{ fontSize: 9, color: "#fff", fontWeight: 400, fontStyle: "italic", opacity: 0.6 }}>Trail Guide</span>
+            <span style={{ fontSize: 9, color: "#fff", fontWeight: 400, fontStyle: "italic", opacity: 0.8 }}>Trail Guide</span>
           </div>
           <div style={{ fontSize: 11, color: "#D4E4B8", lineHeight: 1.4, fontFamily: fontBody }}>
             {currentWaypoint.message}
@@ -326,9 +326,9 @@ export default function Header({ user, troop, adventure, members, analysis, trek
                 Trail Badges
               </div>
               <div style={{ display: "flex", gap: 4 }}>
-                {myBadges.slice(0, 5).map((b, i) => {
-                  const badgeDef = { gear_ready: "\u{1F392}", trail_medic: "\u{1F3E5}", admin_pro: "\u{1F4CB}", training_complete: "\u{1F97E}", fully_prepared: "\u2B50" };
-                  const titleDef = { gear_ready: "Gear Ready", trail_medic: "Trail Medic", admin_pro: "Admin Pro", training_complete: "Training Complete", fully_prepared: "Fully Prepared" };
+                {myBadges.slice(0, 6).map((b, i) => {
+                  const badgeDef = { gear_ready: "\u{1F392}", trail_medic: "\u{1F3E5}", admin_pro: "\u{1F4CB}", training_complete: "\u{1F97E}", ai_ready: "\u{1F916}", ai_gear: "\u{1F6CD}\uFE0F", fully_prepared: "\u2B50" };
+                  const titleDef = { gear_ready: "Gear Ready", trail_medic: "Trail Medic", admin_pro: "Admin Pro", training_complete: "Training Complete", ai_ready: "AI Ready", ai_gear: "AI Gear Scout", fully_prepared: "Fully Prepared" };
                   return (
                     <span key={i} title={titleDef[b.badge_type] || b.badge_type} style={{
                       fontSize: 12, background: "rgba(184,204,154,0.3)", padding: "2px 6px", borderRadius: 6,
@@ -430,7 +430,7 @@ export default function Header({ user, troop, adventure, members, analysis, trek
                 <div style={{ fontSize: 12, fontWeight: 700, color: crewReadiness >= wp.pct ? theme.heading : theme.textMuted, fontFamily: fontBody }}>
                   {wp.pct}% — {wp.name}
                 </div>
-                <div style={{ fontSize: 10, color: theme.textDimmer, fontStyle: "italic", lineHeight: 1.3 }}>{wp.message}</div>
+                <div style={{ fontSize: 11, color: theme.textDimmer, fontStyle: "italic", lineHeight: 1.3 }}>{wp.message}</div>
               </div>
             </div>
           ))}
@@ -446,7 +446,9 @@ export default function Header({ user, troop, adventure, members, analysis, trek
                 trail_medic: "All medical items done",
                 admin_pro: "All admin tasks done",
                 training_complete: "All training skills done",
-                fully_prepared: "All 4 categories at 100%!",
+                ai_ready: "AI self-assessment done",
+                ai_gear: "Used AI gear recommendations",
+                fully_prepared: "All categories at 100%!",
               };
               const earned = myBadges.some(b => b.badge_type === key);
               return (

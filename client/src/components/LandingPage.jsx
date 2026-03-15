@@ -93,6 +93,30 @@ function ReportIcon() {
   );
 }
 
+function AIReadinessIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      {/* Brain outline */}
+      <path d="M24 6 C16 6 10 12 10 20 C10 26 14 31 18 34 L18 40 C18 42 20 44 22 44 L26 44 C28 44 30 42 30 40 L30 34 C34 31 38 26 38 20 C38 12 32 6 24 6 Z" stroke="#5B7A3A" strokeWidth="2.5" fill="none" />
+      {/* Neural network nodes */}
+      <circle cx="20" cy="18" r="2.5" fill="#5B7A3A" />
+      <circle cx="28" cy="18" r="2.5" fill="#5B7A3A" />
+      <circle cx="24" cy="24" r="2.5" fill="#B8CC9A" />
+      <circle cx="18" cy="28" r="2" fill="#B8CC9A" />
+      <circle cx="30" cy="28" r="2" fill="#B8CC9A" />
+      {/* Neural connections */}
+      <line x1="20" y1="18" x2="24" y2="24" stroke="#5B7A3A" strokeWidth="1.5" opacity="0.6" />
+      <line x1="28" y1="18" x2="24" y2="24" stroke="#5B7A3A" strokeWidth="1.5" opacity="0.6" />
+      <line x1="24" y1="24" x2="18" y2="28" stroke="#B8CC9A" strokeWidth="1.5" opacity="0.5" />
+      <line x1="24" y1="24" x2="30" y2="28" stroke="#B8CC9A" strokeWidth="1.5" opacity="0.5" />
+      {/* Spark/glow */}
+      <circle cx="24" cy="14" r="1.5" fill="#5B7A3A" opacity="0.4" />
+      <path d="M20 40 L28 40" stroke="#5B7A3A" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M21 43 L27 43" stroke="#B8CC9A" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 // ── Responsive Hook ──────────────────────────────────────────────────
 
 function useIsMobile(breakpoint = 768) {
@@ -321,7 +345,7 @@ const linkBtnStyle = {
 const FEATURES = [
   { icon: CalendarIcon, title: "Training Calendar", desc: "Crew members mark availability with AM/PM granularity. Drag to select ranges. See the whole crew at a glance." },
   { icon: ChartIcon, title: "Best Windows", desc: "An algorithm finds optimal training dates from crew availability. Schedule events and track RSVPs in real time." },
-  { icon: ShieldIcon, title: "Readiness Dashboard", desc: "Track gear, medical, admin, and training progress. Earn Trail Badges and advance from Trailhead to Summit." },
+  { icon: AIReadinessIcon, title: "AI Training Plans", desc: "Powered by Claude AI. Take a self-assessment, get a personalized training plan, priority coaching, and milestone tracking tailored to your trek." },
   { icon: BackpackIcon, title: "Gear Management", desc: "76-item catalog with personal, crew, and buddy sharing types. Pack weight calculator factors in food and water." },
   { icon: MapIcon, title: "Itinerary Viewer", desc: "48 Philmont routes loaded with day-by-day camps, mileage, and elevation. Printable cheat sheets for the trail." },
   { icon: ReportIcon, title: "Reports & Exports", desc: "Crew rosters, gear readiness matrices, pack weight summaries, and training RSVPs. CSV export or print." },
@@ -329,8 +353,8 @@ const FEATURES = [
 
 const STEPS = [
   { num: "1", title: "Create Your Troop", desc: "Sign in with Google or email. Set up your troop with your council and location in under a minute." },
-  { num: "2", title: "Add Your Adventure", desc: "Pick Philmont (more bases coming soon), select your itinerary, and enter your trek dates." },
-  { num: "3", title: "Coordinate Together", desc: "Invite members. Everyone marks availability, checks off gear, and tracks readiness in one place." },
+  { num: "2", title: "Add Your Adventure", desc: "Pick your adventure base, select your itinerary, and enter your trek dates. AI builds your training plan." },
+  { num: "3", title: "Coordinate Together", desc: "Invite members. Everyone marks availability, checks off gear, and gets AI-personalized readiness coaching." },
 ];
 
 // ── Main Landing Page ─────────────────────────────────────────────────
@@ -381,7 +405,7 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
               fontWeight: 500, lineHeight: 1.5, maxWidth: 480,
               marginLeft: isMobile ? "auto" : 0, marginRight: isMobile ? "auto" : 0,
             }}>
-              The training coordinator for Scouting America high adventure crews.
+              The AI-powered training coordinator for high adventure crews.
               From first meeting to summit, get your crew organized.
             </p>
             <div style={{
@@ -389,7 +413,7 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
               justifyContent: isMobile ? "center" : "flex-start",
               flexWrap: "wrap",
             }}>
-              {["Easy Setup", "Mobile Friendly", "Built for Scouts"].map(label => (
+              {["AI-Powered", "Mobile Friendly", "Built for Crews"].map(label => (
                 <span key={label} style={{
                   fontSize: 11, color: "#B8CC9A", fontWeight: 600, letterSpacing: 1,
                   textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6,
@@ -524,17 +548,181 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
         </div>
       </section>
 
-      {/* ── ADVENTURE BASES ─────────────────────────────── */}
+      {/* ── PRICING ──────────────────────────────────────── */}
       <section style={{ background: "#FDFAF5", padding: isMobile ? "48px 20px" : "80px 40px" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <h2 style={{
+            fontFamily: fontDisplay, fontSize: isMobile ? 24 : 32, fontWeight: 800,
+            color: "#2C2416", textAlign: "center", margin: "0 0 8px 0",
+          }}>
+            Start Free. Adventure Ready.
+          </h2>
+          <p style={{
+            fontSize: 14, color: "#6B5D4D", textAlign: "center", margin: "0 0 12px 0",
+            maxWidth: 520, marginLeft: "auto", marginRight: "auto", lineHeight: 1.6,
+          }}>
+            There is nothing else like this for high adventure crews. No spreadsheets, no group text chaos, no guesswork.
+          </p>
+          <p style={{
+            fontSize: 13, color: "#8A7A6A", textAlign: "center", margin: "0 0 40px 0",
+            fontWeight: 600,
+          }}>
+            No subscription. No monthly fees. Just pay per adventure.
+          </p>
+
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+            gap: isMobile ? 20 : 28,
+            maxWidth: 720,
+            margin: "0 auto",
+          }}>
+            {/* Free Tier */}
+            <div style={{
+              background: "#F3F0E8", border: "2px solid #DDD6C8", borderRadius: 18,
+              padding: isMobile ? "28px 22px" : "36px 28px",
+              position: "relative",
+            }}>
+              <div style={{
+                fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase",
+                color: "#5B7A3A", marginBottom: 8, fontFamily: fontBody,
+              }}>
+                Your First Adventure
+              </div>
+              <div style={{
+                fontFamily: fontDisplay, fontSize: 40, fontWeight: 900, color: "#2C2416",
+                marginBottom: 4,
+              }}>
+                Free
+              </div>
+              <p style={{ fontSize: 13, color: "#6B5D4D", marginBottom: 20, lineHeight: 1.5 }}>
+                Full access to everything. No limits, no trial period, no credit card.
+              </p>
+              <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px 0" }}>
+                {[
+                  "AI-powered training plans",
+                  "Gear tracking & pack weight",
+                  "Training calendar & scheduling",
+                  "Itinerary viewer & cheat sheets",
+                  "Reports & CSV exports",
+                  "Unlimited crew members",
+                ].map(item => (
+                  <li key={item} style={{
+                    fontSize: 13, color: "#4A3A2A", padding: "5px 0",
+                    display: "flex", alignItems: "center", gap: 8,
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M3 8 L6.5 11.5 L13 5" stroke="#5B7A3A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <button onClick={scrollToAuth} style={{
+                width: "100%", padding: "12px 0", borderRadius: 12, border: "2px solid #5B7A3A",
+                background: "transparent", color: "#5B7A3A", fontSize: 14, fontWeight: 700,
+                cursor: "pointer", fontFamily: fontBody,
+              }}>
+                Get Started Free
+              </button>
+            </div>
+
+            {/* Pro Tier */}
+            <div style={{
+              background: "linear-gradient(175deg, #2A3620 0%, #1A2412 100%)",
+              border: "2px solid #5B7A3A", borderRadius: 18,
+              padding: isMobile ? "28px 22px" : "36px 28px",
+              position: "relative", overflow: "hidden",
+            }}>
+              {/* Popular badge */}
+              <div style={{
+                position: "absolute", top: 16, right: -28, background: "#5B7A3A",
+                color: "#FDFAF5", fontSize: 9, fontWeight: 700, letterSpacing: 1.5,
+                textTransform: "uppercase", padding: "4px 36px",
+                transform: "rotate(35deg)", fontFamily: fontBody,
+              }}>
+                Best Value
+              </div>
+              <div style={{
+                fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase",
+                color: "#B8CC9A", marginBottom: 8, fontFamily: fontBody,
+              }}>
+                Additional Adventures
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 4 }}>
+                <span style={{
+                  fontFamily: fontDisplay, fontSize: 40, fontWeight: 900, color: "#FDFAF5",
+                }}>
+                  $29
+                </span>
+                <span style={{ fontSize: 14, color: "#B0A898", fontWeight: 500 }}>
+                  per adventure
+                </span>
+              </div>
+              <p style={{ fontSize: 13, color: "#B0A898", marginBottom: 20, lineHeight: 1.5 }}>
+                Same full features. One-time payment, not a subscription. Less than a single piece of gear.
+              </p>
+              <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px 0" }}>
+                {[
+                  "Everything in Free",
+                  "AI coaching for every trek",
+                  "Multiple concurrent adventures",
+                  "Full crew coordination tools",
+                  "All future feature updates",
+                  "Pay once, prepare forever",
+                ].map(item => (
+                  <li key={item} style={{
+                    fontSize: 13, color: "#D4E4B8", padding: "5px 0",
+                    display: "flex", alignItems: "center", gap: 8,
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M3 8 L6.5 11.5 L13 5" stroke="#B8CC9A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <button onClick={scrollToAuth} style={{
+                width: "100%", padding: "12px 0", borderRadius: 12, border: "none",
+                background: "#5B7A3A", color: "#FDFAF5", fontSize: 14, fontWeight: 700,
+                cursor: "pointer", fontFamily: fontBody,
+                boxShadow: "0 4px 16px rgba(58,77,42,0.4)",
+              }}>
+                Get Started Free
+              </button>
+            </div>
+          </div>
+
+          {/* Trust signals below pricing */}
+          <div style={{
+            display: "flex", flexDirection: isMobile ? "column" : "row",
+            justifyContent: "center", gap: isMobile ? 12 : 32,
+            marginTop: 36, textAlign: "center",
+          }}>
+            {[
+              { bold: "Your trek date is set", rest: " — start preparing now" },
+              { bold: "Replaces spreadsheets", rest: ", group texts, and guesswork" },
+              { bold: "Join crews", rest: " already using TrailLog" },
+            ].map((s, i) => (
+              <p key={i} style={{ fontSize: 12, color: "#8A7A6A", margin: 0, lineHeight: 1.5 }}>
+                <strong style={{ color: "#5B7A3A" }}>{s.bold}</strong>{s.rest}
+              </p>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── ADVENTURE BASES ─────────────────────────────── */}
+      <section style={{ background: "#F3F0E8", padding: isMobile ? "48px 20px" : "80px 40px" }}>
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
           <h2 style={{
             fontFamily: fontDisplay, fontSize: isMobile ? 22 : 28, fontWeight: 800,
             color: "#2C2416", textAlign: "center", margin: "0 0 8px 0",
           }}>
-            Built for Scouting America High Adventure
+            Built for High Adventure
           </h2>
           <p style={{ fontSize: 14, color: "#6B5D4D", textAlign: "center", margin: "0 0 36px 0" }}>
-            Philmont is live. More bases are on the way.
+            Philmont is fully loaded. More adventure bases on the way.
           </p>
           <div style={{
             display: "grid",
@@ -609,7 +797,7 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
               <a href="/terms" style={{ color: "#5A6A4A", textDecoration: "none" }}>Terms of Service</a>
             </div>
             <p style={{ fontSize: 10, color: "#4A5A3A", marginTop: 10 }}>
-              Not affiliated with Scouting America or the Boy Scouts of America.
+              Not affiliated with or endorsed by any national scouting organization.
             </p>
           </div>
         </div>

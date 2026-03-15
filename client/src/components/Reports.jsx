@@ -27,7 +27,7 @@ function ReportCard({ icon: Icon, title, description, formats, onCSV, onPrint, t
         </div>
         <div>
           <div style={{ fontSize: 13, fontWeight: 700, color: theme.heading, fontFamily: fontBody }}>{title}</div>
-          <div style={{ fontSize: 11, color: theme.textDimmer, lineHeight: 1.3 }}>{description}</div>
+          <div style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.3 }}>{description}</div>
         </div>
       </div>
       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
@@ -320,7 +320,7 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
         </div>
 
         {/* Format legend */}
-        <div style={{ display: "flex", gap: 12, fontSize: 10, color: theme.textDim }}>
+        <div style={{ display: "flex", gap: 12, fontSize: 11, color: theme.textDim }}>
           <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <Download size={12} /> CSV download
           </span>

@@ -21,12 +21,19 @@ function getTransporter() {
   return transporter;
 }
 
-export async function sendJoinRequestEmail(adminEmail, adminName, requesterName, requesterType, troopName, parentEmail) {
+export async function sendJoinRequestEmail(adminEmail, adminName, requesterName, requesterType, troopName, parentEmail, { participation, adventureNames } = {}) {
   const t = getTransporter();
   if (!t) return console.log(`[email skip] Join request: ${requesterName} → ${troopName} (no SMTP configured)`);
 
   const scoutLine = requesterType === "scout" && parentEmail
     ? `<p><strong>Parent/Guardian email:</strong> ${esc(parentEmail)}</p>`
+    : "";
+
+  const participationLabel = participation === "support" ? "Support crew (helping from home)" : "Trekker (going on the adventure)";
+  const participationLine = `<p><strong>Role:</strong> ${esc(participationLabel)}</p>`;
+
+  const adventureLine = Array.isArray(adventureNames) && adventureNames.length > 0
+    ? `<p><strong>Requested adventure${adventureNames.length > 1 ? "s" : ""}:</strong> ${adventureNames.map(n => esc(n)).join(", ")}</p>`
     : "";
 
   await t.sendMail({
@@ -36,7 +43,11 @@ export async function sendJoinRequestEmail(adminEmail, adminName, requesterName,
     html: `
       <div style="font-family:sans-serif;max-width:500px">
         <h2 style="color:#2d3830">${esc(requesterName)} (${esc(requesterType) || "unknown"}) wants to join ${esc(troopName)}</h2>
-        ${scoutLine}
+        <div style="background:#f5f5f0;padding:12px 16px;border-radius:8px;margin:12px 0">
+          ${participationLine}
+          ${adventureLine}
+          ${scoutLine}
+        </div>
         <p>Log in to approve or deny this request:</p>
         <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="color:#4a7a55;font-weight:bold">Open TrailLog</a></p>
       </div>
@@ -63,6 +74,16 @@ export async function sendParentNotificationEmail(parentEmail, scoutName, troopN
       </div>
     `,
   });
+}
+
+// Build deep link URL that navigates directly into an adventure + tab
+function deepLink(troopId, adventureId, tab) {
+  const base = process.env.APP_URL || "https://traillog.gracezero.ai";
+  const params = [];
+  if (troopId) params.push(`troop=${troopId}`);
+  if (adventureId) params.push(`adventure=${adventureId}`);
+  if (tab) params.push(`tab=${tab}`);
+  return params.length ? `${base}/?${params.join("&")}` : base;
 }
 
 const ADVENTURE_TYPE_NAMES = {
@@ -107,7 +128,7 @@ export async function sendInvitationEmail(toEmail, inviterName, troopName, adven
   });
 }
 
-export async function sendMemberApprovedEmail(toEmail, memberName, troopName, { council, adventureName, adventureType, departDate, returnDate } = {}) {
+export async function sendMemberApprovedEmail(toEmail, memberName, troopName, { council, adventureName, adventureType, departDate, returnDate, troopId, adventureId } = {}) {
   const t = getTransporter();
   if (!t) return console.log(`[email skip] Approval for ${toEmail} (no SMTP configured)`);
 
@@ -134,7 +155,7 @@ export async function sendMemberApprovedEmail(toEmail, memberName, troopName, { 
         <p>Hey <strong>${esc(memberName)}</strong>, your request to join <strong>${esc(troopName)}</strong> has been approved!</p>
         ${detailsHtml}
         <p>Log in to start coordinating with your crew:</p>
-        <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrailLog</a></p>
+        <p><a href="${deepLink(troopId, adventureId)}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrailLog</a></p>
       </div>
     `,
   });
@@ -158,7 +179,7 @@ export async function sendMemberDeniedEmail(toEmail, memberName, troopName) {
   });
 }
 
-export async function sendDateChangedEmail(toEmail, memberName, adventureName, changes, { troopName } = {}) {
+export async function sendDateChangedEmail(toEmail, memberName, adventureName, changes, { troopName, troopId, adventureId } = {}) {
   const t = getTransporter();
   if (!t) return console.log(`[email skip] Date change for ${toEmail} (no SMTP configured)`);
 
@@ -175,13 +196,13 @@ export async function sendDateChangedEmail(toEmail, memberName, adventureName, c
         ${troopLine}
         <div style="background:#f5f5f0;padding:12px 16px;border-radius:8px;margin:12px 0">${changes}</div>
         <p>Check the latest details:</p>
-        <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrailLog</a></p>
+        <p><a href="${deepLink(troopId, adventureId, "calendar")}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">View Dates</a></p>
       </div>
     `,
   });
 }
 
-export async function sendItineraryChangedEmail(toEmail, memberName, adventureName, oldItineraryName, newItineraryName, { troopName } = {}) {
+export async function sendItineraryChangedEmail(toEmail, memberName, adventureName, oldItineraryName, newItineraryName, { troopName, troopId, adventureId } = {}) {
   const t = getTransporter();
   if (!t) return console.log(`[email skip] Itinerary change for ${toEmail} (no SMTP configured)`);
 
@@ -200,13 +221,13 @@ export async function sendItineraryChangedEmail(toEmail, memberName, adventureNa
           <strong>Previous:</strong> ${esc(oldItineraryName)}<br><strong>New:</strong> ${esc(newItineraryName)}
         </div>
         <p>Please review the updated day-by-day plan and check your gear list — items may have changed.</p>
-        <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrailLog</a></p>
+        <p><a href="${deepLink(troopId, adventureId, "itinerary")}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">View Itinerary</a></p>
       </div>
     `,
   });
 }
 
-export async function sendTrainingScheduledEmail(toEmail, memberName, adventureName, date, periodLabel, timeLabel, location, notes, { troopName } = {}) {
+export async function sendTrainingScheduledEmail(toEmail, memberName, adventureName, date, periodLabel, timeLabel, location, notes, { troopName, troopId, adventureId } = {}) {
   const t = getTransporter();
   if (!t) return console.log(`[email skip] Training scheduled for ${toEmail} (no SMTP configured)`);
 
@@ -232,13 +253,13 @@ export async function sendTrainingScheduledEmail(toEmail, memberName, adventureN
           ${details.join("<br>")}
         </div>
         <p>Open TrailLog to RSVP:</p>
-        <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrailLog</a></p>
+        <p><a href="${deepLink(troopId, adventureId, "results")}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">RSVP Now</a></p>
       </div>
     `,
   });
 }
 
-export async function sendBadgeEarnedEmail(toEmail, memberName, badgeName, adventureName, { troopName } = {}) {
+export async function sendBadgeEarnedEmail(toEmail, memberName, badgeName, adventureName, { troopName, troopId, adventureId } = {}) {
   const t = getTransporter();
   if (!t) return console.log(`[email skip] Badge earned for ${toEmail} (no SMTP configured)`);
 
@@ -247,11 +268,48 @@ export async function sendBadgeEarnedEmail(toEmail, memberName, badgeName, adven
     trail_medic: { icon: "🏥", title: "Trail Medic" },
     admin_pro: { icon: "📋", title: "Admin Pro" },
     training_complete: { icon: "🥾", title: "Training Complete" },
+    ai_ready: { icon: "🤖", title: "AI Ready" },
+    ai_gear: { icon: "🛍️", title: "AI Gear Scout" },
     fully_prepared: { icon: "⭐", title: "Fully Prepared" },
   };
   const badge = badges[badgeName] || { icon: "🏆", title: badgeName };
 
+  // Badge-specific messaging so each email explains WHY they earned it
+  const badgeMessages = {
+    ai_ready: {
+      headline: "Your AI Training Plan is Ready!",
+      body: `Great job completing your self-assessment, <strong>${esc(memberName)}</strong>! Our AI analyzed your experience, fitness, and gear to build a personalized training plan just for you. You're on your way to being fully prepared for <strong>${esc(adventureName)}</strong> — keep checking back as your plan updates with your progress!`,
+      cta: "View Your Training Plan",
+      tab: "readiness",
+    },
+    ai_gear: {
+      headline: "Smart Shopper!",
+      body: `Nice work, <strong>${esc(memberName)}</strong>! You used our AI to get personalized gear recommendations for <strong>${esc(adventureName)}</strong>. Our AI analyzes thousands of reviews and Philmont trekker feedback to find the best gear for your adventure. Keep exploring recommendations to build the perfect pack!`,
+      cta: "Browse Your Gear",
+      tab: "gear",
+    },
+    gear_ready: {
+      headline: "Gear Check Complete!",
+      body: `Way to go, <strong>${esc(memberName)}</strong>! All your gear is packed and ready for <strong>${esc(adventureName)}</strong>. One less thing to worry about on the trail!`,
+    },
+    training_complete: {
+      headline: "Training Complete!",
+      body: `Awesome work, <strong>${esc(memberName)}</strong>! You've completed all your training skills for <strong>${esc(adventureName)}</strong>. Your crew can count on you out there.`,
+    },
+    fully_prepared: {
+      headline: "You're Summit Ready! ⭐",
+      body: `Incredible, <strong>${esc(memberName)}</strong>! You've completed every category for <strong>${esc(adventureName)}</strong> — gear, medical, training, and more. You are fully prepared for the adventure of a lifetime!`,
+    },
+  };
+
+  const msg = badgeMessages[badgeName] || {
+    headline: `${badge.title}!`,
+    body: `Way to go, <strong>${esc(memberName)}</strong>! You've earned the <strong>${esc(badge.title)}</strong> badge for <strong>${esc(adventureName)}</strong>.`,
+  };
+
   const troopLine = troopName ? `<p style="color:#666;font-size:13px">${esc(troopName)}</p>` : "";
+  const ctaText = msg.cta || "View Your Badges";
+  const ctaTab = msg.tab || "reports";
 
   await t.sendMail({
     from: `"TrailLog" <${process.env.SMTP_USER}>`,
@@ -260,11 +318,11 @@ export async function sendBadgeEarnedEmail(toEmail, memberName, badgeName, adven
     html: `
       <div style="font-family:sans-serif;max-width:500px;text-align:center">
         <div style="font-size:48px;margin:20px 0">${badge.icon}</div>
-        <h2 style="color:#2d3830">${badge.title}!</h2>
-        <p>Way to go, <strong>${esc(memberName)}</strong>! You've earned the <strong>${esc(badge.title)}</strong> badge for <strong>${esc(adventureName)}</strong>.</p>
+        <h2 style="color:#2d3830">${msg.headline}</h2>
+        <p style="line-height:1.6">${msg.body}</p>
         ${troopLine}
         <p style="color:#4a7a55;font-weight:bold;font-size:14px">"A Scout is Prepared"</p>
-        <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">View Your Badges</a></p>
+        <p><a href="${deepLink(troopId, adventureId, ctaTab)}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">${ctaText}</a></p>
       </div>
     `,
   });

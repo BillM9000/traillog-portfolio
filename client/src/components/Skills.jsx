@@ -5,7 +5,223 @@ import { useAdventure } from "../contexts/AdventureContext";
 import { useAuth } from "../contexts/AuthContext";
 import { card, cardTitle, fontBody, fontDisplay, TRAIL_BADGES, JOURNEY_WAYPOINTS, memberTypeBadge } from "../utils/theme";
 import { computeCrewReadiness, computeMemberReadiness } from "../utils/readiness";
-import { Activity, Mountain, Footprints, Backpack, RefreshCw, ChevronRight, Target, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Activity, Mountain, Footprints, Backpack, RefreshCw, ChevronRight, Target, AlertTriangle, CheckCircle2, Sparkles, Brain, Compass, Route } from "lucide-react";
+
+// ── AI Plan Generation Loading Experience ──
+function AIGeneratingCard({ theme }) {
+  const [step, setStep] = useState(0);
+  const steps = [
+    { icon: Brain, text: "Analyzing your fitness level & experience..." },
+    { icon: Compass, text: "Reviewing your itinerary & elevation profile..." },
+    { icon: Route, text: "Building personalized training phases..." },
+    { icon: Sparkles, text: "Finalizing your custom readiness plan..." },
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStep(s => (s < steps.length - 1 ? s + 1 : s));
+    }, 2200);
+    return () => clearInterval(interval);
+  }, []);
+
+  const current = steps[step];
+  const Icon = current.icon;
+
+  return (
+    <div style={{
+      ...card(theme), marginBottom: 10, padding: "24px 20px", textAlign: "center",
+      background: `linear-gradient(135deg, ${theme.bgAlt}, ${theme.bg})`,
+      border: `2px solid ${theme.accent}44`,
+      position: "relative", overflow: "hidden",
+    }}>
+      {/* Animated background shimmer */}
+      <div style={{
+        position: "absolute", top: 0, left: "-100%", width: "200%", height: "100%",
+        background: `linear-gradient(90deg, transparent, ${theme.accent}08, transparent)`,
+        animation: "aiShimmer 2s ease-in-out infinite",
+      }} />
+
+      {/* Sparkle decorations */}
+      <div style={{ position: "absolute", top: 8, right: 12, opacity: 0.15, animation: "aiPulse 1.5s ease-in-out infinite" }}>
+        <Sparkles size={20} color={theme.accent} />
+      </div>
+      <div style={{ position: "absolute", bottom: 8, left: 12, opacity: 0.1, animation: "aiPulse 1.5s ease-in-out infinite 0.5s" }}>
+        <Sparkles size={16} color={theme.accent} />
+      </div>
+
+      {/* AI badge */}
+      <div style={{
+        display: "inline-flex", alignItems: "center", gap: 6,
+        background: `${theme.accent}18`, border: `1px solid ${theme.accent}33`,
+        borderRadius: 20, padding: "4px 14px", marginBottom: 14,
+      }}>
+        <Sparkles size={12} color={theme.accent} style={{ animation: "aiPulse 1s ease-in-out infinite" }} />
+        <span style={{ fontSize: 10, fontWeight: 800, color: theme.accent, fontFamily: fontBody, letterSpacing: 1.2, textTransform: "uppercase" }}>
+          Powered by Claude AI
+        </span>
+      </div>
+
+      {/* Main icon */}
+      <div style={{ marginBottom: 12, position: "relative" }}>
+        <div style={{
+          width: 52, height: 52, borderRadius: "50%", margin: "0 auto",
+          background: `${theme.accent}15`, border: `2px solid ${theme.accent}33`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          animation: "aiPulse 1.5s ease-in-out infinite",
+        }}>
+          <Icon size={24} color={theme.accent} />
+        </div>
+      </div>
+
+      {/* Title */}
+      <div style={{
+        fontSize: 16, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay,
+        marginBottom: 6,
+      }}>
+        Building Your AI Training Plan
+      </div>
+      <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 16, lineHeight: 1.4 }}>
+        Our AI is analyzing your assessment, itinerary, and departure date to create a plan tailored specifically for you.
+      </div>
+
+      {/* Step indicators */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 300, margin: "0 auto" }}>
+        {steps.map((s, i) => {
+          const StepIcon = s.icon;
+          const done = i < step;
+          const active = i === step;
+          return (
+            <div key={i} style={{
+              display: "flex", alignItems: "center", gap: 8, padding: "6px 10px",
+              borderRadius: 8, transition: "all 0.4s ease",
+              background: active ? `${theme.accent}12` : "transparent",
+              border: active ? `1px solid ${theme.accent}22` : "1px solid transparent",
+            }}>
+              <div style={{
+                width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: done ? theme.accent : active ? `${theme.accent}25` : `${theme.textDimmest}22`,
+                transition: "all 0.4s ease",
+              }}>
+                {done ? (
+                  <CheckCircle2 size={12} color="#fff" />
+                ) : (
+                  <StepIcon size={11} color={active ? theme.accent : theme.textDimmest} style={active ? { animation: "aiPulse 1s ease-in-out infinite" } : {}} />
+                )}
+              </div>
+              <span style={{
+                fontSize: 11, fontWeight: active ? 700 : 500, fontFamily: fontBody,
+                color: done ? theme.accent : active ? theme.heading : theme.textDimmest,
+                transition: "all 0.4s ease",
+              }}>
+                {s.text}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* CSS animations */}
+      <style>{`
+        @keyframes aiShimmer {
+          0% { transform: translateX(-50%); }
+          100% { transform: translateX(50%); }
+        }
+        @keyframes aiPulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(0.95); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// ── AI Ready Badge Celebration ──
+function AIBadgeCelebration({ theme, onDismiss }) {
+  return (
+    <div style={{
+      ...card(theme), marginBottom: 10, padding: "28px 20px", textAlign: "center",
+      background: `linear-gradient(135deg, #1a1a2e, #16213e, #0f3460)`,
+      border: `2px solid #e2b340`,
+      position: "relative", overflow: "hidden",
+      animation: "badgeSlideIn 0.6s ease-out",
+    }}>
+      {/* Sparkle particles */}
+      {[...Array(8)].map((_, i) => (
+        <div key={i} style={{
+          position: "absolute",
+          top: `${10 + Math.random() * 80}%`,
+          left: `${5 + Math.random() * 90}%`,
+          width: 4, height: 4, borderRadius: "50%",
+          background: i % 2 === 0 ? "#e2b340" : "#fff",
+          opacity: 0.6,
+          animation: `badgeSparkle ${1.5 + Math.random()}s ease-in-out infinite ${Math.random() * 0.5}s`,
+        }} />
+      ))}
+
+      {/* Badge icon */}
+      <div style={{
+        fontSize: 56, marginBottom: 8,
+        animation: "badgePop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.3s both",
+        filter: "drop-shadow(0 0 20px rgba(226, 179, 64, 0.5))",
+      }}>
+        🤖
+      </div>
+
+      {/* Title */}
+      <div style={{
+        fontSize: 20, fontWeight: 900, color: "#e2b340", fontFamily: fontDisplay,
+        marginBottom: 4, letterSpacing: 0.5,
+        animation: "badgeFadeIn 0.5s ease-out 0.5s both",
+      }}>
+        Badge Earned!
+      </div>
+      <div style={{
+        fontSize: 15, fontWeight: 700, color: "#fff", fontFamily: fontDisplay,
+        marginBottom: 10,
+        animation: "badgeFadeIn 0.5s ease-out 0.7s both",
+      }}>
+        AI Ready
+      </div>
+      <div style={{
+        fontSize: 12, color: "#ccc", lineHeight: 1.5, maxWidth: 280, margin: "0 auto 16px",
+        animation: "badgeFadeIn 0.5s ease-out 0.9s both",
+      }}>
+        You completed your AI self-assessment and received a personalized training plan powered by Claude AI.
+      </div>
+
+      {/* Dismiss */}
+      <button onClick={onDismiss} style={{
+        padding: "8px 24px", borderRadius: 8, border: "1px solid #e2b34055",
+        background: "#e2b34020", color: "#e2b340", fontSize: 12, fontWeight: 700,
+        cursor: "pointer", fontFamily: fontBody,
+        animation: "badgeFadeIn 0.5s ease-out 1.1s both",
+      }}>
+        Awesome!
+      </button>
+
+      <style>{`
+        @keyframes badgeSlideIn {
+          from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes badgePop {
+          from { opacity: 0; transform: scale(0.3); }
+          50% { transform: scale(1.15); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes badgeFadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes badgeSparkle {
+          0%, 100% { opacity: 0; transform: scale(0.5); }
+          50% { opacity: 0.8; transform: scale(1.2); }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 export default function Skills({ members, active, skills, analysis, isAdmin, onToggleSkill, onAddSkill, onRemoveSkill, adventureId, updateMemberLocally, achievements }) {
   const { theme, mode } = useTheme();
@@ -31,6 +247,7 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
   const [planLoading, setPlanLoading] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [showPhases, setShowPhases] = useState(false);
+  const [badgeCelebration, setBadgeCelebration] = useState(null);
 
   // Load assessment + plan on mount
   const loadAIReadiness = useCallback(async () => {
@@ -48,6 +265,10 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
           setPlan(result.plan);
           setPriorities(result.priorities || []);
           setProgress(result.progress || []);
+          if (result.badge_earned === "ai_ready") {
+            setBadgeCelebration("ai_ready");
+            setTimeout(() => setBadgeCelebration(null), 6000);
+          }
         } catch (e) {
           // No plan yet — that's OK, will be generated
           console.log("No plan yet:", e.message);
@@ -74,6 +295,11 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
       setPriorities(planResult.priorities || []);
       setProgress(planResult.progress || []);
       setPlanLoading(false);
+      // Badge celebration
+      if (planResult.badge_earned === "ai_ready") {
+        setBadgeCelebration("ai_ready");
+        setTimeout(() => setBadgeCelebration(null), 6000);
+      }
     } catch (e) { console.error(e); }
     setAssessmentSaving(false);
   };
@@ -86,6 +312,10 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
       setPlan(result.plan);
       setPriorities(result.priorities || []);
       setProgress([]);
+      if (result.badge_earned === "ai_ready") {
+        setBadgeCelebration("ai_ready");
+        setTimeout(() => setBadgeCelebration(null), 6000);
+      }
     } catch (e) { console.error(e); }
     setRegenerating(false);
   };
@@ -295,7 +525,7 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
               flex: 1, padding: "10px 0", borderRadius: 8, border: "none",
               background: theme.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: fontBody,
               opacity: assessmentSaving ? 0.6 : 1,
-            }}>{assessmentSaving ? "Saving..." : assessment ? "Update Assessment" : "Generate My Plan"}</button>
+            }}>{assessmentSaving ? "Saving..." : assessment ? "Update Assessment" : "✨ Generate My AI Plan"}</button>
           </div>
         </div>
       )}
@@ -336,12 +566,11 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
         </div>
       )}
 
-      {/* Plan loading indicator */}
-      {planLoading && (
-        <div style={{ ...card(theme), marginBottom: 10, textAlign: "center" }}>
-          <div style={{ fontSize: 12, color: theme.textMuted }}>Generating your personalized plan...</div>
-        </div>
-      )}
+      {/* AI Plan Generation — spectacular loading experience */}
+      {planLoading && <AIGeneratingCard theme={theme} />}
+
+      {/* AI Ready Badge Celebration */}
+      {badgeCelebration && <AIBadgeCelebration theme={theme} onDismiss={() => setBadgeCelebration(null)} />}
 
       {/* Training Phases */}
       {plan && plan.phases && !showAssessment && (
@@ -584,7 +813,9 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
                   trail_medic: "All medical items completed",
                   admin_pro: "All admin tasks completed",
                   training_complete: "All training skills completed",
-                  fully_prepared: "All 4 categories complete!",
+                  ai_ready: "Completed AI self-assessment",
+                  ai_gear: "Used AI gear recommendations",
+                  fully_prepared: "All categories complete!",
                 };
                 return (
                   <div key={key} style={{

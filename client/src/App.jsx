@@ -50,6 +50,20 @@ export default function App() {
     api.getPublicSettings().then(setPublicSettings).catch(() => {});
   }, []);
 
+  // ── Deep link from email CTAs (?troop=X&adventure=Y&tab=Z) ──
+  const deepLinkRef = useRef(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("troop");
+    const a = params.get("adventure");
+    const tab = params.get("tab");
+    if (t && a) {
+      deepLinkRef.current = { troopId: Number(t), adventureId: Number(a), tab: tab || null };
+      // Clean URL without reloading
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
   // ── Navigation state ──
   const [troopId, setTroopId] = useState(null);
   const [adventureId, setAdventureId] = useState(null);
@@ -57,6 +71,16 @@ export default function App() {
   const [showProfilePage, setShowProfilePage] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const isGlobalAdmin = !!user?.is_global_admin;
+
+  // Apply deep link after auth loads
+  useEffect(() => {
+    if (user && deepLinkRef.current && !troopId && !adventureId) {
+      const dl = deepLinkRef.current;
+      deepLinkRef.current = null;
+      setTroopId(dl.troopId);
+      setAdventureId(dl.adventureId);
+    }
+  }, [user, troopId, adventureId]);
 
   // Go home = clear troop and adventure selection
   const goHome = () => { setTroopId(null); setAdventureId(null); };
@@ -154,6 +178,7 @@ export default function App() {
         approvedTroops={approvedTroops}
         isAdmin={isAdmin}
         publicSettings={publicSettings}
+        initialTab={deepLinkRef.current?.tab || null}
         onSwitchTroop={(id) => { setTroopId(id); setAdventureId(null); }}
         onGoHome={goHome}
         onSelectAdventure={(id) => setAdventureId(id)}
@@ -169,7 +194,7 @@ export default function App() {
   );
 }
 
-function MainView({ user, troopId, adventureId, memberships, approvedTroops, isAdmin, publicSettings, onSwitchTroop, onGoHome, onSelectAdventure, onLogout, onRefresh, onViewProfile, onHelpClick }) {
+function MainView({ user, troopId, adventureId, memberships, approvedTroops, isAdmin, publicSettings, initialTab, onSwitchTroop, onGoHome, onSelectAdventure, onLogout, onRefresh, onViewProfile, onHelpClick }) {
   const { theme } = useTheme();
   const { addToast } = useToast();
   const { adventure, members, skills, itinerary, trekDate, trekDates, achievements, loading: advLoading, refreshAll, refreshMembers, updateMemberLocally, crews, selectedCrewId, selectedCrew, setSelectedCrewId, refreshCrews } = useAdventure();
@@ -177,7 +202,8 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
   const [troopMembers, setTroopMembers] = useState([]);
   const [troop, setTroop] = useState(null);
   const [active, setActive] = useState(null);
-  const [view, setView] = useState("calendar");
+  const validTabs = ["calendar", "results", "skills", "itinerary", "gear", "reports"];
+  const [view, setView] = useState(initialTab && validTabs.includes(initialTab) ? initialTab : "calendar");
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [confirmManualDelete, setConfirmManualDelete] = useState(null); // { id, name }
   const [showAdmin, setShowAdmin] = useState(false);

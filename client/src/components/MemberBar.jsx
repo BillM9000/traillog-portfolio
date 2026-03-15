@@ -176,7 +176,7 @@ export default function MemberBar({ members, active, setActive, pendingMembers, 
         return (
           <div style={{ padding: "10px 14px", marginTop: 10, background: theme.name === "dark" ? "#1e2418" : "#f4f9ee", borderRadius: 10, border: `1px solid ${theme.borderAccent}` }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: theme.heading, marginBottom: 4, fontFamily: fontDisplay }}>Link to your Scout</div>
-            <div style={{ fontSize: 10, color: theme.textDim, marginBottom: 6, fontFamily: fontBody }}>Select your scout to request a link (admin approval required)</div>
+            <div style={{ fontSize: 11, color: theme.textDim, marginBottom: 6, fontFamily: fontBody }}>Select your scout to request a link (admin approval required)</div>
             <select onChange={e => { if (e.target.value && onRequestLink) { onRequestLink(parseInt(e.target.value)); e.target.value = ""; } }} defaultValue="" style={{
               width: "100%", padding: "8px 10px", borderRadius: 7, border: `1.5px solid ${theme.borderLight}`,
               background: theme.bgInput, color: theme.text, fontSize: 12, fontFamily: fontBody, cursor: "pointer",

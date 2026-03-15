@@ -87,6 +87,8 @@ export const TRAIL_BADGES = {
   trail_medic: { icon: "\u{1F3E5}", title: "Trail Medic" },
   admin_pro: { icon: "\u{1F4CB}", title: "Admin Pro" },
   training_complete: { icon: "\u{1F97E}", title: "Training Complete" },
+  ai_ready: { icon: "\u{1F916}", title: "AI Ready" },
+  ai_gear: { icon: "\u{1F6CD}\uFE0F", title: "AI Gear Scout" },
   fully_prepared: { icon: "\u2B50", title: "Fully Prepared" },
 };
 
