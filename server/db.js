@@ -168,7 +168,8 @@ db.exec(`
     description TEXT NOT NULL DEFAULT '',
     category TEXT NOT NULL DEFAULT 'training',
     is_default INTEGER NOT NULL DEFAULT 0,
-    sort_order INTEGER NOT NULL DEFAULT 0
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_system INTEGER NOT NULL DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS gear_items (
@@ -356,8 +357,20 @@ db.exec(`
     time_label TEXT,
     location TEXT,
     notes TEXT,
+    type TEXT NOT NULL DEFAULT 'proposed',
+    status TEXT NOT NULL DEFAULT 'active',
     created_by INTEGER NOT NULL REFERENCES users(id),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS training_attendance (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL REFERENCES training_events(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    attended INTEGER NOT NULL DEFAULT 0,
+    marked_by INTEGER REFERENCES users(id),
+    marked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(event_id, user_id)
   );
 
   CREATE TABLE IF NOT EXISTS training_rsvps (
@@ -420,7 +433,7 @@ db.exec(`
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 22;
+const CURRENT_SCHEMA_VERSION = 23;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -849,6 +862,27 @@ function migrate() {
         );
       `);
       console.log("[v22] AI gear recommendations cache table created");
+    }
+
+    // ── v23 migration: Calendar redesign — event lifecycle + attendance tracking ──
+    if (version < 23) {
+      tryAlter("ALTER TABLE training_events ADD COLUMN type TEXT NOT NULL DEFAULT 'proposed'");
+      tryAlter("ALTER TABLE training_events ADD COLUMN status TEXT NOT NULL DEFAULT 'active'");
+      tryAlter("ALTER TABLE skills ADD COLUMN is_system INTEGER NOT NULL DEFAULT 0");
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS training_attendance (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          event_id INTEGER NOT NULL REFERENCES training_events(id) ON DELETE CASCADE,
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          attended INTEGER NOT NULL DEFAULT 0,
+          marked_by INTEGER REFERENCES users(id),
+          marked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(event_id, user_id)
+        );
+      `);
+      // Upgrade existing training events to 'scheduled' status (they were all confirmed before this migration)
+      try { db.exec("UPDATE training_events SET type = 'scheduled' WHERE type = 'proposed'"); } catch {}
+      console.log("[v23] Calendar redesign: training_attendance table, event type/status, skills.is_system");
     }
 
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
@@ -2313,8 +2347,8 @@ export function getAdventureSkills(adventureId, category) {
     : "SELECT * FROM skills WHERE adventure_id = ? ORDER BY category, sort_order, id";
   const rows = category ? db.prepare(q).all(adventureId, category) : db.prepare(q).all(adventureId);
   return rows.map(s => ({
-    id: s.id, name: s.name, icon: s.icon, desc: s.description,
-    category: s.category, isDefault: !!s.is_default,
+    id: s.id, name: s.name, icon: s.icon, desc: s.description, description: s.description,
+    category: s.category, isDefault: !!s.is_default, is_system: s.is_system || 0,
   }));
 }
 
@@ -3007,9 +3041,9 @@ export function createSessionStore(session) {
 
 export function createTrainingEvent(adventureId, data, createdBy) {
   const r = db.prepare(
-    "INSERT INTO training_events (adventure_id, date, period, time_label, location, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)"
-  ).run(adventureId, data.date, data.period || "all", data.time_label || null, data.location || null, data.notes || null, createdBy);
-  return { id: Number(r.lastInsertRowid), ...data };
+    "INSERT INTO training_events (adventure_id, date, period, time_label, location, notes, type, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+  ).run(adventureId, data.date, data.period || "all", data.time_label || null, data.location || null, data.notes || null, data.type || "proposed", createdBy);
+  return { id: Number(r.lastInsertRowid), ...data, type: data.type || "proposed", status: "active" };
 }
 
 export function getTrainingEvents(adventureId) {
@@ -3019,6 +3053,11 @@ export function getTrainingEvents(adventureId) {
       SELECT tr.user_id, tr.status, u.name FROM training_rsvps tr
       JOIN users u ON tr.user_id = u.id
       WHERE tr.event_id = ?
+    `).all(e.id);
+    e.attendance = db.prepare(`
+      SELECT ta.user_id, ta.attended, ta.marked_at, u.name FROM training_attendance ta
+      JOIN users u ON ta.user_id = u.id
+      WHERE ta.event_id = ?
     `).all(e.id);
   }
   return events;
@@ -3043,6 +3082,107 @@ export function upsertTrainingRsvp(eventId, userId, status) {
   db.prepare(
     "INSERT INTO training_rsvps (event_id, user_id, status, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(event_id, user_id) DO UPDATE SET status = ?, updated_at = CURRENT_TIMESTAMP"
   ).run(eventId, userId, status, status);
+}
+
+export function updateTrainingEventStatus(eventId, type, status) {
+  db.prepare("UPDATE training_events SET type = ?, status = ? WHERE id = ?").run(type, status, eventId);
+}
+
+export function markAttendance(eventId, userId, attended, markedBy) {
+  db.prepare(
+    "INSERT INTO training_attendance (event_id, user_id, attended, marked_by, marked_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(event_id, user_id) DO UPDATE SET attended = ?, marked_by = ?, marked_at = CURRENT_TIMESTAMP"
+  ).run(eventId, userId, attended, markedBy, attended, markedBy);
+}
+
+export function bulkMarkAttendance(eventId, attendeeUserIds, markedBy) {
+  const stmt = db.prepare(
+    "INSERT INTO training_attendance (event_id, user_id, attended, marked_by, marked_at) VALUES (?, ?, 1, ?, CURRENT_TIMESTAMP) ON CONFLICT(event_id, user_id) DO UPDATE SET attended = 1, marked_by = ?, marked_at = CURRENT_TIMESTAMP"
+  );
+  const tx = db.transaction(() => {
+    for (const uid of attendeeUserIds) stmt.run(eventId, uid, markedBy, markedBy);
+  });
+  tx();
+}
+
+export function getEventAttendance(eventId) {
+  return db.prepare(`
+    SELECT ta.user_id, ta.attended, ta.marked_at, u.name
+    FROM training_attendance ta JOIN users u ON ta.user_id = u.id
+    WHERE ta.event_id = ?
+  `).all(eventId);
+}
+
+export function getMemberAttendanceCount(adventureId, userId) {
+  const row = db.prepare(`
+    SELECT COUNT(*) as count FROM training_attendance ta
+    JOIN training_events te ON ta.event_id = te.id
+    WHERE te.adventure_id = ? AND ta.user_id = ? AND ta.attended = 1 AND te.status = 'completed'
+  `).get(adventureId, userId);
+  return row?.count || 0;
+}
+
+// Attendance milestone skills — auto-created and auto-awarded
+const ATTENDANCE_MILESTONES = [
+  { count: 1, id_suffix: "attend-1", name: "Attended 1 Training", icon: "🥾", desc: "Attended your first training session" },
+  { count: 3, id_suffix: "attend-3", name: "Attended 3 Trainings", icon: "🏔️", desc: "Attended 3 training sessions" },
+  { count: 5, id_suffix: "attend-5", name: "Attended 5 Trainings", icon: "⭐", desc: "Attended 5 training sessions" },
+];
+
+export function syncAttendanceSkills(adventureId) {
+  const adv = db.prepare("SELECT troop_id FROM adventures WHERE id = ?").get(adventureId);
+  if (!adv) return;
+
+  // Ensure system skills exist for this adventure
+  for (const ms of ATTENDANCE_MILESTONES) {
+    const skillId = `${adventureId}-sys-${ms.id_suffix}`;
+    const existing = db.prepare("SELECT id FROM skills WHERE id = ?").get(skillId);
+    if (!existing) {
+      db.prepare(
+        "INSERT INTO skills (id, troop_id, adventure_id, name, icon, description, category, is_default, is_system, sort_order) VALUES (?, ?, ?, ?, ?, ?, 'training', 1, 1, ?)"
+      ).run(skillId, adv.troop_id, adventureId, ms.name, ms.icon, ms.desc, 1000 + ms.count);
+    }
+  }
+
+  // Get all members of this adventure and their attendance counts
+  const members = db.prepare(`
+    SELECT DISTINCT ta.user_id, COUNT(*) as count
+    FROM training_attendance ta
+    JOIN training_events te ON ta.event_id = te.id
+    WHERE te.adventure_id = ? AND ta.attended = 1 AND te.status = 'completed'
+    GROUP BY ta.user_id
+  `).all(adventureId);
+
+  // Get all crew members for this adventure
+  const crewMembers = db.prepare(`
+    SELECT cm.user_id, cm.skills, cm.id as crew_member_id
+    FROM crew_members cm
+    JOIN crews c ON cm.crew_id = c.id
+    WHERE c.adventure_id = ?
+  `).all(adventureId);
+
+  // Award/revoke skills based on attendance count
+  for (const cm of crewMembers) {
+    const memberAttendance = members.find(m => m.user_id === cm.user_id);
+    const attendCount = memberAttendance?.count || 0;
+    let currentSkills = [];
+    try { currentSkills = JSON.parse(cm.skills || "[]"); } catch { currentSkills = []; }
+
+    let changed = false;
+    for (const ms of ATTENDANCE_MILESTONES) {
+      const skillId = `${adventureId}-sys-${ms.id_suffix}`;
+      const hasSkill = currentSkills.includes(skillId);
+      if (attendCount >= ms.count && !hasSkill) {
+        currentSkills.push(skillId);
+        changed = true;
+      } else if (attendCount < ms.count && hasSkill) {
+        currentSkills = currentSkills.filter(s => s !== skillId);
+        changed = true;
+      }
+    }
+    if (changed) {
+      db.prepare("UPDATE crew_members SET skills = ? WHERE id = ?").run(JSON.stringify(currentSkills), cm.crew_member_id);
+    }
+  }
 }
 
 // ══════════════════════════════════════════

@@ -3,42 +3,36 @@ import { DAYS_ABBR, MONTH_NAMES } from "../utils/constants";
 import { daysInMonth, dateKey, dayOfWeek, isPast } from "../utils/dates";
 import { useTheme } from "../contexts/ThemeContext";
 import { toolbarBtn, fontBody, fontDisplay } from "../utils/theme";
+import { ChevronLeft, ChevronRight, Users, User, Check } from "lucide-react";
 
-// Period cycle: off → all → am → pm → off
-const PERIOD_CYCLE = [null, "all", "am", "pm"];
-
-// Extract the period from a date entry like "2026-03-15:am" → "am"
-export function parseDateEntry(entry) {
-  const parts = entry.split(":");
-  if (parts.length >= 4) {
-    // "2026-03-15:am" split on ":" gives ["2026-03-15", "am"] BUT dateKey is "2026-03-15"
-    // Actually dateKey has dashes not colons. Entry = "2026-03-15:am"
-    const period = parts[parts.length - 1];
-    const date = parts.slice(0, -1).join(":");
-    return { date, period };
-  }
-  // Handle "YYYY-MM-DD:period"
+// Strip legacy period suffixes: "2026-03-15:am" → "2026-03-15"
+export function normalizeDateEntry(entry) {
   const idx = entry.lastIndexOf(":");
   if (idx > 0 && ["am", "pm", "all"].includes(entry.slice(idx + 1))) {
-    return { date: entry.slice(0, idx), period: entry.slice(idx + 1) };
+    return entry.slice(0, idx);
   }
-  return { date: entry, period: "all" }; // legacy bare dates
+  return entry;
 }
 
-// Get what period(s) a member has for a specific date key
+// Backward-compat: legacy parseDateEntry for any imports that still need it
+export function parseDateEntry(entry) {
+  return { date: normalizeDateEntry(entry), period: "all" };
+}
+
+// Legacy compat
 export function getMemberPeriod(dates, key) {
-  const periods = [];
   for (const d of dates) {
-    const { date, period } = parseDateEntry(d);
-    if (date === key) periods.push(period);
+    if (normalizeDateEntry(d) === key) return ["all"];
   }
-  return periods;
+  return [];
 }
 
 export default function Calendar({ members, active, months, analysis, onToggleDate, onBulkSelect, onClearAll, trekDates }) {
-  const dragRef = useRef({ active: false, mode: null, period: null });
+  const dragRef = useRef({ active: false, mode: null });
   const { theme, mode } = useTheme();
   const am = active !== null ? members[active] : null;
+  const [viewMode, setViewMode] = useState("my"); // "my" or "group"
+  const [tooltip, setTooltip] = useState(null); // { key, names }
 
   // Build set of blocked trek dates
   const trekDateSet = useMemo(() => {
@@ -62,53 +56,115 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
     return set;
   }, [trekDates]);
 
+  // Normalize member dates (strip :am/:pm/:all suffixes)
+  const getMemberAvailable = useCallback((memberDates, key) => {
+    return memberDates.some(d => normalizeDateEntry(d) === key);
+  }, []);
+
   const onDown = useCallback((key) => {
     if (active === null || trekDateSet.has(key)) return;
-    const currentPeriods = getMemberPeriod(members[active].dates, key);
-    let nextPeriod, dragMode;
-    if (currentPeriods.length === 0) {
-      // Not selected → add as "all"
-      nextPeriod = "all";
-      dragMode = "add";
-    } else {
-      // Cycle: all → am → pm → off
-      const current = currentPeriods[0]; // use first
-      const idx = PERIOD_CYCLE.indexOf(current);
-      nextPeriod = PERIOD_CYCLE[(idx + 1) % PERIOD_CYCLE.length];
-      dragMode = nextPeriod ? "add" : "remove";
-    }
-    dragRef.current = { active: true, mode: dragMode, period: nextPeriod || "all" };
-    onToggleDate(key, dragMode, nextPeriod);
-  }, [active, members, onToggleDate, trekDateSet]);
+    const isSelected = getMemberAvailable(members[active].dates, key);
+    const dragMode = isSelected ? "remove" : "add";
+    dragRef.current = { active: true, mode: dragMode };
+    onToggleDate(key, dragMode, "all");
+  }, [active, members, onToggleDate, trekDateSet, getMemberAvailable]);
 
   const onEnter = useCallback((key) => {
-    const { active: dragging, mode, period } = dragRef.current;
-    if (dragging && mode && !trekDateSet.has(key)) onToggleDate(key, mode, period);
+    const { active: dragging, mode } = dragRef.current;
+    if (dragging && mode && !trekDateSet.has(key)) onToggleDate(key, mode, "all");
   }, [onToggleDate, trekDateSet]);
 
   useEffect(() => {
-    const up = () => { dragRef.current = { active: false, mode: null, period: null }; };
+    const up = () => { dragRef.current = { active: false, mode: null }; };
     window.addEventListener("mouseup", up);
     window.addEventListener("pointerup", up);
     return () => { window.removeEventListener("mouseup", up); window.removeEventListener("pointerup", up); };
   }, []);
 
+  // Auto-switch to "my" view when a member is selected
+  useEffect(() => {
+    if (active !== null) setViewMode("my");
+  }, [active]);
+
+  // Compute heat map data
+  const heatmap = useMemo(() => {
+    const hm = {};
+    const total = members.length;
+    if (total === 0) return hm;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+
+    for (const { year, month } of months) {
+      for (let d = 1; d <= daysInMonth(year, month); d++) {
+        const key = dateKey(year, month, d);
+        const keyDate = new Date(year, month, d);
+        if (keyDate < today) continue;
+
+        const available = [];
+        for (const m of members) {
+          if (getMemberAvailable(m.dates, key)) available.push(m.name);
+        }
+        if (available.length > 0) {
+          hm[key] = {
+            count: available.length,
+            pct: available.length / total,
+            names: available,
+            missing: members.filter(m => !available.includes(m.name)).map(m => m.name),
+          };
+        }
+      }
+    }
+    return hm;
+  }, [members, months, getMemberAvailable]);
+
+  // Best dates (top 5)
+  const bestDates = useMemo(() => {
+    return Object.entries(heatmap)
+      .filter(([, v]) => v.count >= 2)
+      .sort(([, a], [, b]) => b.count - a.count || 0)
+      .slice(0, 5)
+      .map(([key, val]) => ({ key, ...val }));
+  }, [heatmap]);
+
+  const showGroupView = viewMode === "group" || active === null;
+
   return (
     <div>
+      {/* Header card */}
       <div style={{ padding: "16px 18px", background: theme.bgCard, borderRadius: 14, border: `1px solid ${theme.border}`, marginBottom: 12, boxShadow: theme.shadow }}>
-        <div style={{ fontSize: 16, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay }}>Training Hike Coordinator</div>
-        <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 4, lineHeight: 1.5, fontFamily: fontBody }}>
-          Tap dates to cycle availability: <strong>All Day</strong> → <strong>Morning</strong> → <strong>Afternoon</strong> → Off. Drag to select ranges.
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay }}>Training Availability</div>
+            <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 4, lineHeight: 1.5, fontFamily: fontBody }}>
+              {active !== null
+                ? "Tap dates you're available for training. Drag to select ranges."
+                : "Select your name above, then tap dates you're available."}
+            </div>
+          </div>
+          {active !== null && members.length > 1 && (
+            <div style={{ display: "flex", gap: 2, background: theme.bgAlt, borderRadius: 8, padding: 2 }}>
+              <button onClick={() => setViewMode("my")} style={{
+                padding: "5px 10px", borderRadius: 6, border: "none", fontSize: 11, fontWeight: 600,
+                cursor: "pointer", fontFamily: fontBody, display: "flex", alignItems: "center", gap: 3,
+                background: viewMode === "my" ? theme.accent : "transparent",
+                color: viewMode === "my" ? "#fff" : theme.textDim,
+              }}><User size={11} /> Mine</button>
+              <button onClick={() => setViewMode("group")} style={{
+                padding: "5px 10px", borderRadius: 6, border: "none", fontSize: 11, fontWeight: 600,
+                cursor: "pointer", fontFamily: fontBody, display: "flex", alignItems: "center", gap: 3,
+                background: viewMode === "group" ? theme.accent : "transparent",
+                color: viewMode === "group" ? "#fff" : theme.textDim,
+              }}><Users size={11} /> Group</button>
+            </div>
+          )}
         </div>
       </div>
 
-      {active !== null && (
+      {/* Toolbar */}
+      {active !== null && viewMode === "my" && (
         <div style={{ display: "flex", gap: 5, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <button onClick={() => onBulkSelect("weekends")} style={toolbarBtn(theme, "primary")}>+ All Weekends</button>
+          <button onClick={() => onBulkSelect("weekends")} style={toolbarBtn(theme, "primary")}>+ Weekends</button>
           <button onClick={() => onBulkSelect("all")} style={toolbarBtn(theme)}>+ All Days</button>
           <button onClick={onClearAll} style={toolbarBtn(theme)}>Clear Mine</button>
-          <span style={{ flex: 1 }} />
-          <span style={{ fontSize: 11, color: theme.textDimmest }}>Tap to cycle · Drag to select</span>
         </div>
       )}
 
@@ -116,18 +172,19 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
         <div style={{ textAlign: "center", padding: 30, background: theme.bgCard, borderRadius: 10, border: `1px solid ${theme.border}`, boxShadow: theme.shadow }}>
           <div style={{ fontSize: 28, marginBottom: 6 }}>🏕️</div>
           <div style={{ fontSize: 14, fontWeight: 600, color: theme.heading }}>Waiting for crew members</div>
-          <div style={{ fontSize: 12, color: theme.textDim, marginTop: 4 }}>Once members are added, select your name and mark dates you're available for group training hikes.</div>
+          <div style={{ fontSize: 12, color: theme.textDim, marginTop: 4 }}>Once members are added, select your name and mark dates you're available for group training.</div>
         </div>
       )}
 
       {active === null && members.length > 0 && (
         <div style={{ padding: "10px 12px", background: theme.bgCard, borderRadius: 8, border: `1px solid ${theme.border}`, marginBottom: 12, display: "flex", alignItems: "center", gap: 8, boxShadow: theme.shadow }}>
           <span style={{ fontSize: 18 }}>👆</span>
-          <span style={{ fontSize: 12, color: theme.textMuted }}>Select your name above to mark dates you're available for training hikes. Heatmap shows group overlap.</span>
+          <span style={{ fontSize: 12, color: theme.textMuted }}>Select your name above to mark dates. The heat map below shows group overlap.</span>
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
+      {/* Calendar grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(310px, 1fr))", gap: 14 }}>
         {months.map(({ year, month }) => {
           const dim = daysInMonth(year, month);
           const start = dayOfWeek(year, month, 1);
@@ -137,22 +194,25 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
               <div style={{ fontSize: 13, fontWeight: 700, color: theme.textMuted, marginBottom: 5, letterSpacing: "0.5px", textTransform: "uppercase" }}>
                 {MONTH_NAMES[month]} {year}
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 36px)", gap: 2 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
                 {DAYS_ABBR.map((d, i) => (
-                  <div key={i} style={{ width: 36, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: theme.textDimmest }}>{d}</div>
+                  <div key={i} style={{ height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: theme.textDimmest }}>{d}</div>
                 ))}
                 {cells.map((d, i) => {
                   if (!d) return <div key={`e${i}`} />;
                   const key = dateKey(year, month, d);
                   const past = isPast(year, month, d);
                   const wknd = dayOfWeek(year, month, d) === 0 || dayOfWeek(year, month, d) === 6;
-                  const memberPeriods = am ? getMemberPeriod(am.dates, key) : [];
-                  const sel = memberPeriods.length > 0;
-                  const selPeriod = memberPeriods[0] || null; // "am", "pm", "all"
-                  const heat = analysis.heatmap[key]?.pct || 0;
-                  const hc = analysis.heatmap[key]?.count || 0;
                   const trekType = trekDateSet.get(key);
                   const blocked = !!trekType;
+
+                  // My selection
+                  const mySelected = am ? getMemberAvailable(am.dates, key) : false;
+
+                  // Heat map data
+                  const hmData = heatmap[key];
+                  const heatCount = hmData?.count || 0;
+                  const heatPct = hmData?.pct || 0;
 
                   let bg, color, borderStyle;
                   if (blocked) {
@@ -164,73 +224,80 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
                       color = mode === "dark" ? "#E8A84C" : "#C47A2A";
                     }
                     borderStyle = "1.5px solid transparent";
-                  } else if (sel) {
+                  } else if (!showGroupView && mySelected) {
+                    // Editing mode — show my selection
                     const selColor = am?.color?.bg || theme.selectedBg;
-                    // For am/pm partial, use gradient
-                    if (selPeriod === "am") {
-                      bg = `linear-gradient(to bottom, ${selColor} 50%, ${wknd ? theme.weekendBg : "transparent"} 50%)`;
-                    } else if (selPeriod === "pm") {
-                      bg = `linear-gradient(to bottom, ${wknd ? theme.weekendBg : "transparent"} 50%, ${selColor} 50%)`;
-                    } else {
-                      bg = selColor;
-                    }
+                    bg = selColor;
                     color = theme.selectedText;
                     borderStyle = "1.5px solid transparent";
-                  } else if (heat > 0) {
-                    // Show heatmap with period info
-                    const hmData = analysis.heatmap[key];
-                    const amPct = hmData?.amPct || 0;
-                    const pmPct = hmData?.pmPct || 0;
-                    if (amPct > 0 && pmPct > 0 && amPct === pmPct) {
-                      // Even overlap both halves
-                      bg = heat > 0.66 ? theme.heatHigh : heat > 0.33 ? theme.heatMed : theme.heatLow;
-                    } else if (amPct > pmPct && pmPct === 0) {
-                      const heatColor = amPct > 0.66 ? theme.heatHigh : amPct > 0.33 ? theme.heatMed : theme.heatLow;
-                      bg = `linear-gradient(to bottom, ${heatColor} 50%, ${wknd ? theme.weekendBg : "transparent"} 50%)`;
-                    } else if (pmPct > amPct && amPct === 0) {
-                      const heatColor = pmPct > 0.66 ? theme.heatHigh : pmPct > 0.33 ? theme.heatMed : theme.heatLow;
-                      bg = `linear-gradient(to bottom, ${wknd ? theme.weekendBg : "transparent"} 50%, ${heatColor} 50%)`;
-                    } else {
-                      bg = heat > 0.66 ? theme.heatHigh : heat > 0.33 ? theme.heatMed : theme.heatLow;
-                    }
-                    color = heat > 0.5 ? theme.accentLight : theme.textDim;
-                    borderStyle = heat >= 1 ? `1.5px solid ${theme.heatFull}40` : "1.5px solid transparent";
+                  } else if (showGroupView && heatCount > 0) {
+                    // Group heat map view
+                    const opacity = 0.15 + (heatPct * 0.85);
+                    const baseGreen = mode === "dark" ? "76, 175, 80" : "56, 142, 60";
+                    bg = `rgba(${baseGreen}, ${opacity})`;
+                    color = heatPct > 0.5 ? (mode === "dark" ? "#e0f0e0" : "#1a3a1a") : theme.textDim;
+                    borderStyle = heatPct >= 1 ? `1.5px solid ${theme.heatFull}60` : "1.5px solid transparent";
+                  } else if (!showGroupView && heatCount > 0 && !mySelected) {
+                    // My view but showing faint heat map for context
+                    const opacity = 0.08 + (heatPct * 0.15);
+                    const baseGreen = mode === "dark" ? "76, 175, 80" : "56, 142, 60";
+                    bg = `rgba(${baseGreen}, ${opacity})`;
+                    color = theme.textDim;
+                    borderStyle = "1.5px solid transparent";
                   } else {
                     bg = wknd ? theme.weekendBg : "transparent";
                     color = theme.textDim;
                     borderStyle = "1.5px solid transparent";
                   }
 
-                  // Period label for selected cells
-                  const periodLabel = sel ? (selPeriod === "am" ? "AM" : selPeriod === "pm" ? "PM" : "") : "";
+                  const isTooltipTarget = tooltip?.key === key;
 
                   return (
                     <div key={key}
-                      onPointerDown={(e) => { if (!past && !blocked) { e.preventDefault(); onDown(key); } }}
-                      onPointerEnter={() => !past && !blocked && onEnter(key)}
+                      onPointerDown={(e) => {
+                        if (past || blocked) return;
+                        if (showGroupView && active !== null) {
+                          // In group view, tapping shows tooltip
+                          if (hmData) setTooltip(isTooltipTarget ? null : { key, names: hmData.names, missing: hmData.missing });
+                          return;
+                        }
+                        if (active !== null) { e.preventDefault(); onDown(key); }
+                      }}
+                      onPointerEnter={() => {
+                        if (!past && !blocked && !showGroupView && active !== null) onEnter(key);
+                      }}
                       title={blocked ? (trekType === "adventure" ? "On Trek" : "Travel Day")
-                        : sel ? `${key} (${selPeriod === "am" ? "Morning" : selPeriod === "pm" ? "Afternoon" : "All Day"})`
-                        : analysis.heatmap[key] ? analysis.heatmap[key].names.join(", ") : ""}
+                        : hmData ? `${heatCount}/${members.length}: ${hmData.names.join(", ")}` : ""}
                       style={{
-                        width: 36, height: 32, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                        fontSize: 11, fontWeight: sel || blocked ? 700 : 500, borderRadius: 5, touchAction: "none", userSelect: "none",
-                        cursor: past || active === null || blocked ? "default" : "pointer",
+                        width: "100%", aspectRatio: "1", minHeight: 36, maxHeight: 44,
+                        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                        fontSize: 12, fontWeight: mySelected && !showGroupView ? 700 : 500, borderRadius: 6, touchAction: "none", userSelect: "none",
+                        cursor: past || (active === null && !showGroupView) || blocked ? "default" : "pointer",
                         opacity: past ? 0.22 : 1,
                         background: bg, color,
                         border: borderStyle,
                         transition: "all .08s", position: "relative",
                         backgroundImage: trekType === "travel" ? "repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0,0,0,0.05) 3px, rgba(0,0,0,0.05) 4px)" : undefined,
                       }}>
-                      {blocked ? (trekType === "adventure" ? "⛺" : "🚐") : d}
-                      {sel && periodLabel && (
-                        <div style={{ fontSize: 6, fontWeight: 800, lineHeight: 1, opacity: 0.8, marginTop: -1 }}>{periodLabel}</div>
-                      )}
-                      {hc > 0 && !sel && !blocked && active === null && (
-                        <div style={{ position: "absolute", bottom: 1, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 1 }}>
-                          {Array.from({ length: Math.min(hc, 6) }).map((_, j) => (
-                            <div key={j} style={{ width: 2.5, height: 2.5, borderRadius: "50%", background: hc === members.length ? theme.heatFull : theme.memberDot }} />
-                          ))}
-                        </div>
+                      {blocked ? (trekType === "adventure" ? "⛺" : "🚐") : (
+                        <>
+                          {!showGroupView && mySelected && (
+                            <Check size={14} strokeWidth={3} style={{ position: "absolute", top: 2, right: 2, color: theme.selectedText, opacity: 0.7 }} />
+                          )}
+                          <span>{d}</span>
+                          {showGroupView && heatCount > 0 && (
+                            <span style={{ fontSize: 8, fontWeight: 800, lineHeight: 1, opacity: 0.8, marginTop: -1 }}>
+                              {heatCount}
+                            </span>
+                          )}
+                          {!showGroupView && heatCount > 0 && !mySelected && (
+                            <div style={{ position: "absolute", bottom: 1, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 1 }}>
+                              {Array.from({ length: Math.min(heatCount, 6) }).map((_, j) => (
+                                <div key={j} style={{ width: 2.5, height: 2.5, borderRadius: "50%", background: heatCount === members.length ? theme.heatFull : theme.memberDot }} />
+                              ))}
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   );
@@ -241,23 +308,61 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
         })}
       </div>
 
-      {/* Legend */}
-      <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 6, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 11, color: theme.textDimmest }}>Overlap:</span>
-        {[[theme.heatLow, "Some"], [theme.heatMed, "Most"], [theme.heatHigh, "All"]].map(([c, l]) => (
-          <div key={l} style={{ display: "flex", alignItems: "center", gap: 3 }}>
-            <div style={{ width: 12, height: 12, borderRadius: 3, background: c }} />
-            <span style={{ fontSize: 11, color: theme.textDimmer }}>{l}</span>
+      {/* Tooltip overlay for group view */}
+      {tooltip && (
+        <div style={{
+          padding: "10px 14px", background: theme.bgCard, borderRadius: 10, border: `1px solid ${theme.border}`,
+          marginTop: 8, boxShadow: theme.shadow,
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: theme.heading }}>{tooltip.key}</span>
+            <button onClick={() => setTooltip(null)} style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDimmer, fontSize: 14 }}>✕</button>
           </div>
-        ))}
-        <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-          <div style={{ width: 12, height: 12, borderRadius: 3, background: `linear-gradient(to bottom, ${theme.heatMed} 50%, transparent 50%)`, border: `1px solid ${theme.border}` }} />
-          <span style={{ fontSize: 11, color: theme.textDimmer }}>AM only</span>
+          <div style={{ fontSize: 11, color: theme.accent, marginBottom: 2 }}>
+            Available ({tooltip.names.length}): {tooltip.names.join(", ")}
+          </div>
+          {tooltip.missing?.length > 0 && (
+            <div style={{ fontSize: 11, color: theme.warn }}>
+              Unavailable ({tooltip.missing.length}): {tooltip.missing.join(", ")}
+            </div>
+          )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-          <div style={{ width: 12, height: 12, borderRadius: 3, background: `linear-gradient(to bottom, transparent 50%, ${theme.heatMed} 50%)`, border: `1px solid ${theme.border}` }} />
-          <span style={{ fontSize: 11, color: theme.textDimmer }}>PM only</span>
-        </div>
+      )}
+
+      {/* Legend */}
+      <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
+        {showGroupView ? (
+          <>
+            <span style={{ fontSize: 11, color: theme.textDimmest }}>Overlap:</span>
+            {[
+              [0.2, "Few"],
+              [0.5, "Some"],
+              [0.85, "Most"],
+              [1.0, "All"],
+            ].map(([opacity, label]) => {
+              const baseGreen = mode === "dark" ? "76, 175, 80" : "56, 142, 60";
+              return (
+                <div key={label} style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                  <div style={{ width: 12, height: 12, borderRadius: 3, background: `rgba(${baseGreen}, ${0.15 + opacity * 0.85})` }} />
+                  <span style={{ fontSize: 11, color: theme.textDimmer }}>{label}</span>
+                </div>
+              );
+            })}
+          </>
+        ) : (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+              <div style={{ width: 12, height: 12, borderRadius: 3, background: am?.color?.bg || theme.selectedBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Check size={8} color={theme.selectedText} strokeWidth={3} />
+              </div>
+              <span style={{ fontSize: 11, color: theme.textDimmer }}>Available</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+              <div style={{ width: 12, height: 12, borderRadius: 3, background: theme.weekendBg, border: `1px solid ${theme.border}` }} />
+              <span style={{ fontSize: 11, color: theme.textDimmer }}>Weekend</span>
+            </div>
+          </>
+        )}
         {trekDateSet.size > 0 && (
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 3 }}>

@@ -42,6 +42,7 @@ import db, {
   getAllTroopsAdmin, getAllUsersAdmin, getAllSettings, trackAffiliateClick, getAffiliateStats,
   deleteTroop, getTroopMembersAdmin,
   createTrainingEvent, getTrainingEvents, getTrainingEvent, deleteTrainingEvent, upsertTrainingRsvp,
+  updateTrainingEventStatus, bulkMarkAttendance, getEventAttendance, getMemberAttendanceCount, syncAttendanceSkills,
   promoteToAdmin, demoteFromAdmin, getSystemAdmins, getDashboardData,
   getCouncils,
   // Crew layer (Stage 2)
@@ -1458,23 +1459,28 @@ app.get("/api/adventures/:adventureId/training-events", requireAuth, requireAdve
 app.post("/api/adventures/:adventureId/training-events", requireAuth, requireAdventureAdmin, (req, res) => {
   try {
     const advId = parseId(req.params.adventureId);
-    const { date, period, time_label, location, notes } = req.body;
+    const { date, period, time_label, location, notes, type } = req.body;
     if (!date) return res.status(400).json({ error: "date required" });
     if (period && !["am", "pm", "all"].includes(period)) return res.status(400).json({ error: "period must be am, pm, or all" });
-    const event = createTrainingEvent(advId, { date, period: period || "all", time_label, location, notes }, req.user.id);
+    if (type && !["proposed", "scheduled"].includes(type)) return res.status(400).json({ error: "type must be proposed or scheduled" });
+    const event = createTrainingEvent(advId, { date, period: period || "all", time_label, location, notes, type: type || "proposed" }, req.user.id);
 
-    // Email all members about the scheduled training
-    const adventure = getAdventure(advId);
-    const troopForEmail = adventure ? getTroop(adventure.troop_id) : null;
-    const members = getAdventureMembers(advId).filter(m => !m.is_manual);
-    const periodLabel = period === "am" ? "Morning" : period === "pm" ? "Afternoon" : "All Day";
-    for (const m of members) {
-      const user = findUserById(m.user_id);
-      if (user?.email) {
-        sendTrainingScheduledEmail(user.email, user.name, adventure?.name || "Adventure", date, periodLabel, time_label, location, notes, { troopName: troopForEmail?.name, troopId: adventure?.troop_id, adventureId: advId }).catch(console.error);
+    // Only email members when event is scheduled (not proposed)
+    if (event.type === "scheduled") {
+      const adventure = getAdventure(advId);
+      const troopForEmail = adventure ? getTroop(adventure.troop_id) : null;
+      const members = getAdventureMembers(advId).filter(m => !m.is_manual);
+      const periodLabel = period === "am" ? "Morning" : period === "pm" ? "Afternoon" : "All Day";
+      for (const m of members) {
+        const user = findUserById(m.user_id);
+        if (user?.email) {
+          sendTrainingScheduledEmail(user.email, user.name, adventure?.name || "Adventure", date, periodLabel, time_label, location, notes, { troopName: troopForEmail?.name, troopId: adventure?.troop_id, adventureId: advId }).catch(console.error);
+        }
       }
+      console.log(`[training event] Adventure ${advId}: ${date} (${periodLabel}) at ${location || "TBD"} — ${members.length} members notified`);
+    } else {
+      console.log(`[training event] Adventure ${advId}: ${date} proposed (no email)`);
     }
-    console.log(`[training event] Adventure ${advId}: ${date} (${periodLabel}) at ${location || "TBD"} — ${members.length} members notified`);
 
     res.status(201).json(event);
   } catch (e) { safeError(res, e); }
@@ -1493,6 +1499,75 @@ app.put("/api/adventures/:adventureId/training-events/:eventId/rsvp", requireAut
     if (!["going", "cant"].includes(status)) return res.status(400).json({ error: "status must be going or cant" });
     upsertTrainingRsvp(parseId(req.params.eventId), req.user.id, status);
     res.json({ ok: true });
+  } catch (e) { safeError(res, e); }
+});
+
+// Update event type/status (propose → schedule → complete → cancel)
+app.put("/api/adventures/:adventureId/training-events/:eventId/status", requireAuth, requireAdventureAdmin, (req, res) => {
+  try {
+    const eventId = parseId(req.params.eventId);
+    const advId = parseId(req.params.adventureId);
+    const { type, status } = req.body;
+    if (type && !["proposed", "scheduled"].includes(type)) return res.status(400).json({ error: "type must be proposed or scheduled" });
+    if (status && !["active", "completed", "cancelled"].includes(status)) return res.status(400).json({ error: "status must be active, completed, or cancelled" });
+
+    const event = getTrainingEvent(eventId);
+    if (!event) return res.status(404).json({ error: "event not found" });
+
+    const newType = type || event.type;
+    const newStatus = status || event.status;
+    updateTrainingEventStatus(eventId, newType, newStatus);
+
+    // Send email when promoting from proposed to scheduled
+    if (event.type === "proposed" && newType === "scheduled") {
+      const adventure = getAdventure(advId);
+      const troopForEmail = adventure ? getTroop(adventure.troop_id) : null;
+      const members = getAdventureMembers(advId).filter(m => !m.is_manual);
+      const periodLabel = event.period === "am" ? "Morning" : event.period === "pm" ? "Afternoon" : "All Day";
+      for (const m of members) {
+        const user = findUserById(m.user_id);
+        if (user?.email) {
+          sendTrainingScheduledEmail(user.email, user.name, adventure?.name || "Adventure", event.date, periodLabel, event.time_label, event.location, event.notes, { troopName: troopForEmail?.name, troopId: adventure?.troop_id, adventureId: advId }).catch(console.error);
+        }
+      }
+      console.log(`[training event] Adventure ${advId}: ${event.date} confirmed — ${members.length} members notified`);
+    }
+
+    // Sync attendance skills when completing an event
+    if (newStatus === "completed") {
+      syncAttendanceSkills(advId);
+    }
+
+    res.json({ ok: true });
+  } catch (e) { safeError(res, e); }
+});
+
+// Bulk mark attendance for a completed event
+app.post("/api/adventures/:adventureId/training-events/:eventId/attendance", requireAuth, requireAdventureAdmin, (req, res) => {
+  try {
+    const eventId = parseId(req.params.eventId);
+    const advId = parseId(req.params.adventureId);
+    const { attendees } = req.body; // array of user IDs who attended
+    if (!Array.isArray(attendees)) return res.status(400).json({ error: "attendees must be an array" });
+    bulkMarkAttendance(eventId, attendees.map(id => parseId(id)), req.user.id);
+    // Sync attendance milestone skills for all members
+    syncAttendanceSkills(advId);
+    res.json({ ok: true });
+  } catch (e) { safeError(res, e); }
+});
+
+// Get attendance for a specific event
+app.get("/api/adventures/:adventureId/training-events/:eventId/attendance", requireAuth, requireAdventureMember, (req, res) => {
+  try {
+    res.json(getEventAttendance(parseId(req.params.eventId)));
+  } catch (e) { safeError(res, e); }
+});
+
+// Get member attendance count for readiness
+app.get("/api/adventures/:adventureId/members/:userId/attendance-count", requireAuth, requireAdventureMember, (req, res) => {
+  try {
+    const count = getMemberAttendanceCount(parseId(req.params.adventureId), parseId(req.params.userId));
+    res.json({ count });
   } catch (e) { safeError(res, e); }
 });
 

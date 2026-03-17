@@ -8,7 +8,7 @@ import { DAYS_FULL } from "./utils/constants";
 import { getMonthsRange, daysInMonth, dateKey, parseDateKey, dayOfWeek, isPast } from "./utils/dates";
 import { fontBody, fontDisplay } from "./utils/theme";
 
-import { Calendar as CalendarIcon, BarChart3, ClipboardCheck, Map, Backpack, FileText } from "lucide-react";
+import { Calendar as CalendarIcon, ClipboardCheck, Map, Backpack, FileText } from "lucide-react";
 import LandingPage from "./components/LandingPage";
 import ProfileSetup from "./components/ProfileSetup";
 import HomeDashboard from "./components/HomeDashboard";
@@ -16,8 +16,7 @@ import HelpSystem from "./components/HelpSystem";
 import AdventurePicker from "./components/AdventurePicker";
 import Header from "./components/Header";
 import MemberBar from "./components/MemberBar";
-import Calendar, { parseDateEntry, getMemberPeriod } from "./components/Calendar";
-import Results from "./components/Results";
+import Calendar, { normalizeDateEntry } from "./components/Calendar";
 import Skills from "./components/Skills";
 import Itinerary from "./components/Itinerary";
 import GearList from "./components/GearList";
@@ -265,52 +264,20 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
     const hm = {};
     allDateKeys.forEach(key => {
       if (parseDateKey(key) < today) return;
-      // Check who is available for this date, broken down by period
-      const amAvail = []; // available in morning (has "am" or "all")
-      const pmAvail = []; // available in afternoon (has "pm" or "all")
-      const anyAvail = []; // available at all
+      // Simple binary availability check (no AM/PM)
+      const anyAvail = [];
       for (const m of members) {
-        const periods = getMemberPeriod(m.dates, key);
-        if (periods.length === 0) continue;
-        anyAvail.push(m);
-        if (periods.includes("all") || periods.includes("am")) amAvail.push(m);
-        if (periods.includes("all") || periods.includes("pm")) pmAvail.push(m);
+        if (m.dates.some(d => normalizeDateEntry(d) === key)) anyAvail.push(m);
       }
       if (anyAvail.length > 0) hm[key] = {
         count: anyAvail.length, pct: anyAvail.length / members.length,
         names: anyAvail.map(m => m.name),
         missing: members.filter(m => !anyAvail.includes(m)).map(m => m.name),
-        amCount: amAvail.length, amPct: amAvail.length / members.length,
-        amNames: amAvail.map(m => m.name),
-        pmCount: pmAvail.length, pmPct: pmAvail.length / members.length,
-        pmNames: pmAvail.map(m => m.name),
-        // Best period for this date
-        bestPeriod: amAvail.length >= pmAvail.length ? "am" : "pm",
-        bestPeriodCount: Math.max(amAvail.length, pmAvail.length),
       };
     });
-    const sorted = Object.entries(hm).filter(([, v]) => v.count >= 2).sort(([a], [b]) => a.localeCompare(b));
-    const wins = []; let cur = null;
-    sorted.forEach(([key, val]) => {
-      const prev = cur ? parseDateKey(cur.end) : null;
-      const thisD = parseDateKey(key);
-      if (cur && prev && (thisD - prev) / 86400000 === 1) { cur.end = key; cur.dates.push({ key, ...val }); }
-      else { if (cur) wins.push(cur); cur = { start: key, end: key, dates: [{ key, ...val }] }; }
-    });
-    if (cur) wins.push(cur);
-    wins.forEach(w => {
-      const cons = members.filter(m => w.dates.every(d => d.names.includes(m.name)));
-      w.consistentNames = cons.map(m => m.name);
-      w.consistentCount = cons.length;
-      w.pct = Math.round((cons.length / members.length) * 100);
-      w.length = w.dates.length;
-      const wkBonus = w.dates.some(d => { const dd = parseDateKey(d.key); return dd.getDay() === 0 || dd.getDay() === 6; }) ? 20 : 0;
-      w.score = cons.length * 1000 + w.length * 50 + wkBonus;
-      w.missing = members.filter(m => !w.consistentNames.includes(m.name)).map(m => m.name);
-      w.suggestion = w.length >= 5 ? "Multi-night trek" : w.length >= 3 ? "Extended backpacking" : w.length >= 2 ? "Overnight shakedown" : "Day hike";
-    });
-    wins.sort((a, b) => b.score - a.score);
-    const bestDates = Object.entries(hm).map(([key, val]) => ({ key, ...val, dayName: DAYS_FULL[parseDateKey(key).getDay()] }))
+    const bestDates = Object.entries(hm)
+      .filter(([, v]) => v.count >= 2)
+      .map(([key, val]) => ({ key, ...val, dayName: DAYS_FULL[parseDateKey(key).getDay()] }))
       .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key)).slice(0, 15);
     const trainingSkills = skills.filter(s => s.category === "training");
     const skillGap = trainingSkills.map(s => ({
@@ -318,7 +285,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
       completedBy: members.filter(m => (m.skills || []).includes(s.id)).map(m => m.name),
       remaining: members.filter(m => !(m.skills || []).includes(s.id)).map(m => m.name),
     }));
-    return { windows: wins.slice(0, 20), bestDates, heatmap: hm, skillGap };
+    return { windows: [], bestDates, heatmap: hm, skillGap };
   }, [members, allDateKeys, skills]);
 
   // ── Member actions ──
@@ -335,17 +302,14 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
   }, [isAdmin, selectedCrewId, members, active, refreshMembers]);
 
   // ── Date toggling (crew-scoped) ──
-  const toggleDate = useCallback((key, mode, period) => {
+  const toggleDate = useCallback((key, mode) => {
     if (active === null || !selectedCrewId) return;
     const m = members[active];
-    // Remove any existing entries for this date key
-    let newDates = m.dates.filter(d => {
-      const { date } = parseDateEntry(d);
-      return date !== key;
-    });
-    // Add new entry if mode is "add"
-    if (mode === "add" && period) {
-      newDates.push(`${key}:${period}`);
+    // Normalize all dates (strip legacy :am/:pm/:all suffixes)
+    let newDates = m.dates.map(d => normalizeDateEntry(d)).filter(d => d !== key);
+    // Add date if mode is "add"
+    if (mode === "add") {
+      newDates.push(key);
     }
     updateMemberLocally(m.user_id, { dates: newDates });
     debouncedSave(() => api.updateCrewDates(selectedCrewId, m.user_id, newDates));
@@ -354,21 +318,16 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
   const bulkSelect = useCallback((type) => {
     if (active === null || !selectedCrewId) return;
     const m = members[active];
-    // Build set of existing date keys that already have entries
-    const existingKeys = new Set();
-    const existing = [...m.dates];
-    for (const d of existing) {
-      const { date } = parseDateEntry(d);
-      existingKeys.add(date);
-    }
-    const newDates = [...existing];
+    // Normalize existing dates (strip legacy :am/:pm/:all suffixes)
+    const existingKeys = new Set(m.dates.map(d => normalizeDateEntry(d)));
+    const newDates = [...existingKeys];
     months.forEach(({ year, month }) => {
       for (let d = 1; d <= daysInMonth(year, month); d++) {
         if (isPast(year, month, d)) continue;
         const key = dateKey(year, month, d);
-        if (existingKeys.has(key)) continue; // don't overwrite existing entries
+        if (existingKeys.has(key)) continue;
         if (type === "all" || (type === "weekends" && (dayOfWeek(year, month, d) === 0 || dayOfWeek(year, month, d) === 6))) {
-          newDates.push(`${key}:all`);
+          newDates.push(key);
           existingKeys.add(key);
         }
       }
@@ -387,12 +346,15 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
   // ── Skill toggling (crew-scoped) ──
   const toggleSkill = useCallback((sid) => {
     if (active === null || !selectedCrewId) return;
+    // Don't allow toggling system skills (controlled by attendance milestones)
+    const skill = skills.find(s => s.id === sid);
+    if (skill?.is_system) return;
     const m = members[active];
     const has = (m.skills || []).includes(sid);
     const newSkills = has ? m.skills.filter(s => s !== sid) : [...(m.skills || []), sid];
     updateMemberLocally(m.user_id, { skills: newSkills });
     debouncedSave(() => api.updateCrewSkills(selectedCrewId, m.user_id, newSkills));
-  }, [active, members, selectedCrewId, debouncedSave, updateMemberLocally]);
+  }, [active, members, skills, selectedCrewId, debouncedSave, updateMemberLocally]);
 
   const addNewSkill = useCallback(async (name, desc, category = "training") => {
     if (!isAdmin) return;
@@ -444,7 +406,6 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
 
   const tabs = [
     ["calendar", "Training", CalendarIcon],
-    ["results", "Best Windows", BarChart3],
     ["skills", "Readiness", ClipboardCheck],
     ["itinerary", "Itinerary", Map],
     ["gear", "Gear", Backpack],
@@ -522,14 +483,11 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
       {/* View content */}
       <div style={{ padding: "0 16px 18px 16px", overflowX: "auto" }}>
         {view === "calendar" && (
-          <Calendar members={members} active={active} months={months} analysis={analysis}
-            trekDates={trekDates} onToggleDate={toggleDate} onBulkSelect={bulkSelect} onClearAll={clearAll} />
-        )}
-        {view === "results" && (
           <>
-            <Results members={members} analysis={analysis} />
+            <Calendar members={members} active={active} months={months} analysis={analysis}
+              trekDates={trekDates} onToggleDate={toggleDate} onBulkSelect={bulkSelect} onClearAll={clearAll} />
             <div style={{ marginTop: 16 }}>
-              <TrainingEvents adventureId={adventureId} isAdmin={isAdmin} currentUserId={user.id} members={members} />
+              <TrainingEvents adventureId={adventureId} isAdmin={isAdmin} currentUserId={user.id} members={members} bestDates={analysis.bestDates} />
             </div>
           </>
         )}

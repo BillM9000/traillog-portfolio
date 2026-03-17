@@ -5,7 +5,7 @@ import { useAdventure } from "../contexts/AdventureContext";
 import { useAuth } from "../contexts/AuthContext";
 import { card, cardTitle, fontBody, fontDisplay, TRAIL_BADGES, JOURNEY_WAYPOINTS, memberTypeBadge } from "../utils/theme";
 import { computeCrewReadiness, computeMemberReadiness } from "../utils/readiness";
-import { Activity, Mountain, Footprints, Backpack, RefreshCw, ChevronRight, Target, AlertTriangle, CheckCircle2, Sparkles, Brain, Compass, Route } from "lucide-react";
+import { Activity, Mountain, Footprints, Backpack, RefreshCw, ChevronRight, Target, AlertTriangle, CheckCircle2, Sparkles, Brain, Compass, Route, Lock } from "lucide-react";
 
 // ── AI Plan Generation Loading Experience ──
 function AIGeneratingCard({ theme }) {
@@ -924,22 +924,36 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
 
           {expandedCats.has(cat.id) && (
             <div style={{ padding: "4px 0" }}>
-              {cat.skills.map(s => {
+              {/* Sort: system skills first, then manual */}
+              {[...cat.skills].sort((a, b) => (b.is_system || 0) - (a.is_system || 0)).map(s => {
                 const chk = am && (am[cat.field] || []).includes(s.id);
                 const completedBy = members.filter(m => (m[cat.field] || []).includes(s.id));
                 const remaining = trekkingMembers.filter(m => !(m[cat.field] || []).includes(s.id));
+                const isSystem = s.is_system === 1;
 
                 return (
                   <div key={s.id} style={{
                     display: "flex", alignItems: "center", gap: 9, padding: "8px 11px", borderRadius: 7, marginBottom: 2,
                     background: chk ? theme.accentBg : theme.bgAlt,
                     border: chk ? `1.5px solid ${theme.borderAccent}` : `1px solid ${theme.border}`,
-                    cursor: active !== null ? "pointer" : "default",
-                  }} onClick={() => cat.toggle(s.id)}>
+                    cursor: isSystem ? "default" : (active !== null ? "pointer" : "default"),
+                    opacity: isSystem && !chk ? 0.7 : 1,
+                  }} onClick={() => !isSystem && cat.toggle(s.id)}>
                     <span style={{ fontSize: 16, width: 24, textAlign: "center" }}>{s.icon}</span>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: chk ? theme.accentLight : theme.text }}>{s.name}</div>
-                      <div style={{ fontSize: 10, color: theme.textDimmer }}>{s.desc}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: chk ? theme.accentLight : theme.text, display: "flex", alignItems: "center", gap: 4 }}>
+                        {s.name}
+                        {isSystem && (
+                          <span style={{
+                            fontSize: 8, fontWeight: 700, padding: "1px 5px", borderRadius: 6,
+                            background: theme.bgAlt, color: theme.textDimmer, border: `1px solid ${theme.border}`,
+                            display: "inline-flex", alignItems: "center", gap: 2,
+                          }}>
+                            <Lock size={7} /> AUTO
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 10, color: theme.textDimmer }}>{isSystem ? (s.description || "Earned by attending training sessions") : s.desc}</div>
                       {members.length > 0 && (
                         <div style={{ fontSize: 10, color: completedBy.length > 0 ? theme.accent : theme.textDimmer, marginTop: 1 }}>
                           {completedBy.length > 0 && completedBy.map(m => {
@@ -950,12 +964,22 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
                         </div>
                       )}
                     </div>
-                    <div onClick={(e) => { e.stopPropagation(); cat.toggle(s.id); }} style={{
-                      width: 18, height: 18, borderRadius: 4, border: `2px solid ${chk ? theme.accent : theme.borderLight}`,
-                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: theme.accent, flexShrink: 0,
-                      cursor: active !== null ? "pointer" : "default",
-                    }}>{chk && "\u2713"}</div>
-                    {isAdmin && !s.isDefault && (
+                    {isSystem ? (
+                      <div style={{
+                        width: 18, height: 18, borderRadius: 4, border: `2px solid ${chk ? theme.accent : theme.borderLight}`,
+                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                        background: chk ? theme.accentBg : "transparent",
+                      }}>
+                        {chk ? <span style={{ fontSize: 12, color: theme.accent }}>✓</span> : <Lock size={9} color={theme.textDimmest} />}
+                      </div>
+                    ) : (
+                      <div onClick={(e) => { e.stopPropagation(); cat.toggle(s.id); }} style={{
+                        width: 18, height: 18, borderRadius: 4, border: `2px solid ${chk ? theme.accent : theme.borderLight}`,
+                        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: theme.accent, flexShrink: 0,
+                        cursor: active !== null ? "pointer" : "default",
+                      }}>{chk && "\u2713"}</div>
+                    )}
+                    {isAdmin && !s.isDefault && !isSystem && (
                       confirmDeleteSkill === s.id ? (
                         <div onClick={e => e.stopPropagation()} style={{ display: "flex", gap: 3 }}>
                           <button onClick={() => { onRemoveSkill(s.id); setConfirmDeleteSkill(null); }}
