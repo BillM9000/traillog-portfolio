@@ -1,6 +1,6 @@
 # Authentication and Authorization
 
-Last updated: 2026-03-10
+Last updated: 2026-03-17
 
 This document details the authentication flows, session management, authorization
 middleware, rate limiting, and input validation used in TrailLog.
@@ -114,8 +114,10 @@ Browser          Express Server        Google
   preventing event loop blocking.
 - **Generic error messages.** Login failures do not reveal whether the email exists.
 - **Email verification required.** Unverified accounts cannot log in.
-- **No password reset.** Password reset functionality is not yet implemented.
-  Users who forget their password must use Google OAuth or contact an administrator.
+- **Password reset.** Users can request a password reset via email. The server
+  generates a `reset_token` with a 1-hour expiration (`reset_token_expires`),
+  sends a reset link, and the user sets a new password. Tokens are single-use
+  and cleared after use (schema v13).
 
 ---
 
@@ -178,7 +180,7 @@ TrailLog uses a layered middleware chain. Each middleware function either calls
 | 3 | `requireTroopAdmin` | User's role on the troop is "admin" | 403 Forbidden |
 | 4 | `requireAdventureMember` | User is a member of the specified adventure | 403 Forbidden |
 | 5 | `requireAdventureAdmin` | User is an admin of the adventure, **or** is an admin of the parent troop (fallthrough) | 403 Forbidden |
-| 6 | `requireGlobalAdmin` | `user.email === process.env.ADMIN_EMAIL` | 403 Forbidden |
+| 6 | `requireGlobalAdmin` | `user.is_admin === 1` | 403 Forbidden |
 
 Additionally:
 
@@ -198,12 +200,14 @@ passes through:
 
 ### Global Admin
 
-- Determined by comparing `user.email` to the `ADMIN_EMAIL` environment variable.
-- This is **not** a database flag that a user could modify.
-- The `GET /api/auth/me` endpoint includes an `is_global_admin` boolean in the
-  response, computed at request time from the environment variable.
-- Global admin has access to platform-wide management: gear catalog, troop
-  overview, affiliate analytics, platform settings.
+- Determined by the `users.is_admin` column (integer flag).
+- The `ADMIN_EMAIL` environment variable seeds the first admin on startup.
+- Multiple admins supported: promote via `PUT /api/admin/users/:id/promote`,
+  demote via `PUT /api/admin/users/:id/demote`. Self-demote and last-admin
+  demote are blocked server-side.
+- The `GET /api/auth/me` endpoint includes an `is_global_admin` boolean.
+- Global admin has access to: gear catalog, troop overview, affiliate analytics,
+  platform settings (maintenance mode, registration, announcements, max troops).
 
 ### Troop Scoping
 

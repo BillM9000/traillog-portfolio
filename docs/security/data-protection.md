@@ -205,17 +205,20 @@ All user-controlled values inserted into email templates are sanitized via the
 | `"` | `&quot;` |
 
 This prevents XSS in email clients that render HTML. The `esc()` function is applied
-across all 9 email templates:
+across all 12 email templates:
 
 - sendInvitationEmail
 - sendDateChangedEmail
+- sendItineraryChangedEmail
+- sendTrainingScheduledEmail
 - sendBadgeEarnedEmail
 - sendMemberApprovedEmail
 - sendMemberDeniedEmail
 - sendJoinRequestEmail
 - sendParentNotificationEmail
 - sendVerificationEmail
-- (and related helper templates)
+- sendLinkRequestEmail
+- sendPasswordResetEmail
 
 ### SMTP Configuration
 

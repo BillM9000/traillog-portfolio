@@ -18,7 +18,7 @@
 The application uses a multi-stage Docker build based on `node:20-alpine`:
 
 - **Stage 1 (build)**: Installs all dependencies and builds the React client with Vite.
-- **Stage 2 (production)**: Copies only production dependencies and the built client assets. Runs as a non-root user (`appuser`, UID 1001) for security.
+- **Stage 2 (production)**: Copies only production dependencies, the built client assets, and the standalone vote page (`vote-page/`). Runs as a non-root user (`appuser`, UID 1001) for security.
 
 ### Container Runtime
 
@@ -66,7 +66,7 @@ Traefik handles certificate provisioning and renewal automatically through the L
 
 ## Environment Variables
 
-The application reads 11 environment variables from `/opt/crew614/.env` on the VPS. This file has permissions set to `600` (owner read/write only).
+The application reads 12 environment variables from `/opt/crew614/.env` on the VPS. This file has permissions set to `600` (owner read/write only).
 
 | Variable | Purpose |
 |----------|---------|
@@ -81,6 +81,7 @@ The application reads 11 environment variables from `/opt/crew614/.env` on the V
 | `ADMIN_EMAIL` | Email address of the global admin user |
 | `SMTP_USER` | Gmail address for sending transactional email |
 | `SMTP_PASS` | Gmail app password for SMTP authentication |
+| `ANTHROPIC_API_KEY` | API key for Claude AI readiness engine (optional) |
 
 ## Health Check
 

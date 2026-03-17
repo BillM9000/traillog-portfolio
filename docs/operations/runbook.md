@@ -355,7 +355,7 @@ docker exec -it crew614 sqlite3 /app/data/crew614.db \
   "SELECT schema_version FROM platform_settings;"
 ```
 
-Expected output for the current release: `7`
+Expected output for the current release: `22`
 
 If a migration fails, the application will log the error and may fail to start.
 Check logs (section 3) for details.
@@ -416,9 +416,10 @@ docker compose up -d
 **Step 3 -- Verify** by logging in with the new admin email and confirming
 access to the Global Admin panel.
 
-**Note:** The previous admin email will lose global admin privileges immediately
-upon restart. There is no multi-admin support; only one email can be the global
-admin at a time.
+**Note:** The `ADMIN_EMAIL` seeds the first system admin on startup. Multiple
+admins are supported via `users.is_admin` column. Use `PUT /api/admin/users/:id/promote`
+and `PUT /api/admin/users/:id/demote` to manage additional admins, or use the
+Platform Settings tab in the Global Admin panel.
 
 ---
 

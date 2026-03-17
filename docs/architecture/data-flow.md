@@ -26,16 +26,18 @@ Middleware executes in the following order for every request:
 
 | Order | Middleware | Purpose |
 |-------|-----------|---------|
-| 1 | `express.json({ limit: '1mb' })` | Parse JSON request bodies up to 1 MB |
-| 2 | `helmet()` | Set security-related HTTP headers (CSP, HSTS, X-Frame-Options, etc.) |
-| 3 | `morgan('short')` | Log every HTTP request (method, URL, status, response time) to stdout |
-| 4 | `authLimiter` | Rate limit authentication endpoints: 20 requests per 15 minutes |
-| 5 | `apiLimiter` | Rate limit general API endpoints: 100 requests per minute |
-| 6 | `express-session` | Establish or resume a session from the session cookie, backed by SQLite |
-| 7 | `passport.initialize()` / `passport.session()` | Deserialize the authenticated user from the session |
-| 8 | CSRF verification | Validate `X-CSRF-Token` header against session token on POST/PUT/DELETE/PATCH requests |
-| 9 | `express.static` | Serve the built React SPA and its assets from the `client/dist` directory |
-| 10 | Route handlers | Application logic, guarded by per-route auth middleware |
+| 1 | Public settings route | `GET /api/public-settings` — no auth, served before rate limiter |
+| 2 | `express.json({ limit: '1mb' })` | Parse JSON request bodies up to 1 MB |
+| 3 | `helmet()` | Set security-related HTTP headers (CSP, HSTS, X-Frame-Options, etc.) |
+| 4 | `morgan('short')` | Log every HTTP request (method, URL, status, response time) to stdout |
+| 5 | `authLimiter` | Rate limit authentication endpoints: 20 requests per 15 minutes |
+| 6 | `apiLimiter` | Rate limit general API endpoints: 100 requests per minute |
+| 7 | `express-session` | Establish or resume a session from the session cookie, backed by SQLite |
+| 8 | `passport.initialize()` / `passport.session()` | Deserialize the authenticated user from the session |
+| 9 | Maintenance check | Block all non-admin API requests when maintenance mode is enabled (503) |
+| 10 | CSRF verification | Validate `X-CSRF-Token` header on POST/PUT/DELETE/PATCH (exempts `/api/vote`) |
+| 11 | `express.static` | Serve the built React SPA, vote page, and static assets |
+| 12 | Route handlers | Application logic, guarded by per-route auth middleware |
 
 ## Auth Middleware Functions
 
@@ -53,7 +55,7 @@ Route handlers are protected by composable middleware functions that enforce acc
 
 - **`requireAdventureSelfOrAdmin`** -- Allows access if the user is either the target member (self-action) or an adventure/troop admin. Used for endpoints where members can modify their own data.
 
-- **`requireGlobalAdmin`** -- Checks whether the authenticated user's email matches the `ADMIN_EMAIL` environment variable. Returns 403 if not the global admin.
+- **`requireGlobalAdmin`** -- Checks whether the authenticated user has `is_admin = 1`. Returns 403 if not a system admin. Multiple admins are supported.
 
 These functions are chained on individual route definitions. For example, a route that modifies a member's gear status uses `requireAuth` followed by `requireAdventureSelfOrAdmin`.
 
@@ -100,7 +102,7 @@ Each member manages their own gear for a specific adventure through the `member_
 
 ### Pack Weight Calculation
 
-The pack weight endpoint (`/api/adventures/:id/members/:userId/pack-weight`) sums weights from items that have a custom weight value entered by the member. Catalog default weights are not used as fallback values in the calculation. The total includes a fixed food estimate (1.75 lbs/day for 12 days) and a water weight constant (4.4 lbs).
+The pack weight endpoint (`/api/adventures/:id/members/:userId/pack-weight`) sums weights from items with status "packed" that have a custom weight value entered by the member. Only personal sharing-type items count toward pack weight; crew, buddy, and provided items are excluded. The total includes a dynamic food estimate (1.75 lbs/day x itinerary days) and a water weight constant (6.6 lbs / 3L). The API response includes `trek_days` for display purposes.
 
 ## Parent-Scout Linking
 
@@ -138,6 +140,12 @@ These functions are consumed by three components: the **Header** (countdown and 
 Gear readiness data comes from the `memberGearMap` in the AdventureContext, not from the legacy `adventure_members.gear` JSON column.
 
 Categories with no items or no requirements evaluate to 0% readiness, not 100%.
+
+The server also computes readiness via `computeServerReadiness(adventureId)` in db.js for the Home Dashboard, using the same 4-category algorithm.
+
+## Standalone Pages
+
+The vote page (`/vote`) operates independently from the React SPA. It is served as static HTML/JS from `vote-page/philmont-vote-portal/` and communicates with the server via 4 API endpoints (`/api/vote/*`). It has no session, no CSRF token, and no authentication — it uses a simple name-based identity stored in localStorage.
 
 ## Error Handling
 
