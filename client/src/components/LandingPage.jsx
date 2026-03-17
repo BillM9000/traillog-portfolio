@@ -436,11 +436,17 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
               fontWeight: 500, lineHeight: 1.5, maxWidth: 480,
               marginLeft: isMobile ? "auto" : 0, marginRight: isMobile ? "auto" : 0,
             }}>
-              The AI-powered training coordinator for high adventure crews.
-              From first meeting to summit, get your crew organized.
+              The AI-powered readiness coordinator for Scouting America high adventure crews. Track training, gear, medical, and admin prep from first meeting to summit day.
+            </p>
+            <p style={{
+              fontSize: 10, color: "#8A9A7A", marginTop: 6, lineHeight: 1.4, maxWidth: 480,
+              marginLeft: isMobile ? "auto" : 0, marginRight: isMobile ? "auto" : 0,
+              fontStyle: "italic",
+            }}>
+              An independent tool by GraceZero.ai — not affiliated with or endorsed by Scouting America or any national scouting organization.
             </p>
             <div style={{
-              display: "flex", gap: 20, marginTop: 20,
+              display: "flex", gap: 20, marginTop: 16,
               justifyContent: isMobile ? "center" : "flex-start",
               flexWrap: "wrap",
             }}>
