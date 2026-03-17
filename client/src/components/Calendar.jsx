@@ -376,6 +376,13 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
           </>
         )}
       </div>
+
+      {/* Empty state for group view */}
+      {showGroupView && Object.keys(heatmap).length === 0 && members.length > 0 && (
+        <div style={{ textAlign: "center", padding: "12px 16px", marginTop: 8, fontSize: 12, color: theme.textDimmer, background: theme.bgAlt, borderRadius: 10, border: `1px solid ${theme.border}` }}>
+          No one has marked availability yet. Ask your crew to tap dates they're free to train.
+        </div>
+      )}
     </div>
   );
 }

@@ -106,6 +106,7 @@ export const api = {
   // Training Events
   getTrainingEvents: (advId) => request(`/adventures/${advId}/training-events`),
   createTrainingEvent: (advId, data) => request(`/adventures/${advId}/training-events`, { method: "POST", body: JSON.stringify(data) }),
+  updateTrainingEvent: (advId, eventId, data) => request(`/adventures/${advId}/training-events/${eventId}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteTrainingEvent: (advId, eventId) => request(`/adventures/${advId}/training-events/${eventId}`, { method: "DELETE" }),
   rsvpTrainingEvent: (advId, eventId, status) => request(`/adventures/${advId}/training-events/${eventId}/rsvp`, { method: "PUT", body: JSON.stringify({ status }) }),
   updateTrainingEventStatus: (advId, eventId, type, status) => request(`/adventures/${advId}/training-events/${eventId}/status`, { method: "PUT", body: JSON.stringify({ type, status }) }),

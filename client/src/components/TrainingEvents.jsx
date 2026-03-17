@@ -4,7 +4,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import { card, fontBody, fontDisplay } from "../utils/theme";
 import { formatDateFull, formatDateShort } from "../utils/dates";
-import { CalendarCheck, MapPin, Clock, Trash2, ThumbsUp, ThumbsDown, CheckCircle2, XCircle, Users, Zap, ChevronDown, ChevronUp } from "lucide-react";
+import { CalendarCheck, MapPin, Clock, Trash2, ThumbsUp, ThumbsDown, CheckCircle2, XCircle, Users, Zap, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 
 const STATUS_COLORS_DARK = {
   proposed: { bg: "#3E3510", border: "#FFB300", text: "#FFD54F" },
@@ -74,6 +74,14 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
     try {
       await api.markAttendance(adventureId, eventId, attendeeIds);
       addToast("Attendance saved", "success");
+      refresh();
+    } catch (e) { addToast(e.message, "error"); }
+  };
+
+  const handleEditEvent = async (eventId, data) => {
+    try {
+      await api.updateTrainingEvent(adventureId, eventId, data);
+      addToast("Event updated", "success");
       refresh();
     } catch (e) { addToast(e.message, "error"); }
   };
@@ -195,7 +203,7 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
         <EventCard key={event.id} event={event} theme={theme} mode={mode} isAdmin={isAdmin}
           currentUserId={currentUserId} members={members}
           onRsvp={handleRsvp} onDelete={handleDelete}
-          adventureId={adventureId} onStatusChange={handleStatusChange} onMarkAttendance={handleMarkAttendance} onRefresh={refresh} />
+          adventureId={adventureId} onStatusChange={handleStatusChange} onMarkAttendance={handleMarkAttendance} onEdit={handleEditEvent} onRefresh={refresh} />
       ))}
 
       {/* Past active events that need completion */}
@@ -208,7 +216,7 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
             <EventCard key={event.id} event={event} theme={theme} mode={mode} isAdmin={isAdmin}
               currentUserId={currentUserId} members={members} isPast
               onRsvp={handleRsvp} onDelete={handleDelete}
-              adventureId={adventureId} onStatusChange={handleStatusChange} onMarkAttendance={handleMarkAttendance} onRefresh={refresh} />
+              adventureId={adventureId} onStatusChange={handleStatusChange} onMarkAttendance={handleMarkAttendance} onEdit={handleEditEvent} onRefresh={refresh} />
           ))}
         </>
       )}
@@ -229,7 +237,7 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
             <EventCard key={event.id} event={event} theme={theme} mode={mode} isAdmin={isAdmin}
               currentUserId={currentUserId} members={members} isPast
               onRsvp={handleRsvp} onDelete={handleDelete}
-              adventureId={adventureId} onStatusChange={handleStatusChange} onMarkAttendance={handleMarkAttendance} onRefresh={refresh} />
+              adventureId={adventureId} onStatusChange={handleStatusChange} onMarkAttendance={handleMarkAttendance} onEdit={handleEditEvent} onRefresh={refresh} />
           ))}
         </>
       )}
@@ -237,13 +245,15 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
   );
 }
 
-function EventCard({ event, theme, mode, isAdmin, currentUserId, members, isPast, adventureId, onRsvp, onDelete, onStatusChange, onMarkAttendance, onRefresh }) {
+function EventCard({ event, theme, mode, isAdmin, currentUserId, members, isPast, adventureId, onRsvp, onDelete, onStatusChange, onMarkAttendance, onEdit, onRefresh }) {
   const myRsvp = event.rsvps?.find(r => r.user_id === currentUserId);
   const goingCount = event.rsvps?.filter(r => r.status === "going").length || 0;
   const cantCount = event.rsvps?.filter(r => r.status === "cant").length || 0;
   const noReply = (members?.length || 0) - goingCount - cantCount;
   const [showAttendance, setShowAttendance] = useState(false);
   const [attendees, setAttendees] = useState(new Set());
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({});
   const { addToast } = useToast();
 
   // Initialize attendees from existing attendance data
@@ -318,14 +328,47 @@ function EventCard({ event, theme, mode, isAdmin, currentUserId, members, isPast
         </div>
         <div style={{ display: "flex", gap: 4 }}>
           {isAdmin && event.status !== "cancelled" && event.status !== "completed" && (
-            <button onClick={() => onDelete(event.id)} style={{
-              background: "none", border: "none", cursor: "pointer", padding: 4, color: theme.textDimmest,
-            }} title="Delete event">
-              <Trash2 size={14} strokeWidth={2} />
-            </button>
+            <>
+              <button onClick={() => { setEditing(true); setEditForm({ date: event.date, period: event.period || "all", time_label: event.time_label || "", location: event.location || "", notes: event.notes || "" }); }} style={{
+                background: "none", border: "none", cursor: "pointer", padding: 4, color: theme.textDimmest,
+              }} title="Edit event">
+                <Pencil size={14} strokeWidth={2} />
+              </button>
+              <button onClick={() => onDelete(event.id)} style={{
+                background: "none", border: "none", cursor: "pointer", padding: 4, color: theme.textDimmest,
+              }} title="Delete event">
+                <Trash2 size={14} strokeWidth={2} />
+              </button>
+            </>
           )}
         </div>
       </div>
+
+      {/* Inline edit form */}
+      {editing && (
+        <div style={{ marginTop: 8, padding: "10px 12px", background: theme.bgAlt, borderRadius: 8, border: `1px solid ${theme.border}` }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))}
+              style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.bgCard, color: theme.text, fontSize: 12, fontFamily: fontBody }} />
+            <input placeholder="Time (e.g. 9:00 AM)" value={editForm.time_label} onChange={e => setEditForm(f => ({ ...f, time_label: e.target.value }))}
+              style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.bgCard, color: theme.text, fontSize: 12, fontFamily: fontBody }} />
+            <input placeholder="Location" value={editForm.location} onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))}
+              style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.bgCard, color: theme.text, fontSize: 12, fontFamily: fontBody }} />
+            <input placeholder="Notes" value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
+              style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.bgCard, color: theme.text, fontSize: 12, fontFamily: fontBody }} />
+          </div>
+          <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+            <button onClick={async () => { await onEdit(event.id, editForm); setEditing(false); }} style={{
+              padding: "5px 14px", borderRadius: 8, border: "none", background: theme.accent, color: "#fff",
+              fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: fontBody,
+            }}>Save</button>
+            <button onClick={() => setEditing(false)} style={{
+              padding: "5px 14px", borderRadius: 8, border: `1px solid ${theme.border}`, background: "transparent", color: theme.textDim,
+              fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
+            }}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       {/* RSVP counts */}
       {event.status !== "cancelled" && (
@@ -386,23 +429,21 @@ function EventCard({ event, theme, mode, isAdmin, currentUserId, members, isPast
             </button>
           )}
           {datePassed && (
-            <>
-              <button onClick={() => { onStatusChange(event.id, event.type, "completed"); setShowAttendance(true); }} style={{
-                padding: "5px 12px", borderRadius: 8, border: "1px solid #42A5F5",
-                background: "#42A5F5", color: "#fff",
-                fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
-              }}>
-                <CheckCircle2 size={11} /> Complete & Mark Attendance
-              </button>
-              <button onClick={() => onStatusChange(event.id, event.type, "cancelled")} style={{
-                padding: "5px 12px", borderRadius: 8, border: `1px solid ${theme.border}`,
-                background: "transparent", color: theme.textDim,
-                fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
-              }}>
-                <XCircle size={11} /> Cancel
-              </button>
-            </>
+            <button onClick={() => { onStatusChange(event.id, event.type, "completed"); setShowAttendance(true); }} style={{
+              padding: "5px 12px", borderRadius: 8, border: "1px solid #42A5F5",
+              background: "#42A5F5", color: "#fff",
+              fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
+            }}>
+              <CheckCircle2 size={11} /> Complete & Mark Attendance
+            </button>
           )}
+          <button onClick={() => onStatusChange(event.id, event.type, "cancelled")} style={{
+            padding: "5px 12px", borderRadius: 8, border: `1px solid ${theme.border}`,
+            background: "transparent", color: theme.textDim,
+            fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
+          }}>
+            <XCircle size={11} /> Cancel
+          </button>
         </div>
       )}
 

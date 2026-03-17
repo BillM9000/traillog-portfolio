@@ -374,8 +374,8 @@ function FAQItem({ question, answer }) {
 // ── Feature data ──────────────────────────────────────────────────────
 
 const FEATURES = [
-  { icon: CalendarIcon, title: "Training Calendar", desc: "Crew members mark availability with AM/PM granularity. Drag to select ranges. See the whole crew at a glance." },
-  { icon: ChartIcon, title: "Best Windows", desc: "An algorithm finds optimal training dates from crew availability. Schedule events and track RSVPs in real time." },
+  { icon: CalendarIcon, title: "Training Calendar", desc: "Crew members mark availability with a simple tap. Heat map shows overlap at a glance. Drag to select ranges." },
+  { icon: ChartIcon, title: "Smart Scheduling", desc: "Propose and schedule training events from the best overlap dates. Track RSVPs, attendance, and earn readiness milestones." },
   { icon: AIReadinessIcon, title: "AI Training Plans", desc: "Powered by Claude AI. Take a self-assessment, get a personalized training plan, priority coaching, and milestone tracking tailored to your trek. For general guidance — not medical advice." },
   { icon: BackpackIcon, title: "Gear Management", desc: "76-item catalog with personal, crew, and buddy sharing types. Pack weight calculator factors in food and water." },
   { icon: MapIcon, title: "Itinerary Viewer", desc: "48 Philmont routes loaded with day-by-day camps, mileage, and elevation. Printable cheat sheets for the trail." },
@@ -636,7 +636,7 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
             {[
               { feature: "Unlimited crew members", free: true, pro: true },
               { feature: "Training calendar & scheduling", free: true, pro: true },
-              { feature: "Best Windows algorithm", free: true, pro: true },
+              { feature: "Smart scheduling & heat map", free: true, pro: true },
               { feature: "Training event RSVPs", free: true, pro: true },
               { feature: "Gear tracking (76-item catalog)", free: true, pro: true },
               { feature: "Pack weight calculator", free: true, pro: true },

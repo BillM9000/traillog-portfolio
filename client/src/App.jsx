@@ -201,7 +201,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
   const [troopMembers, setTroopMembers] = useState([]);
   const [troop, setTroop] = useState(null);
   const [active, setActive] = useState(null);
-  const validTabs = ["calendar", "results", "skills", "itinerary", "gear", "reports"];
+  const validTabs = ["calendar", "skills", "itinerary", "gear", "reports"];
   const [view, setView] = useState(initialTab && validTabs.includes(initialTab) ? initialTab : "calendar");
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [confirmManualDelete, setConfirmManualDelete] = useState(null); // { id, name }

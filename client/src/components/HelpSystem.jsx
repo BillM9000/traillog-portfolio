@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 import { fontBody, fontDisplay } from "../utils/theme";
 import {
-  HelpCircle, X, Compass, Calendar, BarChart3, ClipboardCheck, Map, Backpack,
+  HelpCircle, X, Compass, Calendar, ClipboardCheck, Map, Backpack,
   FileText, User, Users, Award, UserCog, Settings, Wrench, Shield, Server,
   Layers, ChevronRight, BookOpen
 } from "lucide-react";
@@ -27,11 +27,11 @@ const SECTIONS = [
     ]
   },
   {
-    id: "best-windows", title: "Best Windows", cat: "everyone", Icon: BarChart3,
+    id: "training-calendar", title: "Training Calendar", cat: "everyone", Icon: Calendar,
     items: [
-      { h: "How It Works", t: "Best Windows analyzes everyone's calendar dates and finds the days with the most overlap. It shows a ranked list of the best dates for the crew to train together." },
-      { h: "Reading the Results", t: "Each result shows the date, how many members are available, and whether the overlap is in the morning, afternoon, or all day. Higher overlap = better training window." },
-      { h: "Training Events", t: "Your troop admin can schedule official training events from the Best Windows tab. You'll get an email notification and can RSVP as \"Going\" or \"Can't Make It\" directly in the app." },
+      { h: "Marking Availability", t: "Tap dates on the calendar to mark when you're available to train. Green = available. The group heat map shows overlap so your troop leader can find the best dates." },
+      { h: "Group Heat Map", t: "Switch to Group view to see a heat map of everyone's availability. Darker green = more members available. Tap a date to see exactly who's free." },
+      { h: "Training Events", t: "Your troop admin can propose and schedule training events based on availability overlap. You'll get an email when events are confirmed and can RSVP or self-report attendance." },
     ]
   },
   {
@@ -117,7 +117,7 @@ const SECTIONS = [
   {
     id: "training-events", title: "Training Events", cat: "admin", Icon: Calendar,
     items: [
-      { h: "Scheduling Training", t: "Schedule training events from the Best Windows tab. Pick a date from the best overlap results, set the time period (morning/afternoon/all day), add a specific time label, location, and optional notes." },
+      { h: "Scheduling Training", t: "Propose or schedule training events from the Training tab. Pick a date from the best overlap chips, set the time, location, and optional notes. Proposed events can be confirmed later." },
       { h: "Email Notifications", t: "When you schedule a training event, every member (including you) gets an email with the date, time, location, and any notes. This helps ensure no one misses the announcement." },
       { h: "RSVP Tracking", t: "Members RSVP as \"Going\" or \"Can't Make It.\" You can see the headcount, who's going, who can't, and who hasn't responded yet — all in real time on the event card." },
       { h: "Deleting Events", t: "Remove a training event by clicking the trash icon on the event card. This is immediate (no email sent) — consider notifying your crew through other channels if plans change." },

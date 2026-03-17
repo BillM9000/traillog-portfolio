@@ -1718,18 +1718,23 @@ export function updateUserNameAvatar(userId, name, avatarUrl) {
 
 // ── Itinerary Queries ──
 
+// Round to 1 decimal to fix floating-point display bugs (e.g. 68.60000000000001 → 68.6)
+const roundMiles = (v) => v != null ? Math.round(v * 10) / 10 : v;
+
 export function getItineraries() {
   return db.prepare("SELECT id, name, days, miles, rating, highlights FROM itineraries ORDER BY days, id").all()
-    .map(r => ({ ...r, highlights: JSON.parse(r.highlights) }));
+    .map(r => ({ ...r, miles: roundMiles(r.miles), highlights: JSON.parse(r.highlights) }));
 }
 
 export function getItinerary(id) {
   const r = db.prepare("SELECT * FROM itineraries WHERE id = ?").get(id);
   if (!r) return null;
+  const route_data = JSON.parse(r.route_data).map(d => ({ ...d, miles: roundMiles(d.miles) }));
   return {
     ...r,
+    miles: roundMiles(r.miles),
     highlights: JSON.parse(r.highlights),
-    route_data: JSON.parse(r.route_data),
+    route_data,
     training_priorities: JSON.parse(r.training_priorities),
     default_skills: JSON.parse(r.default_skills),
     global_info: JSON.parse(r.global_info || "{}"),
@@ -3086,6 +3091,12 @@ export function upsertTrainingRsvp(eventId, userId, status) {
 
 export function updateTrainingEventStatus(eventId, type, status) {
   db.prepare("UPDATE training_events SET type = ?, status = ? WHERE id = ?").run(type, status, eventId);
+}
+
+export function updateTrainingEvent(eventId, data) {
+  db.prepare(
+    "UPDATE training_events SET date = ?, period = ?, time_label = ?, location = ?, notes = ? WHERE id = ?"
+  ).run(data.date, data.period || "all", data.time_label || null, data.location || null, data.notes || null, eventId);
 }
 
 export function markAttendance(eventId, userId, attended, markedBy) {

@@ -42,7 +42,7 @@ import db, {
   getAllTroopsAdmin, getAllUsersAdmin, getAllSettings, trackAffiliateClick, getAffiliateStats,
   deleteTroop, getTroopMembersAdmin,
   createTrainingEvent, getTrainingEvents, getTrainingEvent, deleteTrainingEvent, upsertTrainingRsvp,
-  updateTrainingEventStatus, markAttendance, bulkMarkAttendance, getEventAttendance, getMemberAttendanceCount, syncAttendanceSkills,
+  updateTrainingEventStatus, updateTrainingEvent, markAttendance, bulkMarkAttendance, getEventAttendance, getMemberAttendanceCount, syncAttendanceSkills,
   promoteToAdmin, demoteFromAdmin, getSystemAdmins, getDashboardData,
   getCouncils,
   // Crew layer (Stage 2)
@@ -1538,6 +1538,20 @@ app.put("/api/adventures/:adventureId/training-events/:eventId/status", requireA
       syncAttendanceSkills(advId);
     }
 
+    res.json({ ok: true });
+  } catch (e) { safeError(res, e); }
+});
+
+// Edit training event details (admin only, not completed/cancelled)
+app.put("/api/adventures/:adventureId/training-events/:eventId", requireAuth, requireAdventureAdmin, (req, res) => {
+  try {
+    const eventId = parseId(req.params.eventId);
+    const event = getTrainingEvent(eventId);
+    if (!event) return res.status(404).json({ error: "event not found" });
+    if (event.status === "completed" || event.status === "cancelled") return res.status(400).json({ error: "Cannot edit completed or cancelled events" });
+    const { date, period, time_label, location, notes } = req.body;
+    if (!date) return res.status(400).json({ error: "date is required" });
+    updateTrainingEvent(eventId, { date, period, time_label, location, notes });
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
