@@ -278,7 +278,7 @@ export async function sendBadgeEarnedEmail(toEmail, memberName, badgeName, adven
   const badgeMessages = {
     ai_ready: {
       headline: "Your AI Training Plan is Ready!",
-      body: `Great job completing your self-assessment, <strong>${esc(memberName)}</strong>! Our AI analyzed your experience, fitness, and gear to build a personalized training plan just for you. You're on your way to being fully prepared for <strong>${esc(adventureName)}</strong> — keep checking back as your plan updates with your progress!`,
+      body: `Great job completing your self-assessment, <strong>${esc(memberName)}</strong>! Our AI analyzed your experience, fitness, and gear to build a personalized training plan just for you. You're on your way to being fully prepared for <strong>${esc(adventureName)}</strong> — keep checking back as your plan updates with your progress!<br><br><em style="font-size:11px;color:#999">This plan is for general guidance only and is not medical or professional fitness advice. Consult your physician before starting any new exercise program, especially when training for altitude.</em>`,
       cta: "View Your Training Plan",
       tab: "readiness",
     },

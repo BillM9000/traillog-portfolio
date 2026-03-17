@@ -424,8 +424,11 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
         <div style={{ ...card(theme), marginBottom: 10, textAlign: "center", border: `2px solid ${theme.accent}` }}>
           <div style={{ fontSize: 20, marginBottom: 6 }}><Activity size={24} color={theme.accent} /></div>
           <div style={{ fontSize: 14, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay, marginBottom: 4 }}>AI Readiness Coach</div>
-          <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 10, lineHeight: 1.4 }}>
+          <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 6, lineHeight: 1.4 }}>
             Take a 30-second self-assessment and get a personalized training plan based on your itinerary and departure date.
+          </div>
+          <div style={{ fontSize: 9, color: theme.textDimmest, marginBottom: 10, lineHeight: 1.3, fontStyle: "italic" }}>
+            For general guidance only — not medical or professional fitness advice.
           </div>
           <button onClick={() => setShowAssessment(true)} style={{
             padding: "10px 24px", borderRadius: 8, border: "none", background: theme.accent, color: "#fff",
@@ -516,6 +519,9 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
             ))}
           </div>
 
+          <div style={{ fontSize: 9, color: theme.textDimmest, lineHeight: 1.4, marginBottom: 8, fontStyle: "italic" }}>
+            This plan is a general guide for trek preparation and is not a substitute for professional medical advice. Consult your physician before starting any new exercise program, especially at altitude.
+          </div>
           <div style={{ display: "flex", gap: 6 }}>
             <button onClick={() => setShowAssessment(false)} style={{
               flex: 1, padding: "10px 0", borderRadius: 8, border: `1px solid ${theme.borderLight}`,
@@ -647,6 +653,9 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
                   </div>
                 );
               })}
+              <div style={{ fontSize: 9, color: theme.textDimmest, lineHeight: 1.4, marginTop: 6, fontStyle: "italic", padding: "0 2px" }}>
+                This AI-generated plan is for general guidance only and does not constitute medical, fitness, or professional advice. Every person is different. Consult a physician before beginning any exercise program. If you experience pain, dizziness, or shortness of breath, stop and seek medical attention.
+              </div>
             </div>
           )}
         </div>

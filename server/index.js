@@ -2535,6 +2535,16 @@ app.get("/terms", (req, res) => {
   <li>Any loss of data, though we take reasonable precautions to prevent it</li>
 </ul>
 
+<h2>7a. AI-Generated Content Disclaimer</h2>
+<p>TrailLog uses artificial intelligence (AI) to generate training plans, gear recommendations, and readiness assessments. This AI-generated content is provided <strong>for general informational and planning purposes only</strong> and does not constitute medical, fitness, or professional advice. Specifically:</p>
+<ul>
+  <li>AI training plans are <strong>not a substitute for advice from a licensed physician, certified athletic trainer, or other qualified professional</strong></li>
+  <li>You should consult your doctor before beginning any new exercise or training program, especially programs involving altitude, heavy pack weight, or strenuous physical activity</li>
+  <li>AI gear recommendations are suggestions based on general data and may not account for your specific needs, body type, or conditions</li>
+  <li>If you experience pain, dizziness, chest discomfort, or shortness of breath during training, stop immediately and seek medical attention</li>
+  <li>TrailLog, its creators, and its AI providers are not liable for any injury, illness, or loss resulting from following AI-generated plans or recommendations</li>
+</ul>
+
 <h2>8. Account Termination</h2>
 <p>We may suspend or delete accounts that violate these terms. You may delete your own account by contacting us.</p>
 

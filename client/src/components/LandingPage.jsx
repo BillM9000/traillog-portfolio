@@ -345,7 +345,7 @@ const linkBtnStyle = {
 const FEATURES = [
   { icon: CalendarIcon, title: "Training Calendar", desc: "Crew members mark availability with AM/PM granularity. Drag to select ranges. See the whole crew at a glance." },
   { icon: ChartIcon, title: "Best Windows", desc: "An algorithm finds optimal training dates from crew availability. Schedule events and track RSVPs in real time." },
-  { icon: AIReadinessIcon, title: "AI Training Plans", desc: "Powered by Claude AI. Take a self-assessment, get a personalized training plan, priority coaching, and milestone tracking tailored to your trek." },
+  { icon: AIReadinessIcon, title: "AI Training Plans", desc: "Powered by Claude AI. Take a self-assessment, get a personalized training plan, priority coaching, and milestone tracking tailored to your trek. For general guidance — not medical advice." },
   { icon: BackpackIcon, title: "Gear Management", desc: "76-item catalog with personal, crew, and buddy sharing types. Pack weight calculator factors in food and water." },
   { icon: MapIcon, title: "Itinerary Viewer", desc: "48 Philmont routes loaded with day-by-day camps, mileage, and elevation. Printable cheat sheets for the trail." },
   { icon: ReportIcon, title: "Reports & Exports", desc: "Crew rosters, gear readiness matrices, pack weight summaries, and training RSVPs. CSV export or print." },
