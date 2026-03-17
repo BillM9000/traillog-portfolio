@@ -20,18 +20,10 @@ const SECTIONS = [
   {
     id: "training-calendar", title: "Training Calendar", cat: "everyone", Icon: Calendar,
     items: [
-      { h: "Marking Your Availability", t: "Tap any date on the calendar to cycle through: All Day → Morning → Afternoon → Off. The calendar shows your personal availability for crew training hikes." },
-      { h: "AM / PM / All Day", t: "Each date can be set to morning only (top half filled), afternoon only (bottom half filled), or all day (fully filled). This helps the crew find overlapping windows." },
-      { h: "Bulk Select", t: "Use the \"Select Weekends\" or \"Select All\" buttons to quickly mark multiple dates. Bulk actions set dates to All Day by default — you can tap individual dates to adjust." },
-      { h: "Clearing Dates", t: "Tap a date that's already set to cycle it back to Off. Use \"Clear All\" to remove all your dates at once." },
-    ]
-  },
-  {
-    id: "training-calendar", title: "Training Calendar", cat: "everyone", Icon: Calendar,
-    items: [
-      { h: "Marking Availability", t: "Tap dates on the calendar to mark when you're available to train. Green = available. The group heat map shows overlap so your troop leader can find the best dates." },
+      { h: "Marking Availability", t: "Tap dates on the calendar to mark when you're available to train. Green = available. Drag across multiple dates to select a range. The group heat map shows overlap so your troop leader can find the best dates." },
       { h: "Group Heat Map", t: "Switch to Group view to see a heat map of everyone's availability. Darker green = more members available. Tap a date to see exactly who's free." },
-      { h: "Training Events", t: "Your troop admin can propose and schedule training events based on availability overlap. You'll get an email when events are confirmed and can RSVP or self-report attendance." },
+      { h: "Bulk Select", t: "Use the \"+ Weekends\" or \"+ All Days\" buttons to quickly mark multiple dates. Use \"Clear Mine\" to remove all your dates at once." },
+      { h: "Training Events", t: "Your troop admin can propose and schedule training events based on availability overlap. You'll get an email when events are confirmed and can RSVP or self-report attendance afterward." },
     ]
   },
   {

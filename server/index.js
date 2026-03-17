@@ -355,15 +355,30 @@ app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "em
 app.get("/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/?error=auth" }),
   (req, res) => {
-    // Check for pending invitation token
-    if (req.session.pendingInviteToken) {
-      const invitation = getInvitationByToken(req.session.pendingInviteToken);
-      if (invitation && invitation.status === "pending") {
-        processInvitation(req.user, invitation);
+    // Regenerate session ID to prevent session fixation attacks
+    const pendingToken = req.session.pendingInviteToken;
+    const authenticatedUser = req.user;
+    req.session.regenerate((regenErr) => {
+      if (regenErr) {
+        console.error("Session regeneration failed:", regenErr);
+        return res.redirect("/?error=session");
       }
-      delete req.session.pendingInviteToken;
-    }
-    res.redirect("/");
+      // Re-attach user to new session (Passport requires this)
+      req.logIn(authenticatedUser, (loginErr) => {
+        if (loginErr) {
+          console.error("Re-login after session regen failed:", loginErr);
+          return res.redirect("/?error=session");
+        }
+        // Process pending invitation if present
+        if (pendingToken) {
+          const invitation = getInvitationByToken(pendingToken);
+          if (invitation && invitation.status === "pending") {
+            processInvitation(authenticatedUser, invitation);
+          }
+        }
+        res.redirect("/");
+      });
+    });
   }
 );
 
@@ -401,16 +416,24 @@ app.post("/api/auth/login", authLimiter, (req, res, next) => {
     if (!user.email_verified) return res.status(403).json({ error: "Please verify your email first" });
     req.logIn(user, (err) => {
       if (err) return safeError(res, err);
-      // Process pending invitation if present
-      if (req.session.pendingInviteToken) {
-        const invitation = getInvitationByToken(req.session.pendingInviteToken);
-        if (invitation && invitation.status === "pending") {
-          processInvitation(user, invitation);
-        }
-        delete req.session.pendingInviteToken;
-      }
-      const { password_hash, verification_token, reset_token, reset_token_expires, ...safe } = user;
-      res.json(safe);
+      // Regenerate session ID to prevent session fixation attacks
+      const pendingToken = req.session.pendingInviteToken;
+      req.session.regenerate((regenErr) => {
+        if (regenErr) return safeError(res, regenErr);
+        // Re-attach user to new session (Passport requires this)
+        req.logIn(user, (loginErr) => {
+          if (loginErr) return safeError(res, loginErr);
+          // Process pending invitation if present
+          if (pendingToken) {
+            const invitation = getInvitationByToken(pendingToken);
+            if (invitation && invitation.status === "pending") {
+              processInvitation(user, invitation);
+            }
+          }
+          const { password_hash, verification_token, reset_token, reset_token_expires, ...safe } = user;
+          res.json(safe);
+        });
+      });
     });
   })(req, res, next);
 });
