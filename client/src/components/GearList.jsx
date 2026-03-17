@@ -681,22 +681,42 @@ export default function GearList({ troopId, adventureId, members, active, setAct
                                   <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 4, lineHeight: 1.4 }}>
                                     {r.why_recommended}
                                   </div>
-                                  <a
-                                    href={r.buy_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      api.trackAffiliateClick(null, item.id, r.buy_url).catch(() => {});
-                                    }}
-                                    style={{
-                                      display: "inline-block", marginTop: 4, padding: "3px 10px", borderRadius: 5,
-                                      background: theme.accent, color: "#fff", fontSize: 9, fontWeight: 600,
-                                      textDecoration: "none", fontFamily: fontBody,
-                                    }}
-                                  >
-                                    🛒 Buy on Amazon
-                                  </a>
+                                  <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                                    <a
+                                      href={r.buy_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        api.trackAffiliateClick(null, item.id, r.buy_url).catch(() => {});
+                                      }}
+                                      style={{
+                                        display: "inline-block", padding: "3px 10px", borderRadius: 5,
+                                        background: "#FF9900", color: "#111", fontSize: 9, fontWeight: 700,
+                                        textDecoration: "none", fontFamily: fontBody,
+                                      }}
+                                    >
+                                      Amazon
+                                    </a>
+                                    {r.rei_url && (
+                                      <a
+                                        href={r.rei_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          api.trackAffiliateClick(null, item.id, r.rei_url).catch(() => {});
+                                        }}
+                                        style={{
+                                          display: "inline-block", padding: "3px 10px", borderRadius: 5,
+                                          background: "#2D5F2D", color: "#fff", fontSize: 9, fontWeight: 700,
+                                          textDecoration: "none", fontFamily: fontBody,
+                                        }}
+                                      >
+                                        REI
+                                      </a>
+                                    )}
+                                  </div>
                                 </div>
                               ))}
                             </div>

@@ -26,14 +26,16 @@ async function generateRecsForItem(item, adventureType, affiliateTag) {
   const prompt = `You are an expert gear advisor for high-adventure Scouting treks like Philmont. For the gear item "${item.name}" (category: ${item.category}${item.subcategory ? ", subcategory: " + item.subcategory : ""}${item.description ? ", description: " + item.description : ""}), recommend the top 3 products that are highly rated, popular with Philmont/high-adventure trekkers, and currently available.
 
 For each product include:
-- product_name: the specific product name
+- product_name: the EXACT full product name as sold on Amazon (e.g. "Osprey Atmos AG 65 Men's Backpacking Backpack")
 - brand: manufacturer
+- model_number: the specific model or SKU if known (e.g. "AG 65", "NeoAir XTherm NXT"), or null
 - price_range: estimated price as a string like "$45" or "$120-150"
 - weight_oz: weight in ounces (number, or null if not applicable)
 - why_recommended: 1-2 sentences on why this is great for Philmont/backpacking
-- amazon_search_url: a search URL in format https://www.amazon.com/s?k=ENCODED_SEARCH_TERMS&tag=${affiliateTag}
 
-Respond ONLY with valid JSON: { "recommendations": [ { "product_name": "...", "brand": "...", "price_range": "...", "weight_oz": ..., "why_recommended": "...", "amazon_search_url": "..." } ] }`;
+Do NOT include URLs. Use the exact product name as it would appear on Amazon's product listing page.
+
+Respond ONLY with valid JSON: { "recommendations": [ { "product_name": "...", "brand": "...", "model_number": "...", "price_range": "...", "weight_oz": ..., "why_recommended": "..." } ] }`;
 
   try {
     const response = await api.messages.create({

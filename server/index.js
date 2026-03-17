@@ -38,7 +38,7 @@ import db, {
   setTroopGearOverride, getTroopGearOverrides,
   getTroopCustomGear, addTroopCustomGear, updateTroopCustomGearItem, deleteTroopCustomGear,
   logAIQuery, getAIUsage,
-  getCachedGearRec, upsertGearRec, getLastGearRefreshTime,
+  getCachedGearRec, upsertGearRec, getLastGearRefreshTime, expireAllGearRecs,
   getAllTroopsAdmin, getAllUsersAdmin, getAllSettings, trackAffiliateClick, getAffiliateStats,
   deleteTroop, getTroopMembersAdmin,
   createTrainingEvent, getTrainingEvents, getTrainingEvent, deleteTrainingEvent, upsertTrainingRsvp,
@@ -65,6 +65,19 @@ import {
 } from "./email.js";
 import { generateReadinessPlan } from "./ai-readiness.js";
 import { refreshAllGearRecommendations, startGearRefreshSchedule, isRefreshInProgress } from "./gear-ai.js";
+
+/** Build precise retailer URLs from structured product data */
+function buildBuyUrls(rec, affiliateTag) {
+  // Build search terms: brand + product name + model (dedup brand if product_name starts with it)
+  const brandRe = rec.brand ? new RegExp(`^${rec.brand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s+`, "i") : null;
+  const productClean = brandRe && rec.product_name ? rec.product_name.replace(brandRe, "") : (rec.product_name || "");
+  const searchTerms = [rec.brand, productClean, rec.model_number].filter(Boolean).join(" ");
+
+  return {
+    buy_url: `https://www.amazon.com/s?k=${encodeURIComponent(searchTerms)}&tag=${encodeURIComponent(affiliateTag)}`,
+    rei_url: `https://www.rei.com/search?q=${encodeURIComponent(searchTerms)}`,
+  };
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -1557,11 +1570,11 @@ app.post("/api/gear-catalog/:id/ai-recommend", requireAuth, async (req, res) => 
     // Check cache first
     const cached = getCachedGearRec(gearId, adventureType);
     if (cached) {
-      // Build buy_url with current affiliate tag for cached recs
+      // Build buy URLs with current affiliate tag for cached recs
       const tag = getSetting("amazon_affiliate_tag") || "traillog-20";
       const recommendations = cached.recommendations.map(r => ({
         ...r,
-        buy_url: r.amazon_search_url || `https://www.amazon.com/s?k=${encodeURIComponent((r.product_name || "") + " " + (r.brand || ""))}&tag=${encodeURIComponent(tag)}`,
+        ...buildBuyUrls(r, tag),
       }));
 
       // Award badge (same logic regardless of cache)
@@ -1595,7 +1608,7 @@ app.post("/api/gear-catalog/:id/ai-recommend", requireAuth, async (req, res) => 
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const tag = getSetting("amazon_affiliate_tag") || "traillog-20";
-    const prompt = `You are an expert gear advisor for high-adventure Scouting treks like Philmont. For the gear item "${item.name}" (category: ${item.category}), recommend the top 3 products that are highly rated, popular with Philmont/high-adventure trekkers, and currently available. For each product include: product_name, brand, price_range (as a string like "$45"), weight_oz (number, if applicable, otherwise null), why_recommended (1-2 sentences), and amazon_search_url as https://www.amazon.com/s?k=ENCODED_SEARCH_TERMS&tag=${tag}. Focus on durability, weight, and trail-proven performance. Respond ONLY with valid JSON in this format: { "recommendations": [ { "product_name": "...", "brand": "...", "price_range": "...", "weight_oz": ..., "why_recommended": "...", "amazon_search_url": "..." } ] }`;
+    const prompt = `You are an expert gear advisor for high-adventure Scouting treks like Philmont. For the gear item "${item.name}" (category: ${item.category}), recommend the top 3 products that are highly rated, popular with Philmont/high-adventure trekkers, and currently available. For each product include: product_name (the EXACT full product name as sold on Amazon), brand, model_number (specific model or SKU if known, or null), price_range (as a string like "$45"), weight_oz (number, if applicable, otherwise null), why_recommended (1-2 sentences). Do NOT include URLs. Focus on durability, weight, and trail-proven performance. Respond ONLY with valid JSON: { "recommendations": [ { "product_name": "...", "brand": "...", "model_number": "...", "price_range": "...", "weight_oz": ..., "why_recommended": "..." } ] }`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -1613,7 +1626,7 @@ app.post("/api/gear-catalog/:id/ai-recommend", requireAuth, async (req, res) => 
 
     const recommendations = (parsed.recommendations || []).map(r => ({
       ...r,
-      buy_url: r.amazon_search_url || `https://www.amazon.com/s?k=${encodeURIComponent((r.product_name || "") + " " + (r.brand || ""))}&tag=${encodeURIComponent(tag)}`,
+      ...buildBuyUrls(r, tag),
     }));
 
     // Cache the result (expires in 7 days)
@@ -1975,11 +1988,13 @@ app.post("/api/admin/refresh-gear-recs", requireAuth, requireGlobalAdmin, (req, 
     if (isRefreshInProgress()) {
       return res.json({ ok: true, message: "Refresh already in progress" });
     }
+    // Expire all cached recs so they get fully regenerated with latest prompt
+    expireAllGearRecs();
     // Fire and forget — runs in background
     refreshAllGearRecommendations().catch(e =>
       console.error("[gear-ai] Admin-triggered refresh error:", e.message)
     );
-    res.json({ ok: true, message: "Gear recommendation refresh started" });
+    res.json({ ok: true, message: "Gear recommendation refresh started (all items will be regenerated)" });
   } catch (e) { safeError(res, e); }
 });
 

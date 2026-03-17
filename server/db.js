@@ -3162,6 +3162,10 @@ export function getAllGearCatalogItems() {
   return db.prepare("SELECT * FROM gear_catalog WHERE active = 1 ORDER BY sort_order").all();
 }
 
+export function expireAllGearRecs() {
+  return db.prepare("UPDATE ai_gear_recommendations SET expires_at = datetime('now', '-1 hour')").run();
+}
+
 export function getLastGearRefreshTime() {
   const row = db.prepare(
     "SELECT MAX(generated_at) as last_refresh FROM ai_gear_recommendations"
