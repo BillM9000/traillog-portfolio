@@ -86,16 +86,15 @@ function addTitleRow(ws, title, numCols) {
   return 2; // new header row
 }
 
-function saveWorkbook(wb, filename) {
-  wb.xlsx.writeBuffer().then(buffer => {
-    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  });
+async function saveWorkbook(wb, filename) {
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 /**
@@ -215,8 +214,6 @@ export async function exportXLSXWithSummary(summary, sheets, filename) {
   // Summary table rows if provided
   if (summary.rows?.length) {
     ws.addRow([]);
-    addSheet(wb, "Summary", []); // placeholder, will use existing ws
-    // Actually add as a sub-table on the summary sheet
     const headers = Object.keys(summary.rows[0]);
     const hRow = ws.addRow(headers);
     applyHeaderStyle(hRow);
