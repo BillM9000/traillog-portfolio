@@ -173,8 +173,8 @@ app.use((req, res, next) => {
       path: "/",
     });
   }
-  // Validate on state-changing methods
-  if (["POST", "PUT", "DELETE", "PATCH"].includes(req.method)) {
+  // Validate on state-changing methods (exempt standalone vote page)
+  if (["POST", "PUT", "DELETE", "PATCH"].includes(req.method) && req.path !== "/api/vote") {
     const token = req.headers["x-csrf-token"];
     if (!req.session?.csrfToken || token !== req.session.csrfToken) {
       return res.status(403).json({ error: "Invalid CSRF token" });
