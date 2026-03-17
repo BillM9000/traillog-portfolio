@@ -254,7 +254,10 @@ function EventCard({ event, theme, mode, isAdmin, currentUserId, members, isPast
   }, [event.attendance]);
 
   const statusColors = mode === "dark" ? STATUS_COLORS_DARK : STATUS_COLORS_LIGHT;
-  const statusKey = event.type === "proposed" && event.status !== "completed" && event.status !== "cancelled" ? "proposed" : (event.status || "scheduled");
+  const statusKey = event.status === "completed" ? "completed"
+    : event.status === "cancelled" ? "cancelled"
+    : event.type === "proposed" ? "proposed"
+    : "scheduled";
   const statusInfo = statusColors[statusKey] || statusColors.scheduled;
   const statusLabel = statusKey === "proposed" ? "Proposed" : statusKey === "scheduled" ? "Scheduled" : statusKey === "completed" ? "Completed" : "Cancelled";
   const isCompleted = event.status === "completed";
