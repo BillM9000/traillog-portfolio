@@ -42,7 +42,7 @@ import db, {
   getAllTroopsAdmin, getAllUsersAdmin, getAllSettings, trackAffiliateClick, getAffiliateStats,
   deleteTroop, getTroopMembersAdmin,
   createTrainingEvent, getTrainingEvents, getTrainingEvent, deleteTrainingEvent, upsertTrainingRsvp,
-  updateTrainingEventStatus, bulkMarkAttendance, getEventAttendance, getMemberAttendanceCount, syncAttendanceSkills,
+  updateTrainingEventStatus, markAttendance, bulkMarkAttendance, getEventAttendance, getMemberAttendanceCount, syncAttendanceSkills,
   promoteToAdmin, demoteFromAdmin, getSystemAdmins, getDashboardData,
   getCouncils,
   // Crew layer (Stage 2)
@@ -1551,6 +1551,22 @@ app.post("/api/adventures/:adventureId/training-events/:eventId/attendance", req
     if (!Array.isArray(attendees)) return res.status(400).json({ error: "attendees must be an array" });
     bulkMarkAttendance(eventId, attendees.map(id => parseId(id)), req.user.id);
     // Sync attendance milestone skills for all members
+    syncAttendanceSkills(advId);
+    res.json({ ok: true });
+  } catch (e) { safeError(res, e); }
+});
+
+// Self-report attendance (any member can mark themselves)
+app.put("/api/adventures/:adventureId/training-events/:eventId/attendance/self", requireAuth, requireAdventureMember, (req, res) => {
+  try {
+    const eventId = parseId(req.params.eventId);
+    const advId = parseId(req.params.adventureId);
+    const { attended } = req.body; // boolean
+    if (typeof attended !== "boolean") return res.status(400).json({ error: "attended must be a boolean" });
+    // Only allow self-report on completed events
+    const event = getTrainingEvent(eventId);
+    if (!event || event.status !== "completed") return res.status(400).json({ error: "Can only report attendance on completed events" });
+    markAttendance(eventId, req.user.id, attended ? 1 : 0, req.user.id);
     syncAttendanceSkills(advId);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }

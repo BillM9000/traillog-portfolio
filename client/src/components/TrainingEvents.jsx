@@ -195,7 +195,7 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
         <EventCard key={event.id} event={event} theme={theme} mode={mode} isAdmin={isAdmin}
           currentUserId={currentUserId} members={members}
           onRsvp={handleRsvp} onDelete={handleDelete}
-          onStatusChange={handleStatusChange} onMarkAttendance={handleMarkAttendance} />
+          adventureId={adventureId} onStatusChange={handleStatusChange} onMarkAttendance={handleMarkAttendance} onRefresh={refresh} />
       ))}
 
       {/* Past active events that need completion */}
@@ -208,7 +208,7 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
             <EventCard key={event.id} event={event} theme={theme} mode={mode} isAdmin={isAdmin}
               currentUserId={currentUserId} members={members} isPast
               onRsvp={handleRsvp} onDelete={handleDelete}
-              onStatusChange={handleStatusChange} onMarkAttendance={handleMarkAttendance} />
+              adventureId={adventureId} onStatusChange={handleStatusChange} onMarkAttendance={handleMarkAttendance} onRefresh={refresh} />
           ))}
         </>
       )}
@@ -229,7 +229,7 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
             <EventCard key={event.id} event={event} theme={theme} mode={mode} isAdmin={isAdmin}
               currentUserId={currentUserId} members={members} isPast
               onRsvp={handleRsvp} onDelete={handleDelete}
-              onStatusChange={handleStatusChange} onMarkAttendance={handleMarkAttendance} />
+              adventureId={adventureId} onStatusChange={handleStatusChange} onMarkAttendance={handleMarkAttendance} onRefresh={refresh} />
           ))}
         </>
       )}
@@ -237,7 +237,7 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
   );
 }
 
-function EventCard({ event, theme, mode, isAdmin, currentUserId, members, isPast, onRsvp, onDelete, onStatusChange, onMarkAttendance }) {
+function EventCard({ event, theme, mode, isAdmin, currentUserId, members, isPast, adventureId, onRsvp, onDelete, onStatusChange, onMarkAttendance, onRefresh }) {
   const myRsvp = event.rsvps?.find(r => r.user_id === currentUserId);
   const goingCount = event.rsvps?.filter(r => r.status === "going").length || 0;
   const cantCount = event.rsvps?.filter(r => r.status === "cant").length || 0;
@@ -442,10 +442,37 @@ function EventCard({ event, theme, mode, isAdmin, currentUserId, members, isPast
         </div>
       )}
 
-      {/* Attendance summary for non-admin on completed events */}
-      {!isAdmin && isCompleted && event.attendance?.length > 0 && (
-        <div style={{ fontSize: 10, color: theme.textDimmer, marginTop: 6 }}>
-          Attended: {event.attendance.filter(a => a.attended).map(a => a.name).join(", ") || "None recorded"}
+      {/* Self-report + attendance summary for non-admin on completed events */}
+      {!isAdmin && isCompleted && (
+        <div style={{ marginTop: 8 }}>
+          {(() => {
+            const myRecord = event.attendance?.find(a => a.user_id === currentUserId);
+            const iAttended = myRecord?.attended === 1;
+            return (
+              <button onClick={async () => {
+                try {
+                  await api.selfReportAttendance(adventureId, event.id, !iAttended);
+                  addToast(iAttended ? "Attendance removed" : "Marked as attended!", iAttended ? "info" : "success");
+                  onRefresh && onRefresh(); // trigger refresh
+                } catch (e) { addToast("Failed to update attendance", "error"); }
+              }} style={{
+                padding: "5px 14px", borderRadius: 8,
+                border: `1px solid ${iAttended ? "#5B7A3A" : theme.border}`,
+                background: iAttended ? "#5B7A3A" : "transparent",
+                color: iAttended ? "#fff" : theme.textDim,
+                fontSize: 12, fontWeight: 600, cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 5,
+              }}>
+                <CheckCircle2 size={13} strokeWidth={2.5} />
+                {iAttended ? "I attended ✓" : "I attended this"}
+              </button>
+            );
+          })()}
+          {event.attendance?.filter(a => a.attended).length > 0 && (
+            <div style={{ fontSize: 10, color: theme.textDimmer, marginTop: 5 }}>
+              Attended: {event.attendance.filter(a => a.attended).map(a => a.name).join(", ")}
+            </div>
+          )}
         </div>
       )}
 
