@@ -1,6 +1,7 @@
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
+import { logger, httpLogger, auditLog } from "./logger.js";
 import session from "express-session";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
@@ -66,6 +67,12 @@ import {
 } from "./email.js";
 import { generateReadinessPlan } from "./ai-readiness.js";
 import { refreshAllGearRecommendations, startGearRefreshSchedule, isRefreshInProgress } from "./gear-ai.js";
+import {
+  validate, signupSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema,
+  changePasswordSchema, profileUpdateSchema, createTroopSchema, createAdventureSchema,
+  createTrainingEventSchema, updateTrainingEventSchema, rsvpSchema, adminSettingSchema,
+  voteSchema, deleteVoteSchema, readinessAssessSchema,
+} from "./validation.js";
 
 /** Build precise retailer URLs from structured product data */
 function buildBuyUrls(rec, affiliateTag) {
@@ -115,6 +122,7 @@ app.use(helmet({
 }));
 
 app.use(morgan("short"));
+app.use(httpLogger);
 
 // ── Public settings (before rate limiter — must always be available) ──
 app.get("/api/public-settings", (req, res) => {
@@ -376,13 +384,14 @@ app.get("/auth/google/callback",
             processInvitation(authenticatedUser, invitation);
           }
         }
+        auditLog.login(authenticatedUser.id, authenticatedUser.email, "google");
         res.redirect("/");
       });
     });
   }
 );
 
-app.post("/api/auth/signup", authLimiter, async (req, res) => {
+app.post("/api/auth/signup", authLimiter, validate(signupSchema), async (req, res) => {
   try {
     if (getSetting("registration_enabled") === "false") {
       return res.status(403).json({ error: "Registration is currently closed. Please check back later." });
@@ -405,14 +414,16 @@ app.post("/api/auth/signup", authLimiter, async (req, res) => {
       tos_accepted_at: new Date().toISOString(),
     });
     sendVerificationEmail(email, token).catch(e => console.error("Verification email failed:", e));
+    const newUser = findUserByEmail(email);
+    auditLog.signup(newUser?.id, email);
     res.status(201).json({ ok: true, message: "Check your email to verify your account" });
   } catch (e) { safeError(res, e); }
 });
 
-app.post("/api/auth/login", authLimiter, (req, res, next) => {
+app.post("/api/auth/login", authLimiter, validate(loginSchema), (req, res, next) => {
   passport.authenticate("local", (err, user, info) => {
     if (err) return safeError(res, err);
-    if (!user) return res.status(401).json({ error: info?.message || "Invalid credentials" });
+    if (!user) { auditLog.loginFailed(req.body.email, info?.message); return res.status(401).json({ error: info?.message || "Invalid credentials" }); }
     if (!user.email_verified) return res.status(403).json({ error: "Please verify your email first" });
     req.logIn(user, (err) => {
       if (err) return safeError(res, err);
@@ -430,6 +441,7 @@ app.post("/api/auth/login", authLimiter, (req, res, next) => {
               processInvitation(user, invitation);
             }
           }
+          auditLog.login(user.id, user.email, "email");
           const { password_hash, verification_token, reset_token, reset_token_expires, ...safe } = user;
           res.json(safe);
         });
@@ -445,7 +457,7 @@ app.get("/api/auth/verify/:token", (req, res) => {
 });
 
 // ── Password Reset ──
-app.post("/api/auth/forgot-password", authLimiter, (req, res) => {
+app.post("/api/auth/forgot-password", authLimiter, validate(forgotPasswordSchema), (req, res) => {
   try {
     const { email } = req.body;
     if (!email?.trim()) return res.status(400).json({ error: "Email is required" });
@@ -462,7 +474,7 @@ app.post("/api/auth/forgot-password", authLimiter, (req, res) => {
   } catch (e) { safeError(res, e); }
 });
 
-app.post("/api/auth/reset-password", authLimiter, async (req, res) => {
+app.post("/api/auth/reset-password", authLimiter, validate(resetPasswordSchema), async (req, res) => {
   try {
     const { token, password } = req.body;
     if (!token || !password || password.length < 8) {
@@ -474,11 +486,12 @@ app.post("/api/auth/reset-password", authLimiter, async (req, res) => {
     const hash = await hashPassword(password);
     updatePassword(user.id, hash);
     clearResetToken(user.id);
+    auditLog.passwordReset(user.id, user.email);
     res.json({ ok: true, message: "Password updated. You can now sign in." });
   } catch (e) { safeError(res, e); }
 });
 
-app.put("/api/auth/change-password", requireAuth, async (req, res) => {
+app.put("/api/auth/change-password", requireAuth, validate(changePasswordSchema), async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword || newPassword.length < 8) {
@@ -499,6 +512,7 @@ app.put("/api/auth/change-password", requireAuth, async (req, res) => {
     } catch (sessionErr) {
       console.error("[change-password] Failed to invalidate other sessions:", sessionErr.message);
     }
+    auditLog.passwordChange(req.user.id);
     res.json({ ok: true, message: "Password updated successfully" });
   } catch (e) { safeError(res, e); }
 });
@@ -513,7 +527,7 @@ app.get("/api/auth/me", (req, res) => {
   res.json({ user: { ...safe, is_global_admin, has_password }, memberships, adventureMemberships });
 });
 
-app.put("/api/auth/profile", requireAuth, (req, res) => {
+app.put("/api/auth/profile", requireAuth, validate(profileUpdateSchema), (req, res) => {
   try {
     const { name, user_type, parent_email, parent_email_2, age_confirmed } = req.body;
 
@@ -553,7 +567,11 @@ app.put("/api/auth/profile", requireAuth, (req, res) => {
 });
 
 app.post("/api/auth/logout", (req, res) => {
-  req.logout(() => res.json({ ok: true }));
+  const userId = req.user?.id;
+  req.logout(() => {
+    if (userId) auditLog.logout(userId);
+    res.json({ ok: true });
+  });
 });
 
 // ═══════════════════════════════════════════
@@ -592,7 +610,7 @@ app.get("/api/troops/:troopId", requireAuth, requireTroopMember(), (req, res) =>
   } catch (e) { safeError(res, e); }
 });
 
-app.post("/api/troops", requireAuth, (req, res) => {
+app.post("/api/troops", requireAuth, validate(createTroopSchema), (req, res) => {
   try {
     if (req.user.user_type === "scout") return res.status(403).json({ error: "Scouts cannot create troops" });
     // Troop creation limit (global admin exempt)
@@ -1196,7 +1214,7 @@ app.post("/api/crews/:crewId/check-milestones", requireAuth, requireCrewMember, 
 // ═══════════════════════════════════════════
 
 // Submit or update self-assessment
-app.post("/api/crews/:crewId/readiness/assess", requireAuth, requireCrewMember, (req, res) => {
+app.post("/api/crews/:crewId/readiness/assess", requireAuth, requireCrewMember, validate(readinessAssessSchema), (req, res) => {
   try {
     const { current_distance_miles, pack_experience, elevation_access, activity_level } = req.body;
     if (current_distance_miles == null || !pack_experience || !elevation_access || !activity_level) {
@@ -1479,7 +1497,7 @@ app.get("/api/adventures/:adventureId/training-events", requireAuth, requireAdve
   catch (e) { safeError(res, e); }
 });
 
-app.post("/api/adventures/:adventureId/training-events", requireAuth, requireAdventureAdmin, (req, res) => {
+app.post("/api/adventures/:adventureId/training-events", requireAuth, requireAdventureAdmin, validate(createTrainingEventSchema), (req, res) => {
   try {
     const advId = parseId(req.params.adventureId);
     const { date, period, time_label, location, notes, type } = req.body;
@@ -1516,7 +1534,7 @@ app.delete("/api/adventures/:adventureId/training-events/:eventId", requireAuth,
   } catch (e) { safeError(res, e); }
 });
 
-app.put("/api/adventures/:adventureId/training-events/:eventId/rsvp", requireAuth, requireAdventureMember, (req, res) => {
+app.put("/api/adventures/:adventureId/training-events/:eventId/rsvp", requireAuth, requireAdventureMember, validate(rsvpSchema), (req, res) => {
   try {
     const { status } = req.body;
     if (!["going", "cant"].includes(status)) return res.status(400).json({ error: "status must be going or cant" });
@@ -1566,7 +1584,7 @@ app.put("/api/adventures/:adventureId/training-events/:eventId/status", requireA
 });
 
 // Edit training event details (admin only, not completed/cancelled)
-app.put("/api/adventures/:adventureId/training-events/:eventId", requireAuth, requireAdventureAdmin, (req, res) => {
+app.put("/api/adventures/:adventureId/training-events/:eventId", requireAuth, requireAdventureAdmin, validate(updateTrainingEventSchema), (req, res) => {
   try {
     const eventId = parseId(req.params.eventId);
     const event = getTrainingEvent(eventId);
@@ -2067,13 +2085,14 @@ app.put("/api/troops/:troopId/settings", requireAuth, requireTroopAdmin, (req, r
 // PLATFORM SETTINGS (super admin)
 // ═══════════════════════════════════════════
 
-app.put("/api/admin/settings", requireAuth, requireGlobalAdmin, (req, res) => {
+app.put("/api/admin/settings", requireAuth, requireGlobalAdmin, validate(adminSettingSchema), (req, res) => {
   try {
     const { key, value } = req.body;
     if (!key || typeof key !== "string") return res.status(400).json({ error: "key is required" });
     const PROTECTED_KEYS = ["schema_version"];
     if (PROTECTED_KEYS.includes(key)) return res.status(403).json({ error: "This setting is system-managed and cannot be edited" });
     setSetting(key, value);
+    auditLog.settingChanged(req.user.id, key);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
@@ -2085,7 +2104,7 @@ app.put("/api/admin/users/:id/promote", requireAuth, requireGlobalAdmin, (req, r
     const user = findUserById(userId);
     if (!user) return res.status(404).json({ error: "User not found" });
     promoteToAdmin(userId);
-    console.log(`[admin] ${req.user.email} promoted ${user.email} to system admin`);
+    auditLog.adminPromoted(req.user.id, userId);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
@@ -2099,7 +2118,7 @@ app.put("/api/admin/users/:id/demote", requireAuth, requireGlobalAdmin, (req, re
     const admins = getSystemAdmins();
     if (admins.length <= 1) return res.status(400).json({ error: "Cannot demote the last system admin" });
     demoteFromAdmin(userId);
-    console.log(`[admin] ${req.user.email} demoted ${user.email} from system admin`);
+    auditLog.adminDemoted(req.user.id, userId);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
@@ -2709,7 +2728,7 @@ app.get("/api/vote/my-votes", (req, res) => {
   } catch (e) { res.status(500).json({ error: "Failed to load votes" }); }
 });
 
-app.post("/api/vote", (req, res) => {
+app.post("/api/vote", validate(voteSchema), (req, res) => {
   const { voter_name, design_id, vote_slot } = req.body;
   if (!voter_name || !design_id) return res.status(400).json({ error: "Name and design required" });
   const name = voter_name.trim();
@@ -2731,7 +2750,7 @@ app.post("/api/vote", (req, res) => {
   } catch (e) { res.status(500).json({ error: "Failed to record vote" }); }
 });
 
-app.delete("/api/vote", (req, res) => {
+app.delete("/api/vote", validate(deleteVoteSchema), (req, res) => {
   const { voter_name, vote_slot } = req.body;
   if (!voter_name || !vote_slot) return res.status(400).json({ error: "Name and slot required" });
   try {
