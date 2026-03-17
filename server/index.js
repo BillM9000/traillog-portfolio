@@ -2482,7 +2482,7 @@ app.get("/privacy", (req, res) => {
 <p>We may update this policy as the app evolves. Material changes will be noted with an updated date at the top of this page.</p>
 
 <h2>9. Contact</h2>
-<p>For privacy questions or data requests, email: <strong>privacy@gracezero.ai</strong></p>
+<p>For privacy questions or data requests, email: <strong>bill.mccoy@gracezero.ai</strong></p>
 </div></body></html>`);
 });
 
@@ -2552,7 +2552,7 @@ app.get("/terms", (req, res) => {
 <p>We may update these terms as the app evolves. Continued use after changes constitutes acceptance.</p>
 
 <h2>10. Contact</h2>
-<p>Questions about these terms? Email: <strong>support@gracezero.ai</strong></p>
+<p>Questions about these terms? Email: <strong>bill.mccoy@gracezero.ai</strong></p>
 </div></body></html>`);
 });
 

@@ -6,11 +6,11 @@ import { useToast } from "../contexts/ToastContext";
 import { api } from "../api";
 import { card, cardTitle, fontBody, fontDisplay } from "../utils/theme";
 import { computeCrewReadiness, computeMemberReadiness } from "../utils/readiness";
-import { Download, Printer, FileSpreadsheet, ClipboardList, Users, Backpack, CalendarCheck, Map, ChevronDown, ChevronUp, Package } from "lucide-react";
-import { exportCSV, printHTML } from "../utils/exportUtils";
+import { Printer, FileSpreadsheet, ClipboardList, Users, Backpack, CalendarCheck, Map, ChevronDown, ChevronUp, Package } from "lucide-react";
+import { exportXLSX, exportXLSXWithSummary, printHTML, gearStatusFormat, gearMatrixFormat } from "../utils/exportUtils";
 
 // ── Report Card Component ──
-function ReportCard({ icon: Icon, title, description, formats, onCSV, onPrint, theme }) {
+function ReportCard({ icon: Icon, title, description, formats, onXLSX, onPrint, theme }) {
   return (
     <div style={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -31,12 +31,12 @@ function ReportCard({ icon: Icon, title, description, formats, onCSV, onPrint, t
         </div>
       </div>
       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-        {formats.includes("csv") && (
-          <button onClick={onCSV} title="Download CSV" style={{
+        {formats.includes("xlsx") && (
+          <button onClick={onXLSX} title="Download Excel" style={{
             width: 32, height: 32, borderRadius: 8, border: `1px solid ${theme.borderLight}`,
             background: theme.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
           }}>
-            <Download size={14} color={theme.accent} />
+            <FileSpreadsheet size={14} color={theme.accent} />
           </button>
         )}
         {formats.includes("print") && (
@@ -71,18 +71,35 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
   const crewName = adventure?.name || "Crew";
   const now = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-  // ── ADMIN: Crew Roster CSV ──
-  const exportRosterCSV = () => {
-    const rows = members.map(m => ({
+  // ── ADMIN: Crew Roster XLSX ──
+  const exportRosterXLSX = async () => {
+    const trekking = members.filter(m => m.participation === "trekking");
+    const support = members.filter(m => m.participation === "support");
+    const mapMember = m => ({
       Name: m.name,
       Email: m.email || "(manual)",
       Type: m.user_type || "—",
       Role: m.role,
       Participation: m.participation,
       "Date Count": (m.dates || []).length,
-    }));
-    exportCSV(rows, `${crewName}-roster.csv`);
-    addToast("Roster CSV downloaded", "success");
+    });
+    await exportXLSXWithSummary(
+      {
+        title: `${crewName} — Crew Roster`,
+        stats: [
+          { label: "Total Members", value: members.length },
+          { label: "Trekking", value: trekking.length, color: "3A4D2A" },
+          { label: "Support", value: support.length, color: "3B6BB0" },
+        ],
+      },
+      [
+        { name: "All Members", rows: members.map(mapMember), title: `All Members (${members.length})` },
+        { name: "Trekking", rows: trekking.map(mapMember), title: `Trekking (${trekking.length})` },
+        { name: "Support", rows: support.map(mapMember), title: `Support (${support.length})` },
+      ],
+      `${crewName}-roster.xlsx`
+    );
+    addToast("Roster downloaded", "success");
   };
 
   // ── ADMIN: Crew Roster Print ──
@@ -105,25 +122,86 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
     `);
   };
 
-  // ── ADMIN: Gear Readiness Matrix CSV ──
-  const exportGearMatrixCSV = () => {
+  // ── ADMIN: Gear Readiness Matrix XLSX (tabs per status) ──
+  const exportGearMatrixXLSX = async () => {
     if (!gearCatalog.length) { addToast("No gear catalog loaded", "error"); return; }
-    const rows = members.map(m => {
+    const activeGear = gearCatalog.filter(g => g.active !== 0);
+    // Full matrix
+    const matrixRows = members.map(m => {
       const gear = memberGearMap[m.user_id] || [];
       const gearByItem = {};
-      gear.forEach(g => { gearByItem[g.gear_id || g.custom_gear_id] = g.status; });
+      gear.forEach(g => { gearByItem[g.gear_catalog_id] = g.status; });
       const row = { Name: m.name, Participation: m.participation };
-      gearCatalog.filter(g => g.active !== 0).forEach(g => {
-        row[g.name] = gearByItem[g.id] || "—";
-      });
+      activeGear.forEach(g => { row[g.name] = gearByItem[g.id] || "—"; });
       return row;
     });
-    exportCSV(rows, `${crewName}-gear-matrix.csv`);
-    addToast("Gear matrix CSV downloaded", "success");
+    // Need tab — items each member still needs
+    const needRows = [];
+    members.forEach(m => {
+      const gear = memberGearMap[m.user_id] || [];
+      const gearByItem = {};
+      gear.forEach(g => { gearByItem[g.gear_catalog_id] = g.status; });
+      activeGear.forEach(g => {
+        const status = gearByItem[g.id] || "—";
+        if (status === "needed" || status === "—") {
+          needRows.push({ Member: m.name, Item: g.name, Category: g.category, Status: status === "needed" ? "Need" : "Unchecked" });
+        }
+      });
+    });
+    // Packed tab
+    const packedRows = [];
+    members.forEach(m => {
+      const gear = memberGearMap[m.user_id] || [];
+      const gearByItem = {};
+      gear.forEach(g => { gearByItem[g.gear_catalog_id] = g.status; });
+      activeGear.forEach(g => {
+        if (gearByItem[g.id] === "packed") {
+          packedRows.push({ Member: m.name, Item: g.name, Category: g.category });
+        }
+      });
+    });
+    // Own tab
+    const ownRows = [];
+    members.forEach(m => {
+      const gear = memberGearMap[m.user_id] || [];
+      const gearByItem = {};
+      gear.forEach(g => { gearByItem[g.gear_catalog_id] = g.status; });
+      activeGear.forEach(g => {
+        if (gearByItem[g.id] === "owned") {
+          ownRows.push({ Member: m.name, Item: g.name, Category: g.category });
+        }
+      });
+    });
+    const totalItems = activeGear.length * members.length;
+    const packedCount = packedRows.length;
+    const ownCount = ownRows.length;
+    const needCount = needRows.filter(r => r.Status === "Need").length;
+    const uncheckedCount = needRows.filter(r => r.Status === "Unchecked").length;
+    await exportXLSXWithSummary(
+      {
+        title: `${crewName} — Gear Readiness Matrix`,
+        stats: [
+          { label: "Total Member×Item Slots", value: totalItems },
+          { label: "Packed", value: packedCount, color: "3A4D2A" },
+          { label: "Owned", value: ownCount, color: "3B6BB0" },
+          { label: "Need", value: needCount, color: "B8740A" },
+          { label: "Unchecked", value: uncheckedCount, color: "DC2626" },
+          { label: "Completion", value: `${totalItems > 0 ? Math.round(((packedCount + ownCount) / totalItems) * 100) : 0}%`, color: "3A4D2A" },
+        ],
+      },
+      [
+        { name: "Full Matrix", rows: matrixRows, title: "Full Gear Matrix", conditionalFormat: gearMatrixFormat },
+        { name: "Need", rows: needRows.length ? needRows : [{ Note: "Everyone is fully accounted for!" }], conditionalFormat: gearStatusFormat },
+        { name: "Owned", rows: ownRows.length ? ownRows : [{ Note: "No items in owned status" }] },
+        { name: "Packed", rows: packedRows.length ? packedRows : [{ Note: "No items packed yet" }] },
+      ],
+      `${crewName}-gear-matrix.xlsx`
+    );
+    addToast("Gear matrix downloaded", "success");
   };
 
-  // ── ADMIN: Pack Weight Summary CSV ──
-  const exportPackWeightCSV = async () => {
+  // ── ADMIN: Pack Weight Summary XLSX ──
+  const exportPackWeightXLSX = async () => {
     setLoadingWeights(true);
     try {
       const weights = {};
@@ -138,42 +216,72 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
         return {
           Name: m.name,
           Participation: m.participation,
-          "Personal Gear (lbs)": w ? w.base_weight_lbs : 0,
-          "Food (lbs)": w ? w.food_estimate_lbs : 0,
-          "Water (lbs)": w ? w.water_lbs : 0,
-          "Total (lbs)": w ? w.grand_total_lbs : 0,
+          "Personal Gear (lbs)": w ? Number(w.base_weight_lbs.toFixed(1)) : 0,
+          "Food (lbs)": w ? Number(w.food_estimate_lbs.toFixed(1)) : 0,
+          "Water (lbs)": w ? Number(w.water_lbs.toFixed(1)) : 0,
+          "Total (lbs)": w ? Number(w.grand_total_lbs.toFixed(1)) : 0,
           "Packed Items": w ? w.item_count : 0,
         };
       });
-      exportCSV(rows, `${crewName}-pack-weights.csv`);
-      addToast("Pack weight CSV downloaded", "success");
+      const avgTotal = rows.length ? (rows.reduce((s, r) => s + r["Total (lbs)"], 0) / rows.length).toFixed(1) : 0;
+      const maxTotal = rows.length ? Math.max(...rows.map(r => r["Total (lbs)"])).toFixed(1) : 0;
+      await exportXLSXWithSummary(
+        {
+          title: `${crewName} — Pack Weight Summary`,
+          stats: [
+            { label: "Members", value: rows.length },
+            { label: "Average Total Weight", value: `${avgTotal} lbs`, color: "3A4D2A" },
+            { label: "Heaviest Pack", value: `${maxTotal} lbs`, color: "DC2626" },
+          ],
+        },
+        [{ name: "Pack Weights", rows, title: "Member Pack Weights" }],
+        `${crewName}-pack-weights.xlsx`
+      );
+      addToast("Pack weights downloaded", "success");
     } catch { addToast("Failed to fetch pack weights", "error"); }
     setLoadingWeights(false);
   };
 
-  // ── ADMIN: Training RSVP Summary CSV ──
-  const exportRSVPCSV = () => {
+  // ── ADMIN: Training RSVP Summary XLSX ──
+  const exportRSVPXLSX = async () => {
     if (!trainingEvents.length) { addToast("No training events found", "error"); return; }
-    const rows = trainingEvents.map(evt => {
+    const summaryRows = trainingEvents.map(evt => {
       const going = (evt.rsvps || []).filter(r => r.status === "going").map(r => r.name).join("; ");
       const cant = (evt.rsvps || []).filter(r => r.status === "cant").map(r => r.name).join("; ");
       const goingCount = (evt.rsvps || []).filter(r => r.status === "going").length;
       const cantCount = (evt.rsvps || []).filter(r => r.status === "cant").length;
       return {
-        Date: evt.date,
-        Period: evt.period,
-        Time: evt.time_label || "—",
-        Location: evt.location || "—",
-        Notes: evt.notes || "",
-        "Going (#)": goingCount,
-        "Can't (#)": cantCount,
+        Date: evt.date, Period: evt.period, Time: evt.time_label || "—",
+        Location: evt.location || "—", Notes: evt.notes || "",
+        "Going (#)": goingCount, "Can't (#)": cantCount,
         "No Reply (#)": members.length - goingCount - cantCount,
-        "Going": going || "—",
-        "Can't Make It": cant || "—",
+        "Going": going || "—", "Can't Make It": cant || "—",
       };
     });
-    exportCSV(rows, `${crewName}-training-rsvps.csv`);
-    addToast("RSVP summary CSV downloaded", "success");
+    // Per-member attendance sheet
+    const attendanceRows = members.map(m => {
+      const row = { Name: m.name };
+      trainingEvents.forEach(evt => {
+        const rsvp = (evt.rsvps || []).find(r => String(r.user_id) === String(m.user_id));
+        row[`${evt.date} ${evt.period}`] = rsvp ? (rsvp.status === "going" ? "Going" : "Can't") : "No Reply";
+      });
+      return row;
+    });
+    await exportXLSXWithSummary(
+      {
+        title: `${crewName} — Training RSVP Summary`,
+        stats: [
+          { label: "Training Events", value: trainingEvents.length },
+          { label: "Members", value: members.length },
+        ],
+      },
+      [
+        { name: "Events Summary", rows: summaryRows, title: "Events Summary" },
+        { name: "Member Attendance", rows: attendanceRows, title: "Member Attendance Grid" },
+      ],
+      `${crewName}-training-rsvps.xlsx`
+    );
+    addToast("RSVP summary downloaded", "success");
   };
 
   // ── ADMIN: Crew Readiness Overview Print ──
@@ -214,7 +322,7 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
     const gearByStatus = { packed: [], owned: [], need: [], unchecked: [] };
     const activeGear = gearCatalog.filter(g => g.active !== 0);
     activeGear.forEach(g => {
-      const mg = myGear.find(item => item.gear_id === g.id);
+      const mg = myGear.find(item => item.gear_catalog_id === g.id);
       const status = mg?.status || "unchecked";
       const entry = { name: g.name, category: g.category, weight: g.weight_oz ? `${g.weight_oz} oz (${(g.weight_oz / 16).toFixed(1)} lbs)` : "—", sharing: g.sharing_type || "personal" };
       if (status === "packed") gearByStatus.packed.push(entry);
@@ -248,7 +356,7 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
     const activeGear = gearCatalog.filter(g => g.active !== 0);
     // Items that are either "needed" status or completely unchecked (not owned/packed)
     return activeGear.filter(g => {
-      const mg = myGear.find(item => item.gear_id === g.id);
+      const mg = myGear.find(item => item.gear_catalog_id === g.id);
       if (!mg) return true; // unchecked = still need
       return mg.status === "needed"; // explicitly marked as need
     }).map(g => ({
@@ -260,11 +368,11 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
     }));
   };
 
-  const exportStillNeedCSV = () => {
+  const exportStillNeedXLSX = async () => {
     const rows = getStillNeedData();
     if (!rows.length) { addToast("All gear accounted for!", "success"); return; }
-    exportCSV(rows, `${crewName}-still-need.csv`);
-    addToast("Still-need list CSV downloaded", "success");
+    await exportXLSX([{ name: "Still Need", rows, title: "Gear Still Needed" }], `${crewName}-still-need.xlsx`);
+    addToast("Still-need list downloaded", "success");
   };
 
   const printStillNeed = () => {
@@ -322,7 +430,7 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
         {/* Format legend */}
         <div style={{ display: "flex", gap: 12, fontSize: 11, color: theme.textDim }}>
           <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <Download size={12} /> CSV download
+            <FileSpreadsheet size={12} /> Excel download
           </span>
           <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <Printer size={12} /> Printable
@@ -343,26 +451,26 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
           <ReportCard
             icon={Users} title="Crew Roster"
             description="Names, emails, roles, participation type"
-            formats={["csv", "print"]}
-            onCSV={exportRosterCSV} onPrint={printRoster} theme={theme}
+            formats={["xlsx", "print"]}
+            onXLSX={exportRosterXLSX} onPrint={printRoster} theme={theme}
           />
           <ReportCard
             icon={ClipboardList} title="Gear Readiness Matrix"
-            description="Every member × every gear item status grid"
-            formats={["csv"]}
-            onCSV={exportGearMatrixCSV} theme={theme}
+            description="Every member × every gear item — tabs for Need, Owned, Packed"
+            formats={["xlsx"]}
+            onXLSX={exportGearMatrixXLSX} theme={theme}
           />
           <ReportCard
             icon={Backpack} title="Pack Weight Summary"
             description={loadingWeights ? "Loading weights..." : "All members' weight breakdown (personal + food + water)"}
-            formats={["csv"]}
-            onCSV={exportPackWeightCSV} theme={theme}
+            formats={["xlsx"]}
+            onXLSX={exportPackWeightXLSX} theme={theme}
           />
           <ReportCard
             icon={CalendarCheck} title="Training RSVP Summary"
-            description="Events with attendance — who's going, who can't, no reply"
-            formats={["csv"]}
-            onCSV={exportRSVPCSV} theme={theme}
+            description="Events summary + member attendance grid"
+            formats={["xlsx"]}
+            onXLSX={exportRSVPXLSX} theme={theme}
           />
           <ReportCard
             icon={Package} title="Crew Readiness Overview"
@@ -390,8 +498,8 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
       <ReportCard
         icon={FileSpreadsheet} title="My Still-Need List"
         description="Gear you haven't checked off yet — great as a shopping list"
-        formats={["csv", "print"]}
-        onCSV={exportStillNeedCSV} onPrint={printStillNeed} theme={theme}
+        formats={["xlsx", "print"]}
+        onXLSX={exportStillNeedXLSX} onPrint={printStillNeed} theme={theme}
       />
       <ReportCard
         icon={Map} title="Itinerary Cheat Sheet"

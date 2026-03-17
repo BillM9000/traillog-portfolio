@@ -6,7 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useAdventure } from "../contexts/AdventureContext";
 import { useToast } from "../contexts/ToastContext";
 import { fontBody, fontDisplay, card, cardTitle, tag } from "../utils/theme";
-import { exportCSV, printHTML } from "../utils/exportUtils";
+import { exportXLSX, printHTML, gearStatusFormat } from "../utils/exportUtils";
 import PackWeightWidget from "./PackWeightWidget";
 
 const PRIORITY_COLORS = {
@@ -343,24 +343,24 @@ export default function GearList({ troopId, adventureId, members, active, setAct
         {/* Export actions */}
         {am && (
           <div style={{ display: "flex", gap: 6, marginTop: 8, borderTop: `1px solid ${theme.borderLight}`, paddingTop: 8 }}>
-            <button onClick={() => {
+            <button onClick={async () => {
               const myGear = memberGearMap[currentUserId] || [];
               const activeGear = gearCatalog.filter(g => g.active !== 0);
               const rows = activeGear.map(g => {
-                const mg = myGear.find(item => item.gear_id === g.id);
+                const mg = myGear.find(item => item.gear_catalog_id === g.id);
                 return { Name: g.name, Category: g.category, Priority: g.priority || "", Status: mg?.status || "unchecked", Weight_oz: g.weight_oz || "", Type: g.sharing_type || "personal" };
               });
-              exportCSV(rows, `my-gear-checklist-${new Date().toISOString().slice(0,10)}.csv`);
+              await exportXLSX([{ name: "Gear Checklist", rows, title: `${am.name} — Gear Checklist`, conditionalFormat: gearStatusFormat }], `my-gear-checklist-${new Date().toISOString().slice(0,10)}.xlsx`);
               addToast("Gear checklist exported", "success");
             }} style={{ ...pillStyle(theme, false), display: "flex", alignItems: "center", gap: 4 }}>
-              <Download size={10} /> CSV
+              <Download size={10} /> Excel
             </button>
             <button onClick={() => {
               const myGear = memberGearMap[currentUserId] || [];
               const activeGear = gearCatalog.filter(g => g.active !== 0);
               const gearByStatus = { packed: [], owned: [], need: [], unchecked: [] };
               activeGear.forEach(g => {
-                const mg = myGear.find(item => item.gear_id === g.id);
+                const mg = myGear.find(item => item.gear_catalog_id === g.id);
                 const status = mg?.status || "unchecked";
                 const entry = { name: g.name, category: g.category, weight: g.weight_oz ? `${g.weight_oz} oz` : "—", sharing: g.sharing_type || "personal" };
                 if (status === "packed") gearByStatus.packed.push(entry);
@@ -386,16 +386,16 @@ export default function GearList({ troopId, adventureId, members, active, setAct
             }} style={{ ...pillStyle(theme, false), display: "flex", alignItems: "center", gap: 4 }}>
               <Printer size={10} /> Print
             </button>
-            <button onClick={() => {
+            <button onClick={async () => {
               const myGear = memberGearMap[currentUserId] || [];
               const activeGear = gearCatalog.filter(g => g.active !== 0);
               const needItems = activeGear.filter(g => {
-                const mg = myGear.find(item => item.gear_id === g.id);
+                const mg = myGear.find(item => item.gear_catalog_id === g.id);
                 if (!mg) return true;
                 return mg.status === "needed";
               }).map(g => ({ Name: g.name, Category: g.category, Priority: g.priority || "", Weight_oz: g.weight_oz || "", Type: g.sharing_type || "personal" }));
               if (!needItems.length) { addToast("Nothing left to get!", "success"); return; }
-              exportCSV(needItems, `still-need-${new Date().toISOString().slice(0,10)}.csv`);
+              await exportXLSX([{ name: "Still Need", rows: needItems, title: `${am.name} — Still Need` }], `still-need-${new Date().toISOString().slice(0,10)}.xlsx`);
               addToast(`${needItems.length} items exported`, "success");
             }} style={{ ...pillStyle(theme, false), display: "flex", alignItems: "center", gap: 4 }}>
               <Download size={10} /> Still Need

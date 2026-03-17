@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { Download } from "lucide-react";
+import { Download, Mountain, Droplets, MapPin, ChevronDown, ChevronUp, Star, TreePine, Tent, Footprints, Compass } from "lucide-react";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import { card, cardTitle, fontDisplay, fontBody } from "../utils/theme";
-import { exportCSV } from "../utils/exportUtils";
+import { exportXLSX } from "../utils/exportUtils";
 import PrintCheatSheet from "./PrintCheatSheet";
 
 export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }) {
@@ -14,6 +14,7 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
   const [expanded, setExpanded] = useState(new Set());
   const [typeFilter, setTypeFilter] = useState(null);
   const [showPrint, setShowPrint] = useState(false);
+  const [showInfoCard, setShowInfoCard] = useState(false);
   const [itineraries, setItineraries] = useState([]);
   const [selectingItin, setSelectingItin] = useState(false);
 
@@ -145,24 +146,248 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
   const dryCamps = route.filter(d => d.type === "Dry Camp").length;
   const staffedCamps = route.filter(d => d.type === "Staffed").length;
 
+  // ── Derive info card data from route + global_info ──
+  const infoCardData = (() => {
+    // Collect unique programs (not required/passthrough)
+    const programSet = new Set();
+    const peakSet = new Set();
+    route.forEach(d => {
+      (d.programs || []).forEach(p => {
+        if (p.type === "program" || p.type === "optional") programSet.add(p.name);
+      });
+      (d.optional_hikes || []).forEach(h => peakSet.add(h.name));
+    });
+    // Check for Baldy
+    const hasBaldy = route.some(d => (d.programs || []).some(p => p.name?.includes("Baldy")));
+    if (hasBaldy) peakSet.add("Baldy Mountain — 12,441'");
+    // Conservation
+    const consDay = route.find(d => (d.programs || []).some(p => p.name?.includes("Conservation")));
+    // Highest elevation
+    const maxElev = Math.max(...route.map(d => d.elevation || 0));
+    // Total gain
+    const totalGain = route.reduce((s, d) => s + (d.gain || 0), 0);
+    const totalLoss = route.reduce((s, d) => s + (d.loss || 0), 0);
+    // Dry camp days
+    const dryCampDays = route.filter(d => d.type === "Dry Camp").map(d => d.day);
+    // Food pickups
+    const foodPickups = route.filter(d => d.food_pickup).map(d => ({ day: d.day, location: d.food_pickup }));
+    // Staffed camps with programs
+    const staffedWithPrograms = route.filter(d => d.type === "Staffed" && d.programs?.length > 0);
+
+    return {
+      programs: [...programSet],
+      peaks: [...peakSet],
+      conservation: consDay ? { day: consDay.day, camp: consDay.camp } : (global.conservation_project || null),
+      maxElev,
+      totalGain,
+      totalLoss,
+      dryCampDays,
+      foodPickups,
+      staffedWithPrograms,
+      hasBaldy,
+    };
+  })();
+
+  // Rating to color/icon
+  const ratingStyle = (rating) => {
+    const r = (rating || "").toLowerCase();
+    if (r.includes("super")) return { color: "#B91C1C", bg: "#FEE2E2", label: "Super Strenuous" };
+    if (r.includes("strenuous")) return { color: "#D97706", bg: "#FEF3C7", label: "Strenuous" };
+    if (r.includes("moderate")) return { color: "#059669", bg: "#D1FAE5", label: "Moderate" };
+    return { color: "#6B7280", bg: "#F3F4F6", label: rating };
+  };
+  const rs = ratingStyle(itin?.rating);
+
   return (
     <div>
+      {/* ── Itinerary Info Card ── */}
+      <div style={{
+        borderRadius: 12, overflow: "hidden", marginBottom: 8,
+        background: mode === "dark"
+          ? "linear-gradient(135deg, #1a2a1a 0%, #2a3520 40%, #1e2a28 100%)"
+          : "linear-gradient(135deg, #2C3E2C 0%, #3D5A3D 40%, #2A4038 100%)",
+        color: "#fff", position: "relative",
+      }}>
+        {/* Header */}
+        <div style={{ padding: "16px 16px 0 16px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#9DC49D", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 2 }}>
+                ITINERARY
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, fontFamily: fontDisplay, lineHeight: 1.1 }}>
+                {itin.id}
+              </div>
+              <div style={{ fontSize: 13, color: "#C8DEC8", marginTop: 2, fontWeight: 500 }}>
+                {itin.name}
+              </div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{
+                display: "inline-block", padding: "4px 12px", borderRadius: 6,
+                background: rs.bg, color: rs.color, fontSize: 11, fontWeight: 800,
+                letterSpacing: "0.5px",
+              }}>
+                {rs.label}
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 800, fontFamily: fontDisplay, marginTop: 4 }}>
+                {Math.round(totalMiles)} miles
+              </div>
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div style={{
+            display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12,
+            paddingBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.15)",
+          }}>
+            {[
+              { icon: <Tent size={12} />, val: route.length + " days", label: "Duration" },
+              { icon: <Mountain size={12} />, val: (infoCardData?.totalGain || 0).toLocaleString() + "'", label: "Total Gain" },
+              { icon: <Footprints size={12} />, val: (infoCardData?.totalLoss || 0).toLocaleString() + "'", label: "Total Loss" },
+              { icon: <Droplets size={12} />, val: dryCamps + " nights", label: "Dry Camps" },
+              { icon: <MapPin size={12} />, val: staffedCamps, label: "Staffed" },
+            ].map(s => (
+              <div key={s.label} style={{
+                flex: "1 1 0", minWidth: 55, textAlign: "center",
+                background: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "6px 4px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, color: "#9DC49D", marginBottom: 1 }}>
+                  {s.icon}
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{s.val}</span>
+                </div>
+                <div style={{ fontSize: 8, color: "#8AB88A", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Expandable highlights */}
+        <div
+          onClick={() => setShowInfoCard(!showInfoCard)}
+          style={{
+            padding: "8px 16px", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            background: "rgba(0,0,0,0.15)",
+          }}
+        >
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#9DC49D", letterSpacing: "0.5px" }}>
+            {showInfoCard ? "HIDE DETAILS" : "TRAIL HIGHLIGHTS & PROGRAMS"}
+          </span>
+          {showInfoCard
+            ? <ChevronUp size={14} color="#9DC49D" />
+            : <ChevronDown size={14} color="#9DC49D" />
+          }
+        </div>
+
+        {showInfoCard && infoCardData && (
+          <div style={{ padding: "12px 16px 16px 16px" }}>
+              <div>
+                {/* Program Highlights */}
+                {infoCardData.programs.length > 0 && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#9DC49D", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>
+                      <Star size={10} /> Program Highlights
+                    </div>
+                    {infoCardData.programs.map(p => (
+                      <div key={p} style={{ fontSize: 11, color: "#D4E8D4", marginBottom: 3, paddingLeft: 10, position: "relative" }}>
+                        <span style={{ position: "absolute", left: 0, color: "#9DC49D" }}>•</span>
+                        {p}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Camping & Hiking Highlights */}
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#9DC49D", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>
+                    <TreePine size={10} /> Camping & Hiking
+                  </div>
+                  {infoCardData.peaks.map(p => (
+                    <div key={p} style={{ fontSize: 11, color: "#D4E8D4", marginBottom: 3, paddingLeft: 10, position: "relative" }}>
+                      <span style={{ position: "absolute", left: 0, color: "#9DC49D" }}>•</span>
+                      {p}
+                    </div>
+                  ))}
+                  {infoCardData.dryCampDays.length > 0 && (
+                    <div style={{ fontSize: 11, color: "#F0C878", marginBottom: 3, paddingLeft: 10, position: "relative" }}>
+                      <span style={{ position: "absolute", left: 0 }}>•</span>
+                      {infoCardData.dryCampDays.length} Dry Camp{infoCardData.dryCampDays.length > 1 ? "s" : ""} (Day{infoCardData.dryCampDays.length > 1 ? "s" : ""} {infoCardData.dryCampDays.join(", ")})
+                    </div>
+                  )}
+                  {infoCardData.maxElev > 0 && (
+                    <div style={{ fontSize: 11, color: "#D4E8D4", marginBottom: 3, paddingLeft: 10, position: "relative" }}>
+                      <span style={{ position: "absolute", left: 0, color: "#9DC49D" }}>•</span>
+                      Max Elevation: {infoCardData.maxElev.toLocaleString()}'
+                    </div>
+                  )}
+                </div>
+
+                {/* Conservation */}
+                {infoCardData.conservation && (
+                  <div style={{
+                    padding: "8px 12px", borderRadius: 6, marginBottom: 8,
+                    background: "rgba(255,255,255,0.08)", border: "1px solid rgba(157,196,157,0.3)",
+                  }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#9DC49D", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}>
+                      <Compass size={10} /> Conservation
+                    </div>
+                    <div style={{ fontSize: 11, color: "#D4E8D4" }}>
+                      Day {infoCardData.conservation.day}
+                      {global.conservation_project?.time ? ` — ${global.conservation_project.time}` : ""}
+                      {infoCardData.conservation.camp ? ` at ${infoCardData.conservation.camp}` : ""}
+                    </div>
+                    {global.conservation_project?.description && (
+                      <div style={{ fontSize: 10, color: "#A8C8A8", marginTop: 2 }}>
+                        {global.conservation_project.description.split(".")[0]}.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Food Pickups */}
+                {infoCardData.foodPickups.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#F0C878", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>
+                      Food Pickups
+                    </div>
+                    {infoCardData.foodPickups.map(fp => (
+                      <div key={fp.day} style={{ fontSize: 11, color: "#D4E8D4", marginBottom: 2, paddingLeft: 10, position: "relative" }}>
+                        <span style={{ position: "absolute", left: 0, color: "#F0C878" }}>•</span>
+                        Day {fp.day}: {fp.location}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Staffed camp list */}
+            {global.staffed_camps?.length > 0 && (
+              <div style={{ marginTop: 8, fontSize: 10, color: "#A8C8A8" }}>
+                <span style={{ fontWeight: 700, color: "#9DC49D" }}>Staffed Camps: </span>
+                {global.staffed_camps.join(" → ")}
+              </div>
+            )}
+              </div>
+          </div>
+        )}
+      </div>
+
       {/* Overview card */}
       <div style={card(theme)}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
           <div style={cardTitle(theme)}>{itin.name} Quick Reference</div>
           <div style={{ display: "flex", gap: 4 }}>
             <button onClick={() => setShowPrint(true)} style={{ ...tinyBtn(theme), background: theme.accent, color: "#fff", border: `1px solid ${theme.accent}` }}>Print</button>
-            <button onClick={() => {
+            <button onClick={async () => {
               const rows = route.map(d => ({
-                Day: d.day, Camp: d.camp || "", Type: d.type || "", Miles: d.miles || "",
-                Elevation: d.elevation || "", Gain: d.gain || "", Loss: d.loss || "",
+                Day: d.day, Camp: d.camp || "", Type: d.type || "", Miles: d.miles || 0,
+                Elevation: d.elevation || "", Gain: d.gain || 0, Loss: d.loss || 0,
                 Programs: (d.programs || []).map(p => typeof p === "string" ? p : p.name).join("; "),
                 Notes: d.notes || "", Warnings: (d.warnings || []).join("; "),
               }));
-              exportCSV(rows, `itinerary-${itin.id || "export"}-${new Date().toISOString().slice(0,10)}.csv`);
+              await exportXLSX([{ name: "Itinerary", rows, title: `${itin.name || "Itinerary"} — Day by Day` }], `itinerary-${itin.id || "export"}-${new Date().toISOString().slice(0,10)}.xlsx`);
             }} style={{ ...tinyBtn(theme), display: "flex", alignItems: "center", gap: 3 }}>
-              <Download size={10} /> CSV
+              <Download size={10} /> Excel
             </button>
             <button onClick={expandAll} style={tinyBtn(theme)}>Expand All</button>
             <button onClick={collapseAll} style={tinyBtn(theme)}>Collapse</button>

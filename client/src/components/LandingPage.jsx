@@ -340,6 +340,37 @@ const linkBtnStyle = {
   cursor: "pointer", fontFamily: "'DM Sans',Helvetica,sans-serif", display: "block", width: "100%",
 };
 
+// ── FAQ Accordion Item ───────────────────────────────────────────────
+
+function FAQItem({ question, answer }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{
+      background: "rgba(255,255,255,0.05)", borderRadius: 12,
+      border: "1px solid rgba(184,204,154,0.15)", overflow: "hidden",
+    }}>
+      <button onClick={() => setOpen(!open)} style={{
+        width: "100%", padding: "16px 20px", background: "none", border: "none",
+        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between",
+        gap: 12, textAlign: "left",
+      }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: "#FDFAF5", fontFamily: fontBody, lineHeight: 1.4 }}>
+          {question}
+        </span>
+        <span style={{
+          fontSize: 18, color: "#B8CC9A", flexShrink: 0, transition: "transform 0.2s",
+          transform: open ? "rotate(45deg)" : "none",
+        }}>+</span>
+      </button>
+      {open && (
+        <div style={{ padding: "0 20px 16px 20px" }}>
+          <p style={{ fontSize: 13, color: "#B0A898", lineHeight: 1.6, margin: 0 }}>{answer}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Feature data ──────────────────────────────────────────────────────
 
 const FEATURES = [
@@ -348,7 +379,7 @@ const FEATURES = [
   { icon: AIReadinessIcon, title: "AI Training Plans", desc: "Powered by Claude AI. Take a self-assessment, get a personalized training plan, priority coaching, and milestone tracking tailored to your trek. For general guidance — not medical advice." },
   { icon: BackpackIcon, title: "Gear Management", desc: "76-item catalog with personal, crew, and buddy sharing types. Pack weight calculator factors in food and water." },
   { icon: MapIcon, title: "Itinerary Viewer", desc: "48 Philmont routes loaded with day-by-day camps, mileage, and elevation. Printable cheat sheets for the trail." },
-  { icon: ReportIcon, title: "Reports & Exports", desc: "Crew rosters, gear readiness matrices, pack weight summaries, and training RSVPs. CSV export or print." },
+  { icon: ReportIcon, title: "Reports & Exports", desc: "Crew rosters, gear readiness matrices, pack weight summaries, and training RSVPs. Excel export or print." },
 ];
 
 const STEPS = [
@@ -558,16 +589,10 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
             Start Free. Adventure Ready.
           </h2>
           <p style={{
-            fontSize: 14, color: "#6B5D4D", textAlign: "center", margin: "0 0 12px 0",
+            fontSize: 14, color: "#6B5D4D", textAlign: "center", margin: "0 0 8px 0",
             maxWidth: 560, marginLeft: "auto", marginRight: "auto", lineHeight: 1.6,
           }}>
-            There is nothing else like this for high adventure crews. No spreadsheets, no group text chaos, no guesswork.
-          </p>
-          <p style={{
-            fontSize: 13, color: "#8A7A6A", textAlign: "center", margin: "0 0 8px 0",
-            fontWeight: 600,
-          }}>
-            No subscription. No monthly fees. Just pay per adventure.
+            No subscription. No monthly fees. Pay per adventure — your whole crew is covered.
           </p>
           <p style={{
             fontSize: 12, color: "#8A7A6A", textAlign: "center", margin: "0 0 40px 0",
@@ -576,127 +601,102 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
             One price covers your entire crew — unlimited members, one flat cost.
           </p>
 
+          {/* ── Pricing Comparison Matrix ── */}
           <div style={{
-            display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-            gap: isMobile ? 20 : 28,
-            maxWidth: 720,
-            margin: "0 auto",
+            maxWidth: 720, margin: "0 auto", borderRadius: 16, overflow: "hidden",
+            border: "2px solid #DDD6C8",
           }}>
-            {/* Free Tier */}
+            {/* Column headers */}
             <div style={{
-              background: "#F3F0E8", border: "2px solid #DDD6C8", borderRadius: 18,
-              padding: isMobile ? "28px 22px" : "36px 28px",
-              position: "relative",
+              display: "grid", gridTemplateColumns: "1fr 120px 120px",
+              background: "#F3F0E8", borderBottom: "2px solid #DDD6C8",
             }}>
-              <div style={{
-                fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase",
-                color: "#5B7A3A", marginBottom: 8, fontFamily: fontBody,
-              }}>
-                Your First Adventure
+              <div style={{ padding: isMobile ? "16px 12px" : "20px 24px" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#8A7A6A", textTransform: "uppercase", letterSpacing: 1 }}>Features</div>
               </div>
-              <div style={{
-                fontFamily: fontDisplay, fontSize: 40, fontWeight: 900, color: "#2C2416",
-                marginBottom: 4,
-              }}>
-                Free
+              <div style={{ padding: isMobile ? "12px 8px" : "16px 12px", textAlign: "center", borderLeft: "1px solid #DDD6C8" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#5B7A3A", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Free</div>
+                <div style={{ fontFamily: fontDisplay, fontSize: isMobile ? 20 : 24, fontWeight: 900, color: "#2C2416" }}>$0</div>
+                <div style={{ fontSize: 10, color: "#8A7A6A" }}>1st adventure</div>
               </div>
-              <p style={{ fontSize: 13, color: "#6B5D4D", marginBottom: 20, lineHeight: 1.5 }}>
-                Full access to everything. No limits, no trial period, no credit card.
-              </p>
-              <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px 0" }}>
-                {[
-                  "AI-powered training plans",
-                  "AI gear recommendations",
-                  "Gear tracking & pack weight",
-                  "Training calendar & scheduling",
-                  "Itinerary viewer & cheat sheets",
-                  "Reports & CSV exports",
-                  "Unlimited crew members",
-                ].map(item => (
-                  <li key={item} style={{
-                    fontSize: 13, color: "#4A3A2A", padding: "5px 0",
-                    display: "flex", alignItems: "center", gap: 8,
-                  }}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M3 8 L6.5 11.5 L13 5" stroke="#5B7A3A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <button onClick={scrollToAuth} style={{
-                width: "100%", padding: "12px 0", borderRadius: 12, border: "2px solid #5B7A3A",
-                background: "transparent", color: "#5B7A3A", fontSize: 14, fontWeight: 700,
-                cursor: "pointer", fontFamily: fontBody,
-              }}>
-                Get Started Free
-              </button>
+              <div style={{ padding: isMobile ? "12px 8px" : "16px 12px", textAlign: "center", borderLeft: "1px solid #DDD6C8", background: "linear-gradient(175deg, #2A3620 0%, #1A2412 100%)" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#B8CC9A", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Pro</div>
+                <div style={{ fontFamily: fontDisplay, fontSize: isMobile ? 20 : 24, fontWeight: 900, color: "#FDFAF5" }}>$29</div>
+                <div style={{ fontSize: 10, color: "#B0A898" }}>per adventure</div>
+              </div>
             </div>
 
-            {/* Pro Tier */}
-            <div style={{
-              background: "linear-gradient(175deg, #2A3620 0%, #1A2412 100%)",
-              border: "2px solid #5B7A3A", borderRadius: 18,
-              padding: isMobile ? "28px 22px" : "36px 28px",
-              position: "relative", overflow: "hidden",
-            }}>
-              {/* Popular badge */}
-              <div style={{
-                position: "absolute", top: 16, right: -28, background: "#5B7A3A",
-                color: "#FDFAF5", fontSize: 9, fontWeight: 700, letterSpacing: 1.5,
-                textTransform: "uppercase", padding: "4px 36px",
-                transform: "rotate(35deg)", fontFamily: fontBody,
+            {/* Feature rows */}
+            {[
+              { feature: "Unlimited crew members", free: true, pro: true },
+              { feature: "Training calendar & scheduling", free: true, pro: true },
+              { feature: "Best Windows algorithm", free: true, pro: true },
+              { feature: "Training event RSVPs", free: true, pro: true },
+              { feature: "Gear tracking (76-item catalog)", free: true, pro: true },
+              { feature: "Pack weight calculator", free: true, pro: true },
+              { feature: "Itinerary viewer & day-by-day", free: true, pro: true },
+              { feature: "Printable cheat sheets", free: true, pro: true },
+              { feature: "Reports & exports", free: true, pro: true },
+              { feature: "AI-powered training plans", free: true, pro: true },
+              { feature: "AI gear recommendations", free: true, pro: true },
+              { feature: "Readiness scoring & badges", free: true, pro: true },
+              { feature: "Email notifications & invites", free: true, pro: true },
+              { feature: "Google & email sign-in", free: true, pro: true },
+              { feature: "Multiple concurrent adventures", free: false, pro: true },
+              { feature: "Sister crews & split itineraries", free: false, pro: true },
+              { feature: "All future feature updates", free: true, pro: true },
+            ].map((row, i) => (
+              <div key={row.feature} style={{
+                display: "grid", gridTemplateColumns: "1fr 120px 120px",
+                background: i % 2 === 0 ? "#FDFAF5" : "#F8F5ED",
+                borderBottom: "1px solid #E8E2D6",
               }}>
-                Best Value
-              </div>
-              <div style={{
-                fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase",
-                color: "#B8CC9A", marginBottom: 8, fontFamily: fontBody,
-              }}>
-                Additional Adventures
-              </div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 4 }}>
-                <span style={{
-                  fontFamily: fontDisplay, fontSize: 40, fontWeight: 900, color: "#FDFAF5",
-                }}>
-                  $29
-                </span>
-                <span style={{ fontSize: 14, color: "#B0A898", fontWeight: 500 }}>
-                  per adventure
-                </span>
-              </div>
-              <p style={{ fontSize: 13, color: "#B0A898", marginBottom: 20, lineHeight: 1.5 }}>
-                One-time payment — not per person, not per month. Less than a single piece of gear.
-              </p>
-              <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px 0" }}>
-                {[
-                  "Everything in Free",
-                  "AI coaching for every trek",
-                  "Multiple concurrent adventures",
-                  "Sister crews & split itineraries",
-                  "All future feature updates",
-                  "Pay once, prepare forever",
-                ].map(item => (
-                  <li key={item} style={{
-                    fontSize: 13, color: "#D4E4B8", padding: "5px 0",
-                    display: "flex", alignItems: "center", gap: 8,
-                  }}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M3 8 L6.5 11.5 L13 5" stroke="#B8CC9A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <div style={{ padding: isMobile ? "10px 12px" : "12px 24px", fontSize: 13, color: "#4A3A2A", display: "flex", alignItems: "center" }}>
+                  {row.feature}
+                </div>
+                <div style={{ padding: "10px 12px", textAlign: "center", borderLeft: "1px solid #E8E2D6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {row.free ? (
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                      <circle cx="9" cy="9" r="8" fill="#E8F5E0" />
+                      <path d="M5 9 L7.5 11.5 L13 6" stroke="#5B7A3A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <button onClick={scrollToAuth} style={{
-                width: "100%", padding: "12px 0", borderRadius: 12, border: "none",
-                background: "#5B7A3A", color: "#FDFAF5", fontSize: 14, fontWeight: 700,
-                cursor: "pointer", fontFamily: fontBody,
-                boxShadow: "0 4px 16px rgba(58,77,42,0.4)",
-              }}>
-                Get Started Free
-              </button>
+                  ) : (
+                    <span style={{ color: "#C8C0B4", fontSize: 16 }}>—</span>
+                  )}
+                </div>
+                <div style={{ padding: "10px 12px", textAlign: "center", borderLeft: "1px solid #E8E2D6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <circle cx="9" cy="9" r="8" fill="#E8F5E0" />
+                    <path d="M5 9 L7.5 11.5 L13 6" stroke="#5B7A3A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              </div>
+            ))}
+
+            {/* CTA row */}
+            <div style={{
+              display: "grid", gridTemplateColumns: "1fr 120px 120px",
+              background: "#F3F0E8", borderTop: "2px solid #DDD6C8",
+            }}>
+              <div />
+              <div style={{ padding: "16px 8px", textAlign: "center", borderLeft: "1px solid #DDD6C8" }}>
+                <button onClick={scrollToAuth} style={{
+                  padding: "8px 0", width: "100%", borderRadius: 8, border: "2px solid #5B7A3A",
+                  background: "transparent", color: "#5B7A3A", fontSize: 12, fontWeight: 700,
+                  cursor: "pointer", fontFamily: fontBody,
+                }}>
+                  Start Free
+                </button>
+              </div>
+              <div style={{ padding: "16px 8px", textAlign: "center", borderLeft: "1px solid #DDD6C8" }}>
+                <button onClick={scrollToAuth} style={{
+                  padding: "8px 0", width: "100%", borderRadius: 8, border: "none",
+                  background: "#5B7A3A", color: "#FDFAF5", fontSize: 12, fontWeight: 700,
+                  cursor: "pointer", fontFamily: fontBody,
+                }}>
+                  Get Started
+                </button>
+              </div>
             </div>
           </div>
 
@@ -718,39 +718,21 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
             }}>
               An adventure is one trip to one base — like Philmont 2026. Everyone going on that trip shares one adventure. You never pay per person.
             </p>
-
             <div style={{
               display: "grid",
               gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
               gap: 14,
             }}>
               {[
-                {
-                  icon: "🏕️",
-                  title: "One crew, one trek",
-                  desc: "12 people heading to Philmont together? That's one adventure. $0 the first time, $29 after that. All 12 members included.",
-                },
-                {
-                  icon: "👥",
-                  title: "Sister crews, same trip",
-                  desc: "Your troop sends two crews to Philmont the same summer? Each crew is its own adventure with its own itinerary and gear lists.",
-                },
-                {
-                  icon: "🗺️",
-                  title: "Different bases, different trips",
-                  desc: "Philmont this year and Northern Tier next year? Two separate adventures. The first is always free.",
-                },
-                {
-                  icon: "🔄",
-                  title: "Same base, new year",
-                  desc: "Going back to Philmont in 2027? That's a new adventure with fresh dates, new crew members, and a new training plan.",
-                },
+                { title: "One crew, one trek", desc: "12 people heading to Philmont together? That's one adventure. $0 the first time, $29 after that. All 12 members included." },
+                { title: "Sister crews, same trip", desc: "Your troop sends two crews to Philmont the same summer? Each crew is its own adventure with its own itinerary and gear lists." },
+                { title: "Different bases, different trips", desc: "Philmont this year and Northern Tier next year? Two separate adventures. The first is always free." },
+                { title: "Same base, new year", desc: "Going back to Philmont in 2027? That's a new adventure with fresh dates, new crew members, and a new training plan." },
               ].map((s) => (
                 <div key={s.title} style={{
                   background: "#FDFAF5", borderRadius: 12, padding: "16px 14px",
                   border: "1px solid #E8E2D6",
                 }}>
-                  <div style={{ fontSize: 22, marginBottom: 6 }}>{s.icon}</div>
                   <div style={{
                     fontFamily: fontDisplay, fontSize: 13, fontWeight: 700,
                     color: "#2C2416", marginBottom: 4,
@@ -763,59 +745,6 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
                 </div>
               ))}
             </div>
-
-            {/* Quick setup process */}
-            <div style={{
-              marginTop: 20, padding: "16px 14px",
-              background: "#FDFAF5", borderRadius: 12, border: "1px solid #E8E2D6",
-            }}>
-              <div style={{
-                fontFamily: fontDisplay, fontSize: 13, fontWeight: 700,
-                color: "#2C2416", marginBottom: 10, textAlign: "center",
-              }}>
-                Setup takes 2 minutes
-              </div>
-              <div style={{
-                display: "flex", flexDirection: isMobile ? "column" : "row",
-                gap: isMobile ? 8 : 4, alignItems: "center", justifyContent: "center",
-              }}>
-                {[
-                  { step: "1", text: "Create your troop" },
-                  { step: "2", text: "Add an adventure & pick your itinerary" },
-                  { step: "3", text: "Invite crew members" },
-                  { step: "4", text: "Everyone coordinates from one place" },
-                ].map((s, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{
-                      width: 22, height: 22, borderRadius: "50%", background: "#5B7A3A",
-                      color: "#fff", fontSize: 11, fontWeight: 700, display: "flex",
-                      alignItems: "center", justifyContent: "center", flexShrink: 0,
-                    }}>
-                      {s.step}
-                    </div>
-                    <span style={{ fontSize: 12, color: "#4A3A2A", whiteSpace: "nowrap" }}>{s.text}</span>
-                    {!isMobile && i < 3 && <span style={{ color: "#C8C0B4", margin: "0 4px" }}>→</span>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Trust signals below pricing */}
-          <div style={{
-            display: "flex", flexDirection: isMobile ? "column" : "row",
-            justifyContent: "center", gap: isMobile ? 12 : 32,
-            marginTop: 36, textAlign: "center",
-          }}>
-            {[
-              { bold: "Your trek date is set", rest: " — start preparing now" },
-              { bold: "Never per-user", rest: " — your whole crew is covered" },
-              { bold: "Join crews", rest: " already using TrailLog" },
-            ].map((s, i) => (
-              <p key={i} style={{ fontSize: 12, color: "#8A7A6A", margin: 0, lineHeight: 1.5 }}>
-                <strong style={{ color: "#5B7A3A" }}>{s.bold}</strong>{s.rest}
-              </p>
-            ))}
           </div>
         </div>
       </section>
@@ -864,6 +793,73 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
         </div>
       </section>
 
+      {/* ── FAQ ──────────────────────────────────────────── */}
+      <section style={{
+        background: "linear-gradient(175deg, #252B1F 0%, #1A1F16 100%)",
+        padding: isMobile ? "48px 20px" : "80px 40px",
+      }}>
+        <div style={{ maxWidth: 720, margin: "0 auto" }}>
+          <h2 style={{
+            fontFamily: fontDisplay, fontSize: isMobile ? 24 : 32, fontWeight: 800,
+            color: "#FDFAF5", textAlign: "center", margin: "0 0 8px 0",
+          }}>
+            Frequently Asked Questions
+          </h2>
+          <p style={{ fontSize: 14, color: "#B0A898", textAlign: "center", margin: "0 0 36px 0" }}>
+            Everything you need to know before getting started.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {[
+              { q: "Is TrailLog affiliated with the BSA or Philmont?", a: "No. TrailLog is an independent tool built by GraceZero.ai. It is not affiliated with, endorsed by, or sponsored by Scouting America, Philmont Scout Ranch, or any national scouting organization." },
+              { q: "What does 'first adventure free' mean?", a: "Your first adventure is completely free — all features, unlimited members, no credit card required. If your troop adds a second concurrent adventure (like sister crews on the same trip), only the additional adventures cost $29 each." },
+              { q: "Do I pay per person?", a: "No. You pay per adventure, and each adventure covers your entire crew — whether that's 8 people or 20. Every member gets full access." },
+              { q: "What adventure bases are supported?", a: "Philmont Scout Ranch is fully loaded with 48 itineraries, gear catalogs, and AI training. Northern Tier, Sea Base, and Summit Bechtel are coming soon." },
+              { q: "Is my data secure?", a: "Yes. We use HTTPS encryption, session-based authentication, and follow security best practices including CSRF protection, rate limiting, input validation, and Content Security Policy headers. Your data is never sold or shared." },
+              { q: "Can scouts under 18 use this?", a: "Yes. Users 13 and older can create accounts. Users under 18 are identified as scouts with appropriate role restrictions. A parent notification email is sent when a minor creates an account." },
+              { q: "How does the AI training plan work?", a: "You take a quick self-assessment (fitness level, hiking experience, altitude exposure). Claude AI generates a personalized multi-phase training plan tailored to your specific trek difficulty and timeline. It's general guidance — not medical advice." },
+              { q: "Can I use this on my phone?", a: "Absolutely. TrailLog is a mobile-first web app — no download needed. It works in any modern browser on phones, tablets, and desktops." },
+            ].map((faq, i) => (
+              <FAQItem key={i} question={faq.q} answer={faq.a} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CONTACT ────────────────────────────────────────── */}
+      <section style={{ background: "#FDFAF5", padding: isMobile ? "48px 20px" : "64px 40px" }}>
+        <div style={{ maxWidth: 720, margin: "0 auto", textAlign: "center" }}>
+          <h2 style={{
+            fontFamily: fontDisplay, fontSize: isMobile ? 22 : 28, fontWeight: 800,
+            color: "#2C2416", margin: "0 0 8px 0",
+          }}>
+            Questions? Feedback?
+          </h2>
+          <p style={{ fontSize: 14, color: "#6B5D4D", margin: "0 0 28px 0", lineHeight: 1.6 }}>
+            We'd love to hear from you. Whether you have a feature request, found a bug, or just want to say hi.
+          </p>
+          <div style={{
+            display: "flex", flexDirection: isMobile ? "column" : "row",
+            gap: 16, justifyContent: "center", alignItems: "stretch",
+          }}>
+            <a href="mailto:bill.mccoy@gracezero.ai" style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+              padding: "16px 24px", borderRadius: 14, textDecoration: "none",
+              background: "#F3F0E8", border: "1px solid #DDD6C8",
+              color: "#2C2416", fontSize: 14, fontWeight: 600, fontFamily: fontBody,
+              flex: isMobile ? "unset" : 1, maxWidth: 280,
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B7A3A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="2" /><path d="M22 7 L12 13 L2 7" />
+              </svg>
+              bill.mccoy@gracezero.ai
+            </a>
+          </div>
+          <p style={{ fontSize: 11, color: "#8A7A6A", marginTop: 16 }}>
+            We typically respond within 24 hours.
+          </p>
+        </div>
+      </section>
+
       {/* ── BOTTOM CTA + FOOTER ─────────────────────────── */}
       <section style={{
         background: "linear-gradient(175deg, #1A2412 0%, #2A3620 60%, #1A1F16 100%)",
@@ -903,6 +899,8 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
               <a href="/privacy" style={{ color: "#5A6A4A", textDecoration: "none" }}>Privacy Policy</a>
               <span style={{ margin: "0 8px" }}>·</span>
               <a href="/terms" style={{ color: "#5A6A4A", textDecoration: "none" }}>Terms of Service</a>
+              <span style={{ margin: "0 8px" }}>·</span>
+              <a href="mailto:bill.mccoy@gracezero.ai" style={{ color: "#5A6A4A", textDecoration: "none" }}>Contact</a>
             </div>
             <p style={{ fontSize: 10, color: "#4A5A3A", marginTop: 10 }}>
               Not affiliated with or endorsed by any national scouting organization.
