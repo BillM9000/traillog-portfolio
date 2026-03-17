@@ -9,12 +9,14 @@ const DESIGNS = [
   { id: 'design-8-topo', name: 'America 250 Topo', desc: 'Circle topo badge design with Tooth of Time and Baldy labeled, contour lines, compass rose, boot print, and pack burro. Clean, athletic, works on any shirt color.', img: 'shirt-8-topo.jpg' },
 ];
 
+const MAX_VOTES = 2;
 const VOTER_KEY = 'philmont26_voter_name';
-const VOTE_KEY  = 'philmont26_vote';
+const VOTES_KEY = 'philmont26_votes'; // JSON array of { design_id, slot }
 
 let voterName = localStorage.getItem(VOTER_KEY) || '';
-let myVote    = localStorage.getItem(VOTE_KEY) || '';
-let counts    = {};
+let myVotes = JSON.parse(localStorage.getItem(VOTES_KEY) || '[]'); // [{ design_id, slot }]
+let counts = {};
+let voterCount = 0;
 
 /* ── API ── */
 async function fetchCounts() {
@@ -22,16 +24,29 @@ async function fetchCounts() {
     const res = await fetch('/api/vote/counts');
     const data = await res.json();
     counts = data.counts || {};
+    voterCount = data.voters || 0;
   } catch {
     counts = {};
   }
 }
 
-async function submitVote(designId) {
+async function fetchMyVotes() {
+  if (!voterName) return;
+  try {
+    const res = await fetch('/api/vote/my-votes?name=' + encodeURIComponent(voterName));
+    const data = await res.json();
+    myVotes = data.votes || [];
+    localStorage.setItem(VOTES_KEY, JSON.stringify(myVotes));
+  } catch {
+    // keep localStorage version
+  }
+}
+
+async function submitVote(designId, slot) {
   const res = await fetch('/api/vote', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ voter_name: voterName, design_id: designId }),
+    body: JSON.stringify({ voter_name: voterName, design_id: designId, vote_slot: slot }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -40,40 +55,67 @@ async function submitVote(designId) {
   return res.json();
 }
 
+async function removeVote(slot) {
+  const res = await fetch('/api/vote', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ voter_name: voterName, vote_slot: slot }),
+  });
+  if (!res.ok) throw new Error('Failed to remove vote');
+  return res.json();
+}
+
 /* ── Helpers ── */
 function toast(msg, isErr) {
-  const el = document.getElementById('toast');
+  var el = document.getElementById('toast');
   el.textContent = msg;
   el.className = 'toast show' + (isErr ? ' error' : '');
-  setTimeout(() => { el.className = 'toast'; }, 3400);
+  setTimeout(function() { el.className = 'toast'; }, 3400);
 }
-function totalVotes() { return Object.values(counts).reduce((a, b) => a + b, 0); }
-function pct(id) { const t = totalVotes(); return t ? Math.round((counts[id] / t) * 100) : 0; }
-function leaderId() { return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0]; }
+function totalVotes() { return Object.values(counts).reduce(function(a, b) { return a + b; }, 0); }
+function pct(id) { var t = totalVotes(); return t ? Math.round((counts[id] / t) * 100) : 0; }
+
+function myPickSlot(designId) {
+  var v = myVotes.find(function(v) { return v.design_id === designId; });
+  return v ? v.slot : 0;
+}
+function isPicked(designId) { return myPickSlot(designId) > 0; }
+function votesUsed() { return myVotes.length; }
+function nextFreeSlot() {
+  var used = myVotes.map(function(v) { return v.slot; });
+  if (used.indexOf(1) === -1) return 1;
+  if (used.indexOf(2) === -1) return 2;
+  return 0; // all used
+}
 
 function openLightbox(src) {
   document.getElementById('lightboxImg').src = src;
   document.getElementById('lightbox').classList.add('open');
 }
 function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeLightbox(); });
 
 /* ── Name Gate ── */
 function enterVoting() {
-  const first = document.getElementById('firstName').value.trim();
-  const last = document.getElementById('lastInitial').value.trim().toUpperCase();
+  var first = document.getElementById('firstName').value.trim();
+  var last = document.getElementById('lastInitial').value.trim().toUpperCase();
   if (!first || first.length < 1) { toast('Enter your first name', true); return; }
   if (!last || !/^[A-Z]$/.test(last)) { toast('Enter your last initial (one letter)', true); return; }
   voterName = first + ' ' + last;
   localStorage.setItem(VOTER_KEY, voterName);
+  initAfterName();
+}
+
+async function initAfterName() {
+  await fetchMyVotes();
   showVotingUI();
 }
 
 function changeName() {
   localStorage.removeItem(VOTER_KEY);
-  localStorage.removeItem(VOTE_KEY);
+  localStorage.removeItem(VOTES_KEY);
   voterName = '';
-  myVote = '';
+  myVotes = [];
   document.getElementById('nameGate').style.display = '';
   document.getElementById('voterInfo').style.display = 'none';
   document.getElementById('statusBar').style.display = 'none';
@@ -90,24 +132,68 @@ function showVotingUI() {
   render();
 }
 
+/* ── Leaderboard ── */
+function renderLeaderboard() {
+  var lb = document.getElementById('leaderboard');
+  var total = totalVotes();
+  if (total === 0) { lb.style.display = 'none'; return; }
+
+  lb.style.display = '';
+  // Sort designs by vote count descending
+  var sorted = DESIGNS.map(function(d) {
+    return { id: d.id, name: d.name, count: counts[d.id] || 0 };
+  }).filter(function(d) { return d.count > 0; }).sort(function(a, b) { return b.count - a.count; });
+
+  var html = '<h2>Leaderboard</h2>';
+  sorted.forEach(function(d, i) {
+    var isLeader = i === 0;
+    var isMine = isPicked(d.id);
+    var cls = 'lb-row' + (isLeader ? ' lb-leader' : '') + (isMine ? ' lb-mypick' : '');
+    var barW = total ? Math.round((d.count / total) * 100) : 0;
+    html += '<div class="' + cls + '">' +
+      '<div class="lb-bg" style="width:' + barW + '%"></div>' +
+      '<span class="lb-rank">' + (i + 1) + '</span>' +
+      '<span class="lb-name">' + d.name + (isMine ? ' \u2713' : '') + '</span>' +
+      '<span class="lb-votes">' + d.count + '</span>' +
+      '<span class="lb-pct">' + barW + '%</span>' +
+    '</div>';
+  });
+
+  lb.innerHTML = html;
+}
+
 /* ── Render ── */
 function render() {
-  const grid = document.getElementById('grid');
-  const total = totalVotes();
-  const top = leaderId();
+  var grid = document.getElementById('grid');
+  var total = totalVotes();
+  var sorted = DESIGNS.slice().sort(function(a, b) { return (counts[b.id] || 0) - (counts[a.id] || 0); });
+  var topId = sorted.length && (counts[sorted[0].id] || 0) > 0 ? sorted[0].id : null;
 
   grid.innerHTML = '';
 
-  DESIGNS.forEach((d, i) => {
-    const cnt = counts[d.id] || 0;
-    const isPicked = myVote === d.id;
-    const isLeader = d.id === top && total > 0;
+  DESIGNS.forEach(function(d, i) {
+    var cnt = counts[d.id] || 0;
+    var picked = isPicked(d.id);
+    var slot = myPickSlot(d.id);
+    var isLeader = d.id === topId;
 
-    const card = document.createElement('div');
-    card.className = ['card', isPicked ? 'my-pick' : '', isLeader ? 'is-leader' : ''].filter(Boolean).join(' ');
+    var card = document.createElement('div');
+    card.className = ['card', picked ? 'my-pick' : '', isLeader ? 'is-leader' : ''].filter(Boolean).join(' ');
+
+    var btnLabel, btnClass;
+    if (picked) {
+      btnLabel = '\u2713 \u00A0Vote ' + slot;
+      btnClass = 'btn-vote picked';
+    } else if (votesUsed() < MAX_VOTES) {
+      btnLabel = votesUsed() === 0 ? 'Cast Vote' : 'Cast Vote #' + (votesUsed() + 1);
+      btnClass = 'btn-vote';
+    } else {
+      btnLabel = 'All Votes Used';
+      btnClass = 'btn-vote';
+    }
 
     card.innerHTML =
-      '<div class="corner-badge">' + (isPicked ? '\u2713 My Vote' : '') + '</div>' +
+      '<div class="corner-badge">' + (picked ? '\u2713 Vote ' + slot : '') + '</div>' +
       '<div class="card-num">' + (i + 1) + '</div>' +
       '<div class="card-media">' +
         '<img src="/vote/' + d.img + '" alt="' + d.name + '" loading="lazy" data-zoom="/vote/' + d.img + '">' +
@@ -116,9 +202,9 @@ function render() {
         '<div class="card-name">' + d.name + '</div>' +
         '<div class="card-desc">' + d.desc + '</div>' +
         '<div class="vote-row">' +
-          '<button class="btn-vote' + (isPicked ? ' picked' : '') + '" data-id="' + d.id + '"' +
-            (!voterName ? ' disabled' : '') + '>' +
-            (isPicked ? '\u2713 \u00A0Your Pick' : (myVote ? 'Change Vote' : 'Cast Vote')) +
+          '<button class="' + btnClass + '" data-id="' + d.id + '"' +
+            (!voterName || (!picked && votesUsed() >= MAX_VOTES) ? ' disabled' : '') + '>' +
+            btnLabel +
           '</button>' +
           '<div class="tally">' +
             '<span class="tally-num">' + cnt + '</span>' +
@@ -134,33 +220,38 @@ function render() {
   });
 
   // Status bar
-  const bar = document.getElementById('statusBar');
-  if (myVote) {
-    const picked = DESIGNS.find(d => d.id === myVote);
-    bar.textContent = '\u2713  Voted for "' + (picked?.name || myVote) + '" \u2014 you can change your vote anytime';
+  var bar = document.getElementById('statusBar');
+  if (votesUsed() > 0) {
+    var names = myVotes.map(function(v) {
+      var d = DESIGNS.find(function(dd) { return dd.id === v.design_id; });
+      return '"' + (d ? d.name : v.design_id) + '"';
+    });
+    bar.textContent = '\u2713  ' + votesUsed() + '/' + MAX_VOTES + ' votes used: ' + names.join(' & ') +
+      (votesUsed() < MAX_VOTES ? ' \u2014 you have ' + (MAX_VOTES - votesUsed()) + ' more!' : ' \u2014 tap a pick to change it');
     bar.classList.add('done');
   } else if (voterName) {
-    bar.textContent = '\u2B21  Tap any image to zoom \u2014 pick your favorite design';
+    bar.textContent = '\u2B21  You have ' + MAX_VOTES + ' votes \u2014 pick your favorite designs';
     bar.classList.remove('done');
   }
 
   // Total strip
-  const strip = document.getElementById('totalStrip');
+  var strip = document.getElementById('totalStrip');
   if (total > 0) {
-    const topDesign = DESIGNS.find(d => d.id === top);
-    strip.innerHTML = 'Total votes: <strong>' + total + '</strong>&nbsp;&nbsp;\u00B7&nbsp;&nbsp;Leader: <strong>' + (topDesign?.name || '?') + '</strong> (' + pct(top) + '%)';
+    strip.innerHTML = 'Total votes: <strong>' + total + '</strong>&nbsp;&nbsp;\u00B7&nbsp;&nbsp;' +
+      'Voters: <strong>' + voterCount + '</strong>';
   } else {
     strip.innerHTML = 'No votes yet \u2014 be the first!';
   }
+
+  renderLeaderboard();
 }
 
 /* ── Event Delegation ── */
 
 // Image zoom via delegation
-document.addEventListener('click', e => {
-  const img = e.target.closest('[data-zoom]');
+document.addEventListener('click', function(e) {
+  var img = e.target.closest('[data-zoom]');
   if (img) { openLightbox(img.dataset.zoom); return; }
-  // Lightbox close
   if (e.target.closest('.lightbox') && !e.target.closest('.lightbox img')) { closeLightbox(); }
   if (e.target.closest('.lightbox-close')) { closeLightbox(); }
 });
@@ -172,43 +263,66 @@ document.getElementById('btnEnter').addEventListener('click', enterVoting);
 document.getElementById('btnChangeName').addEventListener('click', changeName);
 
 /* ── Vote handler ── */
-document.getElementById('grid').addEventListener('click', async e => {
-  const btn = e.target.closest('.btn-vote');
+document.getElementById('grid').addEventListener('click', async function(e) {
+  var btn = e.target.closest('.btn-vote');
   if (!btn || !voterName) return;
-  const designId = btn.dataset.id;
-  if (designId === myVote) return;
+  var designId = btn.dataset.id;
 
+  // If already picked this one, remove the vote
+  if (isPicked(designId)) {
+    var slot = myPickSlot(designId);
+    btn.disabled = true;
+    btn.textContent = 'Removing\u2026';
+    try {
+      await removeVote(slot);
+      myVotes = myVotes.filter(function(v) { return v.slot !== slot; });
+      localStorage.setItem(VOTES_KEY, JSON.stringify(myVotes));
+      await fetchCounts();
+      render();
+      toast('Vote removed. You have a free slot!');
+    } catch (err) {
+      btn.disabled = false;
+      toast(err.message || 'Could not remove vote', true);
+    }
+    return;
+  }
+
+  // No free slots
+  if (votesUsed() >= MAX_VOTES) return;
+
+  var freeSlot = nextFreeSlot();
   btn.disabled = true;
-  const prevText = btn.textContent;
   btn.textContent = 'Recording\u2026';
   try {
-    const result = await submitVote(designId);
-    localStorage.setItem(VOTE_KEY, designId);
-    myVote = designId;
+    var result = await submitVote(designId, freeSlot);
+    myVotes.push({ design_id: designId, slot: freeSlot });
+    localStorage.setItem(VOTES_KEY, JSON.stringify(myVotes));
     await fetchCounts();
     render();
     if (result.status === 'changed') {
       toast('Vote changed! Nice choice, Scout.');
     } else {
-      toast('Vote recorded \u2014 See you on the trail, Crew 614!');
+      toast(votesUsed() < MAX_VOTES
+        ? 'Vote ' + freeSlot + ' recorded! You have ' + (MAX_VOTES - votesUsed()) + ' more.'
+        : 'Both votes in! See you on the trail, Crew 614!');
     }
   } catch (err) {
     btn.disabled = false;
-    btn.textContent = prevText;
+    btn.textContent = 'Cast Vote';
     toast(err.message || 'Could not record vote \u2014 try again.', true);
   }
 });
 
 /* ── Starfield ── */
 (function() {
-  const canvas = document.getElementById('starCanvas');
-  const ctx = canvas.getContext('2d');
-  let stars = [];
+  var canvas = document.getElementById('starCanvas');
+  var ctx = canvas.getContext('2d');
+  var stars = [];
   function resize() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
-  function initStars(n) { stars = Array.from({length: n}, () => ({ x: Math.random()*canvas.width, y: Math.random()*canvas.height*.85, r: Math.random()*1.3+.2, a: Math.random(), da: (Math.random()-.5)*.004 })); }
+  function initStars(n) { stars = Array.from({length: n}, function() { return { x: Math.random()*canvas.width, y: Math.random()*canvas.height*.85, r: Math.random()*1.3+.2, a: Math.random(), da: (Math.random()-.5)*.004 }; }); }
   function draw() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    stars.forEach(s => {
+    stars.forEach(function(s) {
       s.a = Math.max(.1, Math.min(1, s.a+s.da));
       if (s.a<=.1||s.a>=1) s.da*=-1;
       ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
@@ -217,13 +331,14 @@ document.getElementById('grid').addEventListener('click', async e => {
     requestAnimationFrame(draw);
   }
   resize(); initStars(180); draw();
-  window.addEventListener('resize', () => { resize(); initStars(180); });
+  window.addEventListener('resize', function() { resize(); initStars(180); });
 })();
 
 /* ── Init ── */
-(async () => {
+(async function() {
   await fetchCounts();
   if (voterName) {
+    await fetchMyVotes();
     showVotingUI();
   } else {
     render();

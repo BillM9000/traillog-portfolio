@@ -2567,24 +2567,49 @@ app.get("/api/vote/counts", (req, res) => {
     const rows = db.prepare("SELECT design_id, COUNT(*) as count FROM shirt_votes GROUP BY design_id").all();
     const counts = {};
     rows.forEach(r => { counts[r.design_id] = r.count; });
-    res.json({ counts, total: rows.reduce((s, r) => s + r.count, 0) });
+    const voterCount = db.prepare("SELECT COUNT(DISTINCT voter_name) as c FROM shirt_votes").get().c;
+    res.json({ counts, total: rows.reduce((s, r) => s + r.count, 0), voters: voterCount });
+  } catch (e) { res.status(500).json({ error: "Failed to load votes" }); }
+});
+
+app.get("/api/vote/my-votes", (req, res) => {
+  const name = req.query.name;
+  if (!name) return res.json({ votes: [] });
+  try {
+    const rows = db.prepare("SELECT design_id, vote_slot FROM shirt_votes WHERE voter_name = ? ORDER BY vote_slot").all(name.trim());
+    res.json({ votes: rows.map(r => ({ design_id: r.design_id, slot: r.vote_slot })) });
   } catch (e) { res.status(500).json({ error: "Failed to load votes" }); }
 });
 
 app.post("/api/vote", (req, res) => {
-  const { voter_name, design_id } = req.body;
+  const { voter_name, design_id, vote_slot } = req.body;
   if (!voter_name || !design_id) return res.status(400).json({ error: "Name and design required" });
   const name = voter_name.trim();
+  const slot = vote_slot === 2 ? 2 : 1;
   if (name.length < 2 || name.length > 30) return res.status(400).json({ error: "Name must be 2-30 characters" });
   try {
-    const existing = db.prepare("SELECT id, design_id FROM shirt_votes WHERE voter_name = ?").get(name);
+    // Can't vote for the same design in both slots
+    const otherSlot = slot === 1 ? 2 : 1;
+    const dup = db.prepare("SELECT id FROM shirt_votes WHERE voter_name = ? AND vote_slot = ? AND design_id = ?").get(name, otherSlot, design_id);
+    if (dup) return res.status(400).json({ error: "You already voted for this design in your other slot" });
+
+    const existing = db.prepare("SELECT id, design_id FROM shirt_votes WHERE voter_name = ? AND vote_slot = ?").get(name, slot);
     if (existing) {
       db.prepare("UPDATE shirt_votes SET design_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(design_id, existing.id);
-      return res.json({ status: "changed", previous: existing.design_id });
+      return res.json({ status: "changed", slot, previous: existing.design_id });
     }
-    db.prepare("INSERT INTO shirt_votes (voter_name, design_id) VALUES (?, ?)").run(name, design_id);
-    res.json({ status: "created" });
+    db.prepare("INSERT INTO shirt_votes (voter_name, design_id, vote_slot) VALUES (?, ?, ?)").run(name, design_id, slot);
+    res.json({ status: "created", slot });
   } catch (e) { res.status(500).json({ error: "Failed to record vote" }); }
+});
+
+app.delete("/api/vote", (req, res) => {
+  const { voter_name, vote_slot } = req.body;
+  if (!voter_name || !vote_slot) return res.status(400).json({ error: "Name and slot required" });
+  try {
+    db.prepare("DELETE FROM shirt_votes WHERE voter_name = ? AND vote_slot = ?").run(voter_name.trim(), vote_slot);
+    res.json({ status: "removed" });
+  } catch (e) { res.status(500).json({ error: "Failed to remove vote" }); }
 });
 
 // SPA fallback
