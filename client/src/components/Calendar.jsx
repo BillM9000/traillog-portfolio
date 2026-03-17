@@ -32,7 +32,8 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
   const { theme, mode } = useTheme();
   const am = active !== null ? members[active] : null;
   const [viewMode, setViewMode] = useState("my"); // "my" or "group"
-  const [tooltip, setTooltip] = useState(null); // { key, names }
+  const [tooltip, setTooltip] = useState(null); // { key, names, x, y }
+  const calendarRef = useRef(null);
 
   // Build set of blocked trek dates
   const trekDateSet = useMemo(() => {
@@ -80,6 +81,18 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
     window.addEventListener("pointerup", up);
     return () => { window.removeEventListener("mouseup", up); window.removeEventListener("pointerup", up); };
   }, []);
+
+  // Dismiss tooltip when clicking outside the calendar or scrolling
+  useEffect(() => {
+    if (!tooltip) return;
+    const dismiss = (e) => {
+      if (calendarRef.current && !calendarRef.current.contains(e.target)) setTooltip(null);
+    };
+    const dismissScroll = () => setTooltip(null);
+    document.addEventListener("pointerdown", dismiss);
+    window.addEventListener("scroll", dismissScroll, true);
+    return () => { document.removeEventListener("pointerdown", dismiss); window.removeEventListener("scroll", dismissScroll, true); };
+  }, [tooltip]);
 
   // Auto-switch to "my" view when a member is selected
   useEffect(() => {
@@ -184,7 +197,7 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
       )}
 
       {/* Calendar grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(310px, 1fr))", gap: 14 }}>
+      <div ref={calendarRef} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(310px, 1fr))", gap: 14, position: "relative" }}>
         {months.map(({ year, month }) => {
           const dim = daysInMonth(year, month);
           const start = dayOfWeek(year, month, 1);
@@ -258,7 +271,17 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
                         if (past || blocked) return;
                         if (showGroupView && active !== null) {
                           // In group view, tapping shows tooltip
-                          if (hmData) setTooltip(isTooltipTarget ? null : { key, names: hmData.names, missing: hmData.missing });
+                          if (hmData) {
+                            if (isTooltipTarget) { setTooltip(null); }
+                            else {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setTooltip({
+                                key, names: hmData.names, missing: hmData.missing,
+                                x: rect.left + rect.width / 2,
+                                y: rect.bottom + 6,
+                              });
+                            }
+                          }
                           return;
                         }
                         if (active !== null) { e.preventDefault(); onDown(key); }
@@ -306,17 +329,20 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
             </div>
           );
         })}
+
       </div>
 
-      {/* Tooltip overlay for group view */}
+      {/* Tooltip popover for group view — fixed position near clicked cell */}
       {tooltip && (
         <div style={{
-          padding: "10px 14px", background: theme.bgCard, borderRadius: 10, border: `1px solid ${theme.border}`,
-          marginTop: 8, boxShadow: theme.shadow,
+          position: "fixed", left: tooltip.x, top: tooltip.y, transform: "translateX(-50%)",
+          padding: "8px 12px", background: theme.bgCard, borderRadius: 10, border: `1px solid ${theme.border}`,
+          boxShadow: `0 4px 16px ${mode === "dark" ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.15)"}`,
+          zIndex: 1000, minWidth: 140, maxWidth: 260, pointerEvents: "auto",
         }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: theme.heading }}>{tooltip.key}</span>
-            <button onClick={() => setTooltip(null)} style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDimmer, fontSize: 14 }}>✕</button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: theme.heading }}>{tooltip.key}</span>
+            <button onClick={() => setTooltip(null)} style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDimmer, fontSize: 13, lineHeight: 1, padding: 0, marginLeft: 8 }}>✕</button>
           </div>
           <div style={{ fontSize: 11, color: theme.accent, marginBottom: 2 }}>
             Available ({tooltip.names.length}): {tooltip.names.join(", ")}

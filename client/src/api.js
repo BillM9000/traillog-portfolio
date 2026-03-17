@@ -115,6 +115,13 @@ export const api = {
   getAttendance: (advId, eventId) => request(`/adventures/${advId}/training-events/${eventId}/attendance`),
   getAttendanceCount: (advId, userId) => request(`/adventures/${advId}/members/${userId}/attendance-count`),
 
+  // Milestone config
+  getMilestonesConfig: (advId) => request(`/adventures/${advId}/milestones-config`),
+  updateMilestonesConfig: (advId, milestones) => request(`/adventures/${advId}/milestones-config`, { method: "PUT", body: JSON.stringify({ milestones }) }),
+
+  // Calendar export
+  getCalendarExportUrl: (advId) => `${BASE}/adventures/${advId}/training-events/export.ics`,
+
   // Itineraries
   getItineraries: () => request("/itineraries"),
   getItinerary: (id) => request(`/itineraries/${id}`),

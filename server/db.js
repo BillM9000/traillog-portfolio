@@ -86,6 +86,7 @@ db.exec(`
     itinerary_id TEXT REFERENCES itineraries(id),
     adventure_type TEXT NOT NULL DEFAULT 'philmont',
     status TEXT NOT NULL DEFAULT 'active',
+    attendance_milestones TEXT,
     created_by INTEGER REFERENCES users(id),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
@@ -433,7 +434,7 @@ db.exec(`
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 23;
+const CURRENT_SCHEMA_VERSION = 24;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -883,6 +884,12 @@ function migrate() {
       // Upgrade existing training events to 'scheduled' status (they were all confirmed before this migration)
       try { db.exec("UPDATE training_events SET type = 'scheduled' WHERE type = 'proposed'"); } catch {}
       console.log("[v23] Calendar redesign: training_attendance table, event type/status, skills.is_system");
+    }
+
+    // ── v24 migration: configurable attendance milestones ──
+    if (version < 24) {
+      tryAlter("ALTER TABLE adventures ADD COLUMN attendance_milestones TEXT");
+      console.log("[v24] Added attendance_milestones column to adventures");
     }
 
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
@@ -3133,15 +3140,44 @@ export function getMemberAttendanceCount(adventureId, userId) {
 }
 
 // Attendance milestone skills — auto-created and auto-awarded
-const ATTENDANCE_MILESTONES = [
-  { count: 1, id_suffix: "attend-1", name: "Attended 1 Training", icon: "🥾", desc: "Attended your first training session" },
-  { count: 3, id_suffix: "attend-3", name: "Attended 3 Trainings", icon: "🏔️", desc: "Attended 3 training sessions" },
-  { count: 5, id_suffix: "attend-5", name: "Attended 5 Trainings", icon: "⭐", desc: "Attended 5 training sessions" },
+const DEFAULT_MILESTONES = [
+  { count: 1, icon: "🥾" },
+  { count: 3, icon: "🏔️" },
+  { count: 5, icon: "⭐" },
 ];
+
+function getAttendanceMilestones(adventureId) {
+  const adv = db.prepare("SELECT attendance_milestones FROM adventures WHERE id = ?").get(adventureId);
+  let milestones = DEFAULT_MILESTONES;
+  if (adv?.attendance_milestones) {
+    try { milestones = JSON.parse(adv.attendance_milestones); } catch { /* use defaults */ }
+  }
+  return milestones.map(ms => ({
+    count: ms.count,
+    id_suffix: `attend-${ms.count}`,
+    name: ms.count === 1 ? "Attended 1 Training" : `Attended ${ms.count} Trainings`,
+    icon: ms.icon || "⭐",
+    desc: ms.count === 1 ? "Attended your first training session" : `Attended ${ms.count} training sessions`,
+  }));
+}
+
+export function getAdventureMilestoneConfig(adventureId) {
+  const adv = db.prepare("SELECT attendance_milestones FROM adventures WHERE id = ?").get(adventureId);
+  if (adv?.attendance_milestones) {
+    try { return JSON.parse(adv.attendance_milestones); } catch { /* fall through */ }
+  }
+  return DEFAULT_MILESTONES;
+}
+
+export function setAdventureMilestoneConfig(adventureId, milestones) {
+  db.prepare("UPDATE adventures SET attendance_milestones = ? WHERE id = ?").run(JSON.stringify(milestones), adventureId);
+}
 
 export function syncAttendanceSkills(adventureId) {
   const adv = db.prepare("SELECT troop_id FROM adventures WHERE id = ?").get(adventureId);
   if (!adv) return;
+
+  const ATTENDANCE_MILESTONES = getAttendanceMilestones(adventureId);
 
   // Ensure system skills exist for this adventure
   for (const ms of ATTENDANCE_MILESTONES) {

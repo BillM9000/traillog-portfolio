@@ -386,3 +386,35 @@ export async function sendVerificationEmail(toEmail, token) {
     `,
   });
 }
+
+export async function sendTrainingReminderEmail(toEmail, memberName, adventureName, date, timeLabel, location, notes, { troopName, troopId, adventureId } = {}) {
+  const t = getTransporter();
+  if (!t) return console.log(`[email skip] Training reminder for ${toEmail} (no SMTP configured)`);
+
+  const fmt = d => { try { return new Date(d + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }); } catch { return d; } };
+  const details = [];
+  details.push(`<strong>Date:</strong> ${esc(fmt(date))}`);
+  if (timeLabel) details.push(`<strong>Time:</strong> ${esc(timeLabel)}`);
+  if (location) details.push(`<strong>Location:</strong> ${esc(location)}`);
+  if (notes) details.push(`<strong>Notes:</strong> ${esc(notes)}`);
+
+  const troopLine = troopName ? `<p style="color:#666;font-size:13px">${esc(troopName)}</p>` : "";
+
+  await t.sendMail({
+    from: `"TrailLog" <${process.env.SMTP_USER}>`,
+    to: toEmail,
+    subject: `Reminder: Training tomorrow for ${adventureName}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:500px">
+        <h2 style="color:#2d3830">Training Reminder 🔔</h2>
+        <p>Hey <strong>${esc(memberName)}</strong>, you have a training session <strong>tomorrow</strong> for <strong>${esc(adventureName)}</strong>.</p>
+        ${troopLine}
+        <div style="background:#f5f5f0;padding:12px 16px;border-radius:8px;margin:12px 0">
+          ${details.join("<br>")}
+        </div>
+        <p><a href="${deepLink(troopId, adventureId, "results")}" style="display:inline-block;background:#4a7a55;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Open TrailLog</a></p>
+        <p style="color:#888;font-size:12px">You're receiving this because you're a member of this crew on TrailLog.</p>
+      </div>
+    `,
+  });
+}

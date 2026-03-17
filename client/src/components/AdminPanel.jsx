@@ -47,6 +47,10 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   const [confirmDeleteAdv, setConfirmDeleteAdv] = useState(false);
   const [confirmRemoveMember, setConfirmRemoveMember] = useState(null); // { userId, name, isManual, memberId }
 
+  // Attendance milestones
+  const [milestones, setMilestones] = useState([]);
+  const [milestonesLoaded, setMilestonesLoaded] = useState(false);
+
   // Crew management state
   const [editingCrew, setEditingCrew] = useState(null); // crew object being edited
   const [crewForm, setCrewForm] = useState({});
@@ -301,6 +305,12 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
     api.getItineraries().then(setItineraries).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (adventure?.id) {
+      api.getMilestonesConfig(adventure.id).then(ms => { setMilestones(ms); setMilestonesLoaded(true); }).catch(() => {});
+    }
+  }, [adventure?.id]);
+
   const openCreateAdventure = () => {
     setShowCreateAdv(true);
   };
@@ -427,6 +437,48 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                 <option value="completed">Completed</option>
                 <option value="archived">Archived</option>
               </select>
+
+              {/* Training Milestones */}
+              {milestonesLoaded && (
+                <div style={{ marginTop: 12, padding: 12, borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.bgAlt }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: theme.heading, marginBottom: 6 }}>Attendance Milestones</div>
+                  <div style={{ fontSize: 10, color: theme.textDim, marginBottom: 8 }}>Badges awarded when members reach these attendance counts.</div>
+                  {milestones.map((ms, i) => (
+                    <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 4 }}>
+                      <input type="number" min={1} max={100} value={ms.count} onChange={e => {
+                        const next = [...milestones];
+                        next[i] = { ...next[i], count: parseInt(e.target.value) || 1 };
+                        setMilestones(next);
+                      }} style={{ width: 50, padding: "4px 6px", borderRadius: 4, border: `1px solid ${theme.border}`, background: theme.bgCard, color: theme.text, fontSize: 12, textAlign: "center", fontFamily: fontBody }} />
+                      <input type="text" maxLength={2} value={ms.icon} onChange={e => {
+                        const next = [...milestones];
+                        next[i] = { ...next[i], icon: e.target.value };
+                        setMilestones(next);
+                      }} style={{ width: 36, padding: "4px 6px", borderRadius: 4, border: `1px solid ${theme.border}`, background: theme.bgCard, color: theme.text, fontSize: 14, textAlign: "center" }} />
+                      <span style={{ fontSize: 10, color: theme.textDim, flex: 1 }}>{ms.count === 1 ? "Attended 1 Training" : `Attended ${ms.count} Trainings`}</span>
+                      {milestones.length > 1 && (
+                        <button onClick={() => setMilestones(milestones.filter((_, j) => j !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDimmest, fontSize: 14, padding: "0 4px" }}>✕</button>
+                      )}
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                    {milestones.length < 10 && (
+                      <button onClick={() => setMilestones([...milestones, { count: (milestones[milestones.length - 1]?.count || 0) + 2, icon: "⭐" }])} style={{
+                        padding: "3px 10px", borderRadius: 6, border: `1px solid ${theme.border}`, background: "transparent", color: theme.textDim, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
+                      }}>+ Add</button>
+                    )}
+                    <button onClick={async () => {
+                      try {
+                        const result = await api.updateMilestonesConfig(adventure.id, milestones);
+                        setMilestones(result.milestones);
+                        addToast("Milestones updated", "success");
+                      } catch (e) { addToast(e.message, "error"); }
+                    }} style={{
+                      padding: "3px 10px", borderRadius: 6, border: "none", background: theme.accent, color: "#fff", fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
+                    }}>Save Milestones</button>
+                  </div>
+                </div>
+              )}
 
               <button onClick={saveAdventure} disabled={saving} style={{ width: "100%", padding: "10px 0", borderRadius: 7, border: "none", background: theme.accent, color: "#fff", fontSize: 12, fontWeight: 600, cursor: saving ? "wait" : "pointer", fontFamily: fontBody, marginTop: 4 }}>
                 {saving ? "Saving..." : "Save Adventure"}

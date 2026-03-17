@@ -44,6 +44,7 @@ import db, {
   deleteTroop, getTroopMembersAdmin,
   createTrainingEvent, getTrainingEvents, getTrainingEvent, deleteTrainingEvent, upsertTrainingRsvp,
   updateTrainingEventStatus, updateTrainingEvent, markAttendance, bulkMarkAttendance, getEventAttendance, getMemberAttendanceCount, syncAttendanceSkills,
+  getAdventureMilestoneConfig, setAdventureMilestoneConfig,
   promoteToAdmin, demoteFromAdmin, getSystemAdmins, getDashboardData,
   getCouncils,
   // Crew layer (Stage 2)
@@ -67,6 +68,7 @@ import {
 } from "./email.js";
 import { generateReadinessPlan } from "./ai-readiness.js";
 import { refreshAllGearRecommendations, startGearRefreshSchedule, isRefreshInProgress } from "./gear-ai.js";
+import { startReminderScheduler } from "./scheduler.js";
 import {
   validate, signupSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema,
   changePasswordSchema, profileUpdateSchema, createTroopSchema, createAdventureSchema,
@@ -93,6 +95,9 @@ const PORT = process.env.PORT || 3614;
 
 // Safe parseInt — returns null if invalid, lets routes return 400
 function parseId(val) { const n = parseInt(val); return isNaN(n) ? null : n; }
+
+// Escape text for .ics format (RFC 5545)
+function icsEscape(str) { return String(str || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n"); }
 
 // Safe error response — hides internal details in production
 function safeError(res, e, status = 500) {
@@ -998,6 +1003,37 @@ app.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req
   } catch (e) { safeError(res, e); }
 });
 
+// Get attendance milestones config
+app.get("/api/adventures/:adventureId/milestones-config", requireAuth, requireAdventureMember, (req, res) => {
+  try {
+    const milestones = getAdventureMilestoneConfig(parseId(req.params.adventureId));
+    res.json(milestones);
+  } catch (e) { safeError(res, e); }
+});
+
+// Update attendance milestones config (admin only)
+app.put("/api/adventures/:adventureId/milestones-config", requireAuth, requireAdventureAdmin, (req, res) => {
+  try {
+    const adventureId = parseId(req.params.adventureId);
+    const { milestones } = req.body;
+    if (!Array.isArray(milestones) || milestones.length === 0 || milestones.length > 10) {
+      return res.status(400).json({ error: "Provide 1-10 milestones" });
+    }
+    for (const ms of milestones) {
+      if (!ms.count || typeof ms.count !== "number" || ms.count < 1 || ms.count > 100) {
+        return res.status(400).json({ error: "Each milestone count must be 1-100" });
+      }
+    }
+    // Deduplicate by count
+    const unique = [...new Map(milestones.map(m => [m.count, { count: m.count, icon: m.icon || "⭐" }])).values()];
+    unique.sort((a, b) => a.count - b.count);
+    setAdventureMilestoneConfig(adventureId, unique);
+    // Re-sync skills with new milestones
+    syncAttendanceSkills(adventureId);
+    res.json({ ok: true, milestones: unique });
+  } catch (e) { safeError(res, e); }
+});
+
 // Delete adventure
 app.delete("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req, res) => {
   try {
@@ -1495,6 +1531,49 @@ app.delete("/api/adventures/:adventureId/skills/:skillId", requireAuth, requireA
 app.get("/api/adventures/:adventureId/training-events", requireAuth, requireAdventureMember, (req, res) => {
   try { res.json(getTrainingEvents(parseId(req.params.adventureId))); }
   catch (e) { safeError(res, e); }
+});
+
+// Export training events as .ics calendar file
+app.get("/api/adventures/:adventureId/training-events/export.ics", requireAuth, requireAdventureMember, (req, res) => {
+  try {
+    const advId = parseId(req.params.adventureId);
+    const events = getTrainingEvents(advId).filter(e => e.status === "active" && e.type === "scheduled");
+    const adventure = getAdventure(advId);
+    const troop = adventure ? getTroop(adventure.troop_id) : null;
+
+    const icsEvents = events.map(e => {
+      const dtStart = e.date.replace(/-/g, "");
+      const dtEnd = dtStart; // all-day event
+      const uid = `traillog-event-${e.id}@traillog`;
+      const summary = `Training: ${adventure?.name || "Crew Training"}`;
+      const desc = [e.time_label, e.notes].filter(Boolean).join(" — ");
+      const loc = e.location || "";
+      return [
+        "BEGIN:VEVENT",
+        `UID:${uid}`,
+        `DTSTART;VALUE=DATE:${dtStart}`,
+        `DTEND;VALUE=DATE:${dtEnd}`,
+        `SUMMARY:${icsEscape(summary)}`,
+        desc ? `DESCRIPTION:${icsEscape(desc)}` : "",
+        loc ? `LOCATION:${icsEscape(loc)}` : "",
+        `ORGANIZER:${icsEscape(troop?.name || "TrailLog")}`,
+        "END:VEVENT",
+      ].filter(Boolean).join("\r\n");
+    });
+
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//TrailLog//Training Events//EN",
+      `X-WR-CALNAME:${adventure?.name || "Training"} Events`,
+      ...icsEvents,
+      "END:VCALENDAR",
+    ].join("\r\n");
+
+    res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${(adventure?.name || "training").replace(/[^a-zA-Z0-9]/g, "_")}_events.ics"`);
+    res.send(ics);
+  } catch (e) { safeError(res, e); }
 });
 
 app.post("/api/adventures/:adventureId/training-events", requireAuth, requireAdventureAdmin, validate(createTrainingEventSchema), (req, res) => {
@@ -2767,4 +2846,5 @@ app.get("*", (req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`TrailLog running on port ${PORT}`);
   startGearRefreshSchedule();
+  startReminderScheduler();
 });

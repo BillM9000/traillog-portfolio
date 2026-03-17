@@ -4,7 +4,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import { card, fontBody, fontDisplay } from "../utils/theme";
 import { formatDateFull, formatDateShort } from "../utils/dates";
-import { CalendarCheck, MapPin, Clock, Trash2, ThumbsUp, ThumbsDown, CheckCircle2, XCircle, Users, Zap, ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import { CalendarCheck, MapPin, Clock, Trash2, ThumbsUp, ThumbsDown, CheckCircle2, XCircle, Users, Zap, ChevronDown, ChevronUp, Pencil, Download } from "lucide-react";
 
 const STATUS_COLORS_DARK = {
   proposed: { bg: "#3E3510", border: "#FFB300", text: "#FFD54F" },
@@ -25,7 +25,7 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
   const { addToast } = useToast();
   const [events, setEvents] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ date: "", period: "all", time_label: "", location: "", notes: "", type: "proposed" });
+  const [form, setForm] = useState({ date: "", period: "all", time_label: "", location: "", notes: "", type: "proposed", repeat: "none", repeatCount: 4 });
   const [showCompleted, setShowCompleted] = useState(false);
 
   const refresh = useCallback(() => {
@@ -37,11 +37,30 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
   const handleCreate = async () => {
     if (!form.date) { addToast("Date is required", "error"); return; }
     try {
-      await api.createTrainingEvent(adventureId, form);
-      const label = form.type === "scheduled" ? "Training scheduled! Members notified." : "Training date proposed.";
+      // Generate dates for recurring events
+      const dates = [form.date];
+      if (form.repeat !== "none" && form.repeatCount > 1) {
+        const interval = form.repeat === "weekly" ? 7 : form.repeat === "biweekly" ? 14 : 0;
+        if (interval > 0) {
+          for (let i = 1; i < form.repeatCount; i++) {
+            const d = new Date(form.date + "T00:00:00");
+            d.setDate(d.getDate() + interval * i);
+            dates.push(d.toISOString().slice(0, 10));
+          }
+        }
+      }
+
+      const base = { period: form.period, time_label: form.time_label, location: form.location, notes: form.notes, type: form.type };
+      for (const date of dates) {
+        await api.createTrainingEvent(adventureId, { ...base, date });
+      }
+
+      const label = dates.length > 1
+        ? `${dates.length} events created!${form.type === "scheduled" ? " Members notified." : ""}`
+        : form.type === "scheduled" ? "Training scheduled! Members notified." : "Training date proposed.";
       addToast(label, "success");
       setShowForm(false);
-      setForm({ date: "", period: "all", time_label: "", location: "", notes: "", type: "proposed" });
+      setForm({ date: "", period: "all", time_label: "", location: "", notes: "", type: "proposed", repeat: "none", repeatCount: 4 });
       refresh();
     } catch (e) { addToast(e.message, "error"); }
   };
@@ -134,15 +153,27 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
         <div style={{ fontSize: 16, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay }}>
           Training Events
         </div>
-        {isAdmin && (
-          <button onClick={() => setShowForm(!showForm)} style={{
-            padding: "6px 14px", borderRadius: 8, border: `1px solid ${theme.accent}`,
-            background: showForm ? theme.accent : "transparent", color: showForm ? "#fff" : theme.accent,
-            fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: fontBody,
-          }}>
-            {showForm ? "Cancel" : "+ New Event"}
-          </button>
-        )}
+        <div style={{ display: "flex", gap: 6 }}>
+          {upcoming.length > 0 && (
+            <a href={api.getCalendarExportUrl(adventureId)} download style={{
+              padding: "6px 10px", borderRadius: 8, border: `1px solid ${theme.border}`,
+              background: "transparent", color: theme.textDim,
+              fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
+              display: "flex", alignItems: "center", gap: 4, textDecoration: "none",
+            }} title="Export to Google Calendar / iCal">
+              <Download size={12} /> .ics
+            </a>
+          )}
+          {isAdmin && (
+            <button onClick={() => setShowForm(!showForm)} style={{
+              padding: "6px 14px", borderRadius: 8, border: `1px solid ${theme.accent}`,
+              background: showForm ? theme.accent : "transparent", color: showForm ? "#fff" : theme.accent,
+              fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: fontBody,
+            }}>
+              {showForm ? "Cancel" : "+ New Event"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Create form */}
@@ -179,6 +210,39 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
             <input type="text" placeholder="What to bring, focus areas..." value={form.notes}
               onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} style={inputStyle(theme)} />
           </label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
+            <label style={labelStyle(theme)}>
+              Repeat
+              <select value={form.repeat} onChange={e => setForm(f => ({ ...f, repeat: e.target.value }))}
+                style={inputStyle(theme)}>
+                <option value="none">No repeat</option>
+                <option value="weekly">Weekly</option>
+                <option value="biweekly">Every 2 weeks</option>
+              </select>
+            </label>
+            {form.repeat !== "none" && (
+              <label style={labelStyle(theme)}>
+                How many
+                <select value={form.repeatCount} onChange={e => setForm(f => ({ ...f, repeatCount: parseInt(e.target.value) }))}
+                  style={inputStyle(theme)}>
+                  {[2, 3, 4, 5, 6, 8, 10, 12].map(n => (
+                    <option key={n} value={n}>{n} events</option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+          {form.repeat !== "none" && form.date && (
+            <div style={{ fontSize: 10, color: theme.textDim, marginTop: 4 }}>
+              Creates {form.repeatCount} events: {form.date} through{" "}
+              {(() => {
+                const interval = form.repeat === "weekly" ? 7 : 14;
+                const d = new Date(form.date + "T00:00:00");
+                d.setDate(d.getDate() + interval * (form.repeatCount - 1));
+                return d.toISOString().slice(0, 10);
+              })()}
+            </div>
+          )}
           <button onClick={handleCreate} style={{
             marginTop: 10, padding: "8px 20px", borderRadius: 8, border: "none",
             background: theme.accent, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer",
