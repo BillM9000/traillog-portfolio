@@ -851,27 +851,27 @@ function migrate() {
       console.log("[v22] AI gear recommendations cache table created");
     }
 
-    // Recreate shirt_votes with vote_slot support (2 votes per person)
-    const hasSlot = db.prepare("PRAGMA table_info(shirt_votes)").all().some(c => c.name === 'vote_slot');
-    if (!hasSlot) {
-      db.exec("DROP TABLE IF EXISTS shirt_votes");
-      db.exec(`CREATE TABLE IF NOT EXISTS shirt_votes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        voter_name TEXT NOT NULL,
-        design_id TEXT NOT NULL,
-        vote_slot INTEGER NOT NULL DEFAULT 1,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(voter_name, vote_slot)
-      )`);
-      console.log("[vote] Recreated shirt_votes with vote_slot column");
-    }
-
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
   });
 
   runMigration();
   console.log(`Migrated schema to version ${CURRENT_SCHEMA_VERSION}`);
+
+  // Recreate shirt_votes with vote_slot support (2 votes per person)
+  const hasSlot = db.prepare("PRAGMA table_info(shirt_votes)").all().some(c => c.name === 'vote_slot');
+  if (!hasSlot) {
+    db.exec("DROP TABLE IF EXISTS shirt_votes");
+    db.exec(`CREATE TABLE IF NOT EXISTS shirt_votes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      voter_name TEXT NOT NULL,
+      design_id TEXT NOT NULL,
+      vote_slot INTEGER NOT NULL DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(voter_name, vote_slot)
+    )`);
+    console.log("[vote] Recreated shirt_votes with vote_slot column");
+  }
 
   // Seed councils on every startup (idempotent — INSERT OR IGNORE)
   seedCouncils();
