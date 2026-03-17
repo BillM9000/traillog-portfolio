@@ -128,8 +128,8 @@ export function validate(schema) {
   return (req, res, next) => {
     const result = schema.safeParse(req.body);
     if (!result.success) {
-      const firstError = result.error.errors[0];
-      return res.status(400).json({ error: firstError.message });
+      const firstIssue = result.error.issues?.[0];
+      return res.status(400).json({ error: firstIssue?.message || "Invalid input" });
     }
     req.body = result.data;
     next();
