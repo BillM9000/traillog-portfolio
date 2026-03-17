@@ -436,7 +436,7 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
               fontWeight: 500, lineHeight: 1.5, maxWidth: 480,
               marginLeft: isMobile ? "auto" : 0, marginRight: isMobile ? "auto" : 0,
             }}>
-              The AI-powered readiness coordinator for Scouting America high adventure crews. Track training, gear, medical, and admin prep from first meeting to summit day.
+              The AI-powered readiness coordinator for Scouting America high adventure crews. Track training, gear, and admin prep from first meeting to summit day.
             </p>
             <p style={{
               fontSize: 10, color: "#8A9A7A", marginTop: 6, lineHeight: 1.4, maxWidth: 480,
