@@ -13,6 +13,7 @@ COPY server/package*.json ./server/
 RUN cd server && npm install --production
 COPY server/ ./server/
 COPY --from=frontend /app/client/dist ./client/dist
+COPY vote-page/ ./vote-page/
 
 RUN addgroup -g 1001 appuser && adduser -D -u 1001 -G appuser appuser
 RUN mkdir -p /app/data && chown -R appuser:appuser /app
