@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Philmont 2026 — T-Shirt Vote · Troop 10 / Crew 614</title>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;600;700&family=Lora:ital,wght@0,400;0,600;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:       #0b0f18;
+      --surface:  #141926;
+      --card:     #181e2e;
+      --border:   #252e42;
+      --gold:     #d4a843;
+      --gold-dim: #9a7a30;
+      --amber:    #e07b39;
+      --green:    #1e4030;
+      --green-hi: #3d8c5f;
+      --cream:    #e4d9c4;
+      --text:     #b8c4d8;
+      --muted:    #5e6f8a;
+      --danger:   #c0392b;
+    }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--bg); color: var(--text); font-family: 'Lora', Georgia, serif; min-height: 100vh; overflow-x: hidden; }
+
+    /* HERO */
+    .hero { position: relative; background: linear-gradient(180deg,#050810 0%,#0d1525 50%,var(--bg) 100%); padding: 64px 24px 140px; text-align: center; overflow: hidden; }
+    #starCanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .hero-inner { position: relative; z-index: 3; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 10px; border: 1px solid var(--gold-dim); color: var(--gold); font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 3px; padding: 6px 18px; text-transform: uppercase; margin-bottom: 28px; }
+    .eyebrow::before, .eyebrow::after { content: ''; display: inline-block; width: 6px; height: 6px; background: var(--gold); border-radius: 50%; }
+    h1 { font-family: 'Oswald', sans-serif; font-size: clamp(44px,9vw,96px); font-weight: 700; color: var(--cream); text-transform: uppercase; letter-spacing: 6px; line-height: 0.95; text-shadow: 0 0 60px rgba(212,168,67,.25),0 2px 4px rgba(0,0,0,.8); }
+    h1 em { display: block; color: var(--gold); font-style: normal; font-size: .55em; letter-spacing: 14px; margin-top: 6px; }
+    .tagline { margin-top: 20px; font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; }
+    .stats { display: inline-flex; margin-top: 36px; border: 1px solid var(--border); overflow: hidden; }
+    .stat { padding: 14px 28px; border-right: 1px solid var(--border); text-align: center; }
+    .stat:last-child { border-right: none; }
+    .stat-val { display: block; font-family: 'Oswald', sans-serif; font-size: 26px; font-weight: 700; color: var(--amber); line-height: 1; }
+    .stat-lbl { display: block; font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-top: 4px; }
+    .mountains { position: absolute; bottom: 0; left: 0; right: 0; z-index: 2; line-height: 0; }
+
+    /* NAME GATE */
+    .name-gate { max-width: 420px; margin: 0 auto; padding: 32px 24px; text-align: center; }
+    .name-gate h2 { font-family: 'Oswald', sans-serif; font-size: 24px; color: var(--cream); text-transform: uppercase; letter-spacing: 3px; margin-bottom: 8px; }
+    .name-gate p { color: var(--muted); font-size: 13px; margin-bottom: 20px; font-style: italic; }
+    .name-inputs { display: flex; gap: 10px; margin-bottom: 16px; }
+    .name-inputs input { flex: 1; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); color: var(--cream); font-family: 'Lora', serif; font-size: 14px; outline: none; transition: border-color .2s; }
+    .name-inputs input:focus { border-color: var(--gold); }
+    .name-inputs input::placeholder { color: var(--muted); }
+    .name-inputs .last-initial { max-width: 60px; text-align: center; text-transform: uppercase; }
+    .btn-enter { width: 100%; padding: 14px; background: var(--gold); border: none; color: var(--bg); font-family: 'Oswald', sans-serif; font-size: 16px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; cursor: pointer; transition: opacity .2s; }
+    .btn-enter:hover { opacity: .9; }
+    .btn-enter:disabled { opacity: .4; cursor: not-allowed; }
+    .voter-info { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px 24px; background: var(--surface); border-bottom: 1px solid var(--border); font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted); }
+    .voter-info strong { color: var(--gold); }
+    .btn-change-name { background: none; border: 1px solid var(--border); color: var(--muted); font-family: 'Space Mono', monospace; font-size: 9px; padding: 3px 8px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
+    .btn-change-name:hover { color: var(--cream); border-color: var(--cream); }
+
+    /* STATUS */
+    .status-bar { background: var(--surface); border-bottom: 1px solid var(--border); text-align: center; padding: 14px 20px; font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 1px; color: var(--muted); transition: color .4s,background .4s; }
+    .status-bar.done { color: var(--green-hi); background: rgba(30,64,48,.3); border-color: var(--green); }
+    .total-strip { background: var(--surface); border-bottom: 1px solid var(--border); padding: 8px 24px; font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; text-align: center; }
+    .total-strip strong { color: var(--gold); font-size: 13px; }
+
+    /* INTRO */
+    .intro { text-align: center; padding: 48px 24px 4px; max-width: 560px; margin: 0 auto; }
+    .intro h2 { font-family: 'Oswald', sans-serif; font-size: 28px; font-weight: 600; color: var(--cream); text-transform: uppercase; letter-spacing: 3px; margin-bottom: 12px; }
+    .intro p { color: var(--muted); font-size: 15px; line-height: 1.7; font-style: italic; }
+    .divider { display: flex; align-items: center; gap: 16px; max-width: 300px; margin: 28px auto; color: var(--gold-dim); font-size: 14px; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* GRID */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(340px,1fr)); gap: 24px; max-width: 1320px; margin: 0 auto; padding: 8px 24px 72px; }
+    .card { background: var(--card); border: 1px solid var(--border); display: flex; flex-direction: column; transition: transform .25s,border-color .25s,box-shadow .25s; position: relative; overflow: hidden; }
+    .card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg,rgba(212,168,67,.04) 0%,transparent 60%); pointer-events: none; }
+    .card:hover { transform: translateY(-5px); border-color: var(--gold-dim); box-shadow: 0 12px 40px rgba(0,0,0,.5),0 0 0 1px rgba(212,168,67,.1); }
+    .card.my-pick { border-color: var(--green-hi); box-shadow: 0 0 28px rgba(61,140,95,.2); }
+    .card.is-leader { border-color: var(--gold); box-shadow: 0 0 32px rgba(212,168,67,.2); }
+    .corner-badge { position: absolute; top: 0; right: 0; font-family: 'Space Mono', monospace; font-size: 9px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 5px 10px; display: none; z-index: 10; }
+    .card.my-pick .corner-badge { display: block; background: var(--green-hi); color: #fff; }
+    .card-num { position: absolute; top: 10px; left: 10px; width: 32px; height: 32px; background: rgba(11,15,24,.75); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Oswald', sans-serif; font-size: 14px; font-weight: 700; color: var(--gold); z-index: 10; }
+    .card-media { width: 100%; aspect-ratio: 4/3; background: #0d1117; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid var(--border); }
+    .card-media img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s; cursor: zoom-in; }
+    .card:hover .card-media img { transform: scale(1.04); }
+    .card-body { padding: 20px 22px; flex: 1; display: flex; flex-direction: column; }
+    .card-name { font-family: 'Oswald', sans-serif; font-size: 22px; font-weight: 600; color: var(--cream); letter-spacing: 1px; margin-bottom: 6px; }
+    .card-desc { color: var(--muted); font-size: 13px; line-height: 1.6; flex: 1; margin-bottom: 18px; font-style: italic; }
+    .vote-row { display: flex; align-items: center; gap: 14px; }
+    .btn-vote { flex: 1; background: transparent; border: 2px solid var(--gold); color: var(--gold); font-family: 'Oswald', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; padding: 12px 16px; cursor: pointer; transition: background .2s,color .2s,opacity .2s; }
+    .btn-vote:hover:not(:disabled) { background: var(--gold); color: var(--bg); }
+    .btn-vote.picked { background: var(--green); border-color: var(--green-hi); color: var(--green-hi); }
+    .tally { text-align: right; min-width: 52px; }
+    .tally-num { font-family: 'Oswald', sans-serif; font-size: 32px; font-weight: 700; color: var(--cream); line-height: 1; display: block; }
+    .tally-lbl { font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+    .vote-bar-track { margin-top: 14px; height: 3px; background: var(--border); }
+    .vote-bar-fill { height: 100%; background: var(--gold); transition: width .7s cubic-bezier(.4,0,.2,1); width: 0%; }
+    .card.my-pick .vote-bar-fill { background: var(--green-hi); }
+
+    /* LIGHTBOX */
+    .lightbox { display: none; position: fixed; inset: 0; background: rgba(5,8,16,.94); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+    .lightbox.open { display: flex; }
+    .lightbox img { max-width: 90vw; max-height: 88vh; object-fit: contain; box-shadow: 0 0 80px rgba(0,0,0,.8); border: 1px solid var(--border); }
+    .lightbox-close { position: fixed; top: 18px; right: 22px; font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 2px; color: var(--muted); background: none; border: 1px solid var(--border); padding: 6px 14px; cursor: pointer; text-transform: uppercase; }
+    .lightbox-close:hover { color: var(--cream); border-color: var(--cream); }
+
+    /* TOAST */
+    .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--green-hi); color: #fff; padding: 14px 32px; font-family: 'Oswald', sans-serif; font-size: 16px; letter-spacing: 2px; text-transform: uppercase; white-space: nowrap; transition: transform .35s cubic-bezier(.4,0,.2,1); z-index: 9999; pointer-events: none; }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.error { background: var(--danger); }
+
+    footer { border-top: 1px solid var(--border); text-align: center; padding: 24px; font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--muted); }
+    footer a { color: var(--gold-dim); text-decoration: none; }
+
+    @media (max-width:600px) { .grid { grid-template-columns: 1fr; padding: 8px 16px 60px; } .stats { flex-wrap: wrap; } .stat { border-right: none; border-bottom: 1px solid var(--border); } .name-inputs { flex-direction: column; } .name-inputs .last-initial { max-width: 100%; } }
+  </style>
+</head>
+<body>
+
+<header class="hero">
+  <canvas id="starCanvas"></canvas>
+  <div class="hero-inner">
+    <div class="eyebrow">Troop 10 &nbsp;&middot;&nbsp; Crew 614 &nbsp;&middot;&nbsp; Official T-Shirt Vote</div>
+    <h1>Philmont<em>Scout Ranch</em></h1>
+    <p class="tagline">Choose the design Crew 614 wears through 69 miles of backcountry</p>
+    <div class="stats">
+      <div class="stat"><span class="stat-val">12-20</span><span class="stat-lbl">Itinerary</span></div>
+      <div class="stat"><span class="stat-val">69</span><span class="stat-lbl">Miles</span></div>
+      <div class="stat"><span class="stat-val">June '26</span><span class="stat-lbl">Trek Date</span></div>
+      <div class="stat"><span class="stat-val" id="designCount">8</span><span class="stat-lbl">Designs</span></div>
+    </div>
+  </div>
+  <div class="mountains">
+    <svg viewBox="0 0 1440 130" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style="width:100%;display:block;">
+      <path d="M0,130 L0,88 L60,55 L130,78 L220,28 L310,62 L400,18 L490,52 L560,32 L640,70 L720,22 L800,58 L870,15 L960,48 L1050,30 L1130,62 L1220,38 L1310,68 L1380,44 L1440,60 L1440,130 Z" fill="#0d1525" opacity="0.9"/>
+      <path d="M0,130 L0,105 L90,82 L180,100 L260,72 L360,92 L450,65 L530,88 L620,70 L700,92 L780,68 L860,90 L950,74 L1040,94 L1130,78 L1210,98 L1290,80 L1370,100 L1440,86 L1440,130 Z" fill="#0b0f18"/>
+    </svg>
+  </div>
+</header>
+
+<!-- Name gate: shown before voting -->
+<div id="nameGate" class="name-gate">
+  <h2>Enter Your Name to Vote</h2>
+  <p>First name + last initial. You can change your vote anytime.</p>
+  <div class="name-inputs">
+    <input type="text" id="firstName" placeholder="First Name" maxlength="20" autocomplete="given-name">
+    <input type="text" id="lastInitial" class="last-initial" placeholder="L" maxlength="1" autocomplete="family-name">
+  </div>
+  <button class="btn-enter" id="btnEnter" onclick="enterVoting()">Enter</button>
+</div>
+
+<!-- Voter info bar: shown after entering name -->
+<div class="voter-info" id="voterInfo" style="display:none">
+  Voting as: <strong id="voterDisplay"></strong>
+  <button class="btn-change-name" onclick="changeName()">Change</button>
+</div>
+
+<div class="status-bar" id="statusBar" style="display:none"></div>
+<div class="total-strip" id="totalStrip">Loading vote totals...</div>
+
+<div class="intro">
+  <h2>Cast Your Vote</h2>
+  <p>Tap any image to see it full size. Everyone can see vote counts. You can change your pick anytime.</p>
+</div>
+<div class="divider">&#x2B21;</div>
+
+<main class="grid" id="grid"></main>
+
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">&#x2715; Close</button>
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<div class="toast" id="toast"></div>
+
+<footer>
+  <p>Philmont Scout Ranch &nbsp;&middot;&nbsp; Cimarron, NM &nbsp;&middot;&nbsp; <a href="https://gracezero.ai" target="_blank">GraceZero.ai</a></p>
+</footer>
+
+<script>
+const DESIGNS = [
+  { id: 'design-1-panoramic', name: 'The Panoramic', desc: "Sweeping landscape with Milky Way sky, bald eagle, American flag, wildlife parade, and silhouette hikers. Full commemorative treatment \u2014 America's 250th front and center.", img: 'shirt-1-panoramic.jpg' },
+  { id: 'design-2-ufo-burro', name: 'All Will Be Disclosed', desc: "UFO beaming up the pack burro while scouts watch and the eagle circles. Philmont's most notorious pack animal gets the cosmic recognition it deserves.", img: 'shirt-2-ufo-burro.jpg' },
+  { id: 'design-3-cimarron', name: 'The Cimarron Classic', desc: 'Tall rock spire commanding the frame, scouts marching below in silhouette. Eagle, bear, pronghorn \u2014 the complete Philmont cast in a clean vertical poster format.', img: 'shirt-3-cimarron.jpg' },
+  { id: 'design-4-typographic', name: 'Typography & Flag', desc: 'Bold graphic layout with distressed American flag and vertical TROOP 10 stacked down the right side. Clean, strong, and wearable long after the trek.', img: 'shirt-4-typographic.jpg' },
+  { id: 'design-5-postcard', name: 'Greetings from Philmont', desc: 'Vintage postcard format with BSA stamps and June 13, 2026 postmark. Lone hiker against the mesa at sunset. "We made it to the top. God Bless America."', img: 'shirt-5-postcard.jpg' },
+  { id: 'design-6-nobody-campfire', name: 'Nobody Believes Us \u2014 Campfire', desc: 'Bigfoot roasting a marshmallow while a UFO beams up the burro nearby. America 250. "Nobody Believes Us." Pure chaos energy of Trek 12-20.', img: 'shirt-6-nobody-campfire.jpg' },
+  { id: 'design-9-navy-hikers', name: 'Night Trek \u2014 Navy', desc: "Hand-drawn style on navy: scouts and burro marching under a crescent moon toward snow-capped peaks, campfire and tent at trail's edge, American flag on the summit.", img: 'shirt-9-navy-hikers.jpg' },
+  { id: 'design-8-topo', name: 'America 250 Topo', desc: 'Circle topo badge design with Tooth of Time and Baldy labeled, contour lines, compass rose, boot print, and pack burro. Clean, athletic, works on any shirt color.', img: 'shirt-8-topo.jpg' },
+];
+
+const VOTER_KEY = 'philmont26_voter_name';
+const VOTE_KEY  = 'philmont26_vote';
+
+let voterName = localStorage.getItem(VOTER_KEY) || '';
+let myVote    = localStorage.getItem(VOTE_KEY) || '';
+let counts    = {};
+
+/* ── API ── */
+async function fetchCounts() {
+  try {
+    const res = await fetch('/api/vote/counts');
+    const data = await res.json();
+    counts = data.counts || {};
+  } catch {
+    counts = {};
+  }
+}
+
+async function submitVote(designId) {
+  const res = await fetch('/api/vote', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ voter_name: voterName, design_id: designId }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Vote failed');
+  }
+  return res.json();
+}
+
+/* ── Helpers ── */
+function toast(msg, isErr) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (isErr ? ' error' : '');
+  setTimeout(() => { el.className = 'toast'; }, 3400);
+}
+function totalVotes() { return Object.values(counts).reduce((a, b) => a + b, 0); }
+function pct(id) { const t = totalVotes(); return t ? Math.round((counts[id] / t) * 100) : 0; }
+function leaderId() { return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0]; }
+
+function openLightbox(src) {
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+/* ── Name Gate ── */
+function enterVoting() {
+  const first = document.getElementById('firstName').value.trim();
+  const last = document.getElementById('lastInitial').value.trim().toUpperCase();
+  if (!first || first.length < 1) { toast('Enter your first name', true); return; }
+  if (!last || !/^[A-Z]$/.test(last)) { toast('Enter your last initial (one letter)', true); return; }
+  voterName = first + ' ' + last;
+  localStorage.setItem(VOTER_KEY, voterName);
+  showVotingUI();
+}
+
+function changeName() {
+  localStorage.removeItem(VOTER_KEY);
+  localStorage.removeItem(VOTE_KEY);
+  voterName = '';
+  myVote = '';
+  document.getElementById('nameGate').style.display = '';
+  document.getElementById('voterInfo').style.display = 'none';
+  document.getElementById('statusBar').style.display = 'none';
+  document.getElementById('firstName').value = '';
+  document.getElementById('lastInitial').value = '';
+  render();
+}
+
+function showVotingUI() {
+  document.getElementById('nameGate').style.display = 'none';
+  document.getElementById('voterInfo').style.display = '';
+  document.getElementById('voterDisplay').textContent = voterName;
+  document.getElementById('statusBar').style.display = '';
+  render();
+}
+
+/* ── Render ── */
+function render() {
+  const grid = document.getElementById('grid');
+  const total = totalVotes();
+  const top = leaderId();
+
+  grid.innerHTML = '';
+
+  DESIGNS.forEach((d, i) => {
+    const cnt = counts[d.id] || 0;
+    const isPicked = myVote === d.id;
+    const isLeader = d.id === top && total > 0;
+
+    const card = document.createElement('div');
+    card.className = ['card', isPicked ? 'my-pick' : '', isLeader ? 'is-leader' : ''].filter(Boolean).join(' ');
+
+    card.innerHTML = `
+      <div class="corner-badge">${isPicked ? '\u2713 My Vote' : ''}</div>
+      <div class="card-num">${i + 1}</div>
+      <div class="card-media">
+        <img src="/vote/${d.img}" alt="${d.name}" loading="lazy"
+             onclick="openLightbox('/vote/${d.img}')"
+             onerror="this.parentElement.innerHTML='<div style=\\'padding:40px;text-align:center;color:#2a3441;font-family:monospace;font-size:11px;\\'>Image not found</div>'">
+      </div>
+      <div class="card-body">
+        <div class="card-name">${d.name}</div>
+        <div class="card-desc">${d.desc}</div>
+        <div class="vote-row">
+          <button class="btn-vote${isPicked ? ' picked' : ''}"
+                  data-id="${d.id}"
+                  ${!voterName ? 'disabled' : ''}>
+            ${isPicked ? '\u2713 &nbsp;Your Pick' : (myVote ? 'Change Vote' : 'Cast Vote')}
+          </button>
+          <div class="tally">
+            <span class="tally-num">${cnt}</span>
+            <span class="tally-lbl">votes</span>
+          </div>
+        </div>
+        <div class="vote-bar-track">
+          <div class="vote-bar-fill" style="width:${total ? pct(d.id) : 0}%"></div>
+        </div>
+      </div>`;
+
+    grid.appendChild(card);
+  });
+
+  // Status bar
+  const bar = document.getElementById('statusBar');
+  if (myVote) {
+    const picked = DESIGNS.find(d => d.id === myVote);
+    bar.textContent = '\u2713  Voted for "' + (picked?.name || myVote) + '" \u2014 you can change your vote anytime';
+    bar.classList.add('done');
+  } else if (voterName) {
+    bar.textContent = '\u2B21  Tap any image to zoom \u2014 pick your favorite design';
+    bar.classList.remove('done');
+  }
+
+  // Total strip
+  const strip = document.getElementById('totalStrip');
+  if (total > 0) {
+    const topDesign = DESIGNS.find(d => d.id === top);
+    strip.innerHTML = 'Total votes: <strong>' + total + '</strong>&nbsp;&nbsp;\u00B7&nbsp;&nbsp;Leader: <strong>' + (topDesign?.name || '?') + '</strong> (' + pct(top) + '%)';
+  } else {
+    strip.innerHTML = 'No votes yet \u2014 be the first!';
+  }
+}
+
+/* ── Vote handler ── */
+document.getElementById('grid').addEventListener('click', async e => {
+  const btn = e.target.closest('.btn-vote');
+  if (!btn || !voterName) return;
+  const designId = btn.dataset.id;
+  if (designId === myVote) return; // already picked this one
+
+  btn.disabled = true;
+  const prevText = btn.textContent;
+  btn.textContent = 'Recording\u2026';
+  try {
+    const result = await submitVote(designId);
+    localStorage.setItem(VOTE_KEY, designId);
+    myVote = designId;
+    await fetchCounts();
+    render();
+    if (result.status === 'changed') {
+      toast('Vote changed! Nice choice, Scout.');
+    } else {
+      toast('Vote recorded \u2014 See you on the trail, Crew 614!');
+    }
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = prevText;
+    toast(err.message || 'Could not record vote \u2014 try again.', true);
+  }
+});
+
+/* ── Starfield ── */
+(function() {
+  const canvas = document.getElementById('starCanvas');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+  function resize() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
+  function initStars(n) { stars = Array.from({length: n}, () => ({ x: Math.random()*canvas.width, y: Math.random()*canvas.height*.85, r: Math.random()*1.3+.2, a: Math.random(), da: (Math.random()-.5)*.004 })); }
+  function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    stars.forEach(s => {
+      s.a = Math.max(.1, Math.min(1, s.a+s.da));
+      if (s.a<=.1||s.a>=1) s.da*=-1;
+      ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+      ctx.fillStyle = 'rgba(200,220,255,' + s.a + ')'; ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  resize(); initStars(180); draw();
+  window.addEventListener('resize', () => { resize(); initStars(180); });
+})();
+
+/* ── Init ── */
+(async () => {
+  await fetchCounts();
+  if (voterName) {
+    showVotingUI();
+  } else {
+    render();
+  }
+})();
+</script>
+</body>
+</html>

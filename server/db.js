@@ -195,6 +195,14 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_sessions_expired ON sessions(expired);
 
+  CREATE TABLE IF NOT EXISTS shirt_votes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    voter_name TEXT NOT NULL UNIQUE,
+    design_id TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE TABLE IF NOT EXISTS invitations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     troop_id INTEGER NOT NULL REFERENCES troops(id),

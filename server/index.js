@@ -2556,6 +2556,37 @@ app.get("/terms", (req, res) => {
 </div></body></html>`);
 });
 
+// ── T-Shirt Vote Page (standalone, not part of main app) ──
+app.use("/vote", express.static(join(__dirname, "../vote-page/philmont-vote-portal")));
+app.get("/vote", (req, res) => {
+  res.sendFile(join(__dirname, "../vote-page/philmont-vote-portal/vote.html"));
+});
+
+app.get("/api/vote/counts", (req, res) => {
+  try {
+    const rows = db.prepare("SELECT design_id, COUNT(*) as count FROM shirt_votes GROUP BY design_id").all();
+    const counts = {};
+    rows.forEach(r => { counts[r.design_id] = r.count; });
+    res.json({ counts, total: rows.reduce((s, r) => s + r.count, 0) });
+  } catch (e) { res.status(500).json({ error: "Failed to load votes" }); }
+});
+
+app.post("/api/vote", (req, res) => {
+  const { voter_name, design_id } = req.body;
+  if (!voter_name || !design_id) return res.status(400).json({ error: "Name and design required" });
+  const name = voter_name.trim();
+  if (name.length < 2 || name.length > 30) return res.status(400).json({ error: "Name must be 2-30 characters" });
+  try {
+    const existing = db.prepare("SELECT id, design_id FROM shirt_votes WHERE voter_name = ?").get(name);
+    if (existing) {
+      db.prepare("UPDATE shirt_votes SET design_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(design_id, existing.id);
+      return res.json({ status: "changed", previous: existing.design_id });
+    }
+    db.prepare("INSERT INTO shirt_votes (voter_name, design_id) VALUES (?, ?)").run(name, design_id);
+    res.json({ status: "created" });
+  } catch (e) { res.status(500).json({ error: "Failed to record vote" }); }
+});
+
 // SPA fallback
 app.get("*", (req, res) => {
   res.sendFile(join(__dirname, "../client/dist/index.html"));
