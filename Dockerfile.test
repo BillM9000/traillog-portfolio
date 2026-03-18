@@ -1,0 +1,18 @@
+FROM node:20-alpine
+WORKDIR /app
+
+# Install server deps (including devDeps for testing)
+COPY server/package*.json ./server/
+RUN cd server && npm install
+
+# Copy server source
+COPY server/ ./server/
+
+# Create data dir and empty client/dist for static middleware
+RUN mkdir -p /app/data /app/client/dist
+
+ENV NODE_ENV=test
+ENV DATA_DIR=/app/data
+
+WORKDIR /app/server
+CMD ["npx", "vitest", "run", "--reporter=verbose"]

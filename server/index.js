@@ -2927,8 +2927,13 @@ app.get("*", (req, res) => {
   res.sendFile(join(__dirname, "../client/dist/index.html"));
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`TrailLog running on port ${PORT}`);
-  startGearRefreshSchedule();
-  startReminderScheduler();
-});
+// Start server (skip when imported for testing)
+if (process.env.NODE_ENV !== "test") {
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`TrailLog running on port ${PORT}`);
+    startGearRefreshSchedule();
+    startReminderScheduler();
+  });
+}
+
+export default app;
