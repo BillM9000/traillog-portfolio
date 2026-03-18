@@ -27,7 +27,7 @@ export function getMemberPeriod(dates, key) {
   return [];
 }
 
-export default function Calendar({ members, active, months, analysis, onToggleDate, onBulkSelect, onClearAll, trekDates }) {
+export default function Calendar({ members, active, months, analysis, onToggleDate, onBulkSelect, onClearAll, trekDates, allCrewsMode }) {
   const dragRef = useRef({ active: false, mode: null });
   const { theme, mode } = useTheme();
   const am = active !== null ? members[active] : null;
@@ -113,15 +113,23 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
         if (keyDate < today) continue;
 
         const available = [];
+        const availableLabels = []; // "Name (Crew)" when multi-crew
         for (const m of members) {
-          if (getMemberAvailable(m.dates, key)) available.push(m.name);
+          if (getMemberAvailable(m.dates, key)) {
+            available.push(m.name);
+            availableLabels.push(allCrewsMode && m.crew_name ? `${m.name} (${m.crew_name})` : m.name);
+          }
         }
         if (available.length > 0) {
+          const missingLabels = members.filter(m => !available.includes(m.name))
+            .map(m => allCrewsMode && m.crew_name ? `${m.name} (${m.crew_name})` : m.name);
           hm[key] = {
             count: available.length,
             pct: available.length / total,
             names: available,
+            labels: availableLabels,
             missing: members.filter(m => !available.includes(m.name)).map(m => m.name),
+            missingLabels,
           };
         }
       }
@@ -138,7 +146,7 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
       .map(([key, val]) => ({ key, ...val }));
   }, [heatmap]);
 
-  const showGroupView = viewMode === "group" || active === null;
+  const showGroupView = allCrewsMode || viewMode === "group" || active === null;
 
   return (
     <div>
@@ -148,12 +156,14 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
           <div>
             <div style={{ fontSize: 16, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay }}>Training Availability</div>
             <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 4, lineHeight: 1.5, fontFamily: fontBody }}>
-              {active !== null
-                ? "Tap dates you're available for training. Drag to select ranges."
-                : "Select your name above, then tap dates you're available."}
+              {allCrewsMode
+                ? "Viewing combined availability across all crews. Select a specific crew to edit dates."
+                : active !== null
+                  ? "Tap dates you're available for training. Drag to select ranges."
+                  : "Select your name above, then tap dates you're available."}
             </div>
           </div>
-          {active !== null && members.length > 1 && (
+          {active !== null && members.length > 1 && !allCrewsMode && (
             <div style={{ display: "flex", gap: 2, background: theme.bgAlt, borderRadius: 8, padding: 2 }}>
               <button onClick={() => setViewMode("my")} style={{
                 padding: "5px 10px", borderRadius: 6, border: "none", fontSize: 11, fontWeight: 600,
@@ -269,14 +279,16 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
                     <div key={key}
                       onPointerDown={(e) => {
                         if (past || blocked) return;
-                        if (showGroupView && active !== null) {
+                        if (showGroupView && (active !== null || allCrewsMode)) {
                           // In group view, tapping shows tooltip
                           if (hmData) {
                             if (isTooltipTarget) { setTooltip(null); }
                             else {
                               const rect = e.currentTarget.getBoundingClientRect();
                               setTooltip({
-                                key, names: hmData.names, missing: hmData.missing,
+                                key,
+                                names: hmData.labels || hmData.names,
+                                missing: hmData.missingLabels || hmData.missing,
                                 x: rect.left + rect.width / 2,
                                 y: rect.bottom + 6,
                               });
@@ -295,7 +307,7 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
                         width: "100%", aspectRatio: "1", minHeight: 36, maxHeight: 44,
                         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                         fontSize: 12, fontWeight: mySelected && !showGroupView ? 700 : 500, borderRadius: 6, touchAction: "none", userSelect: "none",
-                        cursor: past || (active === null && !showGroupView) || blocked ? "default" : "pointer",
+                        cursor: past || (active === null && !showGroupView && !allCrewsMode) || blocked ? "default" : "pointer",
                         opacity: past ? 0.22 : 1,
                         background: bg, color,
                         border: borderStyle,

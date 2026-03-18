@@ -2116,6 +2116,22 @@ export function getCrewMembers(crewId) {
   return [...accountRows.map(r => mapCrewMemberRow(addAdvId(r))), ...manualRows.map(r => mapCrewMemberRow(addAdvId(r)))];
 }
 
+/**
+ * Get all members across all crews for an adventure, with crew_name attached.
+ * Used for multi-crew "All Crews" calendar view.
+ */
+export function getAllCrewMembers(adventureId) {
+  const crews = getCrews(adventureId);
+  const allMembers = [];
+  for (const crew of crews) {
+    const members = getCrewMembers(crew.id);
+    for (const m of members) {
+      allMembers.push({ ...m, crew_name: crew.name });
+    }
+  }
+  return allMembers;
+}
+
 export function getCrewMember(crewId, userId) {
   const r = db.prepare("SELECT * FROM crew_members WHERE crew_id = ? AND user_id = ?").get(crewId, userId);
   if (!r) return null;

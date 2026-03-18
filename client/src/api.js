@@ -196,6 +196,7 @@ export const api = {
 
   // Crew Members
   getCrewMembers: (crewId) => request(`/crews/${crewId}/members`),
+  getAllCrewMembers: (adventureId) => request(`/adventures/${adventureId}/all-crew-members`),
   addCrewMember: (crewId, user_id, role) => request(`/crews/${crewId}/members`, { method: "POST", body: JSON.stringify({ user_id, role }) }),
   removeCrewMember: (crewId, userId) => request(`/crews/${crewId}/members/${userId}`, { method: "DELETE" }),
   updateCrewDates: (crewId, userId, dates) => request(`/crews/${crewId}/members/${userId}/dates`, { method: "PUT", body: JSON.stringify({ dates }) }),

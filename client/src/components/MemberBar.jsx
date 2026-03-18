@@ -3,7 +3,7 @@ import { useAdventure } from "../contexts/AdventureContext";
 import { fontBody, fontDisplay, memberTypeBadge, TRAIL_BADGES } from "../utils/theme";
 import { computeMemberReadiness } from "../utils/readiness";
 
-export default function MemberBar({ members, active, setActive, pendingMembers, isAdmin, currentUserId, onConfirmDelete, onRemoveManual, onApproveMember, onDenyMember, achievements, onRequestLink, view }) {
+export default function MemberBar({ members, active, setActive, pendingMembers, isAdmin, currentUserId, onConfirmDelete, onRemoveManual, onApproveMember, onDenyMember, achievements, onRequestLink, view, allCrewsMode }) {
   const { theme } = useTheme();
   const { memberGearMap, skills, gearCatalog } = useAdventure();
   const am = active !== null ? members[active] : null;
@@ -30,9 +30,9 @@ export default function MemberBar({ members, active, setActive, pendingMembers, 
     const readinessApprox = computeMemberReadiness(m, skills, gearCatalog, memberGearMap);
 
     return (
-      <div key={m.is_manual ? `m-${m.id}` : `u-${m.user_id}`} onClick={() => setActive(active === memberIdx ? null : memberIdx)} style={{
+      <div key={m.is_manual ? `m-${m.id}` : `u-${m.user_id}`} onClick={() => !allCrewsMode && setActive(active === memberIdx ? null : memberIdx)} style={{
         display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 12,
-        cursor: "pointer", marginBottom: 6, transition: "all .15s",
+        cursor: allCrewsMode ? "default" : "pointer", marginBottom: 6, transition: "all .15s",
         background: isActive ? (theme.name === "dark" ? "#2E3328" : "#F7F3ED") : "transparent",
         border: isActive ? `1.5px solid ${theme.borderLight}` : "1.5px solid transparent",
       }}>
@@ -76,6 +76,7 @@ export default function MemberBar({ members, active, setActive, pendingMembers, 
           </div>
           <div style={{ fontSize: 12, color: theme.textDim, marginTop: 2, fontFamily: fontBody }}>
             {m.is_manual ? "Scout" : (m.user_type === "adult" ? "Adult" : "Scout")}
+            {allCrewsMode && m.crew_name && ` \u00B7 ${m.crew_name}`}
             {m.role === "admin" && " \u00B7 Admin"}
             {m.participation === "support" && " \u00B7 Support"}
             {m.user_type === "adult" && (m.linked_scouts || []).length > 0 && (() => { const names = (m.linked_scouts || []).map(sid => { const linked = sid > 0 ? members.find(x => x.user_id === sid) : members.find(x => x.id === Math.abs(sid)); return linked ? linked.name : null; }).filter(Boolean); return names.length > 0 ? ` \u00B7 Parent of ${names.join(", ")}` : ""; })()}
@@ -109,14 +110,34 @@ export default function MemberBar({ members, active, setActive, pendingMembers, 
     <div style={{ background: theme.bgAlt, borderBottom: `1px solid ${theme.border}`, padding: "42px 16px 14px 16px" }}>
       {/* Section header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <span style={{ fontSize: 18, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay }}>Crew</span>
+        <span style={{ fontSize: 18, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay }}>
+          {allCrewsMode ? "All Crews" : "Crew"}
+        </span>
         <span style={{ fontSize: 12, color: theme.textDim, fontWeight: 500, fontFamily: fontBody }}>
           {trekkingMembers.length} trekking{supportMembers.length > 0 ? ` \u00B7 ${supportMembers.length} support` : ""}
         </span>
       </div>
 
-      {/* Trekking members */}
-      {trekkingMembers.length > 0 && (
+      {/* All Crews mode: group by crew_name */}
+      {allCrewsMode && (() => {
+        const crewGroups = {};
+        for (const m of members) {
+          const cn = m.crew_name || "Crew";
+          if (!crewGroups[cn]) crewGroups[cn] = [];
+          crewGroups[cn].push(m);
+        }
+        return Object.entries(crewGroups).map(([crewName, crewMembers]) => (
+          <div key={crewName} style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: theme.accent, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 6, fontFamily: fontBody }}>
+              {crewName}
+            </div>
+            {crewMembers.map(renderMember)}
+          </div>
+        ));
+      })()}
+
+      {/* Single crew mode: trekking/support split */}
+      {!allCrewsMode && trekkingMembers.length > 0 && (
         <>
           <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 6, fontFamily: fontBody }}>
             Trekking
@@ -132,7 +153,7 @@ export default function MemberBar({ members, active, setActive, pendingMembers, 
       )}
 
       {/* Support members */}
-      {supportMembers.length > 0 && (
+      {!allCrewsMode && supportMembers.length > 0 && (
         <>
           <div style={{ fontSize: 10, fontWeight: 700, color: "#8a6d3b", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 6, marginTop: 8, fontFamily: fontBody }}>
             Support

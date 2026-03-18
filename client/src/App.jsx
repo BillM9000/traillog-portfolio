@@ -430,8 +430,17 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
 
       {/* Crew picker — only when multiple crews */}
       {crews.length > 1 && (
-        <div style={{ padding: "0 16px", marginBottom: 8 }}>
+        <div style={{ padding: "0 16px", marginBottom: 8, position: "relative", zIndex: 3 }}>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button onClick={() => setSelectedCrewId("all")} style={{
+              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700,
+              fontFamily: fontBody, cursor: "pointer", transition: "all 0.15s ease",
+              border: selectedCrewId === "all" ? `2px solid ${theme.accent}` : `1.5px solid ${theme.borderLight}`,
+              background: selectedCrewId === "all" ? theme.accentBg : theme.bgAlt,
+              color: selectedCrewId === "all" ? theme.accent : theme.textDim,
+            }}>
+              All Crews
+            </button>
             {crews.map(c => (
               <button key={c.id} onClick={() => setSelectedCrewId(c.id)} style={{
                 padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700,
@@ -448,7 +457,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
       )}
 
       <MemberBar
-        members={members} active={active} setActive={setActive}
+        members={members} active={selectedCrewId === "all" ? null : active} setActive={setActive}
         pendingMembers={pendingMembers} isAdmin={isAdmin} currentUserId={user.id}
         onConfirmDelete={setConfirmDelete}
         onRemoveManual={(memberId) => {
@@ -459,6 +468,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
         achievements={achievements}
         onRequestLink={requestLinkFn}
         view={view}
+        allCrewsMode={selectedCrewId === "all"}
       />
 
       {/* CTA Banner */}
@@ -484,8 +494,9 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
       <div style={{ padding: "0 16px 18px 16px", overflowX: "auto" }}>
         {view === "calendar" && (
           <>
-            <Calendar members={members} active={active} months={months} analysis={analysis}
-              trekDates={trekDates} onToggleDate={toggleDate} onBulkSelect={bulkSelect} onClearAll={clearAll} />
+            <Calendar members={members} active={selectedCrewId === "all" ? null : active} months={months} analysis={analysis}
+              trekDates={trekDates} onToggleDate={toggleDate} onBulkSelect={bulkSelect} onClearAll={clearAll}
+              allCrewsMode={selectedCrewId === "all"} />
             <div style={{ marginTop: 16 }}>
               <TrainingEvents adventureId={adventureId} isAdmin={isAdmin} currentUserId={user.id} members={members} bestDates={analysis.bestDates} />
             </div>

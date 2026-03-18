@@ -49,7 +49,7 @@ import db, {
   getCouncils,
   // Crew layer (Stage 2)
   getDefaultCrew, getCrews, getCrew, createCrew, updateCrew, deleteCrew,
-  getCrewMembers, getCrewMember, addCrewMember, removeCrewMember,
+  getCrewMembers, getCrewMember, getAllCrewMembers, addCrewMember, removeCrewMember,
   updateCrewMemberDates, updateCrewMemberSkills, updateCrewMemberGear,
   updateCrewMemberMedical, updateCrewMemberAdmin, updateCrewMemberRole,
   updateCrewMemberParticipation, linkCrewMember,
@@ -1049,6 +1049,12 @@ app.delete("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (
 // List crews for an adventure
 app.get("/api/adventures/:adventureId/crews", requireAuth, requireAdventureMember, (req, res) => {
   try { res.json(getCrews(parseId(req.params.adventureId))); }
+  catch (e) { safeError(res, e); }
+});
+
+// All crew members for an adventure (multi-crew view)
+app.get("/api/adventures/:adventureId/all-crew-members", requireAuth, requireAdventureMember, (req, res) => {
+  try { res.json(getAllCrewMembers(parseId(req.params.adventureId))); }
   catch (e) { safeError(res, e); }
 });
 

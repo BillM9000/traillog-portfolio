@@ -15,9 +15,9 @@ export function AdventureProvider({ adventureId, troopId, children }) {
   const [memberGearMap, setMemberGearMap] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // Selected crew object
+  // Selected crew object (null when "all" is selected)
   const selectedCrew = useMemo(() => {
-    if (!selectedCrewId || crews.length === 0) return null;
+    if (!selectedCrewId || selectedCrewId === "all" || crews.length === 0) return null;
     return crews.find(c => c.id === selectedCrewId) || null;
   }, [crews, selectedCrewId]);
 
@@ -67,6 +67,16 @@ export function AdventureProvider({ adventureId, troopId, children }) {
   }, [selectedCrew, adventure]);
 
   const refreshMembers = useCallback(async () => {
+    if (selectedCrewId === "all") {
+      // Multi-crew view: fetch all crew members with crew_name labels
+      if (!adventureId) return;
+      try {
+        setMembers(await api.getAllCrewMembers(adventureId));
+      } catch (e) {
+        console.error("Failed to load all crew members:", e);
+      }
+      return;
+    }
     if (!selectedCrewId) {
       // Fallback to adventure members if no crew selected yet
       if (!adventureId) return;
