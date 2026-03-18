@@ -1,6 +1,6 @@
 # TrailLog Database Schema
 
-> SQLite (WAL mode) · Schema version 25 · 33 tables · Generated 2026-03-18
+> PostgreSQL · Schema version 25 · 33 tables · Generated 2026-03-18 · [migrated from SQLite 2026-03-18]
 
 ## Entity Relationship Diagram
 
@@ -597,14 +597,8 @@ gear_catalog (global)
 
 ## Foreign Key Enforcement
 
-**Verified**: `PRAGMA foreign_keys = ON` is executed at database connection initialization.
-
-```javascript
-// server/db.js, line 12
-db.pragma("foreign_keys = ON");
-```
-
-This runs on every server start, before any queries execute. SQLite requires this pragma per-connection (it is not persisted). The pragma is correctly placed immediately after `new Database()` construction.
+PostgreSQL enforces foreign key constraints by default. No additional configuration is
+required at connection time, unlike SQLite which required a per-connection pragma.
 
 ## Indexes
 
@@ -643,5 +637,5 @@ See [`schema.sql`](schema.sql) for the complete index list with query-pattern ju
 
 ---
 
-*Canonical schema definition: [`schema.sql`](schema.sql)*
+*Canonical schema definition: [`schema.pg.sql`](schema.pg.sql)*
 *Branding reference: [`../docs/BRANDING_BIBLE.md`](../docs/BRANDING_BIBLE.md)*

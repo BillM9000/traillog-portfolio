@@ -16,7 +16,7 @@
 - Golden backups on VPS + local copy in `crew614/backups/`
 
 ## Architecture
-- React 18 + Vite SPA, Express.js backend, SQLite (WAL mode), schema v16
+- React 18 + Vite SPA, Express.js backend, PostgreSQL (async pool via pg), schema v25 [migrated from SQLite 2026-03-18]
 - Google OAuth + email/password auth (bcrypt, verification tokens, password reset), session-based
 - 4 React Contexts: AuthContext, ThemeContext, AdventureContext, ToastContext
 - Multi-admin: `users.is_admin` column, `ADMIN_EMAIL` seeds first admin on startup, promote/demote via API
@@ -26,7 +26,7 @@
 ## Security
 - Rate limiting: authLimiter 20/15min, apiLimiter 100/min
 - Input: parseId(), body-parser 10kb, esc() for email XSS, parameterized SQL (89 routes)
-- Session: SQLite store, hourly GC, Helmet.js headers, safeError() on 500s, 7-day rolling idle timeout
+- Session: PostgreSQL store (connect-pg-simple), periodic GC, Helmet.js headers, safeError() on 500s, 7-day rolling idle timeout
 - Cookie flags: httpOnly, secure (prod), sameSite=lax
 - Docker non-root (appuser uid 1001), password min 8 chars, 0 npm vulns
 - SSH key-only auth (Ed25519)

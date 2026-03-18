@@ -11,11 +11,11 @@ instructions, expected recovery times, and verification steps.
 | Metric | Target | Notes |
 |--------|--------|-------|
 | **RTO** (Recovery Time Objective) | ~5 minutes for container restart; ~1 hour for full VPS rebuild | Assumes backups and Git repo are accessible |
-| **RPO** (Recovery Point Objective) | ~24 hours | Daily backup window; WAL mode protects committed transactions within the current backup cycle |
+| **RPO** (Recovery Point Objective) | ~24 hours | Daily backup window; PostgreSQL WAL protects committed transactions within the current backup cycle |
 
-SQLite WAL mode ensures that all committed transactions survive application
-crashes. The RPO of 24 hours applies only when restoring from a backup file
-after storage-level loss.
+PostgreSQL's WAL (Write-Ahead Logging) ensures that all committed transactions
+survive application crashes. The RPO of 24 hours applies only when restoring
+from a `pg_dump` backup after storage-level loss.
 
 ---
 
@@ -59,8 +59,8 @@ to recover:
 
 ## Scenario 2 -- Database Corruption
 
-**Symptoms:** Application errors referencing SQLite (e.g., "database disk image
-is malformed"), failed queries, or unexpected empty results.
+**Symptoms:** Application errors referencing PostgreSQL (e.g., connection refused,
+corrupted data pages), failed queries, or unexpected empty results.
 
 **Recovery:**
 
@@ -70,13 +70,12 @@ is malformed"), failed queries, or unexpected empty results.
    docker compose stop
    ```
 
-2. Run an integrity check on the database:
+2. Check PostgreSQL status and run diagnostics:
    ```bash
-   docker start crew614
-   docker exec -it crew614 sqlite3 /app/data/crew614.db ".integrity_check"
-   docker stop crew614
+   systemctl status postgresql
+   sudo -u postgres psql -d traillog -c "SELECT count(*) FROM users;"
    ```
-   If the result is `ok`, the database is intact and the issue is elsewhere.
+   If the query succeeds, the database is intact and the issue is elsewhere.
    If errors are reported, proceed with restoration.
 
 3. Identify the most recent good backup:
@@ -84,61 +83,33 @@ is malformed"), failed queries, or unexpected empty results.
    ls -la /opt/crew614/backups/
    ```
 
-4. Copy the backup database into the container volume:
+4. Restore the backup into PostgreSQL:
    ```bash
-   docker cp /opt/crew614/backups/<most-recent-backup>.db crew614:/app/data/crew614.db
+   sudo -u postgres psql -d traillog < /opt/crew614/backups/<most-recent-backup>.sql
    ```
 
-5. **Fix file ownership** — `docker cp` sets files to `root`, but the app runs
-   as `appuser` (uid 1001). Without this step the database will be read-only:
-   ```bash
-   chown 1001:1001 /var/lib/docker/volumes/crew614_crew614_data/_data/crew614.db
-   ```
-
-6. Start the container:
+5. Start the container:
    ```bash
    docker compose start
    ```
 
-7. Verify the application and data:
+6. Verify the application and data:
    ```bash
    curl https://traillog.gracezero.ai/api/health
    ```
 
-8. Spot-check data by querying the database:
+7. Spot-check data by querying the database:
    ```bash
-   docker exec -it crew614 sqlite3 /app/data/crew614.db "SELECT count(*) FROM users;"
+   sudo -u postgres psql -d traillog -c "SELECT count(*) FROM users;"
    ```
 
-**If no automated backup is usable**, restore from a golden backup:
+**Available golden backups:** Historical golden backups from the SQLite era
+(pre-2026-03-18) exist as `.db` files on the VPS. These are from before the
+PostgreSQL migration and would require conversion to restore. Current golden
+backups are PostgreSQL dumps.
 
-```bash
-docker cp /opt/crew614/crew614-GOLDEN-pre-crew-layer-20260314.db crew614:/app/data/crew614.db
-chown 1001:1001 /var/lib/docker/volumes/crew614_crew614_data/_data/crew614.db
-docker compose start
-```
-
-**Available golden backups (newest first):**
-
-| File | Date | Contents |
-|------|------|----------|
-| `crew614-GOLDEN-pre-crew-layer-20260314.db` | 2026-03-14 | Schema v17, councils, 1 user, clean state. **Also stored locally** at `C:\Users\billm\...\crew614\backups\` |
-| `crew614-GOLDEN-pre-phase1-20260314.db` | 2026-03-14 | Schema v16, pre-councils |
-| `crew614-GOLDEN-pre-platform-settings-20260314.db` | 2026-03-14 | Pre-platform settings |
-| `crew614-GOLDEN-pre-agegate-20260313.db` | 2026-03-13 | Pre-age gate |
-| `crew614-GOLDEN-pre-timeslots-20260312.db` | 2026-03-12 | Pre-time slots |
-| `crew614-GOLDEN-pre-regression-20260310.db` | 2026-03-10 | Original baseline |
-
-Note: The app runs migrations on startup, so restoring an older backup
-(e.g. schema v16) with current code (schema v17) will auto-migrate. Data
-created after the golden snapshot date will be lost.
-
-**Restore verified:** 2026-03-14. Tested `docker compose stop` → `docker cp`
-golden backup → `chown 1001:1001` → `docker compose start`. App booted clean,
-schema migrated, data intact. **Note:** The `chown` step is critical — `docker cp`
-sets file ownership to root, but the app runs as appuser (uid 1001). Without it
-the database becomes read-only and all writes fail with `SqliteError: attempt to
-write a readonly database`.
+Note: The app runs migrations on startup, so restoring an older backup with
+current code will auto-migrate. Data created after the snapshot date will be lost.
 
 ---
 
@@ -199,18 +170,24 @@ backup copies are stored at `C:\Users\billm\220claudsession\philmont_app\crew614
    docker compose up -d
    ```
 
-8. **Restore the database** from the most recent available backup:
+8. **Install and configure PostgreSQL** on the new VPS:
    ```bash
-   docker cp <path-to-backup>.db crew614:/app/data/crew614.db
-   chown 1001:1001 /var/lib/docker/volumes/crew614_crew614_data/_data/crew614.db
+   apt install postgresql postgresql-contrib -y
+   sudo -u postgres createuser traillog
+   sudo -u postgres createdb -O traillog traillog
+   ```
+
+9. **Restore the database** from the most recent available backup:
+   ```bash
+   sudo -u postgres psql -d traillog < <path-to-backup>.sql
    docker compose restart
    ```
 
-9. **Update DNS:** Point `traillog.gracezero.ai` to the new VPS IP address.
+10. **Update DNS:** Point `traillog.gracezero.ai` to the new VPS IP address.
    Allow time for DNS propagation (typically 5-30 minutes, up to 48 hours
    depending on TTL settings).
 
-10. **Verify recovery:**
+11. **Verify recovery:**
     ```bash
     curl https://traillog.gracezero.ai/api/health
     ```
@@ -312,7 +289,7 @@ Credential leak suspected or confirmed.
 
 7. **Review the database** for unauthorized changes:
    ```bash
-   docker exec -it crew614 sqlite3 /app/data/crew614.db \
+   sudo -u postgres psql -d traillog -c \
      "SELECT id, email, created_at FROM users ORDER BY created_at DESC LIMIT 20;"
    ```
 

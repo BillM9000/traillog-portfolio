@@ -17,7 +17,7 @@ This spec was developed through an extended product design conversation in Claud
 
 ## What's Already Built (Don't Rebuild)
 
-TrailLog is a fully deployed React + Express + SQLite app with: Google OAuth + email auth, role system (system admin / troop admin / adult / scout), 48 Philmont itineraries with day-by-day data, 76-item gear catalog with pack weight calculator, training calendar with AM/PM availability, Best Windows scheduling with RSVPs, readiness dashboard with gamification (Trail Badges + Journey Waypoints), reports with CSV export, help system, email notifications, troop logos, platform admin, and multi-adventure support per troop.
+TrailLog is a fully deployed React + Express + PostgreSQL app [migrated from SQLite 2026-03-18] with: Google OAuth + email auth, role system (system admin / troop admin / adult / scout), 48 Philmont itineraries with day-by-day data, 76-item gear catalog with pack weight calculator, training calendar with AM/PM availability, Best Windows scheduling with RSVPs, readiness dashboard with gamification (Trail Badges + Journey Waypoints), reports with CSV export, help system, email notifications, troop logos, platform admin, and multi-adventure support per troop.
 
 **This spec adds three things:**
 1. A corrected data model: Troop → Adventure → Crew(s) → Members
@@ -449,7 +449,7 @@ GET    /api/crews/:crewId/readiness/priorities/:userId   -- "Priority Now" items
 | Council identity | **Seeded dropdown, ~250 councils** | Replaces freeform text. Enables unique troop identity (council + number) and future council licensing. |
 | Separate adventures for feuding leaders | **Supported by design** | Default = same adventure, shared camaraderie. If leaders want separation, create separate adventures, pay separately. Their choice. |
 | Full hardening plan before features | **No — P1s only, fold P2s in** | CSRF/CSP/npm audit are non-negotiable. The 8-week hardening plan, API consolidation, and test suite happen naturally during the restructure work, not as a blocker. |
-| TypeScript / Next.js / Postgres migration | **Not now** | Current stack (React + Express + SQLite) shipped a working product. Migrate when you outgrow it, not before. Professional Stack Guide is a learning roadmap, not a prerequisite. |
+| TypeScript / Next.js migration | **Not now** | Current stack (React + Express + PostgreSQL) shipped a working product. [PostgreSQL migration completed 2026-03-18.] TypeScript/Next.js migration is a learning roadmap, not a prerequisite. |
 
 ---
 

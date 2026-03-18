@@ -9,14 +9,14 @@ Browser (React SPA)
   → api.js fetch() wrapper
     → Express middleware chain
       → Route handler
-        → SQLite prepared statement
+        → PostgreSQL parameterized query
           → JSON response
             → React state update
 ```
 
 1. The React client calls a helper function in `api.js`, which wraps the native `fetch()` API with the base URL, credentials (`include`), and JSON content-type headers.
 2. The request arrives at Express, where it passes through the middleware chain in order (described below).
-3. If the request passes all middleware checks, the route handler executes one or more SQLite prepared statements synchronously.
+3. If the request passes all middleware checks, the route handler executes one or more PostgreSQL parameterized queries asynchronously via `pool.query()`.
 4. The handler returns a JSON response with an appropriate HTTP status code.
 5. The React component or context that initiated the request updates its local state with the response data.
 
@@ -32,7 +32,7 @@ Middleware executes in the following order for every request:
 | 4 | `morgan('short')` | Log every HTTP request (method, URL, status, response time) to stdout |
 | 5 | `authLimiter` | Rate limit authentication endpoints: 20 requests per 15 minutes |
 | 6 | `apiLimiter` | Rate limit general API endpoints: 100 requests per minute |
-| 7 | `express-session` | Establish or resume a session from the session cookie, backed by SQLite |
+| 7 | `express-session` | Establish or resume a session from the session cookie, backed by PostgreSQL (connect-pg-simple) |
 | 8 | `passport.initialize()` / `passport.session()` | Deserialize the authenticated user from the session |
 | 9 | Maintenance check | Block all non-admin API requests when maintenance mode is enabled (503) |
 | 10 | CSRF verification | Validate `X-CSRF-Token` header on POST/PUT/DELETE/PATCH (exempts `/api/vote`) |

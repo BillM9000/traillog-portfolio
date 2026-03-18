@@ -63,7 +63,7 @@ The client communicates with the server exclusively through JSON API calls. Ther
 The back end is a Node.js Express.js monolith that handles:
 
 - 120+ API routes for all application operations (including 35+ crew-scoped routes)
-- Session management via express-session with a SQLite-backed session store
+- Session management via express-session with a PostgreSQL-backed session store (connect-pg-simple)
 - Google OAuth and local authentication via Passport.js
 - CSRF protection via double-submit cookie pattern
 - Email delivery for invitations, notifications, and verification (12 templates)
@@ -75,13 +75,13 @@ The server runs as a single process. There is no background job queue, no micros
 
 ## Database
 
-TrailLog uses **SQLite** as its sole data store, accessed through the **better-sqlite3** driver in synchronous mode. There is no ORM; all database access uses hand-written SQL with prepared statements.
+TrailLog uses **PostgreSQL** as its sole data store, accessed through the **pg (node-postgres)** driver with a connection pool in asynchronous mode. The database runs on the VPS host and the Docker container connects via `172.18.0.1:5432`. There is no ORM; all database access uses hand-written SQL with parameterized queries. The canonical schema is defined in `db/schema.pg.sql`.
 
-### Why SQLite
+### Why PostgreSQL
 
-- **Simplicity**: A single file on disk eliminates the need to provision, configure, and maintain a separate database server. The entire data layer deploys as part of the application container.
-- **Single-server fit**: TrailLog runs on one VPS. SQLite is purpose-built for this deployment model, where a single application process owns the database.
-- **WAL mode**: Write-Ahead Logging allows concurrent read access while a write is in progress, which is sufficient for the application's concurrency requirements.
+- **Robustness**: PostgreSQL provides full ACID compliance, advanced indexing, robust concurrent access, and mature tooling for backups (`pg_dump`) and monitoring.
+- **Single-server fit**: TrailLog runs on one VPS. PostgreSQL runs on the same host, providing strong data integrity with minimal operational overhead.
+- **Connection pooling**: The `pg` driver's `Pool` class manages connections efficiently, supporting the application's concurrency requirements.
 
 ### Why a Monolith
 
@@ -89,6 +89,6 @@ The application serves a well-defined user base (scout troops preparing for trek
 
 ### Why No ORM
 
-- **Prepared statements**: All queries use parameterized prepared statements, which SQLite compiles once and reuses. This provides both performance and protection against SQL injection.
+- **Parameterized queries**: All queries use parameterized `pool.query()` calls, which protect against SQL injection and allow PostgreSQL to optimize query plans.
 - **Explicit SQL**: The queries are readable, auditable, and directly correspond to the schema. There is no hidden query generation or N+1 problem to debug.
-- **Synchronous access**: better-sqlite3's synchronous API pairs naturally with Express route handlers, avoiding the callback or promise overhead that an ORM would introduce on top of an already-synchronous driver.
+- **Async access**: The `pg` driver's asynchronous API integrates naturally with Express async route handlers using `async/await`.

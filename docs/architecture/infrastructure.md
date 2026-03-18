@@ -26,7 +26,7 @@ The application uses a multi-stage Docker build based on `node:20-alpine`:
 |---------|-------|
 | Port binding | `127.0.0.1:3614` (localhost only) |
 | Docker network | `n8n_default` (external, shared with other VPS services) |
-| Data volume | `crew614_data` (named volume, mounted at `/app/data`) |
+| Database | PostgreSQL on VPS host, connected via `172.18.0.1:5432` |
 | Log driver | `json-file` |
 | Log max size | 10 MB |
 | Log max files | 3 |
@@ -35,15 +35,16 @@ The port is bound to localhost only. External traffic reaches the container excl
 
 ### Data Persistence
 
-The SQLite database files reside in the `crew614_data` named Docker volume, which maps to `/app/data` inside the container. This volume persists across container rebuilds and restarts.
+The application data is stored in PostgreSQL running on the VPS host. The Docker container connects to the database at `172.18.0.1:5432` over the Docker bridge network. Data persists independently of container rebuilds and restarts.
 
 To reset the database entirely (destructive):
 
-```
-docker compose down -v && docker compose up -d
+```bash
+psql -U traillog -d traillog -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+docker compose restart
 ```
 
-The `-v` flag removes the named volume, destroying all data.
+This drops all tables and data. On restart, the application recreates the schema and runs all migrations automatically.
 
 ## Reverse Proxy
 
@@ -72,7 +73,7 @@ The application reads 12 environment variables from `/opt/crew614/.env` on the V
 |----------|---------|
 | `PORT` | Server listen port (3614) |
 | `NODE_ENV` | Runtime mode (production) |
-| `DATA_DIR` | Path to SQLite data directory (/app/data) |
+| `DATABASE_URL` | PostgreSQL connection string (e.g., `postgresql://traillog:password@172.18.0.1:5432/traillog`) |
 | `SESSION_SECRET` | Secret key for signing session cookies |
 | `GOOGLE_CLIENT_ID` | Google OAuth application ID |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth application secret |
@@ -145,19 +146,13 @@ Confirm the application is running by checking the health endpoint or loading th
 
 A backup script at `/opt/crew614/backup.sh` runs daily at 3:00 AM via cron. The script:
 
-1. Uses SQLite's `.backup` command to create a consistent snapshot of the database (safe even during active writes).
+1. Uses `pg_dump` to create a consistent snapshot of the PostgreSQL database (safe even during active writes).
 2. Copies the current `.env` file as a configuration snapshot.
 3. Maintains a rolling window of 10 backups, automatically deleting the oldest when the limit is exceeded.
 
 ### Golden Backup
 
-A manually-created reference backup exists at:
-
-```
-/opt/crew614/crew614-GOLDEN-pre-regression-20260310.db
-```
-
-This was captured before the schema v7 regression test suite and serves as a known-good restore point.
+Historical golden backups exist from the SQLite era (pre-2026-03-18). Current golden backups are PostgreSQL dumps created with `pg_dump`.
 
 ### Manual Backup
 
@@ -189,11 +184,10 @@ traillog.gracezero.ai → 31.97.134.173 → Traefik → container:3614
 │         │ n8n_default network                    │
 │         │                                       │
 │  ┌──────┴───────┐     ┌──────────────────────┐  │
-│  │  TrailLog    │     │  crew614_data volume  │  │
-│  │  container   ├────►│  /app/data/           │  │
-│  │  (port 3614) │     │  ├── crew614.db       │  │
-│  └──────────────┘     │  └── sessions.db      │  │
-│                       └──────────────────────┘  │
+│  │  TrailLog    │     │  PostgreSQL           │  │
+│  │  container   ├────►│  (172.18.0.1:5432)    │  │
+│  │  (port 3614) │     │  database: traillog   │  │
+│  └──────────────┘     └──────────────────────┘  │
 └─────────────────────────────────────────────────┘
 ```
 

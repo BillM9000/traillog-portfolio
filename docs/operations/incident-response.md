@@ -76,7 +76,7 @@ event exposing user data.
   for unexpected restart cycles.
 - **Log monitoring:** Review `docker logs crew614` for error-level entries.
   The application uses structured error logging; search for `error`,
-  `SQLITE_BUSY`, or `ECONNREFUSED` patterns.
+  `ECONNREFUSED`, or `connection refused` patterns.
 
 ### Manual
 
@@ -164,29 +164,35 @@ event exposing user data.
    df -h
    ```
 
-### P2 -- Database Lock
+### P2 -- Database Connection Issues
 
-SQLite WAL mode can occasionally encounter lock contention. Symptoms include
-`SQLITE_BUSY` errors in application logs.
+PostgreSQL connection pool exhaustion or database unavailability can cause
+application errors. Symptoms include `ECONNREFUSED` or connection timeout errors
+in application logs.
 
-1. **Restart the container** to release all database connections:
+1. **Check PostgreSQL status:**
+   ```bash
+   systemctl status postgresql
+   ```
+
+2. **Restart the container** to reset the connection pool:
    ```bash
    cd /opt/crew614
    docker compose restart
    ```
 
-2. **Check for zombie WAL files** (abnormally large `-wal` or `-shm` files):
+3. **Check PostgreSQL logs for issues:**
    ```bash
-   docker exec -it crew614 ls -la /app/data/
+   tail -50 /var/log/postgresql/postgresql-*-main.log
    ```
 
-3. **Run integrity check:**
+4. If PostgreSQL itself is down, restart it:
    ```bash
-   docker exec -it crew614 sqlite3 /app/data/crew614.db ".integrity_check"
+   systemctl restart postgresql
    ```
 
-4. If integrity check fails, proceed with database restoration (see Disaster
-   Recovery, Scenario 2).
+5. If database integrity is suspect, proceed with database restoration (see
+   Disaster Recovery, Scenario 2).
 
 ### P3 and P4
 

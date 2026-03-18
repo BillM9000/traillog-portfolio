@@ -17,8 +17,7 @@ it in an emergency.
 | App URL | https://traillog.gracezero.ai |
 | App directory | `/opt/crew614/` |
 | Docker container | `crew614` |
-| Docker volume | `crew614_data` |
-| Database path (inside container) | `/app/data/crew614.db` |
+| Database | PostgreSQL on VPS host (`172.18.0.1:5432`, database: `traillog`) |
 | Environment file | `/opt/crew614/.env` |
 | Backup directory | `/opt/crew614/backups/` |
 | GitHub repository | `BillM9000/crew614-philmont` (master branch) |
@@ -150,7 +149,7 @@ docker logs crew614 2>&1 | grep -i error
 **Search for a specific pattern (e.g., database issues):**
 
 ```bash
-docker logs crew614 2>&1 | grep -i "sqlite\|ECONNREFUSED\|EACCES"
+docker logs crew614 2>&1 | grep -i "postgres\|ECONNREFUSED\|EACCES"
 ```
 
 **Filter for specific HTTP status codes (e.g., 403 CSRF rejections or 429
@@ -173,10 +172,10 @@ rotated files. Older logs are automatically discarded.
 
 ## 4. Access the Database Shell
 
-Open an interactive SQLite shell inside the running container:
+Open an interactive PostgreSQL shell on the VPS:
 
 ```bash
-docker exec -it crew614 sqlite3 /app/data/crew614.db
+sudo -u postgres psql -d traillog
 ```
 
 **Useful queries:**
@@ -190,7 +189,7 @@ SELECT count(*) FROM users;
 Check current schema version:
 
 ```sql
-SELECT schema_version FROM platform_settings;
+SELECT value FROM platform_settings WHERE key = 'schema_version';
 ```
 
 List all troops:
@@ -205,16 +204,16 @@ List recent users:
 SELECT id, name, email, created_at FROM users ORDER BY created_at DESC LIMIT 10;
 ```
 
-Check database integrity:
+List table sizes:
 
 ```sql
-.integrity_check
+SELECT relname, n_live_tup FROM pg_stat_user_tables ORDER BY n_live_tup DESC;
 ```
 
 Exit the shell:
 
 ```sql
-.quit
+\q
 ```
 
 ---
@@ -253,12 +252,10 @@ docker compose stop
 ls -la /opt/crew614/backups/
 ```
 
-**Step 3 -- Copy the backup into the container volume:**
+**Step 3 -- Restore the backup into PostgreSQL:**
 
 ```bash
-docker start crew614
-docker cp /opt/crew614/backups/<chosen-backup>.db crew614:/app/data/crew614.db
-docker stop crew614
+sudo -u postgres psql -d traillog < /opt/crew614/backups/<chosen-backup>.sql
 ```
 
 **Step 4 -- Restart the container:**
@@ -276,7 +273,7 @@ curl https://traillog.gracezero.ai/api/health
 Also spot-check data:
 
 ```bash
-docker exec -it crew614 sqlite3 /app/data/crew614.db "SELECT count(*) FROM users;"
+sudo -u postgres psql -d traillog -c "SELECT count(*) FROM users;"
 ```
 
 ---
@@ -289,13 +286,16 @@ be undone. Only use this for development resets or if instructed to start from
 a clean state.**
 
 ```bash
+# Drop and recreate the PostgreSQL database
+sudo -u postgres psql -c "DROP DATABASE traillog;"
+sudo -u postgres psql -c "CREATE DATABASE traillog OWNER traillog;"
+
+# Restart the container — schema and seed data will be created on startup
 cd /opt/crew614
-docker compose down -v
-docker compose up -d
+docker compose restart
 ```
 
-The `-v` flag removes the Docker volume containing the database. On startup, the
-application creates a fresh database and runs all schema migrations
+On startup, the application creates a fresh schema and runs all migrations
 automatically.
 
 ---
@@ -351,8 +351,8 @@ intervention is required.
 To check the current schema version:
 
 ```bash
-docker exec -it crew614 sqlite3 /app/data/crew614.db \
-  "SELECT schema_version FROM platform_settings;"
+sudo -u postgres psql -d traillog -c \
+  "SELECT value FROM platform_settings WHERE key = 'schema_version';"
 ```
 
 Expected output for the current release: `22`
@@ -464,6 +464,6 @@ volume is preserved.
 | Full rebuild | `cd /opt/crew614 && docker compose build --no-cache && docker compose up -d` |
 | Manual backup | `ssh root@31.97.134.173 /opt/crew614/backup.sh` |
 | Check backups | `ls -la /opt/crew614/backups/` |
-| DB shell | `docker exec -it crew614 sqlite3 /app/data/crew614.db` |
-| Schema version | `docker exec -it crew614 sqlite3 /app/data/crew614.db "SELECT schema_version FROM platform_settings;"` |
+| DB shell | `sudo -u postgres psql -d traillog` |
+| Schema version | `sudo -u postgres psql -d traillog -c "SELECT value FROM platform_settings WHERE key = 'schema_version';"` |
 | Disk usage | `docker system df` |

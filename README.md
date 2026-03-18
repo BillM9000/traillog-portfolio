@@ -29,7 +29,7 @@ A multi-troop collaborative platform for Scouting America high adventure prepara
 |-------|-----------|---------|
 | Frontend | React 18, Vite 6 | Component UI, fast HMR dev |
 | Backend | Express.js 4 | REST API (89 routes) |
-| Database | SQLite (better-sqlite3, WAL) | Embedded DB, schema v7 |
+| Database | PostgreSQL (pg / node-postgres) | Async pool, schema v25 |
 | Auth | Passport.js, bcrypt | Google OAuth + email/password |
 | Security | Helmet.js, express-rate-limit | Headers, rate limiting |
 | Email | Nodemailer | Gmail SMTP templates |
@@ -67,7 +67,7 @@ Runs on port `3614` behind your reverse proxy (Traefik/nginx) for HTTPS.
 |----------|----------|-------------|
 | `PORT` | No (default: 3614) | Server port |
 | `NODE_ENV` | Yes (production) | Enables secure cookies, error sanitization |
-| `DATA_DIR` | No (default: /app/data) | SQLite database directory |
+| `DATABASE_URL` | Yes (production) | PostgreSQL connection string |
 | `SESSION_SECRET` | Yes (production) | Session encryption key (40+ chars) |
 | `GOOGLE_CLIENT_ID` | Yes | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth client secret |
@@ -85,7 +85,7 @@ Runs on port `3614` behind your reverse proxy (Traefik/nginx) for HTTPS.
 crew614/
 ├── server/
 │   ├── index.js          Express app, 89 API routes, middleware
-│   ├── db.js             SQLite schema v7, migrations, 76-item seed
+│   ├── db.js             PostgreSQL schema, migrations, 76-item seed (async)
 │   ├── auth.js           Passport.js Google OAuth + local strategy
 │   ├── email.js          Nodemailer templates (9 email types)
 │   └── package.json

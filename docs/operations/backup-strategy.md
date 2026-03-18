@@ -7,13 +7,13 @@ procedures for the TrailLog production environment.
 
 ## Overview
 
-TrailLog uses SQLite in WAL (Write-Ahead Logging) mode as its primary data store.
-All backups are performed using the SQLite `.backup` command, which produces a
-consistent snapshot even while the application is running.
+TrailLog uses PostgreSQL as its primary data store, running on the VPS host.
+All backups are performed using `pg_dump`, which produces a consistent snapshot
+even while the application is running.
 
 | Property            | Value                                          |
 |---------------------|------------------------------------------------|
-| Backup tool         | SQLite `.backup` command                       |
+| Backup tool         | `pg_dump`                                      |
 | Schedule            | Daily at 3:00 AM server local time             |
 | Retention           | Rolling 10 backups (oldest auto-deleted)       |
 | Storage path        | `/opt/crew614/backups/` on VPS filesystem      |
@@ -27,15 +27,15 @@ consistent snapshot even while the application is running.
 The script `/opt/crew614/backup.sh` runs every day at 3:00 AM via cron. It
 performs the following steps:
 
-1. Runs `sqlite3 /app/data/crew614.db ".backup <destination>"` inside the Docker
-   container to produce a crash-consistent copy of the database.
+1. Runs `pg_dump -U traillog -d traillog > <destination>` to produce a consistent
+   snapshot of the PostgreSQL database.
 2. Copies the current `/opt/crew614/.env` file alongside the database backup so
    that environment secrets are preserved with each snapshot.
 3. Applies rolling retention: keeps the 10 most recent backups and deletes any
    older files automatically.
 
-Because the `.backup` command is WAL-safe, no application downtime is required.
-Reads and writes continue normally during the backup window.
+Because `pg_dump` uses PostgreSQL's MVCC snapshot isolation, no application
+downtime is required. Reads and writes continue normally during the backup window.
 
 ---
 
@@ -51,14 +51,9 @@ ssh root@31.97.134.173 /opt/crew614/backup.sh
 
 ## Golden Backup
 
-A golden backup was created before the v7 schema regression test cycle:
-
-```
-/opt/crew614/crew614-GOLDEN-pre-regression-20260310.db
-```
-
-This file is a known-good database snapshot and should not be deleted. It serves
-as a last-resort recovery point independent of the rolling backup window.
+Historical golden backups from the SQLite era (pre-2026-03-18) exist as `.db` files on the VPS.
+Current golden backups are PostgreSQL dumps created with `pg_dump`. These serve
+as known-good restore points independent of the rolling backup window.
 
 ---
 
@@ -101,9 +96,9 @@ To restore from a backup:
    docker compose stop
    ```
 
-2. Copy the backup database into the Docker volume:
+2. Restore the PostgreSQL dump:
    ```bash
-   docker cp /opt/crew614/backups/<backup-file>.db crew614:/app/data/crew614.db
+   psql -U traillog -d traillog < /opt/crew614/backups/<backup-file>.sql
    ```
 
 3. If restoring `.env` as well, copy it into place:
@@ -130,8 +125,9 @@ To restore from a backup:
   production database. A total disk failure or VPS loss would destroy both the
   live database and all automated backups simultaneously.
 - **24-hour RPO.** The daily backup schedule means up to 24 hours of data could
-  be lost between the last backup and a failure event. WAL mode protects against
-  crash-induced corruption but does not help if the underlying storage is lost.
+  be lost between the last backup and a failure event. PostgreSQL's WAL
+  (Write-Ahead Logging) protects against crash-induced corruption but does not
+  help if the underlying storage is lost.
 - **Golden backup is manual.** The golden backup is not automatically refreshed.
   It should be updated before major releases or schema migrations.
 

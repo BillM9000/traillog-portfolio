@@ -24,9 +24,9 @@
                         │  └─────┬─────┘    └──────────────┘  │
                         │        │                            │
                         │  ┌─────▼─────────────────────────┐  │
-                        │  │  SQLite (WAL mode)            │  │
-                        │  │  Docker volume:               │  │
-                        │  │  crew614_crew614_data         │  │
+                        │  │  PostgreSQL                   │  │
+                        │  │  VPS host: 172.18.0.1:5432    │  │
+                        │  │  database: traillog           │  │
                         │  └───────────────────────────────┘  │
                         └─────────────────────────────────────┘
                                        │
@@ -56,7 +56,7 @@ Backup Strategy:
   ┌─────────────────────────────────────────────────────────────┐
   │  /opt/crew614/backup.sh (rolling, keeps last 10)            │
   │  ├── Daily Cron (3 AM server time)                          │
-  │  ├── SQLite .backup → /opt/crew614/backups/                 │
+  │  ├── pg_dump → /opt/crew614/backups/                        │
   │  ├── .env snapshot  → /opt/crew614/backups/                 │
   │  ├── Rotate: keeps last 10 backups, auto-deletes oldest     │
   │  └── Manual: ssh root@VPS /opt/crew614/backup.sh            │
@@ -413,7 +413,7 @@ Health:
 crew614/
 ├── server/
 │   ├── index.js          Express app, 89 API routes, helmet, middleware
-│   ├── db.js             SQLite schema v7, migrations, 76-item seed, all DB functions
+│   ├── db.js             PostgreSQL schema, migrations, 76-item seed, all DB functions (async)
 │   ├── auth.js           Passport.js Google OAuth + local strategy
 │   ├── email.js          Nodemailer templates (9 email types, XSS-escaped)
 │   └── package.json
@@ -570,7 +570,7 @@ Affiliate Links:
 ```
 Request Pipeline:
   express.json (1MB limit) → helmet (security headers) → rate limiters →
-  session (SQLite store) → passport → express.static → route handlers
+  session (PostgreSQL store) → passport → express.static → route handlers
 
 Security Headers (Helmet.js):
   Content-Security-Policy    style-src 'unsafe-inline' (React CSS-in-JS)
@@ -596,7 +596,7 @@ Input Validation:
   parseId()          Safe parseInt (null not NaN)
   express.json       1MB body limit
   esc()              HTML-escape in email templates
-  Parameterized SQL  100% prepared statements, zero concatenation
+  Parameterized SQL  100% parameterized queries (pool.query), zero concatenation
 
 Session Management:
   httpOnly: true   No JavaScript access
@@ -605,9 +605,9 @@ Session Management:
   Hourly GC        Expired sessions cleaned up
 
 Data Integrity:
-  db.transaction()   deleteAdventure (8 tables), removeAdventureMember (4 tables)
-  12 indexes         ensureIndexes() runs every startup
-  WAL mode           Crash resilience, concurrent reads
+  Transactions       deleteAdventure (8 tables), removeAdventureMember (4 tables)
+  26 indexes         ensureIndexes() runs every startup
+  PostgreSQL         MVCC concurrency, ACID compliance
 ```
 
 ## Email Templates (9 types)

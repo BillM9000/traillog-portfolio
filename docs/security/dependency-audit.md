@@ -22,26 +22,27 @@ ongoing audit process.
 
 ## Server Dependencies
 
-10 production packages.
+11 production packages.
 
 | Package | Version | Purpose | Risk Notes |
 |---------|---------|---------|------------|
 | bcryptjs | ^3.0.3 | Password hashing (bcrypt, 10 rounds) | Pure JavaScript implementation. Slower than native `bcrypt` but eliminates native binding requirements and associated build/security risks. No known vulnerabilities. |
-| better-sqlite3 | ^11.7.0 | SQLite database driver | Native addon compiled during `npm install`. Requires build tools (python3, make, g++) in the Docker build stage. Compiled binary is architecture-specific. Widely used and actively maintained. |
+| pg | ^8.x | PostgreSQL database driver | Pure JavaScript implementation with optional native bindings. Provides connection pooling via `Pool`. Widely used and actively maintained. |
+| connect-pg-simple | ^10.x | PostgreSQL session store | Stores sessions in the PostgreSQL database. Provides periodic cleanup of expired sessions. |
 | express | ^4.21.0 | HTTP server and routing framework | One of the most widely audited Node.js packages. Large maintainer team. Critical to the entire application. |
 | express-rate-limit | ^7.5.0 | Request rate limiting | In-memory store by default. Counters reset on server restart, which is acceptable for a single-server deployment. No persistent state required. |
-| express-session | ^1.19.0 | Server-side session management | Used with better-sqlite3-session-store for persistent sessions. Session data stored in SQLite, not in memory. |
+| express-session | ^1.19.0 | Server-side session management | Used with connect-pg-simple for persistent sessions. Session data stored in PostgreSQL, not in memory. |
 | helmet | ^8.0.0 | HTTP security headers | Sets sensible security header defaults. CSP is customized for this application (see data-protection.md). Minimal attack surface -- it only modifies response headers. |
 | nodemailer | ^8.0.1 | Transactional email (SMTP) | Connects to Gmail SMTP with an app password. Outbound connections only. No inbound mail handling. |
 | passport | ^0.7.0 | Authentication framework | Provides the strategy pattern for pluggable authentication. Core library has minimal surface area. |
 | passport-google-oauth20 | ^2.0.0 | Google OAuth 2.0 strategy | Server-side redirect flow. Handles the OAuth code exchange and profile fetch. Google tokens are not persisted. |
 | passport-local | ^1.0.0 | Email/password authentication strategy | Minimal wrapper around username/password verification. Delegates hashing to bcryptjs. |
 
-### Session Store (transitive dependency)
+### Session Store
 
 | Package | Version | Purpose | Risk Notes |
 |---------|---------|---------|------------|
-| better-sqlite3-session-store | (via express-session) | Persistent session storage in SQLite | Stores sessions in the same SQLite database. Includes hourly garbage collection of expired sessions. |
+| connect-pg-simple | ^10.x | Persistent session storage in PostgreSQL | Stores sessions in a dedicated `session` table in PostgreSQL. Includes periodic cleanup of expired sessions. |
 
 ---
 
@@ -78,9 +79,7 @@ version control. This ensures:
 
 ### No Postinstall Scripts
 
-No production dependencies execute postinstall scripts. The `better-sqlite3` package
-requires native compilation via `node-gyp`, but this is a standard build step, not
-an arbitrary script.
+No production dependencies execute postinstall scripts or require native compilation.
 
 ### Docker Image
 
@@ -108,8 +107,7 @@ TrailLog uses `bcryptjs` (pure JavaScript) rather than `bcrypt` (native C++ addo
 | Security | Same algorithm, same output | Same algorithm, same output |
 
 The performance difference is negligible for this application's scale. The primary
-advantage of bcryptjs is eliminating native build complexity alongside better-sqlite3,
-which already requires native compilation.
+advantage of bcryptjs is eliminating native build complexity in the Docker image.
 
 ### express-rate-limit In-Memory Store
 

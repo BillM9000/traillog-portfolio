@@ -48,8 +48,8 @@ Pre-launch sign-off checklist. Items marked with the app name are specific to th
 | 3.4 | Database migrations tested | ✅ | Schema v10→v20 migration path verified (fresh + existing DB) |
 | 3.5 | Off-site backup copy | ✅ | Golden backups downloaded to local dev machine (crew614/backups/) |
 | 3.6 | Data retention policy | N/A | Required if handling PII under GDPR/CCPA. Define how long data is kept |
-| 3.7 | Database connection pooling | N/A | Required for PostgreSQL/MySQL. TrailLog uses SQLite (single file, no pooling needed) |
-| 3.8 | Data encryption at rest | N/A | Required for: healthcare (HIPAA), financial. SQLite on encrypted volume if needed |
+| 3.7 | Database connection pooling | ✅ | PostgreSQL connection pool via pg `Pool` class |
+| 3.8 | Data encryption at rest | N/A | Required for: healthcare (HIPAA), financial. Consider LUKS disk encryption if needed |
 
 ## 4. Email & Notifications
 

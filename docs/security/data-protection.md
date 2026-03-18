@@ -49,21 +49,21 @@ procedures, and data retention policies.
 
 ### Database
 
-- **Engine:** SQLite 3 via better-sqlite3
-- **Mode:** WAL (Write-Ahead Logging) for crash resilience and concurrent read access
-- **Storage:** Docker named volume `crew614_crew614_data`
-- **Encryption:** None (no SQLCipher)
+- **Engine:** PostgreSQL via pg (node-postgres)
+- **Access:** Asynchronous connection pool (`Pool`)
+- **Host:** VPS host machine, connected from Docker container via `172.18.0.1:5432`
+- **Encryption:** None at the database level (relies on host-level protections)
 
 ### Encryption at Rest -- Trade-off Analysis
 
-SQLite encryption at rest via SQLCipher is not currently implemented. This is a
-deliberate trade-off:
+PostgreSQL encryption at rest via Transparent Data Encryption (TDE) is not
+currently implemented. This is a deliberate trade-off:
 
 | Factor | Assessment |
 |--------|-----------|
-| Benefit | Protects data if the VPS disk is physically accessed or the Docker volume is exfiltrated |
-| Cost | SQLCipher requires native bindings and adds build complexity to the Docker multi-stage build. It also introduces a key management requirement. |
-| Current mitigations | Docker container isolation (non-root `appuser`, uid 1001). VPS access restricted to SSH key authentication. .env file permissions set to 600. Database file not bind-mounted to host. |
+| Benefit | Protects data if the VPS disk is physically accessed |
+| Cost | TDE requires PostgreSQL Enterprise or third-party extensions. Adds operational complexity and key management requirements. |
+| Current mitigations | PostgreSQL runs on the VPS host with restricted access. VPS access restricted to SSH key authentication. .env file permissions set to 600. Database authentication required for connections. |
 | Recommendation | Consider host-level disk encryption (LUKS) on the VPS as a lower-complexity alternative that protects all data at rest, not just the database. |
 
 ### Environment File
@@ -74,7 +74,7 @@ The `.env` file on the VPS contains:
 - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
 - `SMTP_PASS` (Gmail app password)
 - `ADMIN_EMAIL`
-- Database path configuration
+- `DATABASE_URL` (PostgreSQL connection string)
 
 Protections:
 
@@ -108,7 +108,7 @@ over localhost (127.0.0.1). This is acceptable because:
 - The Docker container exposes port 3614 only on the localhost interface, not on
   public-facing network interfaces.
 - An attacker would need root access to the VPS to intercept this traffic, at which
-  point they would already have access to the database file.
+  point they would already have access to the database.
 
 ---
 
@@ -247,10 +247,10 @@ across all 12 email templates:
 | Setting | Value |
 |---------|-------|
 | Schedule | Daily at 3:00 AM (cron) |
-| Method | SQLite `.backup` command (online backup, no locking) |
+| Method | `pg_dump` (online backup, no locking) |
 | Retention | Rolling 10 backups (oldest auto-deleted) |
 | Storage | `/opt/crew614/backups/` on VPS |
-| Includes | Database file and .env |
+| Includes | PostgreSQL dump and .env |
 
 ### Current Limitations
 

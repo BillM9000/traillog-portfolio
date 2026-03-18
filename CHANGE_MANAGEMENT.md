@@ -23,9 +23,9 @@ Standard operating procedures for making changes to the TrailLog application. Th
 
 | Environment | Purpose | URL | Database |
 |-------------|---------|-----|----------|
-| **Local Dev** | Development and initial testing | `localhost:5173` (Vite) | N/A (SQLite runs in Docker only — see Windows Dev Notes) |
+| **Local Dev** | Development and initial testing | `localhost:5173` (Vite) | PostgreSQL (local or Docker) |
 | **Staging** | Pre-production validation | TBD — to be set up before or at go-live | Copy of production DB (sanitized) |
-| **Production** | Live application | `https://traillog.gracezero.ai` | `/app/data/crew614.db` (Docker volume) |
+| **Production** | Live application | `https://traillog.gracezero.ai` | PostgreSQL on VPS host (`172.18.0.1:5432`) |
 
 ### Current State (Pre-Launch)
 
@@ -187,8 +187,9 @@ Only use when intentionally wiping all data (e.g., pre-launch reset).
 
 ```bash
 # WARNING: This deletes all data in the database
-docker compose down -v
-docker compose up -d
+sudo -u postgres psql -c "DROP DATABASE traillog;"
+sudo -u postgres psql -c "CREATE DATABASE traillog OWNER traillog;"
+docker compose restart
 ```
 
 ### Deployment Timing
@@ -224,11 +225,9 @@ cd /opt/crew614
 # 1. Stop the app
 docker compose down
 
-# 2. Restore database from golden backup
-docker volume rm crew614_app-data  # Remove current volume
-docker compose up -d               # Creates fresh volume
-docker cp /opt/crew614/crew614-GOLDEN-<label>.db crew614:/app/data/crew614.db
-docker compose restart
+# 2. Restore database from backup
+sudo -u postgres psql -d traillog < /opt/crew614/backups/<backup>.sql
+docker compose up -d
 
 # 3. Redeploy previous code version
 # (restore from saved tar or git checkout)
@@ -285,13 +284,14 @@ Database schema changes are the highest-risk category because they can break the
 
 ```bash
 # Test 1: Fresh database (simulates new install)
-docker compose down -v
-docker compose up -d
+sudo -u postgres psql -c "DROP DATABASE traillog;"
+sudo -u postgres psql -c "CREATE DATABASE traillog OWNER traillog;"
+docker compose restart
 # Verify: app starts, schema version correct, seed data present
 
 # Test 2: Existing database (simulates upgrade)
 # Restore a backup, then deploy new code
-docker cp /path/to/backup.db crew614:/app/data/crew614.db
+sudo -u postgres psql -d traillog < /path/to/backup.sql
 docker compose restart
 # Verify: app starts, migration runs, existing data intact
 ```
@@ -398,14 +398,10 @@ docker logs crew614 --tail 50
 docker logs crew614 -f              # Follow live
 
 # DB access (read-only queries)
-docker exec -w /app/server crew614 node -e "
-const Database = require('better-sqlite3');
-const db = new Database('/app/data/crew614.db');
-console.log(db.prepare('SELECT count(*) as c FROM users').get());
-"
+sudo -u postgres psql -d traillog -c "SELECT count(*) FROM users;"
 
 # Backup (manual)
-docker cp crew614:/app/data/crew614.db /opt/crew614/crew614-backup-$(date +%Y%m%d).db
+pg_dump -U traillog -d traillog > /opt/crew614/crew614-backup-$(date +%Y%m%d).sql
 
 # Health check
 curl -s https://traillog.gracezero.ai/api/health

@@ -123,24 +123,20 @@ ssh root@your-vps  # Should work with key, fail with password
 cd /opt/crew614
 
 # 1. Find latest backup
-ls -la *.db
+ls -la backups/*.sql
 
-# 2. Copy to temp location
-cp crew614-backup-latest.db /tmp/crew614-restore-test.db
+# 2. Create a test database and restore into it
+sudo -u postgres createdb traillog_test
+sudo -u postgres psql -d traillog_test < backups/latest-backup.sql
 
 # 3. Verify integrity
-docker exec -w /app/server crew614 node -e "
-const Database = require('better-sqlite3');
-const db = new Database('/tmp/crew614-restore-test.db');
-const users = db.prepare('SELECT count(*) as c FROM users').get();
-const schema = db.prepare(\"SELECT value FROM platform_settings WHERE key = 'schema_version'\").get();
-console.log('Users:', users.c, 'Schema:', schema?.value);
-db.pragma('integrity_check');
-console.log('Integrity: OK');
+sudo -u postgres psql -d traillog_test -c "
+SELECT count(*) AS users FROM users;
+SELECT value AS schema FROM platform_settings WHERE key = 'schema_version';
 "
 
 # 4. Clean up
-rm /tmp/crew614-restore-test.db
+sudo -u postgres dropdb traillog_test
 ```
 
 ---

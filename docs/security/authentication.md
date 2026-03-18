@@ -128,7 +128,7 @@ Browser          Express Server        Google
 | Setting | Value | Purpose |
 |---------|-------|---------|
 | Library | express-session v1.19.0 | Server-side session management |
-| Store | better-sqlite3-session-store | Persistent sessions in SQLite |
+| Store | connect-pg-simple | Persistent sessions in PostgreSQL |
 | Cookie name | `connect.sid` (default) | Session identifier |
 | httpOnly | `true` | Prevents JavaScript access to session cookie |
 | secure | `true` (production) | Cookie sent only over HTTPS |
@@ -152,8 +152,8 @@ Browser          Express Server        Google
 3. **Deserialization.** On each request, Passport deserializes the user by ID
    from the database.
 4. **Expiration.** Sessions expire after 30 days of inactivity (maxAge).
-5. **Garbage collection.** The session store runs hourly cleanup of expired
-   sessions from the SQLite database.
+5. **Garbage collection.** The session store runs periodic cleanup of expired
+   sessions from the PostgreSQL database.
 6. **Logout.** `GET /api/auth/logout` calls `req.logout()` followed by
    `req.session.destroy()`, removing the session from the store.
 
