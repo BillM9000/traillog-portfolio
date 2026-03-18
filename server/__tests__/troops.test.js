@@ -8,9 +8,9 @@ describe("Troops CRUD", () => {
       .post("/api/troops")
       .set("X-CSRF-Token", csrf)
       .send({ name: "Test Troop", council_id: 1, location: "Test City, TX" });
-    expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty("troop");
-    expect(res.body.troop.name).toBe("Test Troop");
+    expect(res.status).toBe(201);
+    expect(res.body).toHaveProperty("id");
+    expect(res.body.name).toBe("Test Troop");
   });
 
   it("GET /api/troops — lists user troops", async () => {
@@ -29,7 +29,7 @@ describe("Troops CRUD", () => {
     const { agent, csrf } = await createAuthAgent();
     const createRes = await agent.post("/api/troops").set("X-CSRF-Token", csrf)
       .send({ name: "Detail Test", council_id: 1, location: "Y" });
-    const troopId = createRes.body.troop.id;
+    const troopId = createRes.body.id;
 
     const res = await agent.get(`/api/troops/${troopId}`);
     expect(res.status).toBe(200);
@@ -40,7 +40,7 @@ describe("Troops CRUD", () => {
     const { agent, csrf } = await createAuthAgent();
     const createRes = await agent.post("/api/troops").set("X-CSRF-Token", csrf)
       .send({ name: "Update Test", council_id: 1, location: "Z" });
-    const troopId = createRes.body.troop.id;
+    const troopId = createRes.body.id;
 
     const res = await agent
       .put(`/api/troops/${troopId}`)
@@ -53,7 +53,7 @@ describe("Troops CRUD", () => {
     const user1 = await createAuthAgent();
     const createRes = await user1.agent.post("/api/troops").set("X-CSRF-Token", user1.csrf)
       .send({ name: "Private Troop", council_id: 1, location: "X" });
-    const troopId = createRes.body.troop.id;
+    const troopId = createRes.body.id;
 
     const user2 = await createAuthAgent();
     const res = await user2.agent.get(`/api/troops/${troopId}`);
@@ -66,7 +66,7 @@ describe("Troop members", () => {
     const { agent, csrf } = await createAuthAgent();
     const createRes = await agent.post("/api/troops").set("X-CSRF-Token", csrf)
       .send({ name: "Members Test", council_id: 1, location: "X" });
-    const troopId = createRes.body.troop.id;
+    const troopId = createRes.body.id;
 
     const res = await agent.get(`/api/troops/${troopId}/members`);
     expect(res.status).toBe(200);
@@ -82,16 +82,16 @@ describe("Adventures CRUD", () => {
     // Create troop first
     const troopRes = await agent.post("/api/troops").set("X-CSRF-Token", csrf)
       .send({ name: "Adv Troop", council_id: 1, location: "X" });
-    const troopId = troopRes.body.troop.id;
+    const troopId = troopRes.body.id;
 
     // Create adventure
     const advRes = await agent
       .post(`/api/troops/${troopId}/adventures`)
       .set("X-CSRF-Token", csrf)
       .send({ adventure_type: "philmont", name: "Summer Trek" });
-    expect(advRes.status).toBe(200);
-    expect(advRes.body).toHaveProperty("adventure");
-    const advId = advRes.body.adventure.id;
+    expect(advRes.status).toBe(201);
+    expect(advRes.body).toHaveProperty("id");
+    const advId = advRes.body.id;
 
     // List adventures
     const listRes = await agent.get(`/api/troops/${troopId}/adventures`);

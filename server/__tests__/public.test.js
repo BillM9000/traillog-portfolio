@@ -21,8 +21,8 @@ describe("Public routes (no auth)", () => {
     expect(res.body[0]).toHaveProperty("name");
   });
 
-  it("GET /health — returns 200", async () => {
-    const res = await (await getRequest()).get("/health");
+  it("GET /api/health — returns 200", async () => {
+    const res = await (await getRequest()).get("/api/health");
     expect(res.status).toBe(200);
   });
 });
