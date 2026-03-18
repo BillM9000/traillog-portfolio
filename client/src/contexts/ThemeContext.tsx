@@ -127,6 +127,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     localStorage.setItem("theme", mode);
+    // Toggle dark class on <html> for Tailwind CSS variable switching
+    if (mode === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    // Keep body background in sync (fallback before CSS loads)
     document.body.style.background = mode === "light" ? light.bg : dark.bg;
   }, [mode]);
 

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
+import clsx from "clsx";
 import { Download, Mountain, Droplets, MapPin, ChevronDown, ChevronUp, Star, TreePine, Tent, Footprints, Compass } from "lucide-react";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
-import { card, cardTitle, fontDisplay, fontBody } from "../utils/theme";
 import { useIsDesktop } from "../hooks/useIsDesktop";
 import { exportXLSX } from "../utils/exportUtils";
 import PrintCheatSheet from "./PrintCheatSheet";
@@ -165,21 +165,22 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
       return na - nb;
     }));
     return (
-      <div style={{ ...card(theme), textAlign: "center", padding: "32px 20px" }}>
-        <div style={{ fontSize: 36, marginBottom: 10 }}>{"\u{1F5FA}\uFE0F"}</div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay, marginBottom: 6 }}>No itinerary selected</div>
-        <div style={{ fontSize: 12, color: theme.textDim, marginBottom: 16, lineHeight: 1.5 }}>
+      <div className="tl-card text-center py-8 px-5">
+        <div className="text-4xl mb-2.5">{"\u{1F5FA}\uFE0F"}</div>
+        <div className="text-sm font-bold text-tl-heading font-display mb-1.5">No itinerary selected</div>
+        <div className="text-xs text-tl-text-dim mb-4 leading-[1.5]">
           {isAdmin
             ? "Choose a trail itinerary to see daily route details, camps, and program highlights."
             : "Your crew leader hasn't selected an itinerary yet. Check back soon!"}
         </div>
         {isAdmin && itineraries.length > 0 && (
-          <div style={{ maxWidth: 360, margin: "0 auto" }}>
+          <div className="max-w-[360px] mx-auto">
             <select
               defaultValue=""
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleSelectItinerary(e.target.value)}
               disabled={selectingItin}
-              style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1.5px solid ${theme.borderAccent}`, background: theme.bgAlt, color: theme.text, fontSize: 13, fontFamily: fontBody, cursor: selectingItin ? "wait" : "pointer" }}
+              className="w-full py-2.5 px-3 rounded-btn border-[1.5px] border-tl-border-accent bg-tl-bg-alt text-tl-text text-[13px] font-body"
+              style={{ cursor: selectingItin ? "wait" : "pointer" }}
             >
               <option value="">Select itinerary...</option>
               {[12, 9, 7].map(days => grouped[days]?.length > 0 && (
@@ -190,7 +191,7 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
                 </optgroup>
               ))}
             </select>
-            {selectingItin && <div style={{ fontSize: 11, color: theme.textDim, marginTop: 8 }}>Loading itinerary...</div>}
+            {selectingItin && <div className="text-[11px] text-tl-text-dim mt-2">Loading itinerary...</div>}
           </div>
         )}
       </div>
@@ -318,46 +319,39 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
   return (
     <div>
       {/* ── Itinerary Info Card ── */}
-      <div style={{
-        borderRadius: 12, overflow: "hidden", marginBottom: 8,
-        background: mode === "dark"
-          ? "linear-gradient(135deg, #1a2a1a 0%, #2a3520 40%, #1e2a28 100%)"
-          : "linear-gradient(135deg, #2C3E2C 0%, #3D5A3D 40%, #2A4038 100%)",
-        color: "#fff", position: "relative",
-      }}>
+      <div className="rounded-[12px] overflow-hidden mb-2 text-white relative"
+        style={{
+          background: mode === "dark"
+            ? "linear-gradient(135deg, #1a2a1a 0%, #2a3520 40%, #1e2a28 100%)"
+            : "linear-gradient(135deg, #2C3E2C 0%, #3D5A3D 40%, #2A4038 100%)",
+        }}>
         {/* Header */}
-        <div style={{ padding: "16px 16px 0 16px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div className="pt-4 px-4">
+          <div className="flex justify-between items-start">
             <div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "#9DC49D", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 2 }}>
+              <div className="text-[11px] font-semibold text-[#9DC49D] tracking-[1.5px] uppercase mb-0.5">
                 ITINERARY
               </div>
-              <div style={{ fontSize: 24, fontWeight: 800, fontFamily: fontDisplay, lineHeight: 1.1 }}>
+              <div className="text-2xl font-[800] font-display leading-[1.1]">
                 {itin.id}
               </div>
-              <div style={{ fontSize: 13, color: "#C8DEC8", marginTop: 2, fontWeight: 500 }}>
+              <div className="text-[13px] text-[#C8DEC8] mt-0.5 font-medium">
                 {itin.name}
               </div>
             </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{
-                display: "inline-block", padding: "4px 12px", borderRadius: 6,
-                background: rs.bg, color: rs.color, fontSize: 11, fontWeight: 800,
-                letterSpacing: "0.5px",
-              }}>
+            <div className="text-right">
+              <div className="inline-block py-1 px-3 rounded-badge-sm text-[11px] font-[800] tracking-[0.5px]"
+                style={{ background: rs.bg, color: rs.color }}>
                 {rs.label}
               </div>
-              <div style={{ fontSize: 22, fontWeight: 800, fontFamily: fontDisplay, marginTop: 4 }}>
+              <div className="text-[22px] font-[800] font-display mt-1">
                 {Math.round(totalMiles)} miles
               </div>
             </div>
           </div>
 
           {/* Stats row */}
-          <div style={{
-            display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12,
-            paddingBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.15)",
-          }}>
+          <div className="flex flex-wrap gap-1.5 mt-3 pb-3 border-b border-white/15">
             {[
               { icon: <Tent size={12} />, val: route.length + " days", label: "Duration" },
               { icon: <Mountain size={12} />, val: (infoCardData?.totalGain || 0).toLocaleString() + "'", label: "Total Gain" },
@@ -365,15 +359,12 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
               { icon: <Droplets size={12} />, val: dryCamps + " nights", label: "Dry Camps" },
               { icon: <MapPin size={12} />, val: String(staffedCamps), label: "Staffed" },
             ].map(s => (
-              <div key={s.label} style={{
-                flex: "1 1 0", minWidth: 55, textAlign: "center",
-                background: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "6px 4px",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, color: "#9DC49D", marginBottom: 1 }}>
+              <div key={s.label} className="flex-[1_1_0] min-w-[55px] text-center bg-white/[0.08] rounded-badge-sm py-1.5 px-1">
+                <div className="flex items-center justify-center gap-[3px] text-[#9DC49D] mb-[1px]">
                   {s.icon}
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{s.val}</span>
+                  <span className="text-[13px] font-bold text-white">{s.val}</span>
                 </div>
-                <div style={{ fontSize: 8, color: "#8AB88A", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>{s.label}</div>
+                <div className="text-[8px] text-[#8AB88A] font-semibold uppercase tracking-[0.5px]">{s.label}</div>
               </div>
             ))}
           </div>
@@ -382,13 +373,9 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
         {/* Expandable highlights */}
         <div
           onClick={() => setShowInfoCard(!showInfoCard)}
-          style={{
-            padding: "8px 16px", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            background: "rgba(0,0,0,0.15)",
-          }}
+          className="py-2 px-4 cursor-pointer flex items-center justify-between bg-black/15"
         >
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#9DC49D", letterSpacing: "0.5px" }}>
+          <span className="text-[11px] font-bold text-[#9DC49D] tracking-[0.5px]">
             {showInfoCard ? "HIDE DETAILS" : "TRAIL HIGHLIGHTS & PROGRAMS"}
           </span>
           {showInfoCard
@@ -398,17 +385,17 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
         </div>
 
         {showInfoCard && infoCardData && (
-          <div style={{ padding: "12px 16px 16px 16px" }}>
+          <div className="py-3 px-4 pb-4">
               <div>
                 {/* Program Highlights */}
                 {infoCardData.programs.length > 0 && (
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "#9DC49D", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>
+                  <div className="mb-2.5">
+                    <div className="text-[10px] font-bold text-[#9DC49D] uppercase tracking-[0.5px] mb-1.5 flex items-center gap-1">
                       <Star size={10} /> Program Highlights
                     </div>
                     {infoCardData.programs.map(p => (
-                      <div key={p} style={{ fontSize: 11, color: "#D4E8D4", marginBottom: 3, paddingLeft: 10, position: "relative" }}>
-                        <span style={{ position: "absolute", left: 0, color: "#9DC49D" }}>{"\u2022"}</span>
+                      <div key={p} className="text-[11px] text-[#D4E8D4] mb-[3px] pl-2.5 relative">
+                        <span className="absolute left-0 text-[#9DC49D]">{"\u2022"}</span>
                         {p}
                       </div>
                     ))}
@@ -416,25 +403,25 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
                 )}
 
                 {/* Camping & Hiking Highlights */}
-                <div style={{ marginBottom: 10 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "#9DC49D", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>
+                <div className="mb-2.5">
+                  <div className="text-[10px] font-bold text-[#9DC49D] uppercase tracking-[0.5px] mb-1.5 flex items-center gap-1">
                     <TreePine size={10} /> Camping & Hiking
                   </div>
                   {infoCardData.peaks.map(p => (
-                    <div key={p} style={{ fontSize: 11, color: "#D4E8D4", marginBottom: 3, paddingLeft: 10, position: "relative" }}>
-                      <span style={{ position: "absolute", left: 0, color: "#9DC49D" }}>{"\u2022"}</span>
+                    <div key={p} className="text-[11px] text-[#D4E8D4] mb-[3px] pl-2.5 relative">
+                      <span className="absolute left-0 text-[#9DC49D]">{"\u2022"}</span>
                       {p}
                     </div>
                   ))}
                   {infoCardData.dryCampDays.length > 0 && (
-                    <div style={{ fontSize: 11, color: "#F0C878", marginBottom: 3, paddingLeft: 10, position: "relative" }}>
-                      <span style={{ position: "absolute", left: 0 }}>{"\u2022"}</span>
+                    <div className="text-[11px] text-[#F0C878] mb-[3px] pl-2.5 relative">
+                      <span className="absolute left-0">{"\u2022"}</span>
                       {infoCardData.dryCampDays.length} Dry Camp{infoCardData.dryCampDays.length > 1 ? "s" : ""} (Day{infoCardData.dryCampDays.length > 1 ? "s" : ""} {infoCardData.dryCampDays.join(", ")})
                     </div>
                   )}
                   {infoCardData.maxElev > 0 && (
-                    <div style={{ fontSize: 11, color: "#D4E8D4", marginBottom: 3, paddingLeft: 10, position: "relative" }}>
-                      <span style={{ position: "absolute", left: 0, color: "#9DC49D" }}>{"\u2022"}</span>
+                    <div className="text-[11px] text-[#D4E8D4] mb-[3px] pl-2.5 relative">
+                      <span className="absolute left-0 text-[#9DC49D]">{"\u2022"}</span>
                       Max Elevation: {infoCardData.maxElev.toLocaleString()}'
                     </div>
                   )}
@@ -442,20 +429,17 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
 
                 {/* Conservation */}
                 {infoCardData.conservation && (
-                  <div style={{
-                    padding: "8px 12px", borderRadius: 6, marginBottom: 8,
-                    background: "rgba(255,255,255,0.08)", border: "1px solid rgba(157,196,157,0.3)",
-                  }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "#9DC49D", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}>
+                  <div className="py-2 px-3 rounded-badge-sm mb-2 bg-white/[0.08] border border-[rgba(157,196,157,0.3)]">
+                    <div className="text-[10px] font-bold text-[#9DC49D] uppercase tracking-[0.5px] mb-1 flex items-center gap-1">
                       <Compass size={10} /> Conservation
                     </div>
-                    <div style={{ fontSize: 11, color: "#D4E8D4" }}>
+                    <div className="text-[11px] text-[#D4E8D4]">
                       Day {infoCardData.conservation.day}
                       {global.conservation_project?.time ? ` \u2014 ${global.conservation_project.time}` : ""}
                       {(infoCardData.conservation as { camp?: string }).camp ? ` at ${(infoCardData.conservation as { camp?: string }).camp}` : ""}
                     </div>
                     {global.conservation_project?.description && (
-                      <div style={{ fontSize: 10, color: "#A8C8A8", marginTop: 2 }}>
+                      <div className="text-[10px] text-[#A8C8A8] mt-0.5">
                         {global.conservation_project.description.split(".")[0]}.
                       </div>
                     )}
@@ -465,12 +449,12 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
                 {/* Food Pickups */}
                 {infoCardData.foodPickups.length > 0 && (
                   <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "#F0C878", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>
+                    <div className="text-[10px] font-bold text-[#F0C878] uppercase tracking-[0.5px] mb-1">
                       Food Pickups
                     </div>
                     {infoCardData.foodPickups.map(fp => (
-                      <div key={fp.day} style={{ fontSize: 11, color: "#D4E8D4", marginBottom: 2, paddingLeft: 10, position: "relative" }}>
-                        <span style={{ position: "absolute", left: 0, color: "#F0C878" }}>{"\u2022"}</span>
+                      <div key={fp.day} className="text-[11px] text-[#D4E8D4] mb-0.5 pl-2.5 relative">
+                        <span className="absolute left-0 text-[#F0C878]">{"\u2022"}</span>
                         Day {fp.day}: {fp.location}
                   </div>
                 ))}
@@ -479,8 +463,8 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
 
             {/* Staffed camp list */}
             {global.staffed_camps && global.staffed_camps.length > 0 && (
-              <div style={{ marginTop: 8, fontSize: 10, color: "#A8C8A8" }}>
-                <span style={{ fontWeight: 700, color: "#9DC49D" }}>Staffed Camps: </span>
+              <div className="mt-2 text-[10px] text-[#A8C8A8]">
+                <span className="font-bold text-[#9DC49D]">Staffed Camps: </span>
                 {global.staffed_camps.join(" \u2192 ")}
               </div>
             )}
@@ -490,11 +474,12 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
       </div>
 
       {/* Overview card */}
-      <div style={card(theme)}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <div style={cardTitle(theme)}>{itin.name} Quick Reference</div>
-          <div style={{ display: "flex", gap: 4 }}>
-            <button onClick={() => setShowPrint(true)} style={{ ...tinyBtn(theme), background: theme.accent, color: "#fff", border: `1px solid ${theme.accent}` }}>Print</button>
+      <div className="tl-card">
+        <div className="flex justify-between items-center mb-2">
+          <div className="tl-card-title">{itin.name} Quick Reference</div>
+          <div className="flex gap-1">
+            <button onClick={() => setShowPrint(true)}
+              className="text-[9px] py-[3px] px-2 rounded-[4px] border border-tl-accent bg-tl-accent text-white cursor-pointer font-body">Print</button>
             <button onClick={async () => {
               const rows = route.map(d => ({
                 Day: d.day, Camp: d.camp || "", Type: d.type || "", Miles: d.miles || 0,
@@ -503,16 +488,16 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
                 Notes: d.notes || "", Warnings: (d.warnings || []).join("; "),
               }));
               await exportXLSX([{ name: "Itinerary", rows, title: `${itin.name || "Itinerary"} \u2014 Day by Day` }], `itinerary-${itin.id || "export"}-${new Date().toISOString().slice(0,10)}.xlsx`);
-            }} style={{ ...tinyBtn(theme), display: "flex", alignItems: "center", gap: 3 }}>
+            }} className="text-[9px] py-[3px] px-2 rounded-[4px] border border-tl-border bg-tl-bg-alt text-tl-text-dimmer cursor-pointer font-body flex items-center gap-[3px]">
               <Download size={10} /> Excel
             </button>
-            <button onClick={expandAll} style={tinyBtn(theme)}>Expand All</button>
-            <button onClick={collapseAll} style={tinyBtn(theme)}>Collapse</button>
+            <button onClick={expandAll} className="text-[9px] py-[3px] px-2 rounded-[4px] border border-tl-border bg-tl-bg-alt text-tl-text-dimmer cursor-pointer font-body">Expand All</button>
+            <button onClick={collapseAll} className="text-[9px] py-[3px] px-2 rounded-[4px] border border-tl-border bg-tl-bg-alt text-tl-text-dimmer cursor-pointer font-body">Collapse</button>
           </div>
         </div>
 
         {/* Stats */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: isDesktop ? 6 : 8, marginBottom: isDesktop ? 8 : 10 }}>
+        <div className={clsx("flex flex-wrap", isDesktop ? "gap-1.5 mb-2" : "gap-2 mb-2.5")}>
           {[
             [totalMiles.toFixed(0) + " mi", "Total"],
             [route.length + " days", "Duration"],
@@ -520,25 +505,25 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
             [String(staffedCamps), "Staffed Camps"],
             [itin.rating || "", "Rating"],
           ].map(([val, label]) => (
-            <div key={label} style={{ background: theme.statBg, borderRadius: 6, padding: isDesktop ? "4px 8px" : "6px 10px", textAlign: "center" }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>{val}</div>
-              <div style={{ fontSize: 10, color: theme.textDimmer }}>{label}</div>
+            <div key={label} className={clsx("bg-tl-stat-bg rounded-badge-sm text-center", isDesktop ? "py-1 px-2" : "py-1.5 px-2.5")}>
+              <div className="text-sm font-bold text-tl-heading font-display">{val}</div>
+              <div className="text-[10px] text-tl-text-dimmer">{label}</div>
             </div>
           ))}
         </div>
 
         {/* Filter tags */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+        <div className="flex flex-wrap gap-[5px]">
           {([["All", null], ["Staffed", "Staffed"], ["Dry Camp", "Dry Camp"], ["Layover", "Layover"], ["Trail/Base", "other"]] as [string, string | null][]).map(([label, val]) => {
             const isActive = typeFilter === val;
             return (
-              <button key={label} onClick={() => setTypeFilter(isActive ? null : val)} style={{
-                fontSize: 9, padding: "3px 9px", borderRadius: 4, cursor: "pointer", fontWeight: 700,
-                background: isActive ? theme.accent : (val === "Staffed" ? theme.accentBg : val === "Dry Camp" ? theme.warnBg : val === "Layover" ? (mode === "dark" ? "#302d20" : "#faf5e8") : theme.bgAlt),
-                color: isActive ? "#fff" : theme.textMuted,
-                border: isActive ? `1.5px solid ${theme.accent}` : "1.5px solid transparent",
-                fontFamily: fontBody, transition: "all .15s",
-              }}>{label}</button>
+              <button key={label} onClick={() => setTypeFilter(isActive ? null : val)}
+                className="text-[9px] py-[3px] px-[9px] rounded-[4px] cursor-pointer font-bold font-body transition-all duration-150"
+                style={{
+                  background: isActive ? theme.accent : (val === "Staffed" ? theme.accentBg : val === "Dry Camp" ? theme.warnBg : val === "Layover" ? (mode === "dark" ? "#302d20" : "#faf5e8") : theme.bgAlt),
+                  color: isActive ? "#fff" : theme.textMuted,
+                  border: isActive ? `1.5px solid ${theme.accent}` : "1.5px solid transparent",
+                }}>{label}</button>
             );
           })}
         </div>
@@ -559,62 +544,56 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
         const hasDetail = hasPrograms || hasWater || hasWarnings || hasOptional;
 
         return (
-          <div key={day.day} style={{
-            background: typeBg(day.type), borderRadius: isDesktop ? 8 : 9, marginBottom: isDesktop ? 3 : 5,
-            border: typeBorder(day.type), overflow: "hidden",
-          }}>
+          <div key={day.day} className={clsx("overflow-hidden", isDesktop ? "rounded-btn mb-[3px]" : "rounded-[9px] mb-[5px]")}
+            style={{ background: typeBg(day.type), border: typeBorder(day.type) }}>
             {/* Day header — always visible */}
-            <div onClick={() => hasDetail && toggle(day.day)} style={{
-              display: "flex", gap: isDesktop ? 8 : 10, padding: isDesktop ? "7px 10px" : "10px 12px", alignItems: "flex-start",
-              cursor: hasDetail ? "pointer" : "default",
-            }}>
-              <div style={{ width: 32, textAlign: "center", flexShrink: 0 }}>
-                <div style={{ fontSize: 10, color: theme.textDimmer, fontWeight: 700 }}>DAY</div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>{day.day}</div>
+            <div onClick={() => hasDetail && toggle(day.day)}
+              className={clsx("flex items-start", isDesktop ? "gap-2 py-[7px] px-2.5" : "gap-2.5 py-2.5 px-3")}
+              style={{ cursor: hasDetail ? "pointer" : "default" }}>
+              <div className="w-8 text-center shrink-0">
+                <div className="text-[10px] text-tl-text-dimmer font-bold">DAY</div>
+                <div className="text-xl font-bold text-tl-heading font-display">{day.day}</div>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: typeColor(day.type) }}>{day.camp}</span>
-                  {day.elevation && <span style={{ fontSize: 9, color: theme.textDimmer }}>{day.elevation.toLocaleString()}'</span>}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-bold" style={{ color: typeColor(day.type) }}>{day.camp}</span>
+                  {day.elevation && <span className="text-[9px] text-tl-text-dimmer">{day.elevation.toLocaleString()}'</span>}
                 </div>
-                <div style={{ fontSize: 12, color: theme.textDim, marginTop: 1 }}>{day.notes}</div>
+                <div className="text-xs text-tl-text-dim mt-[1px]">{day.notes}</div>
                 {/* Indicator badges */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginTop: 4 }}>
+                <div className="flex flex-wrap gap-[3px] mt-1">
                   {hasWater && <ItinBadge color={theme.warn} bg={theme.warnBg}>DRY CAMP</ItinBadge>}
                   {day.showers && <ItinBadge color={theme.accent} bg={theme.accentBg}>SHOWERS</ItinBadge>}
                   {day.food_pickup && <ItinBadge color={theme.gold} bg={mode === "dark" ? "#302d20" : "#faf5e8"}>FOOD PICKUP</ItinBadge>}
                   {hasPrograms && <ItinBadge color={theme.textMuted} bg={theme.statBg}>{dayPrograms.length} PROGRAMS</ItinBadge>}
                 </div>
               </div>
-              <div style={{ textAlign: "right", minWidth: 55, flexShrink: 0 }}>
-                {day.miles > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: theme.textMuted }}>{day.miles}mi</div>}
-                {(day.gain || 0) > 0 && <div style={{ fontSize: 9, color: theme.accent }}>+{(day.gain || 0).toLocaleString()}'</div>}
-                {(day.loss || 0) > 0 && <div style={{ fontSize: 9, color: theme.danger }}>-{(day.loss || 0).toLocaleString()}'</div>}
+              <div className="text-right min-w-[55px] shrink-0">
+                {day.miles > 0 && <div className="text-[13px] font-bold text-tl-text-muted">{day.miles}mi</div>}
+                {(day.gain || 0) > 0 && <div className="text-[9px] text-tl-accent">+{(day.gain || 0).toLocaleString()}'</div>}
+                {(day.loss || 0) > 0 && <div className="text-[9px] text-tl-danger">-{(day.loss || 0).toLocaleString()}'</div>}
               </div>
-              <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{
-                  fontSize: 9, fontWeight: 600, padding: "2px 8px", borderRadius: 4,
-                  background: typeBg(day.type), color: typeColor(day.type), whiteSpace: "nowrap",
-                  border: `1px solid ${theme.border}`,
-                }}>{day.type}</span>
-                {hasDetail && <span style={{ fontSize: 12, color: theme.textDimmer, transition: "transform .2s", transform: isOpen ? "rotate(90deg)" : "none" }}>{"\u203A"}</span>}
+              <div className="shrink-0 flex items-center gap-1.5">
+                <span className="text-[9px] font-semibold py-0.5 px-2 rounded-[4px] whitespace-nowrap border border-tl-border"
+                  style={{ background: typeBg(day.type), color: typeColor(day.type) }}>{day.type}</span>
+                {hasDetail && <span className="text-xs text-tl-text-dimmer transition-transform duration-200" style={{ transform: isOpen ? "rotate(90deg)" : "none" }}>{"\u203A"}</span>}
               </div>
             </div>
 
             {/* Expanded details */}
             {isOpen && (
-              <div style={{ padding: "0 12px 12px 54px", borderTop: `1px solid ${theme.border}` }}>
+              <div className="px-3 pb-3 pl-[54px] border-t border-tl-border">
                 {/* Programs */}
                 {hasPrograms && (
                   <DetailSection title="Programs" theme={theme}>
                     {dayPrograms.map((p, i) => (
-                      <div key={i} style={{ marginBottom: 6 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>{p.name}</span>
+                      <div key={i} className="mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-tl-text">{p.name}</span>
                           <ProgramTag type={p.type} theme={theme} mode={mode} />
-                          {p.time && <span style={{ fontSize: 10, color: theme.textDimmer }}>{p.time}</span>}
+                          {p.time && <span className="text-[10px] text-tl-text-dimmer">{p.time}</span>}
                         </div>
-                        <div style={{ fontSize: 11, color: theme.textDim, marginTop: 1 }}>{p.description}</div>
+                        <div className="text-[11px] text-tl-text-dim mt-[1px]">{p.description}</div>
                       </div>
                     ))}
                   </DetailSection>
@@ -623,8 +602,8 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
                 {/* Water strategy */}
                 {hasWater && day.water && (
                   <DetailSection title="Water Strategy" theme={theme} warn>
-                    <div style={{ fontSize: 11, color: theme.text, marginBottom: 4 }}>{day.water.strategy}</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                    <div className="text-[11px] text-tl-text mb-1">{day.water.strategy}</div>
+                    <div className="flex flex-wrap gap-2.5">
                       {day.water.fill_location && (
                         <WaterStat label="Fill At" value={day.water.fill_location} theme={theme} />
                       )}
@@ -642,8 +621,8 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
                 {hasWarnings && (
                   <DetailSection title="Warnings" theme={theme} danger>
                     {(day.warnings || []).map((w, i) => (
-                      <div key={i} style={{ fontSize: 11, color: theme.danger, marginBottom: 3, paddingLeft: 12, position: "relative" }}>
-                        <span style={{ position: "absolute", left: 0 }}>!</span> {w}
+                      <div key={i} className="text-[11px] text-tl-danger mb-[3px] pl-3 relative">
+                        <span className="absolute left-0">!</span> {w}
                       </div>
                     ))}
                   </DetailSection>
@@ -653,9 +632,9 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
                 {hasOptional && (
                   <DetailSection title="Optional Side Hikes" theme={theme}>
                     {(day.optional_hikes || []).map((h, i) => (
-                      <div key={i} style={{ marginBottom: 4 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: theme.accent }}>{h.name}</span>
-                        <span style={{ fontSize: 11, color: theme.textDim, marginLeft: 6 }}>{h.description}</span>
+                      <div key={i} className="mb-1">
+                        <span className="text-xs font-semibold text-tl-accent">{h.name}</span>
+                        <span className="text-[11px] text-tl-text-dim ml-1.5">{h.description}</span>
                       </div>
                     ))}
                   </DetailSection>
@@ -668,11 +647,11 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
 
       {/* Training priorities */}
       {itin.training_priorities && itin.training_priorities.length > 0 && (
-        <div style={{ ...card(theme), marginTop: 8 }}>
-          <div style={{ ...cardTitle(theme), color: theme.gold }}>Key Training Priorities</div>
-          <div style={{ fontSize: 11, color: theme.textMuted, lineHeight: 1.9 }}>
+        <div className="tl-card mt-2">
+          <div className="tl-card-title text-tl-gold">Key Training Priorities</div>
+          <div className="text-[11px] text-tl-text-muted leading-[1.9]">
             {itin.training_priorities.map(p => (
-              <div key={p.label}><strong style={{ color: theme.heading }}>{p.icon} {p.label}:</strong> {p.detail}</div>
+              <div key={p.label}><strong className="text-tl-heading">{p.icon} {p.label}:</strong> {p.detail}</div>
             ))}
           </div>
         </div>
@@ -680,55 +659,56 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
 
       {/* Global info sections */}
       {global.baldy_guide && (
-        <div style={{ ...card(theme), marginTop: 4 }}>
-          <div style={{ ...cardTitle(theme), color: theme.gold }}>Baldy Summit Guide (12,441')</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+        <div className="tl-card mt-1">
+          <div className="tl-card-title text-tl-gold">Baldy Summit Guide (12,441')</div>
+          <div className="flex flex-wrap gap-2 mb-2">
             <InfoChip label="Start" value={global.baldy_guide.start_time} theme={theme} />
             <InfoChip label="Distance" value={global.baldy_guide.round_trip_miles + " mi RT"} theme={theme} />
             <InfoChip label="Elev Change" value={global.baldy_guide.total_elevation_change.toLocaleString() + "'"} theme={theme} />
           </div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: theme.heading, marginBottom: 4 }}>Daypack Essentials</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginBottom: 8 }}>
+          <div className="text-[11px] font-bold text-tl-heading mb-1">Daypack Essentials</div>
+          <div className="flex flex-wrap gap-[3px] mb-2">
             {global.baldy_guide.daypack_essentials.map(item => (
-              <span key={item} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: theme.statBg, color: theme.textMuted }}>{item}</span>
+              <span key={item} className="text-[11px] py-0.5 px-2 rounded-[4px] bg-tl-stat-bg text-tl-text-muted">{item}</span>
             ))}
           </div>
-          <div style={{ fontSize: 11, color: theme.danger, background: mode === "dark" ? "#3a2020" : "#fde8e0", padding: "8px 10px", borderRadius: 6, marginBottom: 4 }}>
+          <div className="text-[11px] text-tl-danger py-2 px-2.5 rounded-badge-sm mb-1"
+            style={{ background: mode === "dark" ? "#3a2020" : "#fde8e0" }}>
             <strong>AMS Warning:</strong> {global.baldy_guide.ams_warning}
           </div>
-          <div style={{ fontSize: 11, color: theme.warn, background: theme.warnBg, padding: "8px 10px", borderRadius: 6 }}>
+          <div className="text-[11px] text-tl-warn bg-tl-warn-bg py-2 px-2.5 rounded-badge-sm">
             <strong>Lightning:</strong> {global.baldy_guide.lightning_protocol}
           </div>
         </div>
       )}
 
       {global.conservation_project && (
-        <div style={{ ...card(theme), marginTop: 4 }}>
-          <div style={{ ...cardTitle(theme), color: theme.accent }}>Conservation Project \u2014 Day {global.conservation_project.day}</div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDimmer, marginBottom: 4 }}>{global.conservation_project.time} \u2014 MANDATORY</div>
-          <div style={{ fontSize: 11, color: theme.textMuted }}>{global.conservation_project.description}</div>
-          <div style={{ fontSize: 10, color: theme.textDim, marginTop: 4 }}>Bring: {global.conservation_project.what_to_bring}</div>
+        <div className="tl-card mt-1">
+          <div className="tl-card-title text-tl-accent">Conservation Project \u2014 Day {global.conservation_project.day}</div>
+          <div className="text-[10px] font-bold text-tl-text-dimmer mb-1">{global.conservation_project.time} \u2014 MANDATORY</div>
+          <div className="text-[11px] text-tl-text-muted">{global.conservation_project.description}</div>
+          <div className="text-[10px] text-tl-text-dim mt-1">Bring: {global.conservation_project.what_to_bring}</div>
         </div>
       )}
 
       {global.prohibited_items && global.prohibited_items.length > 0 && (
-        <div style={{ ...card(theme), marginTop: 4 }}>
-          <div style={{ ...cardTitle(theme), color: theme.danger }}>Prohibited Items</div>
+        <div className="tl-card mt-1">
+          <div className="tl-card-title text-tl-danger">Prohibited Items</div>
           {global.prohibited_items.map(item => (
-            <div key={item} style={{ fontSize: 11, color: theme.textMuted, marginBottom: 3, paddingLeft: 12, position: "relative" }}>
-              <span style={{ position: "absolute", left: 0, color: theme.danger }}>x</span> {item}
+            <div key={item} className="text-[11px] text-tl-text-muted mb-[3px] pl-3 relative">
+              <span className="absolute left-0 text-tl-danger">x</span> {item}
             </div>
           ))}
         </div>
       )}
 
       {global.readiness_reminders && global.readiness_reminders.length > 0 && (
-        <div style={{ ...card(theme), marginTop: 4 }}>
-          <div style={{ ...cardTitle(theme), color: theme.gold }}>Readiness Reminders</div>
+        <div className="tl-card mt-1">
+          <div className="tl-card-title text-tl-gold">Readiness Reminders</div>
           {global.readiness_reminders.map(r => (
-            <div key={r.item} style={{ marginBottom: 6 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: theme.heading }}>{r.item}</div>
-              <div style={{ fontSize: 11, color: theme.textDim }}>{r.details}</div>
+            <div key={r.item} className="mb-1.5">
+              <div className="text-xs font-bold text-tl-heading">{r.item}</div>
+              <div className="text-[11px] text-tl-text-dim">{r.details}</div>
             </div>
           ))}
         </div>
@@ -751,7 +731,8 @@ interface ItinBadgeProps {
 
 function ItinBadge({ children, color, bg }: ItinBadgeProps) {
   return (
-    <span style={{ fontSize: 8, fontWeight: 700, padding: "1px 5px", borderRadius: 3, background: bg, color, letterSpacing: "0.5px" }}>
+    <span className="text-[8px] font-bold py-[1px] px-[5px] rounded-[3px] tracking-[0.5px]"
+      style={{ background: bg, color }}>
       {children}
     </span>
   );
@@ -768,8 +749,8 @@ interface DetailSectionProps {
 function DetailSection({ title, children, theme, warn, danger }: DetailSectionProps) {
   const titleColor = danger ? theme.danger : warn ? theme.warn : theme.heading;
   return (
-    <div style={{ marginTop: 10 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: titleColor, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>{title}</div>
+    <div className="mt-2.5">
+      <div className="text-[10px] font-bold uppercase tracking-[0.5px] mb-1" style={{ color: titleColor }}>{title}</div>
       {children}
     </div>
   );
@@ -789,7 +770,7 @@ function ProgramTag({ type, theme, mode }: ProgramTagProps) {
     optional: { bg: mode === "dark" ? "#302d20" : "#faf5e8", color: theme.gold },
   };
   const c = colors[type] || colors.program;
-  return <span style={{ fontSize: 8, fontWeight: 700, padding: "1px 5px", borderRadius: 3, background: c.bg, color: c.color, textTransform: "uppercase" }}>{type}</span>;
+  return <span className="text-[8px] font-bold py-[1px] px-[5px] rounded-[3px] uppercase" style={{ background: c.bg, color: c.color }}>{type}</span>;
 }
 
 interface WaterStatProps {
@@ -801,8 +782,8 @@ interface WaterStatProps {
 function WaterStat({ label, value, theme }: WaterStatProps) {
   return (
     <div>
-      <div style={{ fontSize: 9, color: theme.textDimmer, fontWeight: 700 }}>{label}</div>
-      <div style={{ fontSize: 11, color: theme.text }}>{value}</div>
+      <div className="text-[9px] text-tl-text-dimmer font-bold">{label}</div>
+      <div className="text-[11px] text-tl-text">{value}</div>
     </div>
   );
 }
@@ -815,16 +796,9 @@ interface InfoChipProps {
 
 function InfoChip({ label, value, theme }: InfoChipProps) {
   return (
-    <div style={{ background: theme.statBg, borderRadius: 6, padding: "5px 10px", textAlign: "center" }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: theme.heading }}>{value}</div>
-      <div style={{ fontSize: 9, color: theme.textDimmer }}>{label}</div>
+    <div className="bg-tl-stat-bg rounded-badge-sm py-[5px] px-2.5 text-center">
+      <div className="text-xs font-bold text-tl-heading">{value}</div>
+      <div className="text-[9px] text-tl-text-dimmer">{label}</div>
     </div>
   );
-}
-
-function tinyBtn(theme: ThemeColors): React.CSSProperties {
-  return {
-    fontSize: 9, padding: "3px 8px", borderRadius: 4, border: `1px solid ${theme.border}`,
-    background: theme.bgAlt, color: theme.textDimmer, cursor: "pointer", fontFamily: fontBody,
-  };
 }

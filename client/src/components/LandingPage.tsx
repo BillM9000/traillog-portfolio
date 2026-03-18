@@ -1,7 +1,7 @@
 import type React from "react";
 import { useState, useEffect, useRef, forwardRef } from "react";
+import clsx from "clsx";
 import { api } from "../api";
-import { fontBody, fontDisplay } from "../utils/theme";
 import { ADVENTURE_TYPES } from "../utils/constants";
 import Logo from "./Logo";
 
@@ -195,56 +195,53 @@ const AuthForm = forwardRef<HTMLDivElement, AuthFormProps>(function AuthForm({ o
   const switchMode = (newMode: "login" | "signup" | "forgot" | "reset"): void => { setMode(newMode); setError(""); setMessage(""); };
 
   return (
-    <div ref={ref} style={{
+    <div ref={ref} className="rounded-[18px] px-6 py-7" style={{
       background: "rgba(26,36,18,0.5)", backdropFilter: "blur(12px)",
-      borderRadius: 18, padding: "28px 24px", border: "1px solid rgba(184,204,154,0.15)",
+      border: "1px solid rgba(184,204,154,0.15)",
       boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
     }}>
-      <h2 style={{ fontFamily: fontDisplay, fontSize: 20, fontWeight: 700, color: "#FDFAF5", margin: "0 0 4px 0", textAlign: "center" as const }}>
+      <h2 className="font-display text-[20px] font-bold text-brand-cream text-center m-0 mb-1">
         {mode === "signup" ? "Create Account" : mode === "forgot" ? "Reset Password" : mode === "reset" ? "New Password" : "Welcome Back"}
       </h2>
-      <p style={{ fontSize: 12, color: "#B8CC9A", textAlign: "center" as const, margin: "0 0 20px 0" }}>
+      <p className="text-[12px] text-brand-sage text-center m-0 mb-5">
         {mode === "forgot" ? "We'll send you a reset link" : mode === "reset" ? "Choose a new password" : mode === "signup" ? "Join your crew in seconds" : "Sign in to your crew"}
       </p>
 
       {/* Status messages */}
       {verified && (
-        <div style={{ background: "rgba(91,122,58,0.15)", border: "1px solid rgba(184,204,154,0.3)", borderRadius: 12, padding: "10px 14px", marginBottom: 12, fontSize: 12, color: "#B8CC9A", textAlign: "center" as const }}>
+        <div className="rounded-[12px] px-3.5 py-2.5 mb-3 text-[12px] text-center" style={{ background: "rgba(91,122,58,0.15)", border: "1px solid rgba(184,204,154,0.3)", color: "#B8CC9A" }}>
           Email verified! You can now sign in.
         </div>
       )}
       {authError && (
-        <div style={{ background: "rgba(192,96,64,0.15)", border: "1px solid rgba(192,96,64,0.3)", borderRadius: 12, padding: "10px 14px", marginBottom: 12, fontSize: 12, color: "#d08080", textAlign: "center" as const }}>
+        <div className="rounded-[12px] px-3.5 py-2.5 mb-3 text-[12px] text-center" style={{ background: "rgba(192,96,64,0.15)", border: "1px solid rgba(192,96,64,0.3)", color: "#d08080" }}>
           Authentication failed. Please try again.
         </div>
       )}
       {message && (
-        <div style={{ background: "rgba(91,122,58,0.2)", border: "2px solid rgba(184,204,154,0.5)", borderRadius: 14, padding: "16px 14px", marginBottom: 16, textAlign: "center" as const }}>
-          <div style={{ fontSize: 28, marginBottom: 6 }}>{mode === "forgot" ? "\uD83D\uDCE7" : "\u2705"}</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#D4E4B8", marginBottom: 4, fontFamily: fontDisplay }}>
+        <div className="rounded-[14px] px-3.5 py-4 mb-4 text-center" style={{ background: "rgba(91,122,58,0.2)", border: "2px solid rgba(184,204,154,0.5)" }}>
+          <div className="text-[28px] mb-1.5">{mode === "forgot" ? "\uD83D\uDCE7" : "\u2705"}</div>
+          <div className="text-[14px] font-bold mb-1 font-display" style={{ color: "#D4E4B8" }}>
             {lastAction === "reset" ? "Password updated" : "Check your email"}
           </div>
-          <div style={{ fontSize: 12, color: "#B8CC9A", lineHeight: 1.5 }}>{message}</div>
+          <div className="text-[12px] leading-[1.5]" style={{ color: "#B8CC9A" }}>{message}</div>
         </div>
       )}
 
       {/* Google Sign In */}
       {(mode === "login" || mode === "signup") && (
         <>
-          <a href="/auth/google" style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-            width: "100%", padding: "12px 0", borderRadius: 12, background: "#FDFAF5", color: "#2C2416",
-            fontSize: 14, fontWeight: 600, textDecoration: "none", fontFamily: fontBody,
-            border: "none", cursor: "pointer", marginBottom: 14,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.2)", boxSizing: "border-box" as const,
+          <a href="/auth/google" className="flex items-center justify-center gap-2.5 w-full py-3 rounded-[12px] text-[14px] font-semibold no-underline font-body cursor-pointer mb-3.5 box-border" style={{
+            background: "#FDFAF5", color: "#2C2416", border: "none",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
           }}>
             <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
             Sign in with Google
           </a>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-            <div style={{ flex: 1, height: 1, background: "rgba(184,204,154,0.15)" }} />
-            <span style={{ fontSize: 11, color: "#7A9A5A" }}>or</span>
-            <div style={{ flex: 1, height: 1, background: "rgba(184,204,154,0.15)" }} />
+          <div className="flex items-center gap-3 mb-3.5">
+            <div className="flex-1 h-px" style={{ background: "rgba(184,204,154,0.15)" }} />
+            <span className="text-[11px]" style={{ color: "#7A9A5A" }}>or</span>
+            <div className="flex-1 h-px" style={{ background: "rgba(184,204,154,0.15)" }} />
           </div>
         </>
       )}
@@ -253,45 +250,43 @@ const AuthForm = forwardRef<HTMLDivElement, AuthFormProps>(function AuthForm({ o
       <form onSubmit={handleSubmit}>
         {mode === "signup" && (
           <input value={name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)} placeholder="Your name"
-            style={inputStyle} required />
+            className="lp-input" required />
         )}
         {(mode === "login" || mode === "signup" || mode === "forgot") && (
           <input value={email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} placeholder="Email address" type="email"
-            style={inputStyle} required />
+            className="lp-input" required />
         )}
         {(mode === "login" || mode === "signup") && (
           <input value={password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} placeholder="Password" type="password"
-            style={inputStyle} required minLength={8} />
+            className="lp-input" required minLength={8} />
         )}
         {mode === "reset" && (
           <>
             <input value={password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} placeholder="New password" type="password"
-              style={inputStyle} required minLength={8} />
+              className="lp-input" required minLength={8} />
             <input value={password2} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword2(e.target.value)} placeholder="Confirm new password" type="password"
-              style={inputStyle} required minLength={8} />
+              className="lp-input" required minLength={8} />
           </>
         )}
         {mode === "signup" && (
-          <label style={{
-            display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 12,
-            fontSize: 11, color: "#B8CC9A", cursor: "pointer", lineHeight: 1.4,
-          }}>
+          <label className="flex items-start gap-2 mb-3 text-[11px] cursor-pointer leading-[1.4]" style={{ color: "#B8CC9A" }}>
             <input type="checkbox" checked={tosAccepted} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTosAccepted(e.target.checked)}
-              style={{ marginTop: 2, accentColor: "#5B7A3A", cursor: "pointer" }} />
+              className="mt-0.5 cursor-pointer" style={{ accentColor: "#5B7A3A" }} />
             <span>
               I agree to the{" "}
-              <a href="/terms" target="_blank" style={{ color: "#D4E4B8", textDecoration: "underline" }}>Terms of Service</a>
+              <a href="/terms" target="_blank" className="underline" style={{ color: "#D4E4B8" }}>Terms of Service</a>
               {" "}and{" "}
-              <a href="/privacy" target="_blank" style={{ color: "#D4E4B8", textDecoration: "underline" }}>Privacy Policy</a>
+              <a href="/privacy" target="_blank" className="underline" style={{ color: "#D4E4B8" }}>Privacy Policy</a>
             </span>
           </label>
         )}
-        {error && <div style={{ fontSize: 12, color: "#d08080", marginBottom: 8 }}>{error}</div>}
-        <button type="submit" disabled={loading || (mode === "signup" && !tosAccepted)} style={{
-          width: "100%", padding: "12px 0", borderRadius: 12, border: "none",
-          background: "#5B7A3A", color: "#FDFAF5", fontSize: 14, fontWeight: 600,
-          cursor: loading ? "wait" : "pointer", fontFamily: fontBody, marginBottom: 12,
-          opacity: loading ? 0.7 : 1, boxShadow: "0 2px 8px rgba(58,77,42,0.3)",
+        {error && <div className="text-[12px] mb-2" style={{ color: "#d08080" }}>{error}</div>}
+        <button type="submit" disabled={loading || (mode === "signup" && !tosAccepted)} className={clsx(
+          "w-full py-3 rounded-[12px] border-none text-[14px] font-semibold font-body mb-3",
+          loading ? "cursor-wait opacity-70" : "cursor-pointer opacity-100"
+        )} style={{
+          background: "#5B7A3A", color: "#FDFAF5",
+          boxShadow: "0 2px 8px rgba(58,77,42,0.3)",
         }}>
           {loading ? "..." :
             mode === "signup" ? "Create Account" :
@@ -302,18 +297,18 @@ const AuthForm = forwardRef<HTMLDivElement, AuthFormProps>(function AuthForm({ o
       </form>
 
       {/* Navigation links */}
-      <div style={{ textAlign: "center" as const }}>
+      <div className="text-center">
         {mode === "login" && (
           <>
             <button onClick={() => switchMode("forgot")}
-              style={linkBtnStyle}>Forgot password?</button>
+              className="lp-link-btn">Forgot password?</button>
             {registrationEnabled ? (
               <button onClick={() => switchMode("signup")}
-                style={{ ...linkBtnStyle, color: "#B8CC9A", fontSize: 17, marginTop: 10, letterSpacing: 0.3 }}>
+                className="lp-link-btn text-[17px] mt-2.5 tracking-[0.3px]" style={{ color: "#B8CC9A" }}>
                 Don't have an account? <strong style={{ color: "#FDFAF5", fontSize: 18 }}>Sign up</strong>
               </button>
             ) : (
-              <div style={{ color: "#B8CC9A", fontSize: 13, marginTop: 10, fontStyle: "italic", opacity: 0.7 }}>
+              <div className="text-[13px] mt-2.5 italic opacity-70" style={{ color: "#B8CC9A" }}>
                 Registration is currently closed
               </div>
             )}
@@ -321,13 +316,13 @@ const AuthForm = forwardRef<HTMLDivElement, AuthFormProps>(function AuthForm({ o
         )}
         {mode === "signup" && (
           <button onClick={() => switchMode("login")}
-            style={{ ...linkBtnStyle, color: "#B8CC9A", fontSize: 15, marginTop: 8 }}>
+            className="lp-link-btn text-[15px] mt-2" style={{ color: "#B8CC9A" }}>
             Already have an account? <strong>Sign in</strong>
           </button>
         )}
         {(mode === "forgot" || mode === "reset") && (
           <button onClick={() => { switchMode("login"); window.history.replaceState({}, "", "/"); }}
-            style={{ ...linkBtnStyle, color: "#B8CC9A", fontSize: 12 }}>
+            className="lp-link-btn text-[12px]" style={{ color: "#B8CC9A" }}>
             Back to sign in
           </button>
         )}
@@ -335,17 +330,6 @@ const AuthForm = forwardRef<HTMLDivElement, AuthFormProps>(function AuthForm({ o
     </div>
   );
 });
-
-const inputStyle: React.CSSProperties = {
-  width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #3A4D2A",
-  background: "rgba(26,36,18,0.6)", color: "#E8E0D4", fontSize: 13, fontFamily: "'DM Sans',Helvetica,sans-serif",
-  outline: "none", marginBottom: 10, boxSizing: "border-box", backdropFilter: "blur(4px)",
-};
-
-const linkBtnStyle: React.CSSProperties = {
-  background: "none", border: "none", color: "#7A9A5A", fontSize: 11,
-  cursor: "pointer", fontFamily: "'DM Sans',Helvetica,sans-serif", display: "block", width: "100%",
-};
 
 // ── FAQ Accordion Item ───────────────────────────────────────────────
 
@@ -357,26 +341,21 @@ interface FAQItemProps {
 function FAQItem({ question, answer }: FAQItemProps): React.ReactElement {
   const [open, setOpen] = useState<boolean>(false);
   return (
-    <div style={{
-      background: "rgba(255,255,255,0.05)", borderRadius: 12,
-      border: "1px solid rgba(184,204,154,0.15)", overflow: "hidden",
+    <div className="rounded-[12px] overflow-hidden" style={{
+      background: "rgba(255,255,255,0.05)", border: "1px solid rgba(184,204,154,0.15)",
     }}>
-      <button onClick={() => setOpen(!open)} style={{
-        width: "100%", padding: "16px 20px", background: "none", border: "none",
-        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between",
-        gap: 12, textAlign: "left" as const,
-      }}>
-        <span style={{ fontSize: 14, fontWeight: 600, color: "#FDFAF5", fontFamily: fontBody, lineHeight: 1.4 }}>
+      <button onClick={() => setOpen(!open)} className="w-full px-5 py-4 bg-transparent border-none cursor-pointer flex items-center justify-between gap-3 text-left">
+        <span className="text-[14px] font-semibold font-body leading-[1.4]" style={{ color: "#FDFAF5" }}>
           {question}
         </span>
-        <span style={{
-          fontSize: 18, color: "#B8CC9A", flexShrink: 0, transition: "transform 0.2s",
+        <span className="text-[18px] shrink-0 transition-transform duration-200" style={{
+          color: "#B8CC9A",
           transform: open ? "rotate(45deg)" : "none",
         }}>+</span>
       </button>
       {open && (
-        <div style={{ padding: "0 20px 16px 20px" }}>
-          <p style={{ fontSize: 13, color: "#B0A898", lineHeight: 1.6, margin: 0 }}>{answer}</p>
+        <div className="px-5 pb-4">
+          <p className="text-[13px] leading-[1.6] m-0" style={{ color: "#B0A898" }}>{answer}</p>
         </div>
       )}
     </div>
@@ -430,71 +409,59 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
   };
 
   return (
-    <div style={{ fontFamily: fontBody, overflowX: "hidden" }}>
+    <div className="font-body overflow-x-hidden">
 
       {/* ── HERO ────────────────────────────────────────── */}
-      <section style={{
-        minHeight: isMobile ? "auto" : "auto",
+      <section className="relative flex items-center justify-center flex-col" style={{
         background: "linear-gradient(175deg, #1A2412 0%, #2A3620 40%, #1A1F16 100%)",
-        position: "relative", padding: isMobile ? "48px 20px 40px" : "60px 40px 48px",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        flexDirection: "column" as const,
+        padding: isMobile ? "48px 20px 40px" : "60px 40px 48px",
       }}>
         {/* Texture overlay */}
-        <div style={{
-          position: "absolute", inset: 0, opacity: 0.04, pointerEvents: "none",
+        <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{
           backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
         }} />
 
-        <div style={{
-          maxWidth: 1100, width: "100%", position: "relative", zIndex: 1,
-          display: "flex", flexDirection: isMobile ? "column" as const : "row" as const,
-          alignItems: isMobile ? "stretch" : "center", gap: isMobile ? 32 : 60,
+        <div className="max-w-[1100px] w-full relative z-[1] flex" style={{
+          flexDirection: isMobile ? "column" : "row",
+          alignItems: isMobile ? "stretch" : "center",
+          gap: isMobile ? 32 : 60,
           padding: isMobile ? 0 : "60px 0",
         }}>
           {/* Left — Branding */}
-          <div style={{ flex: isMobile ? "unset" : "1 1 55%", textAlign: isMobile ? "center" as const : "left" as const }}>
+          <div style={{ flex: isMobile ? "unset" : "1 1 55%", textAlign: isMobile ? "center" : "left" }}>
             <Logo size={isMobile ? 72 : 96} />
-            <h1 style={{
-              fontFamily: fontDisplay, fontSize: isMobile ? 36 : 48, fontWeight: 900,
-              color: "#FDFAF5", margin: "16px 0 0 0", letterSpacing: "-1px", lineHeight: 1.1,
+            <h1 className="font-display font-black m-0 mt-4 tracking-[-1px] leading-[1.1]" style={{
+              fontSize: isMobile ? 36 : 48, color: "#FDFAF5",
             }}>
               Trail<span style={{ color: "#B8CC9A" }}>Log</span>
             </h1>
-            <p style={{
+            <p className="font-medium leading-[1.5]" style={{
               fontSize: isMobile ? 16 : 20, color: "#D4E4B8", marginTop: 12,
-              fontWeight: 500, lineHeight: 1.5, maxWidth: 480,
+              maxWidth: 480,
               marginLeft: isMobile ? "auto" : 0, marginRight: isMobile ? "auto" : 0,
             }}>
               The AI-powered readiness coordinator for Scouting America high adventure crews. Track training, gear, and admin prep from first meeting to summit day.
             </p>
-            <p style={{
+            <p className="italic" style={{
               fontSize: 10, color: "#8A9A7A", marginTop: 6, lineHeight: 1.4, maxWidth: 480,
               marginLeft: isMobile ? "auto" : 0, marginRight: isMobile ? "auto" : 0,
-              fontStyle: "italic",
             }}>
               An independent tool by GraceZero.ai &mdash; not affiliated with or endorsed by Scouting America or any national scouting organization.
             </p>
-            <div style={{
-              display: "flex", gap: 20, marginTop: 16,
+            <div className="flex flex-wrap mt-4" style={{
+              gap: 20,
               justifyContent: isMobile ? "center" : "flex-start",
-              flexWrap: "wrap" as const,
             }}>
               {["AI-Powered", "Mobile Friendly", "Built for Crews"].map((label: string) => (
-                <span key={label} style={{
-                  fontSize: 11, color: "#B8CC9A", fontWeight: 600, letterSpacing: 1,
-                  textTransform: "uppercase" as const, display: "flex", alignItems: "center", gap: 6,
-                }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#B8CC9A", display: "inline-block" }} />
+                <span key={label} className="text-[11px] font-semibold tracking-[1px] uppercase flex items-center gap-1.5" style={{ color: "#B8CC9A" }}>
+                  <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: "#B8CC9A" }} />
                   {label}
                 </span>
               ))}
             </div>
             {!isMobile && (
-              <div style={{ marginTop: 32 }}>
-                <button onClick={scrollToAuth} style={{
-                  display: "none", // Auth form is right there on desktop — no need for extra button
-                }} />
+              <div className="mt-8">
+                <button onClick={scrollToAuth} className="hidden" />
               </div>
             )}
           </div>
@@ -509,12 +476,12 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
         {!isMobile && (
           <div
             onClick={() => featuresRef.current?.scrollIntoView({ behavior: "smooth" })}
-            style={{ textAlign: "center" as const, marginTop: 32, position: "relative", zIndex: 1, cursor: "pointer" }}
+            className="text-center mt-8 relative z-[1] cursor-pointer"
           >
-            <div style={{ fontSize: 11, color: "#7A9A5A", letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 8, fontFamily: fontBody }}>
+            <div className="text-[11px] tracking-[1.5px] uppercase mb-2 font-body" style={{ color: "#7A9A5A" }}>
               See what's inside
             </div>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.6, animation: "bounce 2s infinite" }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="opacity-60" style={{ animation: "bounce 2s infinite" }}>
               <path d="M6 9 L12 15 L18 9" stroke="#B8CC9A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <style>{`@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }`}</style>
@@ -524,32 +491,29 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
 
       {/* ── FEATURES ────────────────────────────────────── */}
       <section ref={featuresRef} style={{ background: "#FDFAF5", padding: isMobile ? "48px 20px" : "80px 40px" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <h2 style={{
-            fontFamily: fontDisplay, fontSize: isMobile ? 24 : 32, fontWeight: 800,
-            color: "#2C2416", textAlign: "center" as const, margin: "0 0 8px 0",
+        <div className="max-w-[1100px] mx-auto">
+          <h2 className="font-display font-extrabold text-center m-0 mb-2" style={{
+            fontSize: isMobile ? 24 : 32, color: "#2C2416",
           }}>
             Everything Your Crew Needs
           </h2>
-          <p style={{ fontSize: 14, color: "#6B5D4D", textAlign: "center" as const, margin: "0 0 40px 0", maxWidth: 520, marginLeft: "auto", marginRight: "auto" }}>
+          <p className="text-[14px] text-center m-0 mb-10 max-w-[520px] mx-auto" style={{ color: "#6B5D4D" }}>
             Six integrated tools that replace spreadsheets, group texts, and guesswork.
           </p>
-          <div style={{
-            display: "grid",
+          <div className="grid" style={{
             gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
             gap: isMobile ? 16 : 24,
           }}>
             {FEATURES.map((f: FeatureItem) => (
-              <div key={f.title} style={{
-                background: "#F3F0E8", border: "1px solid #DDD6C8", borderRadius: 16,
+              <div key={f.title} className="rounded-[16px] cursor-default transition-transform duration-200" style={{
+                background: "#F3F0E8", border: "1px solid #DDD6C8",
                 padding: isMobile ? "20px 18px" : "28px 24px",
-                transition: "transform 0.2s", cursor: "default",
               }}>
-                <div style={{ marginBottom: 12 }}><f.icon /></div>
-                <h3 style={{ fontFamily: fontDisplay, fontSize: 16, fontWeight: 700, color: "#2C2416", margin: "0 0 6px 0" }}>
+                <div className="mb-3"><f.icon /></div>
+                <h3 className="font-display text-[16px] font-bold m-0 mb-1.5" style={{ color: "#2C2416" }}>
                   {f.title}
                 </h3>
-                <p style={{ fontSize: 13, color: "#6B5D4D", lineHeight: 1.5, margin: 0 }}>
+                <p className="text-[13px] leading-[1.5] m-0" style={{ color: "#6B5D4D" }}>
                   {f.desc}
                 </p>
               </div>
@@ -559,53 +523,52 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
       </section>
 
       {/* ── HOW IT WORKS ────────────────────────────────── */}
-      <section style={{
+      <section className="relative" style={{
         background: "linear-gradient(175deg, #252B1F 0%, #1A1F16 100%)",
         padding: isMobile ? "48px 20px" : "80px 40px",
-        position: "relative",
       }}>
-        <div style={{ maxWidth: 900, margin: "0 auto" }}>
-          <h2 style={{
-            fontFamily: fontDisplay, fontSize: isMobile ? 24 : 32, fontWeight: 800,
-            color: "#FDFAF5", textAlign: "center" as const, margin: "0 0 8px 0",
+        <div className="max-w-[900px] mx-auto">
+          <h2 className="font-display font-extrabold text-center m-0 mb-2" style={{
+            fontSize: isMobile ? 24 : 32, color: "#FDFAF5",
           }}>
             Up and Running in Minutes
           </h2>
-          <p style={{ fontSize: 14, color: "#B0A898", textAlign: "center" as const, margin: "0 0 44px 0" }}>
+          <p className="text-[14px] text-center m-0 mb-11" style={{ color: "#B0A898" }}>
             No downloads. No setup fees. Just sign in and go.
           </p>
-          <div style={{
-            display: "flex", flexDirection: isMobile ? "column" as const : "row" as const,
-            gap: isMobile ? 28 : 0, alignItems: "flex-start",
-            justifyContent: "space-between", position: "relative",
+          <div className="flex relative" style={{
+            flexDirection: isMobile ? "column" : "row",
+            gap: isMobile ? 28 : 0,
+            alignItems: "flex-start", justifyContent: "space-between",
           }}>
             {/* Connector line (desktop only) */}
             {!isMobile && (
-              <div style={{
-                position: "absolute", top: 28, left: "18%", right: "18%",
-                height: 2, background: "rgba(184,204,154,0.2)",
+              <div className="absolute h-0.5" style={{
+                top: 28, left: "18%", right: "18%",
+                background: "rgba(184,204,154,0.2)",
               }} />
             )}
             {STEPS.map((s: StepItem, i: number) => (
-              <div key={s.num} style={{
-                flex: isMobile ? "unset" : 1, textAlign: isMobile ? "left" as const : "center" as const,
-                position: "relative", display: "flex", flexDirection: isMobile ? "row" as const : "column" as const,
-                alignItems: isMobile ? "flex-start" : "center", gap: isMobile ? 16 : 0,
+              <div key={s.num} className="relative flex" style={{
+                flex: isMobile ? "unset" : 1,
+                textAlign: isMobile ? "left" : "center",
+                flexDirection: isMobile ? "row" : "column",
+                alignItems: isMobile ? "flex-start" : "center",
+                gap: isMobile ? 16 : 0,
               }}>
-                <div style={{
-                  width: 56, height: 56, borderRadius: "50%",
-                  background: "rgba(184,204,154,0.12)", border: "2px solid #B8CC9A",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontFamily: fontDisplay, fontSize: 24, fontWeight: 900, color: "#B8CC9A",
-                  flexShrink: 0, position: "relative", zIndex: 1,
+                <div className="w-14 h-14 rounded-full flex items-center justify-center shrink-0 relative z-[1] font-display text-[24px] font-black" style={{
+                  background: "rgba(184,204,154,0.12)", border: "2px solid #B8CC9A", color: "#B8CC9A",
                 }}>
                   {s.num}
                 </div>
                 <div style={{ marginTop: isMobile ? 0 : 16 }}>
-                  <h3 style={{ fontFamily: fontDisplay, fontSize: 16, fontWeight: 700, color: "#FDFAF5", margin: "0 0 6px 0" }}>
+                  <h3 className="font-display text-[16px] font-bold m-0 mb-1.5" style={{ color: "#FDFAF5" }}>
                     {s.title}
                   </h3>
-                  <p style={{ fontSize: 13, color: "#B0A898", lineHeight: 1.5, margin: 0, maxWidth: 240, marginLeft: isMobile ? 0 : "auto", marginRight: isMobile ? 0 : "auto" }}>
+                  <p className="text-[13px] leading-[1.5] m-0 max-w-[240px]" style={{
+                    color: "#B0A898",
+                    marginLeft: isMobile ? 0 : "auto", marginRight: isMobile ? 0 : "auto",
+                  }}>
                     {s.desc}
                   </p>
                 </div>
@@ -617,48 +580,42 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
 
       {/* ── PRICING ──────────────────────────────────────── */}
       <section style={{ background: "#FDFAF5", padding: isMobile ? "48px 20px" : "80px 40px" }}>
-        <div style={{ maxWidth: 900, margin: "0 auto" }}>
-          <h2 style={{
-            fontFamily: fontDisplay, fontSize: isMobile ? 24 : 32, fontWeight: 800,
-            color: "#2C2416", textAlign: "center" as const, margin: "0 0 8px 0",
+        <div className="max-w-[900px] mx-auto">
+          <h2 className="font-display font-extrabold text-center m-0 mb-2" style={{
+            fontSize: isMobile ? 24 : 32, color: "#2C2416",
           }}>
             Start Free. Adventure Ready.
           </h2>
-          <p style={{
-            fontSize: 14, color: "#6B5D4D", textAlign: "center" as const, margin: "0 0 8px 0",
-            maxWidth: 560, marginLeft: "auto", marginRight: "auto", lineHeight: 1.6,
-          }}>
+          <p className="text-[14px] text-center m-0 mb-2 max-w-[560px] mx-auto leading-[1.6]" style={{ color: "#6B5D4D" }}>
             No subscription. No monthly fees. Pay per adventure &mdash; your whole crew is covered.
           </p>
-          <p style={{
-            fontSize: 12, color: "#8A7A6A", textAlign: "center" as const, margin: "0 0 40px 0",
-            fontStyle: "italic",
-          }}>
+          <p className="text-[12px] text-center m-0 mb-10 italic" style={{ color: "#8A7A6A" }}>
             One price covers your entire crew &mdash; unlimited members, one flat cost.
           </p>
 
           {/* ── Pricing Comparison Matrix ── */}
-          <div style={{
-            maxWidth: 720, margin: "0 auto", borderRadius: 16, overflow: "hidden",
-            border: "2px solid #DDD6C8",
-          }}>
+          <div className="max-w-[720px] mx-auto rounded-[16px] overflow-hidden" style={{ border: "2px solid #DDD6C8" }}>
             {/* Column headers */}
-            <div style={{
-              display: "grid", gridTemplateColumns: "1fr 120px 120px",
+            <div className="grid" style={{
+              gridTemplateColumns: "1fr 120px 120px",
               background: "#F3F0E8", borderBottom: "2px solid #DDD6C8",
             }}>
               <div style={{ padding: isMobile ? "16px 12px" : "20px 24px" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#8A7A6A", textTransform: "uppercase" as const, letterSpacing: 1 }}>Features</div>
+                <div className="text-[11px] font-bold uppercase tracking-[1px]" style={{ color: "#8A7A6A" }}>Features</div>
               </div>
-              <div style={{ padding: isMobile ? "12px 8px" : "16px 12px", textAlign: "center" as const, borderLeft: "1px solid #DDD6C8" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#5B7A3A", textTransform: "uppercase" as const, letterSpacing: 1, marginBottom: 4 }}>Free</div>
-                <div style={{ fontFamily: fontDisplay, fontSize: isMobile ? 20 : 24, fontWeight: 900, color: "#2C2416" }}>$0</div>
-                <div style={{ fontSize: 10, color: "#8A7A6A" }}>1st adventure</div>
+              <div className="text-center" style={{ padding: isMobile ? "12px 8px" : "16px 12px", borderLeft: "1px solid #DDD6C8" }}>
+                <div className="text-[11px] font-bold uppercase tracking-[1px] mb-1" style={{ color: "#5B7A3A" }}>Free</div>
+                <div className="font-display font-black" style={{ fontSize: isMobile ? 20 : 24, color: "#2C2416" }}>$0</div>
+                <div className="text-[10px]" style={{ color: "#8A7A6A" }}>1st adventure</div>
               </div>
-              <div style={{ padding: isMobile ? "12px 8px" : "16px 12px", textAlign: "center" as const, borderLeft: "1px solid #DDD6C8", background: "linear-gradient(175deg, #2A3620 0%, #1A2412 100%)" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#B8CC9A", textTransform: "uppercase" as const, letterSpacing: 1, marginBottom: 4 }}>Pro</div>
-                <div style={{ fontFamily: fontDisplay, fontSize: isMobile ? 20 : 24, fontWeight: 900, color: "#FDFAF5" }}>$29</div>
-                <div style={{ fontSize: 10, color: "#B0A898" }}>per adventure</div>
+              <div className="text-center" style={{
+                padding: isMobile ? "12px 8px" : "16px 12px",
+                borderLeft: "1px solid #DDD6C8",
+                background: "linear-gradient(175deg, #2A3620 0%, #1A2412 100%)",
+              }}>
+                <div className="text-[11px] font-bold uppercase tracking-[1px] mb-1" style={{ color: "#B8CC9A" }}>Pro</div>
+                <div className="font-display font-black" style={{ fontSize: isMobile ? 20 : 24, color: "#FDFAF5" }}>$29</div>
+                <div className="text-[10px]" style={{ color: "#B0A898" }}>per adventure</div>
               </div>
             </div>
 
@@ -682,25 +639,25 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
               { feature: "Sister crews & split itineraries", free: false, pro: true },
               { feature: "All future feature updates", free: true, pro: true },
             ].map((row: { feature: string; free: boolean; pro: boolean }, i: number) => (
-              <div key={row.feature} style={{
-                display: "grid", gridTemplateColumns: "1fr 120px 120px",
+              <div key={row.feature} className="grid" style={{
+                gridTemplateColumns: "1fr 120px 120px",
                 background: i % 2 === 0 ? "#FDFAF5" : "#F8F5ED",
                 borderBottom: "1px solid #E8E2D6",
               }}>
-                <div style={{ padding: isMobile ? "10px 12px" : "12px 24px", fontSize: 13, color: "#4A3A2A", display: "flex", alignItems: "center" }}>
+                <div className="flex items-center text-[13px]" style={{ padding: isMobile ? "10px 12px" : "12px 24px", color: "#4A3A2A" }}>
                   {row.feature}
                 </div>
-                <div style={{ padding: "10px 12px", textAlign: "center" as const, borderLeft: "1px solid #E8E2D6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div className="flex items-center justify-center text-center" style={{ padding: "10px 12px", borderLeft: "1px solid #E8E2D6" }}>
                   {row.free ? (
                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                       <circle cx="9" cy="9" r="8" fill="#E8F5E0" />
                       <path d="M5 9 L7.5 11.5 L13 6" stroke="#5B7A3A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   ) : (
-                    <span style={{ color: "#C8C0B4", fontSize: 16 }}>&mdash;</span>
+                    <span className="text-[16px]" style={{ color: "#C8C0B4" }}>&mdash;</span>
                   )}
                 </div>
-                <div style={{ padding: "10px 12px", textAlign: "center" as const, borderLeft: "1px solid #E8E2D6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div className="flex items-center justify-center text-center" style={{ padding: "10px 12px", borderLeft: "1px solid #E8E2D6" }}>
                   <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                     <circle cx="9" cy="9" r="8" fill="#E8F5E0" />
                     <path d="M5 9 L7.5 11.5 L13 6" stroke="#5B7A3A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -710,25 +667,21 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
             ))}
 
             {/* CTA row */}
-            <div style={{
-              display: "grid", gridTemplateColumns: "1fr 120px 120px",
+            <div className="grid" style={{
+              gridTemplateColumns: "1fr 120px 120px",
               background: "#F3F0E8", borderTop: "2px solid #DDD6C8",
             }}>
               <div />
-              <div style={{ padding: "16px 8px", textAlign: "center" as const, borderLeft: "1px solid #DDD6C8" }}>
-                <button onClick={scrollToAuth} style={{
-                  padding: "8px 0", width: "100%", borderRadius: 8, border: "2px solid #5B7A3A",
-                  background: "transparent", color: "#5B7A3A", fontSize: 12, fontWeight: 700,
-                  cursor: "pointer", fontFamily: fontBody,
+              <div className="text-center" style={{ padding: "16px 8px", borderLeft: "1px solid #DDD6C8" }}>
+                <button onClick={scrollToAuth} className="w-full py-2 rounded-[8px] text-[12px] font-bold cursor-pointer font-body" style={{
+                  border: "2px solid #5B7A3A", background: "transparent", color: "#5B7A3A",
                 }}>
                   Start Free
                 </button>
               </div>
-              <div style={{ padding: "16px 8px", textAlign: "center" as const, borderLeft: "1px solid #DDD6C8" }}>
-                <button onClick={scrollToAuth} style={{
-                  padding: "8px 0", width: "100%", borderRadius: 8, border: "none",
-                  background: "#5B7A3A", color: "#FDFAF5", fontSize: 12, fontWeight: 700,
-                  cursor: "pointer", fontFamily: fontBody,
+              <div className="text-center" style={{ padding: "16px 8px", borderLeft: "1px solid #DDD6C8" }}>
+                <button onClick={scrollToAuth} className="w-full py-2 rounded-[8px] border-none text-[12px] font-bold cursor-pointer font-body" style={{
+                  background: "#5B7A3A", color: "#FDFAF5",
                 }}>
                   Get Started
                 </button>
@@ -737,25 +690,19 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
           </div>
 
           {/* Per-adventure explainer */}
-          <div style={{
-            marginTop: 40, maxWidth: 720, marginLeft: "auto", marginRight: "auto",
-            background: "#F3F0E8", border: "1px solid #DDD6C8", borderRadius: 16,
+          <div className="mt-10 max-w-[720px] mx-auto rounded-[16px]" style={{
+            background: "#F3F0E8", border: "1px solid #DDD6C8",
             padding: isMobile ? "24px 18px" : "32px 28px",
           }}>
-            <h3 style={{
-              fontFamily: fontDisplay, fontSize: isMobile ? 16 : 18, fontWeight: 800,
-              color: "#2C2416", margin: "0 0 6px 0", textAlign: "center" as const,
+            <h3 className="font-display font-extrabold text-center m-0 mb-1.5" style={{
+              fontSize: isMobile ? 16 : 18, color: "#2C2416",
             }}>
               What counts as an &ldquo;adventure&rdquo;?
             </h3>
-            <p style={{
-              fontSize: 13, color: "#6B5D4D", textAlign: "center" as const, margin: "0 0 20px 0",
-              lineHeight: 1.5, maxWidth: 480, marginLeft: "auto", marginRight: "auto",
-            }}>
+            <p className="text-[13px] text-center m-0 mb-5 leading-[1.5] max-w-[480px] mx-auto" style={{ color: "#6B5D4D" }}>
               An adventure is one trip to one base &mdash; like Philmont 2026. Everyone going on that trip shares one adventure. You never pay per person.
             </p>
-            <div style={{
-              display: "grid",
+            <div className="grid" style={{
               gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
               gap: 14,
             }}>
@@ -765,17 +712,13 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
                 { title: "Different bases, different trips", desc: "Philmont this year and Northern Tier next year? Two separate adventures. The first is always free." },
                 { title: "Same base, new year", desc: "Going back to Philmont in 2027? That's a new adventure with fresh dates, new crew members, and a new training plan." },
               ].map((s: { title: string; desc: string }) => (
-                <div key={s.title} style={{
-                  background: "#FDFAF5", borderRadius: 12, padding: "16px 14px",
-                  border: "1px solid #E8E2D6",
+                <div key={s.title} className="rounded-[12px] px-3.5 py-4" style={{
+                  background: "#FDFAF5", border: "1px solid #E8E2D6",
                 }}>
-                  <div style={{
-                    fontFamily: fontDisplay, fontSize: 13, fontWeight: 700,
-                    color: "#2C2416", marginBottom: 4,
-                  }}>
+                  <div className="font-display text-[13px] font-bold mb-1" style={{ color: "#2C2416" }}>
                     {s.title}
                   </div>
-                  <p style={{ fontSize: 12, color: "#6B5D4D", margin: 0, lineHeight: 1.5 }}>
+                  <p className="text-[12px] m-0 leading-[1.5]" style={{ color: "#6B5D4D" }}>
                     {s.desc}
                   </p>
                 </div>
@@ -787,39 +730,33 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
 
       {/* ── ADVENTURE BASES ─────────────────────────────── */}
       <section style={{ background: "#F3F0E8", padding: isMobile ? "48px 20px" : "80px 40px" }}>
-        <div style={{ maxWidth: 900, margin: "0 auto" }}>
-          <h2 style={{
-            fontFamily: fontDisplay, fontSize: isMobile ? 22 : 28, fontWeight: 800,
-            color: "#2C2416", textAlign: "center" as const, margin: "0 0 8px 0",
+        <div className="max-w-[900px] mx-auto">
+          <h2 className="font-display font-extrabold text-center m-0 mb-2" style={{
+            fontSize: isMobile ? 22 : 28, color: "#2C2416",
           }}>
             Built for High Adventure
           </h2>
-          <p style={{ fontSize: 14, color: "#6B5D4D", textAlign: "center" as const, margin: "0 0 36px 0" }}>
+          <p className="text-[14px] text-center m-0 mb-9" style={{ color: "#6B5D4D" }}>
             Philmont is fully loaded. More adventure bases on the way.
           </p>
-          <div style={{
-            display: "grid",
+          <div className="grid" style={{
             gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
             gap: 16,
           }}>
             {ADVENTURE_TYPES.map((a: any) => (
-              <div key={a.id} style={{
+              <div key={a.id} className="rounded-[14px] text-center relative" style={{
                 background: a.enabled ? "#F3F0E8" : "#F8F6F1",
                 border: a.enabled ? "2px solid #5B7A3A" : "1px solid #DDD6C8",
-                borderRadius: 14, padding: "20px 14px", textAlign: "center" as const,
-                opacity: a.enabled ? 1 : 0.65, position: "relative",
+                padding: "20px 14px", opacity: a.enabled ? 1 : 0.65,
               }}>
-                <div style={{ fontSize: 36, marginBottom: 8 }}>{a.icon}</div>
-                <h3 style={{ fontFamily: fontDisplay, fontSize: 14, fontWeight: 700, color: "#2C2416", margin: "0 0 4px 0" }}>
+                <div className="text-[36px] mb-2">{a.icon}</div>
+                <h3 className="font-display text-[14px] font-bold m-0 mb-1" style={{ color: "#2C2416" }}>
                   {a.name}
                 </h3>
-                <p style={{ fontSize: 11, color: "#8A7A6A", margin: 0 }}>{a.location}</p>
-                <div style={{
-                  marginTop: 10, fontSize: 10, fontWeight: 700, letterSpacing: 1,
-                  textTransform: "uppercase" as const, fontFamily: fontBody,
+                <p className="text-[11px] m-0" style={{ color: "#8A7A6A" }}>{a.location}</p>
+                <div className="mt-2.5 text-[10px] font-bold tracking-[1px] uppercase font-body rounded-[8px] px-2.5 py-1 inline-block" style={{
                   color: a.enabled ? "#5B7A3A" : "#8A7A6A",
                   background: a.enabled ? "rgba(91,122,58,0.1)" : "rgba(0,0,0,0.04)",
-                  borderRadius: 8, padding: "4px 10px", display: "inline-block",
                 }}>
                   {a.enabled ? "Available Now" : "Coming Soon"}
                 </div>
@@ -834,17 +771,16 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
         background: "linear-gradient(175deg, #252B1F 0%, #1A1F16 100%)",
         padding: isMobile ? "48px 20px" : "80px 40px",
       }}>
-        <div style={{ maxWidth: 720, margin: "0 auto" }}>
-          <h2 style={{
-            fontFamily: fontDisplay, fontSize: isMobile ? 24 : 32, fontWeight: 800,
-            color: "#FDFAF5", textAlign: "center" as const, margin: "0 0 8px 0",
+        <div className="max-w-[720px] mx-auto">
+          <h2 className="font-display font-extrabold text-center m-0 mb-2" style={{
+            fontSize: isMobile ? 24 : 32, color: "#FDFAF5",
           }}>
             Frequently Asked Questions
           </h2>
-          <p style={{ fontSize: 14, color: "#B0A898", textAlign: "center" as const, margin: "0 0 36px 0" }}>
+          <p className="text-[14px] text-center m-0 mb-9" style={{ color: "#B0A898" }}>
             Everything you need to know before getting started.
           </p>
-          <div style={{ display: "flex", flexDirection: "column" as const, gap: 12 }}>
+          <div className="flex flex-col gap-3">
             {[
               { q: "Is TrailLog affiliated with the BSA or Philmont?", a: "No. TrailLog is an independent tool built by GraceZero.ai. It is not affiliated with, endorsed by, or sponsored by Scouting America, Philmont Scout Ranch, or any national scouting organization." },
               { q: "What does 'first adventure free' mean?", a: "Your first adventure is completely free \u2014 all features, unlimited members, no credit card required. If your troop adds a second concurrent adventure (like sister crews on the same trip), only the additional adventures cost $29 each." },
@@ -863,25 +799,22 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
 
       {/* ── CONTACT ────────────────────────────────────────── */}
       <section style={{ background: "#FDFAF5", padding: isMobile ? "48px 20px" : "64px 40px" }}>
-        <div style={{ maxWidth: 720, margin: "0 auto", textAlign: "center" as const }}>
-          <h2 style={{
-            fontFamily: fontDisplay, fontSize: isMobile ? 22 : 28, fontWeight: 800,
-            color: "#2C2416", margin: "0 0 8px 0",
+        <div className="max-w-[720px] mx-auto text-center">
+          <h2 className="font-display font-extrabold m-0 mb-2" style={{
+            fontSize: isMobile ? 22 : 28, color: "#2C2416",
           }}>
             Questions? Feedback?
           </h2>
-          <p style={{ fontSize: 14, color: "#6B5D4D", margin: "0 0 28px 0", lineHeight: 1.6 }}>
+          <p className="text-[14px] m-0 mb-7 leading-[1.6]" style={{ color: "#6B5D4D" }}>
             We'd love to hear from you. Whether you have a feature request, found a bug, or just want to say hi.
           </p>
-          <div style={{
-            display: "flex", flexDirection: isMobile ? "column" as const : "row" as const,
-            gap: 16, justifyContent: "center", alignItems: "stretch",
+          <div className="flex justify-center items-stretch" style={{
+            flexDirection: isMobile ? "column" : "row",
+            gap: 16,
           }}>
-            <a href="mailto:bill.mccoy@gracezero.ai" style={{
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-              padding: "16px 24px", borderRadius: 14, textDecoration: "none",
+            <a href="mailto:bill.mccoy@gracezero.ai" className="flex items-center justify-center gap-2.5 px-6 py-4 rounded-[14px] no-underline text-[14px] font-semibold font-body" style={{
               background: "#F3F0E8", border: "1px solid #DDD6C8",
-              color: "#2C2416", fontSize: 14, fontWeight: 600, fontFamily: fontBody,
+              color: "#2C2416",
               flex: isMobile ? "unset" : 1, maxWidth: 280,
             }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B7A3A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -890,55 +823,50 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
               bill.mccoy@gracezero.ai
             </a>
           </div>
-          <p style={{ fontSize: 11, color: "#8A7A6A", marginTop: 16 }}>
+          <p className="text-[11px] mt-4" style={{ color: "#8A7A6A" }}>
             We typically respond within 24 hours.
           </p>
         </div>
       </section>
 
       {/* ── BOTTOM CTA + FOOTER ─────────────────────────── */}
-      <section style={{
+      <section className="text-center relative" style={{
         background: "linear-gradient(175deg, #1A2412 0%, #2A3620 60%, #1A1F16 100%)",
         padding: isMobile ? "48px 20px 32px" : "80px 40px 40px",
-        textAlign: "center" as const, position: "relative",
       }}>
-        <div style={{
-          position: "absolute", inset: 0, opacity: 0.03, pointerEvents: "none",
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{
           backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
         }} />
-        <div style={{ position: "relative", zIndex: 1 }}>
+        <div className="relative z-[1]">
           <Logo size={48} />
-          <h2 style={{
-            fontFamily: fontDisplay, fontSize: isMobile ? 24 : 32, fontWeight: 800,
-            color: "#FDFAF5", margin: "16px 0 8px 0",
+          <h2 className="font-display font-extrabold mt-4 mb-2" style={{
+            fontSize: isMobile ? 24 : 32, color: "#FDFAF5",
           }}>
             Ready to Get Your Crew Organized?
           </h2>
-          <p style={{ fontSize: 14, color: "#B0A898", marginBottom: 28, maxWidth: 400, marginLeft: "auto", marginRight: "auto" }}>
+          <p className="text-[14px] mb-7 max-w-[400px] mx-auto" style={{ color: "#B0A898" }}>
             Your crew's adventure starts here.
           </p>
-          <button onClick={scrollToAuth} style={{
-            padding: "14px 40px", borderRadius: 12, border: "none",
-            background: "#5B7A3A", color: "#FDFAF5", fontSize: 16, fontWeight: 700,
-            cursor: "pointer", fontFamily: fontBody,
+          <button onClick={scrollToAuth} className="px-10 py-3.5 rounded-[12px] border-none text-[16px] font-bold cursor-pointer font-body" style={{
+            background: "#5B7A3A", color: "#FDFAF5",
             boxShadow: "0 4px 16px rgba(58,77,42,0.4)",
           }}>
             Get Started
           </button>
 
           {/* Footer */}
-          <div style={{ marginTop: 48, paddingTop: 24, borderTop: "1px solid rgba(184,204,154,0.1)" }}>
-            <div style={{ fontSize: 9, color: "rgba(184,204,154,0.4)", fontWeight: 600, letterSpacing: 2.5, textTransform: "uppercase" as const, marginBottom: 12, fontFamily: fontBody }}>
+          <div className="mt-12 pt-6" style={{ borderTop: "1px solid rgba(184,204,154,0.1)" }}>
+            <div className="text-[9px] font-semibold tracking-[2.5px] uppercase mb-3 font-body" style={{ color: "rgba(184,204,154,0.4)" }}>
               by GraceZero.ai
             </div>
-            <div style={{ fontSize: 11, color: "#5A6A4A" }}>
-              <a href="/privacy" style={{ color: "#5A6A4A", textDecoration: "none" }}>Privacy Policy</a>
-              <span style={{ margin: "0 8px" }}>&middot;</span>
-              <a href="/terms" style={{ color: "#5A6A4A", textDecoration: "none" }}>Terms of Service</a>
-              <span style={{ margin: "0 8px" }}>&middot;</span>
-              <a href="mailto:bill.mccoy@gracezero.ai" style={{ color: "#5A6A4A", textDecoration: "none" }}>Contact</a>
+            <div className="text-[11px]" style={{ color: "#5A6A4A" }}>
+              <a href="/privacy" className="no-underline" style={{ color: "#5A6A4A" }}>Privacy Policy</a>
+              <span className="mx-2">&middot;</span>
+              <a href="/terms" className="no-underline" style={{ color: "#5A6A4A" }}>Terms of Service</a>
+              <span className="mx-2">&middot;</span>
+              <a href="mailto:bill.mccoy@gracezero.ai" className="no-underline" style={{ color: "#5A6A4A" }}>Contact</a>
             </div>
-            <p style={{ fontSize: 10, color: "#4A5A3A", marginTop: 10 }}>
+            <p className="text-[10px] mt-2.5" style={{ color: "#4A5A3A" }}>
               Not affiliated with or endorsed by any national scouting organization.
             </p>
           </div>

@@ -122,19 +122,23 @@ export default function PrintCheatSheet({ adventure, itinerary, onClose }: Props
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999 }} onClick={onClose}>
-      <div onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ background: "#1a2420", borderRadius: 12, padding: 24, width: 300, textAlign: "center", boxShadow: "0 8px 32px rgba(0,0,0,0.3)", border: "1px solid #3d5a45" }}>
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[999]" onClick={onClose}>
+      <div onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        className="bg-[#1a2420] rounded-xl p-6 w-[300px] text-center shadow-[0_8px_32px_rgba(0,0,0,0.3)] border border-[#3d5a45]">
         <Logo size={40} />
-        <h3 style={{ color: "#d4c8a8", margin: "12px 0 6px", fontFamily: "Georgia, serif" }}>Print Itinerary</h3>
-        <p style={{ color: "#8a9a8a", fontSize: 12, marginBottom: 16 }}>No cell phones on the trail — take a paper copy!</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <button onClick={() => print("pocket")} style={{ padding: "10px 0", borderRadius: 8, border: "none", background: "#4a7a55", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+        <h3 className="text-[#d4c8a8] my-3 mb-1.5 font-[Georgia,serif]">Print Itinerary</h3>
+        <p className="text-[#8a9a8a] text-xs mb-4">No cell phones on the trail — take a paper copy!</p>
+        <div className="flex flex-col gap-2">
+          <button onClick={() => print("pocket")}
+            className="py-2.5 rounded-btn border-none bg-[#4a7a55] text-white text-[13px] font-semibold cursor-pointer">
             Print Pocket Card
           </button>
-          <button onClick={() => print("full")} style={{ padding: "10px 0", borderRadius: 8, border: "1px solid #4a7a55", background: "transparent", color: "#7aba7a", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          <button onClick={() => print("full")}
+            className="py-2.5 rounded-btn border border-[#4a7a55] bg-transparent text-[#7aba7a] text-[13px] font-semibold cursor-pointer">
             Print Full Summary
           </button>
-          <button onClick={onClose} style={{ padding: "8px 0", borderRadius: 8, border: "1px solid #3d5a45", background: "transparent", color: "#8a9a8a", fontSize: 12, cursor: "pointer", marginTop: 4 }}>
+          <button onClick={onClose}
+            className="py-2 rounded-btn border border-[#3d5a45] bg-transparent text-[#8a9a8a] text-xs cursor-pointer mt-1">
             Cancel
           </button>
         </div>

@@ -1,6 +1,5 @@
 import React from "react";
-import { useTheme } from "../contexts/ThemeContext";
-import { fontBody, fontDisplay } from "../utils/theme";
+import clsx from "clsx";
 
 interface Props {
   title?: string;
@@ -13,25 +12,33 @@ interface Props {
 }
 
 export default function ConfirmModal({ title, message, confirmLabel, onConfirm, onCancel, danger = true, memberName }: Props): React.JSX.Element {
-  const { theme } = useTheme();
-
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999 }}
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[999]"
       onClick={onCancel}>
-      <div onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ background: theme.bgCard, borderRadius: 12, padding: 24, border: `1px solid ${danger ? theme.danger : theme.accent}40`, width: 300, textAlign: "center", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: danger ? theme.gold : theme.heading, fontFamily: fontDisplay, marginBottom: 6 }}>
+      <div onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        className={clsx(
+          "bg-tl-card rounded-xl p-6 w-[300px] text-center shadow-[0_8px_32px_rgba(0,0,0,0.3)]",
+          danger ? "border border-tl-danger/25" : "border border-tl-accent/25"
+        )}>
+        <div className={clsx(
+          "text-sm font-bold font-display mb-1.5",
+          danger ? "text-tl-gold" : "text-tl-heading"
+        )}>
           {title || (memberName ? `Remove ${memberName}?` : "Are you sure?")}
         </div>
-        <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 16 }}>
+        <div className="text-xs text-tl-text-muted mb-4">
           {message || "This deletes all their availability and skill data permanently."}
         </div>
-        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+        <div className="flex gap-2 justify-center">
           <button onClick={onCancel}
-            style={{ padding: "8px 18px", borderRadius: 7, border: `1px solid ${theme.borderLight}`, background: theme.bgAlt, color: theme.textMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>
+            className="px-[18px] py-2 rounded-[7px] border border-tl-border-light bg-tl-bg-alt text-tl-text-muted text-xs font-semibold cursor-pointer font-body">
             Cancel
           </button>
           <button onClick={onConfirm}
-            style={{ padding: "8px 18px", borderRadius: 7, border: "none", background: danger ? "#7a3030" : theme.accent, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>
+            className={clsx(
+              "px-[18px] py-2 rounded-[7px] border-none text-white text-xs font-semibold cursor-pointer font-body",
+              danger ? "bg-[#7a3030]" : "bg-tl-accent"
+            )}>
             {confirmLabel || "Remove"}
           </button>
         </div>

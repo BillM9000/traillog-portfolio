@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
+import clsx from "clsx";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
-import { fontBody, fontDisplay, card, cardTitle } from "../utils/theme";
+import { fontBody, fontDisplay } from "../utils/theme";
 import { US_STATES, ADVENTURE_TYPES } from "../utils/constants";
 import Logo from "./Logo";
 import TroopLogo from "./TroopLogo";
@@ -127,63 +128,55 @@ function JoinModal({ troopId, troopName, theme, onClose, onSubmit }: JoinModalPr
   const needsAdventureStep = adventures.length > 1;
   const canProceed = step === 1 || selectedAdventures.length > 0;
 
-  const inputLabel: React.CSSProperties = { fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, display: "block" };
-  const radioBtn = (selected: boolean): React.CSSProperties => ({
-    display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px",
-    borderRadius: 8, cursor: "pointer", border: selected ? `2px solid ${theme.accent}` : `1.5px solid ${theme.borderLight}`,
-    background: selected ? theme.accentBg : theme.bgAlt, marginBottom: 6, transition: "all 0.15s",
-  });
+  const radioBtn = (selected: boolean) => clsx(
+    "flex items-start gap-2.5 py-3 px-3.5 rounded-btn cursor-pointer mb-1.5 transition-all duration-150",
+    selected ? "border-2 border-tl-accent bg-tl-accent-bg" : "border-[1.5px] border-tl-border-light bg-tl-bg-alt"
+  );
 
   return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 9999,
-      background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center",
-      padding: 20,
-    }} onClick={onClose}>
-      <div style={{
-        background: theme.bg, borderRadius: 14, padding: "24px 20px",
-        maxWidth: 440, width: "100%", maxHeight: "80vh", overflowY: "auto",
-        border: `1px solid ${theme.border}`, boxShadow: "0 8px 30px rgba(0,0,0,0.25)",
-      }} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <h3 style={{ fontFamily: fontDisplay, fontSize: 18, fontWeight: 800, color: theme.heading, margin: 0 }}>
+    <div className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-5"
+      onClick={onClose}>
+      <div className="bg-tl-bg rounded-card py-6 px-5 max-w-[440px] w-full max-h-[80vh] overflow-y-auto border border-tl-border"
+        style={{ boxShadow: "0 8px 30px rgba(0,0,0,0.25)" }}
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-display text-lg font-[800] text-tl-heading m-0">
             Join {troopName}
           </h3>
-          <button onClick={onClose} style={{
-            background: "none", border: "none", fontSize: 18, color: theme.textDim, cursor: "pointer", padding: "2px 6px",
-          }}>&times;</button>
+          <button onClick={onClose}
+            className="bg-none border-none text-lg text-tl-text-dim cursor-pointer py-0.5 px-1.5">&times;</button>
         </div>
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: 20, color: theme.textDim, fontSize: 12 }}>Loading...</div>
+          <div className="text-center p-5 text-tl-text-dim text-xs">Loading...</div>
         ) : (
           <>
             {/* Step 1: Participation */}
             {step === 1 && (
               <div>
-                <label style={inputLabel}>How will you participate?</label>
-                <div onClick={() => setParticipation("trekking")} style={radioBtn(participation === "trekking")}>
-                  <div style={{
-                    width: 18, height: 18, borderRadius: "50%", border: `2px solid ${participation === "trekking" ? theme.accent : theme.borderLight}`,
-                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1,
-                  }}>
-                    {participation === "trekking" && <div style={{ width: 10, height: 10, borderRadius: "50%", background: theme.accent }} />}
+                <label className="text-[9px] font-bold text-tl-text-dim uppercase tracking-[0.5px] mb-1.5 block">How will you participate?</label>
+                <div onClick={() => setParticipation("trekking")} className={radioBtn(participation === "trekking")}>
+                  <div className={clsx(
+                    "w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 mt-[1px]",
+                    participation === "trekking" ? "border-tl-accent" : "border-tl-border-light"
+                  )}>
+                    {participation === "trekking" && <div className="w-2.5 h-2.5 rounded-full bg-tl-accent" />}
                   </div>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: theme.heading }}>Trekker</div>
-                    <div style={{ fontSize: 11, color: theme.textDim, marginTop: 2 }}>Going on the adventure</div>
+                    <div className="text-[13px] font-bold text-tl-heading">Trekker</div>
+                    <div className="text-[11px] text-tl-text-dim mt-0.5">Going on the adventure</div>
                   </div>
                 </div>
-                <div onClick={() => setParticipation("support")} style={radioBtn(participation === "support")}>
-                  <div style={{
-                    width: 18, height: 18, borderRadius: "50%", border: `2px solid ${participation === "support" ? theme.accent : theme.borderLight}`,
-                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1,
-                  }}>
-                    {participation === "support" && <div style={{ width: 10, height: 10, borderRadius: "50%", background: theme.accent }} />}
+                <div onClick={() => setParticipation("support")} className={radioBtn(participation === "support")}>
+                  <div className={clsx(
+                    "w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 mt-[1px]",
+                    participation === "support" ? "border-tl-accent" : "border-tl-border-light"
+                  )}>
+                    {participation === "support" && <div className="w-2.5 h-2.5 rounded-full bg-tl-accent" />}
                   </div>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: theme.heading }}>Support Crew</div>
-                    <div style={{ fontSize: 11, color: theme.textDim, marginTop: 2 }}>Helping from home</div>
+                    <div className="text-[13px] font-bold text-tl-heading">Support Crew</div>
+                    <div className="text-[11px] text-tl-text-dim mt-0.5">Helping from home</div>
                   </div>
                 </div>
               </div>
@@ -192,28 +185,24 @@ function JoinModal({ troopId, troopName, theme, onClose, onSubmit }: JoinModalPr
             {/* Step 2: Adventure selection (multi-adventure troops only) */}
             {step === 2 && needsAdventureStep && (
               <div>
-                <label style={inputLabel}>Which adventure(s) are you joining?</label>
-                <div style={{ fontSize: 11, color: theme.textDim, marginBottom: 10 }}>
+                <label className="text-[9px] font-bold text-tl-text-dim uppercase tracking-[0.5px] mb-1.5 block">Which adventure(s) are you joining?</label>
+                <div className="text-[11px] text-tl-text-dim mb-2.5">
                   Select one or more adventures you want to participate in.
                 </div>
                 {adventures.map(adv => {
                   const selected = selectedAdventures.includes(adv.id);
                   const dateRange = [formatDate(adv.arrive_date), formatDate(adv.return_date)].filter(Boolean).join(" - ");
                   return (
-                    <div key={adv.id} onClick={() => toggleAdventure(adv.id)} style={{
-                      ...radioBtn(selected),
-                      cursor: "pointer",
-                    }}>
-                      <div style={{
-                        width: 18, height: 18, borderRadius: 4, border: `2px solid ${selected ? theme.accent : theme.borderLight}`,
-                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1,
-                        background: selected ? theme.accent : "transparent",
-                      }}>
-                        {selected && <span style={{ color: "#fff", fontSize: 12, fontWeight: 700, lineHeight: 1 }}>&#10003;</span>}
+                    <div key={adv.id} onClick={() => toggleAdventure(adv.id)} className={clsx(radioBtn(selected), "cursor-pointer")}>
+                      <div className={clsx(
+                        "w-[18px] h-[18px] rounded-[4px] border-2 flex items-center justify-center shrink-0 mt-[1px]",
+                        selected ? "border-tl-accent bg-tl-accent" : "border-tl-border-light bg-transparent"
+                      )}>
+                        {selected && <span className="text-white text-xs font-bold leading-none">&#10003;</span>}
                       </div>
                       <div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: theme.heading }}>{adv.name}</div>
-                        <div style={{ fontSize: 10, color: theme.textDim, marginTop: 2 }}>
+                        <div className="text-[13px] font-bold text-tl-heading">{adv.name}</div>
+                        <div className="text-[10px] text-tl-text-dim mt-0.5">
                           {ADVENTURE_TYPE_NAMES[adv.adventure_type] || adv.adventure_type}
                           {dateRange && ` \u00b7 ${dateRange}`}
                         </div>
@@ -225,29 +214,21 @@ function JoinModal({ troopId, troopName, theme, onClose, onSubmit }: JoinModalPr
             )}
 
             {/* Buttons */}
-            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+            <div className="flex gap-2 mt-4">
               {step > 1 && (
-                <button onClick={() => setStep(step - 1)} style={{
-                  flex: 1, padding: "10px 0", borderRadius: 7, border: `1px solid ${theme.borderLight}`,
-                  background: theme.bgAlt, color: theme.textMuted, fontSize: 12, fontWeight: 600,
-                  cursor: "pointer", fontFamily: fontBody,
-                }}>Back</button>
+                <button onClick={() => setStep(step - 1)}
+                  className="flex-1 py-2.5 rounded-[7px] border border-tl-border-light bg-tl-bg-alt text-tl-text-muted text-xs font-semibold cursor-pointer font-body">Back</button>
               )}
               {step === 1 && needsAdventureStep ? (
-                <button onClick={() => setStep(2)} style={{
-                  flex: 1, padding: "10px 0", borderRadius: 7, border: "none",
-                  background: theme.accent, color: "#fff", fontSize: 13, fontWeight: 700,
-                  cursor: "pointer", fontFamily: fontDisplay,
-                }}>Next</button>
+                <button onClick={() => setStep(2)}
+                  className="flex-1 py-2.5 rounded-[7px] border-none bg-tl-accent text-white text-[13px] font-bold cursor-pointer font-display">Next</button>
               ) : (
-                <button onClick={handleSubmit} disabled={submitting || !canProceed} style={{
-                  flex: 1, padding: "10px 0", borderRadius: 7, border: "none",
-                  background: canProceed ? theme.accent : theme.borderLight,
-                  color: canProceed ? "#fff" : theme.textDim,
-                  fontSize: 13, fontWeight: 700,
-                  cursor: submitting ? "wait" : canProceed ? "pointer" : "default",
-                  fontFamily: fontDisplay,
-                }}>{submitting ? "Sending..." : "Request to Join"}</button>
+                <button onClick={handleSubmit} disabled={submitting || !canProceed}
+                  className={clsx(
+                    "flex-1 py-2.5 rounded-[7px] border-none text-[13px] font-bold font-display",
+                    canProceed ? "bg-tl-accent text-white" : "bg-tl-border-light text-tl-text-dim",
+                    submitting ? "cursor-wait" : canProceed ? "cursor-pointer" : "cursor-default"
+                  )}>{submitting ? "Sending..." : "Request to Join"}</button>
               )}
             </div>
           </>
@@ -458,83 +439,70 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
     finally { setFormLoading(false); }
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%", padding: "10px 12px", borderRadius: 7, border: `1.5px solid ${theme.borderLight}`,
-    background: theme.bgInput, color: theme.text, fontSize: 12, fontFamily: fontBody,
-    outline: "none", marginBottom: 8, boxSizing: "border-box",
-  };
-
   const stats = dashboard?.platform_stats;
   const pendingRequests = dashboard?.pending || [];
 
   return (
-    <div style={{ minHeight: "100vh", background: theme.bg, fontFamily: fontBody, color: theme.text }}>
+    <div className="min-h-screen bg-tl-bg font-body text-tl-text">
       {/* ── Header ── */}
-      <div style={{ padding: "18px 20px", borderBottom: `1px solid ${theme.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div className="py-[18px] px-5 border-b border-tl-border flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
           <Logo size={36} />
           <div>
-            <h1 style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: 800, color: theme.heading, margin: 0 }}>
-              Trail<span style={{ color: theme.accentLight }}>Log</span>
+            <h1 className="font-display text-[22px] font-[800] text-tl-heading m-0">
+              Trail<span className="text-tl-accent-light">Log</span>
             </h1>
-            <div style={{ fontSize: 11, color: theme.textDim, fontFamily: fontBody }}>Welcome back, {user.name}</div>
+            <div className="text-[11px] text-tl-text-dim font-body">Welcome back, {user.name}</div>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button onClick={toggle} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", padding: "2px 6px" }}>
+        <div className="flex items-center gap-2">
+          <button onClick={toggle} className="bg-none border-none text-lg cursor-pointer py-0.5 px-1.5">
             {theme.name === "dark" ? "\u2600\uFE0F" : "\u{1F319}"}
           </button>
           {onHelpClick && (
-            <button onClick={onHelpClick} title="Help" aria-label="Open Help" style={{
-              width: 30, height: 30, borderRadius: "50%", border: `2px solid ${theme.accent}40`,
-              background: theme.accent + "20", cursor: "pointer", padding: 0,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: theme.accent }}>?</span>
+            <button onClick={onHelpClick} title="Help" aria-label="Open Help"
+              className="w-[30px] h-[30px] rounded-full cursor-pointer p-0 flex items-center justify-center"
+              style={{ border: `2px solid ${theme.accent}40`, background: theme.accent + "20" }}>
+              <span className="text-sm font-bold text-tl-accent">?</span>
             </button>
           )}
           {onViewProfile && (
-            <button onClick={onViewProfile} style={{
-              width: 30, height: 30, borderRadius: "50%", border: `2px solid ${theme.accent}40`,
-              background: user.avatar_url ? "transparent" : theme.accent + "20",
-              cursor: "pointer", overflow: "hidden", padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
+            <button onClick={onViewProfile}
+              className="w-[30px] h-[30px] rounded-full cursor-pointer overflow-hidden p-0 flex items-center justify-center"
+              style={{ border: `2px solid ${theme.accent}40`, background: user.avatar_url ? "transparent" : theme.accent + "20" }}>
               {user.avatar_url
-                ? <img src={user.avatar_url} alt="" style={{ width: 30, height: 30, borderRadius: "50%" }} />
-                : <span style={{ fontSize: 12, fontWeight: 700, color: theme.accent }}>{(user.name || "U")[0].toUpperCase()}</span>}
+                ? <img src={user.avatar_url} alt="" className="w-[30px] h-[30px] rounded-full" />
+                : <span className="text-xs font-bold text-tl-accent">{(user.name || "U")[0].toUpperCase()}</span>}
             </button>
           )}
-          <button onClick={onLogout} style={{
-            fontSize: 11, color: theme.warn, background: "none", border: `1px solid ${theme.warnBg}`,
-            padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontFamily: fontBody, fontWeight: 600,
-          }}>Sign Out</button>
+          <button onClick={onLogout}
+            className="text-[11px] text-tl-warn bg-none border border-tl-warn-bg py-1 px-2.5 rounded-[5px] cursor-pointer font-body font-semibold">Sign Out</button>
         </div>
       </div>
 
-      <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 20px" }}>
+      <div className="max-w-[600px] mx-auto py-6 px-5">
 
         {/* ── Platform Overview (sys admins only) ── */}
         {isGlobalAdmin && stats && (
-          <div style={{ ...card(theme), marginBottom: 16, border: `1px solid ${theme.accent}30` }}>
-            <div style={{ ...cardTitle(theme), display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div className="tl-card mb-4" style={{ border: `1px solid ${theme.accent}30` }}>
+            <div className="tl-card-title flex items-center justify-between">
               <span>Platform Overview</span>
               {onGlobalAdminClick && (
-                <button onClick={onGlobalAdminClick} style={{
-                  fontSize: 10, color: theme.accent, background: "none", border: `1px solid ${theme.accent}40`,
-                  padding: "3px 10px", borderRadius: 5, cursor: "pointer", fontFamily: fontBody, fontWeight: 600,
-                }}>Open Admin Panel {"\u2192"}</button>
+                <button onClick={onGlobalAdminClick}
+                  className="text-[10px] text-tl-accent bg-none py-[3px] px-2.5 rounded-[5px] cursor-pointer font-body font-semibold"
+                  style={{ border: `1px solid ${theme.accent}40` }}>Open Admin Panel {"\u2192"}</button>
               )}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 8 }}>
+            <div className="grid grid-cols-4 gap-2 mt-2">
               {[
                 { label: "Users", value: stats.total_users },
                 { label: "Troops", value: stats.total_troops },
                 { label: "Adventures", value: stats.active_adventures },
                 { label: "New (7d)", value: stats.new_this_week },
               ].map(s => (
-                <div key={s.label} style={{ textAlign: "center", padding: "10px 6px", borderRadius: 8, background: theme.bgAlt, border: `1px solid ${theme.borderLight}` }}>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay }}>{s.value}</div>
-                  <div style={{ fontSize: 9, fontWeight: 600, color: theme.textDimmer, textTransform: "uppercase", letterSpacing: 0.5 }}>{s.label}</div>
+                <div key={s.label} className="text-center py-2.5 px-1.5 rounded-btn bg-tl-bg-alt border border-tl-border-light">
+                  <div className="text-[22px] font-[800] text-tl-heading font-display">{s.value}</div>
+                  <div className="text-[9px] font-semibold text-tl-text-dimmer uppercase tracking-[0.5px]">{s.label}</div>
                 </div>
               ))}
             </div>
@@ -543,22 +511,20 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
 
         {/* ── Pending Requests ── */}
         {pendingRequests.length > 0 && (
-          <div style={{ ...card(theme), border: `1px solid ${theme.gold}40`, marginBottom: 16 }}>
-            <div style={{ ...cardTitle(theme), color: theme.gold }}>Pending Requests</div>
+          <div className="tl-card mb-4" style={{ border: `1px solid ${theme.gold}40` }}>
+            <div className="tl-card-title text-tl-gold">Pending Requests</div>
             {pendingRequests.map(p => (
-              <div key={p.troop_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>
+              <div key={p.troop_id} className="flex items-center justify-between text-xs text-tl-text-muted mb-1">
                 <span>
                   <strong>{p.troop_name}</strong>
-                  {p.participation === "support" && <span style={{ fontSize: 9, color: theme.textDim, marginLeft: 4 }}>(support)</span>}
+                  {p.participation === "support" && <span className="text-[9px] text-tl-text-dim ml-1">(support)</span>}
                   {" "}&mdash; waiting for admin approval...
                 </span>
                 <button onClick={async () => {
                   try { await api.leaveTroop(p.troop_id); await onRefresh(); refreshDashboard(); addToast("Request withdrawn", "success"); }
                   catch (e) { addToast((e as Error).message, "error"); }
-                }} style={{
-                  padding: "3px 8px", borderRadius: 5, border: `1px solid ${theme.warn}40`, background: "transparent",
-                  color: theme.warn, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: fontBody, flexShrink: 0,
-                }}>Withdraw</button>
+                }} className="py-[3px] px-2 rounded-[5px] bg-transparent text-tl-warn text-[10px] font-semibold cursor-pointer font-body shrink-0"
+                  style={{ border: `1px solid ${theme.warn}40` }}>Withdraw</button>
               </div>
             ))}
           </div>
@@ -566,28 +532,28 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
 
         {/* ── My Troops ── */}
         {loading ? (
-          <div style={{ textAlign: "center", padding: 40, color: theme.textDim }}>Loading...</div>
+          <div className="text-center p-10 text-tl-text-dim">Loading...</div>
         ) : (dashboard?.troops || []).length === 0 && !showCreate ? (
-          <div style={{ ...card(theme), textAlign: "center", padding: "40px 20px" }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>{"\u{1F3D5}\uFE0F"}</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: theme.heading, marginBottom: 4 }}>
+          <div className="tl-card text-center py-10 px-5">
+            <div className="text-[32px] mb-2">{"\u{1F3D5}\uFE0F"}</div>
+            <div className="text-sm font-semibold text-tl-heading mb-1">
               {user.user_type === "scout" ? "No troops yet" : "Get started"}
             </div>
-            <div style={{ fontSize: 12, color: theme.textDim }}>
+            <div className="text-xs text-tl-text-dim">
               {user.user_type === "scout" ? "A troop leader will need to create one and invite you." : "Create a troop or browse public troops to join."}
             </div>
           </div>
         ) : (
           (dashboard?.troops || []).map(troop => (
-            <div key={troop.id} style={{ ...card(theme), marginBottom: 12 }}>
+            <div key={troop.id} className="tl-card mb-3">
               {/* Troop header */}
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: troop.adventures.length > 0 ? 12 : 0 }}>
+              <div className={clsx("flex items-center gap-3", troop.adventures.length > 0 && "mb-3")}>
                 <TroopLogo troopId={troop.id} name={troop.name} size={48} theme={theme} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay }}>{troop.name}</div>
-                  <div style={{ fontSize: 11, color: theme.textDim }}>
+                <div className="flex-1">
+                  <div className="text-[15px] font-[800] text-tl-heading font-display">{troop.name}</div>
+                  <div className="text-[11px] text-tl-text-dim">
                     {[troop.council, troop.location].filter(Boolean).join(" \u00B7 ")}
-                    {troop.role === "admin" && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, color: theme.accent, background: theme.accent + "18", padding: "1px 5px", borderRadius: 3 }}>ADMIN</span>}
+                    {troop.role === "admin" && <span className="ml-1.5 text-[9px] font-bold text-tl-accent py-[1px] px-[5px] rounded-[3px]" style={{ background: theme.accent + "18" }}>ADMIN</span>}
                   </div>
                 </div>
               </div>
@@ -597,50 +563,46 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
                 const countdown = formatCountdown(adv.depart_date, adv.arrive_date, adv.return_date, adv.home_date);
                 const dateRange = [formatDate(adv.arrive_date), formatDate(adv.return_date)].filter(Boolean).join(" \u2192 ");
                 return (
-                  <div key={adv.id} style={{
-                    display: "flex", alignItems: "center", gap: 12, padding: "10px 12px",
-                    background: theme.bgAlt, borderRadius: 8, border: `1px solid ${theme.borderLight}`, marginBottom: 6,
-                  }}>
+                  <div key={adv.id}
+                    className="flex items-center gap-3 py-2.5 px-3 bg-tl-bg-alt rounded-btn border border-tl-border-light mb-1.5">
                     <ProgressRing pct={adv.crew_readiness} size={48} stroke={4} theme={theme} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: theme.heading }}>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-bold text-tl-heading">
                         {adv.name}
                       </div>
-                      <div style={{ fontSize: 10, color: theme.textDim }}>
+                      <div className="text-[10px] text-tl-text-dim">
                         {ADVENTURE_TYPE_NAMES[adv.adventure_type] || adv.adventure_type}
                         {dateRange && ` \u00B7 ${dateRange}`}
                       </div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4, alignItems: "center" }}>
+                      <div className="flex flex-wrap gap-1.5 mt-1 items-center">
                         {countdown && (
-                          <span style={{ fontSize: 9, fontWeight: 700, color: countdown.color, background: countdown.color + "18", padding: "2px 6px", borderRadius: 4 }}>
+                          <span className="text-[9px] font-bold py-0.5 px-1.5 rounded-[4px]"
+                            style={{ color: countdown.color, background: countdown.color + "18" }}>
                             {countdown.text}
                           </span>
                         )}
-                        <span style={{ fontSize: 9, color: theme.textDimmer }}>
+                        <span className="text-[9px] text-tl-text-dimmer">
                           {adv.trekking_count} trekking{adv.member_count > adv.trekking_count ? ` \u00B7 ${adv.member_count - adv.trekking_count} support` : ""}
                         </span>
                         {adv.next_training && (
-                          <span style={{ fontSize: 9, color: theme.accent, fontWeight: 600 }}>
+                          <span className="text-[9px] text-tl-accent font-semibold">
                             Next: {formatDate(adv.next_training.date)}{adv.next_training.location ? ` @ ${adv.next_training.location}` : ""}
                           </span>
                         )}
                       </div>
                     </div>
                     {showCreate && createStep === 2 && troop.id === createdTroopId ? (
-                      <span style={{ fontSize: 10, fontWeight: 600, color: theme.textDim, fontStyle: "italic", flexShrink: 0 }}>Setup {"\u2193"}</span>
+                      <span className="text-[10px] font-semibold text-tl-text-dim italic shrink-0">Setup {"\u2193"}</span>
                     ) : (
-                      <button onClick={() => onEnterAdventure(troop.id, adv.id)} style={{
-                        padding: "6px 14px", borderRadius: 6, border: "none",
-                        background: theme.accent, color: "#fff", fontSize: 11, fontWeight: 700,
-                        cursor: "pointer", fontFamily: fontDisplay, flexShrink: 0,
-                      }}>Enter {"\u2192"}</button>
+                      <button onClick={() => onEnterAdventure(troop.id, adv.id)}
+                        className="py-1.5 px-3.5 rounded-badge-sm border-none bg-tl-accent text-white text-[11px] font-bold cursor-pointer font-display shrink-0">Enter {"\u2192"}</button>
                     )}
                   </div>
                 );
               })}
 
               {troop.adventures.length === 0 && (
-                <div style={{ fontSize: 12, color: theme.textDim, fontStyle: "italic", padding: "8px 0" }}>
+                <div className="text-xs text-tl-text-dim italic py-2">
                   No active adventures yet
                 </div>
               )}
@@ -649,53 +611,39 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
         )}
 
         {/* ── Quick Actions ── */}
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+        <div className="flex gap-2 mt-2">
           {!showCreate && user.user_type !== "scout" && (
-            <button onClick={() => { setShowCreate(true); setCreateStep(1); }} style={{
-              flex: 1, padding: "12px 0", borderRadius: 8, border: `1.5px dashed ${theme.borderLight}`,
-              background: "transparent", color: theme.accent, fontSize: 13, fontWeight: 600,
-              cursor: "pointer", fontFamily: fontBody,
-            }}>+ Create Troop</button>
+            <button onClick={() => { setShowCreate(true); setCreateStep(1); }}
+              className="flex-1 py-3 rounded-btn border-[1.5px] border-dashed border-tl-border-light bg-transparent text-tl-accent text-[13px] font-semibold cursor-pointer font-body">+ Create Troop</button>
           )}
           {(dashboard?.public_troops || []).length > 0 && !showCreate && (
-            <button onClick={() => setShowBrowse(!showBrowse)} style={{
-              flex: 1, padding: "12px 0", borderRadius: 8, border: `1.5px solid ${theme.borderLight}`,
-              background: "transparent", color: theme.textMuted, fontSize: 13, fontWeight: 600,
-              cursor: "pointer", fontFamily: fontBody,
-            }}>{showBrowse ? "Hide" : "Browse"} Troops</button>
+            <button onClick={() => setShowBrowse(!showBrowse)}
+              className="flex-1 py-3 rounded-btn border-[1.5px] border-tl-border-light bg-transparent text-tl-text-muted text-[13px] font-semibold cursor-pointer font-body">{showBrowse ? "Hide" : "Browse"} Troops</button>
           )}
         </div>
 
         {/* ── Browse Public Troops ── */}
         {showBrowse && (dashboard?.public_troops || []).length > 0 && (
-          <div style={{ ...card(theme), marginTop: 12 }}>
-            <div style={cardTitle(theme)}>Public Troops</div>
+          <div className="tl-card mt-3">
+            <div className="tl-card-title">Public Troops</div>
             {dashboard!.public_troops.map(t => (
-              <div key={t.id} style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                padding: "8px 12px", background: theme.bgAlt, borderRadius: 8, marginBottom: 4,
-                border: `1px solid ${theme.borderLight}`,
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div key={t.id}
+                className="flex items-center justify-between py-2 px-3 bg-tl-bg-alt rounded-btn mb-1 border border-tl-border-light">
+                <div className="flex items-center gap-2.5">
                   <TroopLogo troopId={t.id} name={t.name} size={40} theme={theme} />
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: theme.heading }}>{t.name}</div>
-                    <div style={{ fontSize: 10, color: theme.textDim }}>{[t.council, t.location].filter(Boolean).join(" \u00B7 ")}</div>
+                    <div className="text-xs font-bold text-tl-heading">{t.name}</div>
+                    <div className="text-[10px] text-tl-text-dim">{[t.council, t.location].filter(Boolean).join(" \u00B7 ")}</div>
                   </div>
                 </div>
                 {isGlobalAdmin ? (
                   <button onClick={() => {
                     // For global admin, enter the troop directly — pick first adventure or go to adventure picker
                     onEnterAdventure(t.id, null);
-                  }} style={{
-                    padding: "4px 10px", borderRadius: 5, border: "none", background: theme.accent,
-                    color: "#fff", fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-                  }}>Enter {"\u2192"}</button>
+                  }} className="py-1 px-2.5 rounded-[5px] border-none bg-tl-accent text-white text-[10px] font-semibold cursor-pointer font-body">Enter {"\u2192"}</button>
                 ) : (
-                  <button onClick={() => handleJoinClick(t.id, t.name)} style={{
-                    padding: "4px 10px", borderRadius: 5, border: "none", background: theme.accent,
-                    color: "#fff", fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-                  }}>Request to Join</button>
+                  <button onClick={() => handleJoinClick(t.id, t.name)}
+                    className="py-1 px-2.5 rounded-[5px] border-none bg-tl-accent text-white text-[10px] font-semibold cursor-pointer font-body">Request to Join</button>
                 )}
               </div>
             ))}
@@ -704,29 +652,28 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
 
         {/* ── Create Troop Flow (2-step, preserved from Lobby) ── */}
         {showCreate && createStep === 2 && (
-          <div style={{ ...card(theme), marginTop: 12 }}>
-            <div style={cardTitle(theme)}>Set Up Your First Adventure</div>
-            <div style={{ fontSize: 12, color: theme.textDim, marginBottom: 14 }}>
-              <strong style={{ color: theme.heading }}>{createdTroopName}</strong> is ready! Now create your first adventure.
+          <div className="tl-card mt-3">
+            <div className="tl-card-title">Set Up Your First Adventure</div>
+            <div className="text-xs text-tl-text-dim mb-3.5">
+              <strong className="text-tl-heading">{createdTroopName}</strong> is ready! Now create your first adventure.
             </div>
             <form onSubmit={handleCreateAdventure}>
-              <div style={{ marginBottom: 10 }}>
-                <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase", marginBottom: 4, display: "block" }}>Adventure Type</label>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+              <div className="mb-2.5">
+                <label className="text-[9px] font-bold text-tl-text-dim uppercase mb-1 block">Adventure Type</label>
+                <div className="grid grid-cols-2 gap-1.5">
                   {ADVENTURE_TYPES.map((t: AdventureTypeT) => (
                     <button key={t.id} type="button" disabled={!t.enabled}
                       onClick={() => t.enabled && setAdvForm({ ...advForm, adventure_type: t.id })}
-                      style={{
-                        padding: "10px 12px", borderRadius: 8, cursor: t.enabled ? "pointer" : "default",
-                        border: advForm.adventure_type === t.id ? `2px solid ${theme.accent}` : `1.5px solid ${theme.borderLight}`,
-                        background: advForm.adventure_type === t.id ? theme.accentBg : theme.bgAlt,
-                        opacity: t.enabled ? 1 : 0.45, textAlign: "left", fontFamily: fontBody, position: "relative",
-                      }}>
-                      <div style={{ fontSize: 14, marginBottom: 2 }}>{t.icon}</div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: t.enabled ? theme.heading : theme.textDim }}>{t.name}</div>
-                      <div style={{ fontSize: 10, color: theme.textDim }}>{t.location}</div>
+                      className={clsx(
+                        "py-2.5 px-3 rounded-btn text-left font-body relative",
+                        advForm.adventure_type === t.id ? "border-2 border-tl-accent bg-tl-accent-bg" : "border-[1.5px] border-tl-border-light bg-tl-bg-alt",
+                        t.enabled ? "cursor-pointer opacity-100" : "cursor-default opacity-45"
+                      )}>
+                      <div className="text-sm mb-0.5">{t.icon}</div>
+                      <div className={clsx("text-xs font-bold", t.enabled ? "text-tl-heading" : "text-tl-text-dim")}>{t.name}</div>
+                      <div className="text-[10px] text-tl-text-dim">{t.location}</div>
                       {!t.enabled && (
-                        <div style={{ position: "absolute", top: 6, right: 8, fontSize: 8, fontWeight: 700, color: theme.textDim, background: theme.border, padding: "2px 6px", borderRadius: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>Coming Soon</div>
+                        <div className="absolute top-1.5 right-2 text-[8px] font-bold text-tl-text-dim bg-tl-border py-0.5 px-1.5 rounded-[4px] uppercase tracking-[0.5px]">Coming Soon</div>
                       )}
                     </button>
                   ))}
@@ -734,22 +681,23 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
               </div>
               <input value={advForm.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdvForm({ ...advForm, name: e.target.value })}
                 placeholder={`Crew name (e.g. ${(ADVENTURE_TYPES.find((t: AdventureTypeT) => t.id === advForm.adventure_type)?.name || "Philmont")} 2026)`}
-                style={inputStyle} required />
+                className="w-full py-2.5 px-3 rounded-[7px] border-[1.5px] border-tl-border-light bg-tl-input text-tl-text text-xs font-body outline-none mb-2 box-border" required />
               {(() => {
                 const labels = ADVENTURE_TYPES.find((t: AdventureTypeT) => t.id === advForm.adventure_type)?.dateLabels || ADVENTURE_TYPES[0].dateLabels;
                 return (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
+                  <div className="grid grid-cols-2 gap-1.5 mb-2">
                     {(["depart", "arrive", "return", "home"] as const).map(key => (
                       <div key={key}>
-                        <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>{labels[key]}</label>
-                        <input value={advForm[`${key}_date`]} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdvForm({ ...advForm, [`${key}_date`]: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+                        <label className="text-[9px] font-bold text-tl-text-dim uppercase">{labels[key]}</label>
+                        <input value={advForm[`${key}_date`]} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdvForm({ ...advForm, [`${key}_date`]: e.target.value })} type="date"
+                          className="w-full py-2.5 px-3 rounded-[7px] border-[1.5px] border-tl-border-light bg-tl-input text-tl-text text-xs font-body outline-none box-border" />
                       </div>
                     ))}
                   </div>
                 );
               })()}
               <select value={advForm.itinerary_id} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAdvForm({ ...advForm, itinerary_id: e.target.value })}
-                style={{ ...inputStyle, color: advForm.itinerary_id ? theme.text : theme.textDim }}>
+                className={clsx("w-full py-2.5 px-3 rounded-[7px] border-[1.5px] border-tl-border-light bg-tl-input text-xs font-body outline-none mb-2 box-border", advForm.itinerary_id ? "text-tl-text" : "text-tl-text-dim")}>
                 <option value="">Select itinerary (optional)...</option>
                 {[12, 9, 7].map(days => {
                   const group = itineraries.filter(it => it.days === days).sort((a, b) => (parseInt(a.id.split("-")[1]) || 0) - (parseInt(b.id.split("-")[1]) || 0));
@@ -760,88 +708,85 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
                   ) : null;
                 })}
               </select>
-              {error && <div style={{ fontSize: 12, color: theme.danger, marginBottom: 8 }}>{error}</div>}
-              <button type="submit" disabled={formLoading} style={{
-                width: "100%", padding: "10px 0", borderRadius: 7, border: "none",
-                background: theme.accent, color: "#fff", fontSize: 12, fontWeight: 600,
-                cursor: formLoading ? "wait" : "pointer", fontFamily: fontBody,
-              }}>{formLoading ? "..." : "Create Adventure & Enter"}</button>
+              {error && <div className="text-xs text-tl-danger mb-2">{error}</div>}
+              <button type="submit" disabled={formLoading}
+                className="w-full py-2.5 rounded-[7px] border-none bg-tl-accent text-white text-xs font-semibold font-body"
+                style={{ cursor: formLoading ? "wait" : "pointer" }}>{formLoading ? "..." : "Create Adventure & Enter"}</button>
             </form>
           </div>
         )}
 
         {showCreate && createStep === 1 && (
-          <div style={{ ...card(theme), marginTop: 12 }}>
-            <div style={cardTitle(theme)}>Create a Troop</div>
+          <div className="tl-card mt-3">
+            <div className="tl-card-title">Create a Troop</div>
             <form onSubmit={handleCreateTroop}>
               <input value={newTroop.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTroop({ ...newTroop, name: e.target.value })}
-                placeholder="Troop or crew name (e.g. Troop 10, Crew 614)" style={inputStyle} required />
+                placeholder="Troop or crew name (e.g. Troop 10, Crew 614)"
+                className="w-full py-2.5 px-3 rounded-[7px] border-[1.5px] border-tl-border-light bg-tl-input text-tl-text text-xs font-body outline-none mb-2 box-border" required />
               <CouncilPicker value={newTroop.council_id} onChange={(id: number | string | null) => setNewTroop({ ...newTroop, council_id: id })} />
-              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              <div className="flex gap-2 mb-2">
                 <input value={newTroop.city} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTroop({ ...newTroop, city: e.target.value })}
-                  placeholder="City (required)" style={{ ...inputStyle, flex: 1, marginBottom: 0 }} required />
+                  placeholder="City (required)" className="flex-1 py-2.5 px-3 rounded-[7px] border-[1.5px] border-tl-border-light bg-tl-input text-tl-text text-xs font-body outline-none box-border" required />
                 <select value={newTroop.state} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewTroop({ ...newTroop, state: e.target.value })}
-                  style={{ ...inputStyle, width: 80, marginBottom: 0, cursor: "pointer" }} required>
+                  className="w-20 py-2.5 px-3 rounded-[7px] border-[1.5px] border-tl-border-light bg-tl-input text-tl-text text-xs font-body outline-none cursor-pointer box-border" required>
                   <option value="">State</option>
                   {US_STATES.map((s: string) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+              <div className="mb-2.5">
+                <div className="flex items-center gap-2.5 mb-1.5">
                   {newLogoPreview ? (
                     <img src={newLogoPreview} alt="Logo preview" onError={() => { setNewLogoPreview(null); setNewLogoFile(null); }}
-                      style={{ width: 100, height: 100, borderRadius: 8, objectFit: "contain", background: theme.bgAlt, border: `1px solid ${theme.border}` }} />
+                      className="w-[100px] h-[100px] rounded-btn object-contain bg-tl-bg-alt border border-tl-border" />
                   ) : (
-                    <div style={{ width: 56, height: 56, borderRadius: 8, background: theme.accent + "20", display: "flex", alignItems: "center", justifyContent: "center", border: `1px dashed ${theme.borderLight}`, fontSize: 20, color: theme.textDim }}>{"\u{1F4F7}"}</div>
+                    <div className="w-14 h-14 rounded-btn flex items-center justify-center border border-dashed border-tl-border-light text-xl text-tl-text-dim"
+                      style={{ background: theme.accent + "20" }}>{"\u{1F4F7}"}</div>
                   )}
                   <div>
-                    <label style={{ display: "inline-block", padding: "5px 12px", borderRadius: 6, border: "none", background: theme.accent, color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: fontDisplay }}>
+                    <label className="inline-block py-[5px] px-3 rounded-badge-sm border-none bg-tl-accent text-white text-[11px] font-bold cursor-pointer font-display">
                       {newLogoPreview ? "Change" : "Add Logo"}
-                      <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleLogoSelect} style={{ display: "none" }} />
+                      <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleLogoSelect} className="hidden" />
                     </label>
                     {newLogoPreview && (
-                      <button type="button" onClick={() => { setNewLogoFile(null); setNewLogoPreview(null); }} style={{ marginLeft: 6, padding: "3px 8px", borderRadius: 4, border: "none", background: "transparent", color: theme.textDim, fontSize: 10, cursor: "pointer", fontFamily: fontBody }}>Remove</button>
+                      <button type="button" onClick={() => { setNewLogoFile(null); setNewLogoPreview(null); }}
+                        className="ml-1.5 py-[3px] px-2 rounded-[4px] border-none bg-transparent text-tl-text-dim text-[10px] cursor-pointer font-body">Remove</button>
                     )}
-                    <div style={{ fontSize: 10, color: theme.textDim, marginTop: 3 }}>Optional \u00B7 PNG, JPG, or WebP \u00B7 Max 500KB</div>
+                    <div className="text-[10px] text-tl-text-dim mt-[3px]">Optional \u00B7 PNG, JPG, or WebP \u00B7 Max 500KB</div>
                   </div>
                 </div>
               </div>
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: theme.heading }}>Troop Visibility</span>
-                  <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: `1px solid ${theme.borderLight}` }}>
+              <div className="mb-2.5">
+                <div className="flex items-center gap-2.5 mb-1.5">
+                  <span className="text-xs font-semibold text-tl-heading">Troop Visibility</span>
+                  <div className="flex rounded-badge-sm overflow-hidden border border-tl-border-light">
                     {[true, false].map(isPublic => (
-                      <button key={String(isPublic)} type="button" onClick={() => setNewTroop({ ...newTroop, is_public: isPublic })} style={{
-                        padding: "4px 14px", border: "none", fontSize: 11, fontWeight: 600,
-                        cursor: "pointer", fontFamily: fontBody,
-                        background: newTroop.is_public === isPublic ? theme.accent : "transparent",
-                        color: newTroop.is_public === isPublic ? "#fff" : theme.textMuted,
-                      }}>{isPublic ? "Public" : "Private"}</button>
+                      <button key={String(isPublic)} type="button" onClick={() => setNewTroop({ ...newTroop, is_public: isPublic })}
+                        className={clsx(
+                          "py-1 px-3.5 border-none text-[11px] font-semibold cursor-pointer font-body",
+                          newTroop.is_public === isPublic ? "bg-tl-accent text-white" : "bg-transparent text-tl-text-muted"
+                        )}>{isPublic ? "Public" : "Private"}</button>
                     ))}
                   </div>
                 </div>
-                <div style={{
-                  fontSize: 11, color: newTroop.is_public ? theme.textDim : theme.warn,
-                  padding: "8px 10px", borderRadius: 6, lineHeight: 1.5,
-                  background: newTroop.is_public ? theme.bgAlt : (theme.name === "dark" ? "#3a2820" : "#fef3e8"),
-                  border: `1px solid ${newTroop.is_public ? theme.borderLight : theme.warn + "40"}`,
-                }}>
+                <div className={clsx(
+                  "text-[11px] py-2 px-2.5 rounded-badge-sm leading-[1.5]",
+                  newTroop.is_public ? "text-tl-text-dim bg-tl-bg-alt border border-tl-border-light" : "text-tl-warn"
+                )} style={!newTroop.is_public ? {
+                  background: theme.name === "dark" ? "#3a2820" : "#fef3e8",
+                  border: `1px solid ${theme.warn}40`,
+                } : undefined}>
                   {newTroop.is_public
                     ? "Your troop will be listed so parents and scouts can search by name and request to join."
                     : "Your troop will be hidden from search. You'll need to invite each member by email."}
                 </div>
               </div>
-              {error && <div style={{ fontSize: 12, color: theme.danger, marginBottom: 8 }}>{error}</div>}
-              <div style={{ display: "flex", gap: 8 }}>
-                <button type="button" onClick={() => { setShowCreate(false); setCreateStep(1); setCreatedTroopId(null); }} style={{
-                  flex: 1, padding: "10px 0", borderRadius: 7, border: `1px solid ${theme.borderLight}`,
-                  background: theme.bgAlt, color: theme.textMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-                }}>Cancel</button>
-                <button type="submit" disabled={formLoading} style={{
-                  flex: 1, padding: "10px 0", borderRadius: 7, border: "none",
-                  background: theme.accent, color: "#fff", fontSize: 13, fontWeight: 700,
-                  cursor: formLoading ? "wait" : "pointer", fontFamily: fontDisplay, letterSpacing: 0.3,
-                }}>{formLoading ? "..." : "Create"}</button>
+              {error && <div className="text-xs text-tl-danger mb-2">{error}</div>}
+              <div className="flex gap-2">
+                <button type="button" onClick={() => { setShowCreate(false); setCreateStep(1); setCreatedTroopId(null); }}
+                  className="flex-1 py-2.5 rounded-[7px] border border-tl-border-light bg-tl-bg-alt text-tl-text-muted text-xs font-semibold cursor-pointer font-body">Cancel</button>
+                <button type="submit" disabled={formLoading}
+                  className="flex-1 py-2.5 rounded-[7px] border-none bg-tl-accent text-white text-[13px] font-bold font-display tracking-[0.3px]"
+                  style={{ cursor: formLoading ? "wait" : "pointer" }}>{formLoading ? "..." : "Create"}</button>
               </div>
             </form>
           </div>

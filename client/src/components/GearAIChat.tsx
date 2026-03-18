@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { api } from "../api";
-import { useTheme } from "../contexts/ThemeContext";
-import { fontBody, fontDisplay, card, cardTitle } from "../utils/theme";
+import clsx from "clsx";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -16,7 +15,6 @@ interface Props {
 }
 
 export default function GearAIChat({ adventureId, onClose }: Props): React.JSX.Element {
-  const { theme } = useTheme();
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", content: "Hi! I'm your gear advisor. Ask me anything about Philmont gear — pack weight optimization, product comparisons, what to bring, or compliance questions. \u{1F3D5}\uFE0F" }
   ]);
@@ -54,59 +52,43 @@ export default function GearAIChat({ adventureId, onClose }: Props): React.JSX.E
   };
 
   return (
-    <div style={{
-      position: "fixed", bottom: 20, right: 20, width: 340, height: 450,
-      background: theme.bgCard, borderRadius: 16, border: `1px solid ${theme.border}`,
-      boxShadow: "0 8px 32px rgba(0,0,0,0.3)", zIndex: 900,
-      display: "flex", flexDirection: "column", overflow: "hidden",
-    }}>
+    <div className="fixed bottom-5 right-5 w-[340px] h-[450px] bg-tl-card rounded-[16px] border border-tl-border shadow-[0_8px_32px_rgba(0,0,0,0.3)] z-[900] flex flex-col overflow-hidden">
       {/* Header */}
-      <div style={{
-        padding: "12px 16px", borderBottom: `1px solid ${theme.borderLight}`,
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        background: theme.forestDeep || theme.accent,
-      }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: fontDisplay }}>
+      <div className="px-4 py-3 border-b border-tl-border-light flex justify-between items-center bg-tl-forest-deep">
+        <span className="text-[13px] font-bold text-white font-display">
           🤖 Gear Advisor
         </span>
-        <button onClick={onClose} style={{
-          background: "transparent", border: "none", color: "#fff", fontSize: 16, cursor: "pointer", padding: 0,
-        }}>✕</button>
+        <button onClick={onClose} className="bg-transparent border-none text-white text-[16px] cursor-pointer p-0">✕</button>
       </div>
 
       {/* Messages */}
-      <div style={{ flex: 1, overflowY: "auto", padding: 12 }}>
+      <div className="flex-1 overflow-y-auto p-3">
         {messages.map((msg, i) => (
-          <div key={i} style={{
-            marginBottom: 10, display: "flex",
-            justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-          }}>
-            <div style={{
-              maxWidth: "85%", padding: "8px 12px", borderRadius: 12,
-              background: msg.role === "user" ? theme.accent : theme.bgAlt,
-              color: msg.role === "user" ? "#fff" : theme.text,
-              fontSize: 12, lineHeight: 1.5, fontFamily: fontBody,
-              borderBottomRightRadius: msg.role === "user" ? 4 : 12,
-              borderBottomLeftRadius: msg.role === "user" ? 12 : 4,
-            }}>
+          <div key={i} className={clsx("mb-2.5 flex", msg.role === "user" ? "justify-end" : "justify-start")}>
+            <div className={clsx(
+              "max-w-[85%] px-3 py-2 rounded-xl text-xs leading-relaxed font-body",
+              msg.role === "user"
+                ? "bg-tl-accent text-white rounded-br-[4px]"
+                : "bg-tl-bg-alt text-tl-text rounded-bl-[4px]"
+            )}>
               {msg.content}
             </div>
           </div>
         ))}
         {loading && (
-          <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 10 }}>
-            <div style={{ padding: "8px 12px", borderRadius: 12, background: theme.bgAlt, color: theme.textDimmer, fontSize: 12 }}>
+          <div className="flex justify-start mb-2.5">
+            <div className="px-3 py-2 rounded-xl bg-tl-bg-alt text-tl-text-dimmer text-xs">
               Thinking...
             </div>
           </div>
         )}
         {error === "premium" && (
-          <div style={{ padding: 12, background: "#FEF3C7", borderRadius: 8, marginBottom: 10, fontSize: 11, color: "#92400E" }}>
+          <div className="p-3 bg-[#FEF3C7] rounded-lg mb-2.5 text-[11px] text-[#92400E]">
             ⭐ AI gear advice is a premium feature. Upgrade your troop to unlock personalized gear recommendations, weight optimization, and more!
           </div>
         )}
         {error === "not_configured" && (
-          <div style={{ padding: 12, background: theme.bgAlt, borderRadius: 8, marginBottom: 10, fontSize: 11, color: theme.textMuted }}>
+          <div className="p-3 bg-tl-bg-alt rounded-lg mb-2.5 text-[11px] text-tl-text-muted">
             AI features are being set up by the platform admin. Check back soon!
           </div>
         )}
@@ -114,21 +96,17 @@ export default function GearAIChat({ adventureId, onClose }: Props): React.JSX.E
       </div>
 
       {/* Input */}
-      <div style={{ padding: "10px 12px", borderTop: `1px solid ${theme.borderLight}`, display: "flex", gap: 6 }}>
+      <div className="px-3 py-2.5 border-t border-tl-border-light flex gap-1.5">
         <input
           value={input} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
           onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && send()}
           placeholder="Ask about gear..."
-          style={{
-            flex: 1, padding: "8px 10px", borderRadius: 8, border: `1px solid ${theme.borderLight}`,
-            background: theme.bgInput, color: theme.text, fontSize: 12, fontFamily: fontBody, outline: "none",
-          }}
+          className="flex-1 px-2.5 py-2 rounded-lg border border-tl-border-light bg-tl-input text-tl-text text-xs font-body outline-none"
         />
-        <button onClick={send} disabled={loading || !input.trim()} style={{
-          padding: "8px 14px", borderRadius: 8, border: "none",
-          background: loading ? theme.textDimmer : theme.accent,
-          color: "#fff", fontSize: 12, fontWeight: 600, cursor: loading ? "default" : "pointer", fontFamily: fontBody,
-        }}>
+        <button onClick={send} disabled={loading || !input.trim()} className={clsx(
+          "px-3.5 py-2 rounded-lg border-none text-white text-xs font-semibold font-body",
+          loading ? "bg-tl-text-dimmer cursor-default" : "bg-tl-accent cursor-pointer"
+        )}>
           {loading ? "..." : "Send"}
         </button>
       </div>

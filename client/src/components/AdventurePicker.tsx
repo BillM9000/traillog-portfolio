@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
-import { fontBody, fontDisplay, card, cardTitle } from "../utils/theme";
 import { ADVENTURE_TYPES } from "../utils/constants";
 import Logo from "./Logo";
+import clsx from "clsx";
 import type { User, Adventure, AdventureType } from "../types";
 
 interface Troop {
@@ -90,16 +90,10 @@ export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack
     }
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%", padding: "10px 12px", borderRadius: 7, border: `1.5px solid ${theme.borderLight}`,
-    background: theme.bgInput, color: theme.text, fontSize: 12, fontFamily: fontBody,
-    outline: "none", marginBottom: 8, boxSizing: "border-box",
-  };
-
   if (fetching) {
     return (
-      <div style={{ minHeight: "100vh", background: theme.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ color: theme.textDim, fontSize: 14, fontFamily: fontBody }}>Loading adventures...</div>
+      <div className="min-h-screen bg-tl-bg flex items-center justify-center">
+        <div className="text-tl-text-dim text-sm font-body">Loading adventures...</div>
       </div>
     );
   }
@@ -107,105 +101,97 @@ export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack
   const activeAdventures = adventures.filter(a => a.status === "active");
 
   return (
-    <div style={{ minHeight: "100vh", background: theme.bg, fontFamily: fontBody, color: theme.text }}>
-      <div style={{ padding: "18px 20px", borderBottom: `1px solid ${theme.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <div className="min-h-screen bg-tl-bg font-body text-tl-text">
+      <div className="py-[18px] px-5 border-b border-tl-border flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
           <Logo size={36} />
           <div>
-            <h1 style={{ fontFamily: fontDisplay, fontSize: 20, fontWeight: 800, color: theme.heading, margin: 0 }}>
+            <h1 className="font-display text-xl font-extrabold text-tl-heading m-0">
               {troop.name}
             </h1>
             {troop.council && (
-              <div style={{ fontSize: 11, color: theme.textMuted, fontFamily: fontBody }}>
-                {[troop.council, troop.location].filter(Boolean).join(" · ")}
+              <div className="text-[11px] text-tl-text-muted font-body">
+                {[troop.council, troop.location].filter(Boolean).join(" \u00B7 ")}
               </div>
             )}
-            <div style={{ fontSize: 11, color: theme.textDim, fontFamily: fontBody }}>Select an adventure</div>
+            <div className="text-[11px] text-tl-text-dim font-body">Select an adventure</div>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button onClick={onBack} style={{
-            fontSize: 11, color: theme.accent, background: "none", border: `1px solid ${theme.borderAccent}`,
-            padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontFamily: fontBody, fontWeight: 600,
-          }}>Back</button>
+        <div className="flex items-center gap-2">
+          <button onClick={onBack} className="text-[11px] text-tl-accent bg-transparent border border-tl-border-accent py-1 px-2.5 rounded-[5px] cursor-pointer font-body font-semibold">
+            Back
+          </button>
           {isGlobalAdmin && (
-            <button onClick={onGlobalAdminClick} style={{
-              fontSize: 11, color: theme.accent, background: "none", border: `1px solid ${theme.accent}40`,
-              padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontFamily: fontBody, fontWeight: 600,
-            }}>🌐 Platform Admin</button>
+            <button onClick={onGlobalAdminClick} className="text-[11px] text-tl-accent bg-transparent border border-tl-accent/25 py-1 px-2.5 rounded-[5px] cursor-pointer font-body font-semibold">
+              {"\uD83C\uDF10"} Platform Admin
+            </button>
           )}
-          <button onClick={onLogout} style={{
-            fontSize: 11, color: theme.warn, background: "none", border: `1px solid ${theme.warnBg}`,
-            padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontFamily: fontBody, fontWeight: 600,
-          }}>Sign Out</button>
+          <button onClick={onLogout} className="text-[11px] text-tl-warn bg-transparent border border-tl-warn-bg py-1 px-2.5 rounded-[5px] cursor-pointer font-body font-semibold">
+            Sign Out
+          </button>
         </div>
       </div>
 
-      <div style={{ maxWidth: 500, margin: "0 auto", padding: "24px 20px" }}>
-        <div style={card(theme)}>
-          <div style={cardTitle(theme)}>Adventures</div>
+      <div className="max-w-[500px] mx-auto py-6 px-5">
+        <div className="tl-card">
+          <div className="tl-card-title">Adventures</div>
           {activeAdventures.length === 0 && !showCreate ? (
-            <p style={{ fontSize: 12, color: theme.textDim, fontStyle: "italic" }}>
+            <p className="text-xs text-tl-text-dim italic">
               No adventures yet. {isAdmin ? "Create one to get started!" : "Ask an admin to create an adventure."}
             </p>
           ) : (
             activeAdventures.map(a => (
-              <div key={a.id} onClick={() => onSelect(a.id)} style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                padding: "12px 14px", background: theme.bgAlt, borderRadius: 8, marginBottom: 6,
-                border: `1px solid ${theme.border}`, cursor: "pointer",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 22 }}>{(ADVENTURE_TYPES as AdventureType[]).find(t => t.id === a.adventure_type)?.icon || "🏔️"}</span>
+              <div key={a.id} onClick={() => onSelect(a.id)}
+                className="flex items-center justify-between py-3 px-3.5 bg-tl-bg-alt rounded-btn mb-1.5 border border-tl-border cursor-pointer">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-[22px]">{(ADVENTURE_TYPES as AdventureType[]).find(t => t.id === a.adventure_type)?.icon || "\uD83C\uDFD4\uFE0F"}</span>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>{a.name}</div>
-                    <div style={{ fontSize: 11, color: theme.textDim, marginTop: 2 }}>
+                    <div className="text-sm font-bold text-tl-heading font-display">{a.name}</div>
+                    <div className="text-[11px] text-tl-text-dim mt-0.5">
                       {a.itinerary_id && `Itinerary ${a.itinerary_id}`}
                       {(a.arrive_date || a.trek_date) && ` \u2022 ${a.arrive_date || a.trek_date}`}
                     </div>
                   </div>
                 </div>
-                <span style={{ fontSize: 18, color: theme.textDimmer }}>›</span>
+                <span className="text-lg text-tl-text-dimmer">{"\u203A"}</span>
               </div>
             ))
           )}
         </div>
 
         {isAdmin && !showCreate && (
-          <button onClick={openCreate} style={{
-            width: "100%", padding: "12px 0", borderRadius: 8, border: `1.5px dashed ${theme.borderLight}`,
-            background: "transparent", color: theme.accent, fontSize: 13, fontWeight: 600,
-            cursor: "pointer", fontFamily: fontBody,
-          }}>+ Create Adventure</button>
+          <button onClick={openCreate}
+            className="w-full py-3 rounded-btn border-[1.5px] border-dashed border-tl-border-light bg-transparent text-tl-accent text-[13px] font-semibold cursor-pointer font-body">
+            + Create Adventure
+          </button>
         )}
 
         {isAdmin && showCreate && (
-          <div style={card(theme)}>
-            <div style={cardTitle(theme)}>New Adventure</div>
+          <div className="tl-card">
+            <div className="tl-card-title">New Adventure</div>
             <form onSubmit={handleCreate}>
               {/* Adventure Type Selector */}
-              <div style={{ marginBottom: 10 }}>
-                <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase", marginBottom: 4, display: "block" }}>Adventure Type</label>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+              <div className="mb-2.5">
+                <label className="text-[9px] font-bold text-tl-text-dim uppercase mb-1 block">Adventure Type</label>
+                <div className="grid grid-cols-2 gap-1.5">
                   {(ADVENTURE_TYPES as AdventureType[]).map(t => (
                     <button key={t.id} type="button" disabled={!t.enabled}
                       onClick={() => t.enabled && setForm({ ...form, adventure_type: t.id })}
-                      style={{
-                        padding: "10px 12px", borderRadius: 8, cursor: t.enabled ? "pointer" : "default",
-                        border: form.adventure_type === t.id ? `2px solid ${theme.accent}` : `1.5px solid ${theme.borderLight}`,
-                        background: form.adventure_type === t.id ? theme.accentBg : t.enabled ? theme.bgAlt : theme.bgAlt,
-                        opacity: t.enabled ? 1 : 0.45, textAlign: "left", fontFamily: fontBody,
-                        position: "relative",
-                      }}>
-                      <div style={{ fontSize: 14, marginBottom: 2 }}>{t.icon}</div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: t.enabled ? theme.heading : theme.textDim }}>{t.name}</div>
-                      <div style={{ fontSize: 10, color: theme.textDim }}>{t.location}</div>
+                      className={clsx(
+                        "py-2.5 px-3 rounded-btn cursor-default text-left font-body relative",
+                        form.adventure_type === t.id
+                          ? "border-2 border-tl-accent bg-tl-accent-bg"
+                          : "border-[1.5px] border-tl-border-light bg-tl-bg-alt",
+                        t.enabled ? "cursor-pointer opacity-100" : "opacity-45"
+                      )}
+                    >
+                      <div className="text-sm mb-0.5">{t.icon}</div>
+                      <div className={clsx("text-xs font-bold", t.enabled ? "text-tl-heading" : "text-tl-text-dim")}>{t.name}</div>
+                      <div className="text-[10px] text-tl-text-dim">{t.location}</div>
                       {!t.enabled && (
-                        <div style={{
-                          position: "absolute", top: 6, right: 8, fontSize: 8, fontWeight: 700,
-                          color: theme.textDim, background: theme.border, padding: "2px 6px", borderRadius: 4,
-                          textTransform: "uppercase", letterSpacing: 0.5,
-                        }}>Coming Soon</div>
+                        <div className="absolute top-1.5 right-2 text-[8px] font-bold text-tl-text-dim bg-tl-border py-0.5 px-1.5 rounded uppercase tracking-wide">
+                          Coming Soon
+                        </div>
                       )}
                     </button>
                   ))}
@@ -214,32 +200,32 @@ export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack
 
               <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
                 placeholder={`Adventure name (e.g. ${((ADVENTURE_TYPES as AdventureType[]).find(t => t.id === form.adventure_type)?.name || "Philmont")} 2026)`}
-                style={inputStyle} required />
+                className="tl-input w-full mb-2" required />
               {(() => {
                 const labels = (ADVENTURE_TYPES as AdventureType[]).find(t => t.id === form.adventure_type)?.dateLabels || (ADVENTURE_TYPES as AdventureType[])[0].dateLabels;
                 return (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
+                  <div className="grid grid-cols-2 gap-1.5 mb-2">
                     <div>
-                      <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>{labels.depart}</label>
-                      <input value={form.depart_date} onChange={e => setForm({ ...form, depart_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+                      <label className="text-[9px] font-bold text-tl-text-dim uppercase">{labels.depart}</label>
+                      <input value={form.depart_date} onChange={e => setForm({ ...form, depart_date: e.target.value })} type="date" className="tl-input w-full !mb-0" />
                     </div>
                     <div>
-                      <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>{labels.arrive}</label>
-                      <input value={form.arrive_date} onChange={e => setForm({ ...form, arrive_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+                      <label className="text-[9px] font-bold text-tl-text-dim uppercase">{labels.arrive}</label>
+                      <input value={form.arrive_date} onChange={e => setForm({ ...form, arrive_date: e.target.value })} type="date" className="tl-input w-full !mb-0" />
                     </div>
                     <div>
-                      <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>{labels.return}</label>
-                      <input value={form.return_date} onChange={e => setForm({ ...form, return_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+                      <label className="text-[9px] font-bold text-tl-text-dim uppercase">{labels.return}</label>
+                      <input value={form.return_date} onChange={e => setForm({ ...form, return_date: e.target.value })} type="date" className="tl-input w-full !mb-0" />
                     </div>
                     <div>
-                      <label style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" }}>{labels.home}</label>
-                      <input value={form.home_date} onChange={e => setForm({ ...form, home_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+                      <label className="text-[9px] font-bold text-tl-text-dim uppercase">{labels.home}</label>
+                      <input value={form.home_date} onChange={e => setForm({ ...form, home_date: e.target.value })} type="date" className="tl-input w-full !mb-0" />
                     </div>
                   </div>
                 );
               })()}
               <select value={form.itinerary_id} onChange={e => setForm({ ...form, itinerary_id: e.target.value })}
-                style={{ ...inputStyle, color: form.itinerary_id ? theme.text : theme.textDim }}>
+                className={clsx("tl-input w-full", form.itinerary_id ? "text-tl-text" : "text-tl-text-dim")}>
                 <option value="">Select itinerary...</option>
                 {[12, 9, 7].map(days => {
                   const group = itineraries.filter(it => it.days === days).sort((a, b) => {
@@ -253,17 +239,19 @@ export default function AdventurePicker({ user, troop, isAdmin, onSelect, onBack
                   ) : null;
                 })}
               </select>
-              {error && <div style={{ fontSize: 12, color: theme.danger, marginBottom: 8 }}>{error}</div>}
-              <div style={{ display: "flex", gap: 8 }}>
-                <button type="button" onClick={() => setShowCreate(false)} style={{
-                  flex: 1, padding: "10px 0", borderRadius: 7, border: `1px solid ${theme.borderLight}`,
-                  background: theme.bgAlt, color: theme.textMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-                }}>Cancel</button>
-                <button type="submit" disabled={loading} style={{
-                  flex: 1, padding: "10px 0", borderRadius: 7, border: "none",
-                  background: theme.accent, color: "#fff", fontSize: 12, fontWeight: 600,
-                  cursor: loading ? "wait" : "pointer", fontFamily: fontBody,
-                }}>{loading ? "..." : "Create"}</button>
+              {error && <div className="text-xs text-tl-danger mb-2">{error}</div>}
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setShowCreate(false)}
+                  className="flex-1 py-2.5 rounded-[7px] border border-tl-border-light bg-tl-bg-alt text-tl-text-muted text-xs font-semibold cursor-pointer font-body">
+                  Cancel
+                </button>
+                <button type="submit" disabled={loading}
+                  className={clsx(
+                    "flex-1 py-2.5 rounded-[7px] border-none bg-tl-accent text-white text-xs font-semibold font-body",
+                    loading ? "cursor-wait" : "cursor-pointer"
+                  )}>
+                  {loading ? "..." : "Create"}
+                </button>
               </div>
             </form>
           </div>

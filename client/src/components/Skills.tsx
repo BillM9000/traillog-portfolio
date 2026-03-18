@@ -1,10 +1,11 @@
 import type React from "react";
 import { useState, useMemo, useEffect, useCallback } from "react";
+import clsx from "clsx";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAdventure } from "../contexts/AdventureContext";
 import { useAuth } from "../contexts/AuthContext";
-import { card, cardTitle, fontBody, fontDisplay, TRAIL_BADGES, JOURNEY_WAYPOINTS, memberTypeBadge } from "../utils/theme";
+import { TRAIL_BADGES, JOURNEY_WAYPOINTS } from "../utils/theme";
 import { computeCrewReadiness, computeMemberReadiness } from "../utils/readiness";
 import { Activity, Mountain, Footprints, Backpack, RefreshCw, ChevronRight, Target, AlertTriangle, CheckCircle2, Sparkles, Brain, Compass, Route, Lock } from "lucide-react";
 import type { ThemeColors, Skill, ReadinessScore, JourneyWaypoint, TrailBadgeDef, GearCatalogItem, MemberGearItem, Achievement } from "../types";
@@ -115,11 +116,8 @@ interface SkillsProps {
 
 // ── AI Plan Generation Loading Experience ──
 
-interface AIGeneratingCardProps {
-  theme: ThemeColors;
-}
-
-function AIGeneratingCard({ theme }: AIGeneratingCardProps): React.ReactElement {
+function AIGeneratingCard(): React.ReactElement {
+  const { theme } = useTheme();
   const [step, setStep] = useState<number>(0);
   const steps: AIStep[] = [
     { icon: Brain, text: "Analyzing your fitness level & experience..." },
@@ -139,45 +137,38 @@ function AIGeneratingCard({ theme }: AIGeneratingCardProps): React.ReactElement 
   const Icon = current.icon;
 
   return (
-    <div style={{
-      ...card(theme), marginBottom: 10, padding: "24px 20px", textAlign: "center" as const,
-      background: `linear-gradient(135deg, ${theme.bgAlt}, ${theme.bg})`,
+    <div className="tl-card mb-2.5 px-5 py-6 text-center relative overflow-hidden" style={{
+      background: `linear-gradient(135deg, var(--tl-bg-alt), var(--tl-bg))`,
       border: `2px solid ${theme.accent}44`,
-      position: "relative", overflow: "hidden",
     }}>
       {/* Animated background shimmer */}
-      <div style={{
-        position: "absolute", top: 0, left: "-100%", width: "200%", height: "100%",
+      <div className="absolute top-0 -left-full w-[200%] h-full" style={{
         background: `linear-gradient(90deg, transparent, ${theme.accent}08, transparent)`,
         animation: "aiShimmer 2s ease-in-out infinite",
       }} />
 
       {/* Sparkle decorations */}
-      <div style={{ position: "absolute", top: 8, right: 12, opacity: 0.15, animation: "aiPulse 1.5s ease-in-out infinite" }}>
+      <div className="absolute top-2 right-3 opacity-15" style={{ animation: "aiPulse 1.5s ease-in-out infinite" }}>
         <Sparkles size={20} color={theme.accent} />
       </div>
-      <div style={{ position: "absolute", bottom: 8, left: 12, opacity: 0.1, animation: "aiPulse 1.5s ease-in-out infinite 0.5s" }}>
+      <div className="absolute bottom-2 left-3 opacity-10" style={{ animation: "aiPulse 1.5s ease-in-out infinite 0.5s" }}>
         <Sparkles size={16} color={theme.accent} />
       </div>
 
       {/* AI badge */}
-      <div style={{
-        display: "inline-flex", alignItems: "center", gap: 6,
+      <div className="inline-flex items-center gap-1.5 rounded-[20px] px-3.5 py-1 mb-3.5" style={{
         background: `${theme.accent}18`, border: `1px solid ${theme.accent}33`,
-        borderRadius: 20, padding: "4px 14px", marginBottom: 14,
       }}>
         <Sparkles size={12} color={theme.accent} style={{ animation: "aiPulse 1s ease-in-out infinite" }} />
-        <span style={{ fontSize: 10, fontWeight: 800, color: theme.accent, fontFamily: fontBody, letterSpacing: 1.2, textTransform: "uppercase" as const }}>
+        <span className="text-[10px] font-extrabold font-body tracking-[1.2px] uppercase" style={{ color: theme.accent }}>
           Powered by Claude AI
         </span>
       </div>
 
       {/* Main icon */}
-      <div style={{ marginBottom: 12, position: "relative" }}>
-        <div style={{
-          width: 52, height: 52, borderRadius: "50%", margin: "0 auto",
+      <div className="mb-3 relative">
+        <div className="w-[52px] h-[52px] rounded-full mx-auto flex items-center justify-center" style={{
           background: `${theme.accent}15`, border: `2px solid ${theme.accent}33`,
-          display: "flex", alignItems: "center", justifyContent: "center",
           animation: "aiPulse 1.5s ease-in-out infinite",
         }}>
           <Icon size={24} color={theme.accent} />
@@ -185,34 +176,26 @@ function AIGeneratingCard({ theme }: AIGeneratingCardProps): React.ReactElement 
       </div>
 
       {/* Title */}
-      <div style={{
-        fontSize: 16, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay,
-        marginBottom: 6,
-      }}>
+      <div className="text-[16px] font-extrabold text-tl-heading font-display mb-1.5">
         Building Your AI Training Plan
       </div>
-      <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 16, lineHeight: 1.4 }}>
+      <div className="text-[12px] text-tl-text-muted mb-4 leading-[1.4]">
         Our AI is analyzing your assessment, itinerary, and departure date to create a plan tailored specifically for you.
       </div>
 
       {/* Step indicators */}
-      <div style={{ display: "flex", flexDirection: "column" as const, gap: 6, maxWidth: 300, margin: "0 auto" }}>
+      <div className="flex flex-col gap-1.5 max-w-[300px] mx-auto">
         {steps.map((s: AIStep, i: number) => {
           const StepIcon = s.icon;
           const done = i < step;
           const active = i === step;
           return (
-            <div key={i} style={{
-              display: "flex", alignItems: "center", gap: 8, padding: "6px 10px",
-              borderRadius: 8, transition: "all 0.4s ease",
+            <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-[8px] transition-all duration-[400ms]" style={{
               background: active ? `${theme.accent}12` : "transparent",
               border: active ? `1px solid ${theme.accent}22` : "1px solid transparent",
             }}>
-              <div style={{
-                width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
+              <div className="w-[22px] h-[22px] rounded-full shrink-0 flex items-center justify-center transition-all duration-[400ms]" style={{
                 background: done ? theme.accent : active ? `${theme.accent}25` : `${theme.textDimmest}22`,
-                transition: "all 0.4s ease",
               }}>
                 {done ? (
                   <CheckCircle2 size={12} color="#fff" />
@@ -220,10 +203,9 @@ function AIGeneratingCard({ theme }: AIGeneratingCardProps): React.ReactElement 
                   <StepIcon size={11} color={active ? theme.accent : theme.textDimmest} style={active ? { animation: "aiPulse 1s ease-in-out infinite" } : {}} />
                 )}
               </div>
-              <span style={{
-                fontSize: 11, fontWeight: active ? 700 : 500, fontFamily: fontBody,
+              <span className="text-[11px] font-body transition-all duration-[400ms]" style={{
+                fontWeight: active ? 700 : 500,
                 color: done ? theme.accent : active ? theme.heading : theme.textDimmest,
-                transition: "all 0.4s ease",
               }}>
                 {s.text}
               </span>
@@ -250,68 +232,58 @@ function AIGeneratingCard({ theme }: AIGeneratingCardProps): React.ReactElement 
 // ── AI Ready Badge Celebration ──
 
 interface AIBadgeCelebrationProps {
-  theme: ThemeColors;
   onDismiss: () => void;
 }
 
-function AIBadgeCelebration({ theme, onDismiss }: AIBadgeCelebrationProps): React.ReactElement {
+function AIBadgeCelebration({ onDismiss }: AIBadgeCelebrationProps): React.ReactElement {
   return (
-    <div style={{
-      ...card(theme), marginBottom: 10, padding: "28px 20px", textAlign: "center" as const,
-      background: `linear-gradient(135deg, #1a1a2e, #16213e, #0f3460)`,
-      border: `2px solid #e2b340`,
-      position: "relative", overflow: "hidden",
+    <div className="tl-card mb-2.5 px-5 py-7 text-center relative overflow-hidden" style={{
+      background: "linear-gradient(135deg, #1a1a2e, #16213e, #0f3460)",
+      border: "2px solid #e2b340",
       animation: "badgeSlideIn 0.6s ease-out",
     }}>
       {/* Sparkle particles */}
       {[...Array(8)].map((_, i) => (
-        <div key={i} style={{
-          position: "absolute",
+        <div key={i} className="absolute w-1 h-1 rounded-full opacity-60" style={{
           top: `${10 + Math.random() * 80}%`,
           left: `${5 + Math.random() * 90}%`,
-          width: 4, height: 4, borderRadius: "50%",
           background: i % 2 === 0 ? "#e2b340" : "#fff",
-          opacity: 0.6,
           animation: `badgeSparkle ${1.5 + Math.random()}s ease-in-out infinite ${Math.random() * 0.5}s`,
         }} />
       ))}
 
       {/* Badge icon */}
-      <div style={{
-        fontSize: 56, marginBottom: 8,
+      <div className="text-[56px] mb-2" style={{
         animation: "badgePop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.3s both",
         filter: "drop-shadow(0 0 20px rgba(226, 179, 64, 0.5))",
       }}>
-        \uD83E\uDD16
+        {"\uD83E\uDD16"}
       </div>
 
       {/* Title */}
-      <div style={{
-        fontSize: 20, fontWeight: 900, color: "#e2b340", fontFamily: fontDisplay,
-        marginBottom: 4, letterSpacing: 0.5,
+      <div className="text-[20px] font-black font-display mb-1 tracking-[0.5px]" style={{
+        color: "#e2b340",
         animation: "badgeFadeIn 0.5s ease-out 0.5s both",
       }}>
         Badge Earned!
       </div>
-      <div style={{
-        fontSize: 15, fontWeight: 700, color: "#fff", fontFamily: fontDisplay,
-        marginBottom: 10,
+      <div className="text-[15px] font-bold font-display mb-2.5" style={{
+        color: "#fff",
         animation: "badgeFadeIn 0.5s ease-out 0.7s both",
       }}>
         AI Ready
       </div>
-      <div style={{
-        fontSize: 12, color: "#ccc", lineHeight: 1.5, maxWidth: 280, margin: "0 auto 16px",
+      <div className="text-[12px] leading-[1.5] max-w-[280px] mx-auto mb-4" style={{
+        color: "#ccc",
         animation: "badgeFadeIn 0.5s ease-out 0.9s both",
       }}>
         You completed your AI self-assessment and received a personalized training plan powered by Claude AI.
       </div>
 
       {/* Dismiss */}
-      <button onClick={onDismiss} style={{
-        padding: "8px 24px", borderRadius: 8, border: "1px solid #e2b34055",
-        background: "#e2b34020", color: "#e2b340", fontSize: 12, fontWeight: 700,
-        cursor: "pointer", fontFamily: fontBody,
+      <button onClick={onDismiss} className="px-6 py-2 rounded-[8px] text-[12px] font-bold cursor-pointer font-body" style={{
+        border: "1px solid #e2b34055",
+        background: "#e2b34020", color: "#e2b340",
         animation: "badgeFadeIn 0.5s ease-out 1.1s both",
       }}>
         Awesome!
@@ -526,7 +498,6 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
     const totalPhases = plan.phases.length;
     const completed = prog.filter(p => p.status === "complete").length;
     const working = prog.filter(p => p.status === "working").length;
-    // Simple heuristic: if behind expected phase, show risk
     if (completed === totalPhases) return { level: "green", label: "On Track" };
     if (completed + working > 0) return { level: "yellow", label: `Phase ${completed + 1}/${totalPhases}` };
     return { level: "red", label: "Not Started" };
@@ -538,115 +509,104 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       {/* Self-Assessment Prompt — show if no assessment and not loading */}
       {!assessmentLoading && !assessment && !showAssessment && selectedCrewId && (
-        <div style={{ ...card(theme), marginBottom: 10, textAlign: "center" as const, border: `2px solid ${theme.accent}` }}>
-          <div style={{ fontSize: 20, marginBottom: 6 }}><Activity size={24} color={theme.accent} /></div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay, marginBottom: 4 }}>AI Readiness Coach</div>
-          <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 6, lineHeight: 1.4 }}>
+        <div className="tl-card mb-2.5 text-center" style={{ border: `2px solid ${theme.accent}` }}>
+          <div className="text-[20px] mb-1.5"><Activity size={24} color={theme.accent} /></div>
+          <div className="text-[14px] font-bold text-tl-heading font-display mb-1">AI Readiness Coach</div>
+          <div className="text-[12px] text-tl-text-muted mb-1.5 leading-[1.4]">
             Take a 30-second self-assessment and get a personalized training plan based on your itinerary and departure date.
           </div>
-          <div style={{ fontSize: 9, color: theme.textDimmest, marginBottom: 10, lineHeight: 1.3, fontStyle: "italic" }}>
+          <div className="text-[9px] text-tl-text-dimmest mb-2.5 leading-[1.3] italic">
             For general guidance only &mdash; not medical or professional fitness advice.
           </div>
-          <button onClick={() => setShowAssessment(true)} style={{
-            padding: "10px 24px", borderRadius: 8, border: "none", background: theme.accent, color: "#fff",
-            fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: fontBody,
-          }}>Start Assessment</button>
+          <button onClick={() => setShowAssessment(true)} className="px-6 py-2.5 rounded-[8px] border-none bg-tl-accent text-white text-[13px] font-bold cursor-pointer font-body">Start Assessment</button>
         </div>
       )}
 
       {/* Assessment Modal */}
       {showAssessment && (
-        <div style={{ ...card(theme), marginBottom: 10, border: `2px solid ${theme.accent}` }}>
-          <div style={{ ...cardTitle(theme), display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="tl-card mb-2.5" style={{ border: `2px solid ${theme.accent}` }}>
+          <div className="tl-card-title flex items-center gap-2">
             <Activity size={16} color={theme.accent} />
             Self-Assessment
           </div>
-          <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 12 }}>No judgment &mdash; just where you are today. You can retake this anytime.</div>
+          <div className="text-[11px] text-tl-text-muted mb-3">No judgment &mdash; just where you are today. You can retake this anytime.</div>
 
           {/* Distance slider */}
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-              <Footprints size={14} color={theme.textDim} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: theme.heading }}>Comfortable hiking distance</span>
+          <div className="mb-3.5">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Footprints size={14} className="text-tl-text-dim" />
+              <span className="text-[12px] font-semibold text-tl-heading">Comfortable hiking distance</span>
             </div>
             <input type="range" min="1" max="15" step="0.5" value={assessmentForm.current_distance_miles}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAssessmentForm(f => ({ ...f, current_distance_miles: parseFloat(e.target.value) }))}
-              style={{ width: "100%", accentColor: theme.accent }} />
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: theme.textDimmer }}>
+              className="w-full" style={{ accentColor: theme.accent }} />
+            <div className="flex justify-between text-[10px] text-tl-text-dimmer">
               <span>1 mi</span>
-              <span style={{ fontWeight: 700, color: theme.accent, fontSize: 13 }}>{assessmentForm.current_distance_miles} miles</span>
+              <span className="font-bold text-tl-accent text-[13px]">{assessmentForm.current_distance_miles} miles</span>
               <span>15 mi</span>
             </div>
           </div>
 
           {/* Pack experience */}
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-              <Backpack size={14} color={theme.textDim} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: theme.heading }}>Pack experience</span>
+          <div className="mb-3.5">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Backpack size={14} className="text-tl-text-dim" />
+              <span className="text-[12px] font-semibold text-tl-heading">Pack experience</span>
             </div>
             {([["none", "None", "Never carried a loaded pack"], ["day_pack", "Some", "Day pack weight (10-15 lbs)"], ["loaded", "Loaded", "Overnight weight (30+ lbs)"]] as [string, string, string][]).map(([val, label, desc]) => (
               <div key={val} onClick={() => setAssessmentForm(f => ({ ...f, pack_experience: val }))}
-                style={{
-                  padding: "8px 10px", borderRadius: 6, marginBottom: 3, cursor: "pointer",
+                className="px-2.5 py-2 rounded-[6px] mb-[3px] cursor-pointer" style={{
                   border: assessmentForm.pack_experience === val ? `2px solid ${theme.accent}` : `1px solid ${theme.border}`,
                   background: assessmentForm.pack_experience === val ? theme.accentBg : theme.bgAlt,
                 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: assessmentForm.pack_experience === val ? theme.accent : theme.text }}>{label}</div>
-                <div style={{ fontSize: 10, color: theme.textDimmer }}>{desc}</div>
+                <div className="text-[12px] font-semibold" style={{ color: assessmentForm.pack_experience === val ? theme.accent : theme.text }}>{label}</div>
+                <div className="text-[10px] text-tl-text-dimmer">{desc}</div>
               </div>
             ))}
           </div>
 
           {/* Elevation access */}
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-              <Mountain size={14} color={theme.textDim} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: theme.heading }}>Elevation/incline access</span>
+          <div className="mb-3.5">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Mountain size={14} className="text-tl-text-dim" />
+              <span className="text-[12px] font-semibold text-tl-heading">Elevation/incline access</span>
             </div>
             {([["flat_only", "Flat terrain only", "No hills available for training"], ["some_hills", "Some hills", "Moderate inclines available"], ["real_elevation", "Real elevation", "Mountains or steep terrain nearby"]] as [string, string, string][]).map(([val, label, desc]) => (
               <div key={val} onClick={() => setAssessmentForm(f => ({ ...f, elevation_access: val }))}
-                style={{
-                  padding: "8px 10px", borderRadius: 6, marginBottom: 3, cursor: "pointer",
+                className="px-2.5 py-2 rounded-[6px] mb-[3px] cursor-pointer" style={{
                   border: assessmentForm.elevation_access === val ? `2px solid ${theme.accent}` : `1px solid ${theme.border}`,
                   background: assessmentForm.elevation_access === val ? theme.accentBg : theme.bgAlt,
                 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: assessmentForm.elevation_access === val ? theme.accent : theme.text }}>{label}</div>
-                <div style={{ fontSize: 10, color: theme.textDimmer }}>{desc}</div>
+                <div className="text-[12px] font-semibold" style={{ color: assessmentForm.elevation_access === val ? theme.accent : theme.text }}>{label}</div>
+                <div className="text-[10px] text-tl-text-dimmer">{desc}</div>
               </div>
             ))}
           </div>
 
           {/* Activity level */}
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-              <Activity size={14} color={theme.textDim} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: theme.heading }}>Current activity level</span>
+          <div className="mb-3.5">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Activity size={14} className="text-tl-text-dim" />
+              <span className="text-[12px] font-semibold text-tl-heading">Current activity level</span>
             </div>
             {([["sedentary", "Sedentary", "Mostly desk/couch"], ["lightly_active", "Lightly active", "Walk regularly, some activity"], ["regularly_active", "Regularly active", "Exercise 3-4x/week"], ["very_active", "Very active", "Daily exercise or physical job"]] as [string, string, string][]).map(([val, label, desc]) => (
               <div key={val} onClick={() => setAssessmentForm(f => ({ ...f, activity_level: val }))}
-                style={{
-                  padding: "8px 10px", borderRadius: 6, marginBottom: 3, cursor: "pointer",
+                className="px-2.5 py-2 rounded-[6px] mb-[3px] cursor-pointer" style={{
                   border: assessmentForm.activity_level === val ? `2px solid ${theme.accent}` : `1px solid ${theme.border}`,
                   background: assessmentForm.activity_level === val ? theme.accentBg : theme.bgAlt,
                 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: assessmentForm.activity_level === val ? theme.accent : theme.text }}>{label}</div>
-                <div style={{ fontSize: 10, color: theme.textDimmer }}>{desc}</div>
+                <div className="text-[12px] font-semibold" style={{ color: assessmentForm.activity_level === val ? theme.accent : theme.text }}>{label}</div>
+                <div className="text-[10px] text-tl-text-dimmer">{desc}</div>
               </div>
             ))}
           </div>
 
-          <div style={{ fontSize: 9, color: theme.textDimmest, lineHeight: 1.4, marginBottom: 8, fontStyle: "italic" }}>
+          <div className="text-[9px] text-tl-text-dimmest leading-[1.4] mb-2 italic">
             This plan is a general guide for trek preparation and is not a substitute for professional medical advice. Consult your physician before starting any new exercise program, especially at altitude.
           </div>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button onClick={() => setShowAssessment(false)} style={{
-              flex: 1, padding: "10px 0", borderRadius: 8, border: `1px solid ${theme.borderLight}`,
-              background: theme.bgAlt, color: theme.textMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-            }}>Cancel</button>
-            <button onClick={submitAssessment} disabled={assessmentSaving} style={{
-              flex: 1, padding: "10px 0", borderRadius: 8, border: "none",
-              background: theme.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: fontBody,
+          <div className="flex gap-1.5">
+            <button onClick={() => setShowAssessment(false)} className="flex-1 py-2.5 rounded-[8px] border border-tl-border-light bg-tl-bg-alt text-tl-text-muted text-[12px] font-semibold cursor-pointer font-body">Cancel</button>
+            <button onClick={submitAssessment} disabled={assessmentSaving} className="flex-1 py-2.5 rounded-[8px] border-none bg-tl-accent text-white text-[12px] font-bold cursor-pointer font-body" style={{
               opacity: assessmentSaving ? 0.6 : 1,
             }}>{assessmentSaving ? "Saving..." : assessment ? "Update Assessment" : "\u2728 Generate My AI Plan"}</button>
           </div>
@@ -655,34 +615,25 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
 
       {/* Priority Now Card */}
       {priorities.length > 0 && !showAssessment && (
-        <div style={{ ...card(theme), marginBottom: 10, border: `1.5px solid ${urgencyColor(priorities[0]?.urgency)}` }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div className="tl-card mb-2.5" style={{ border: `1.5px solid ${urgencyColor(priorities[0]?.urgency)}` }}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
               <Target size={14} color={theme.accent} />
-              <span style={{ fontSize: 13, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>Priority Now</span>
+              <span className="text-[13px] font-bold text-tl-heading font-display">Priority Now</span>
             </div>
-            <div style={{ display: "flex", gap: 4 }}>
+            <div className="flex gap-1">
               {assessment && (
-                <button onClick={() => setShowAssessment(true)} style={{
-                  fontSize: 9, color: theme.textDimmer, background: "none", border: `1px solid ${theme.border}`,
-                  borderRadius: 4, padding: "2px 6px", cursor: "pointer", fontFamily: fontBody,
-                }}>Retake</button>
+                <button onClick={() => setShowAssessment(true)} className="text-[9px] text-tl-text-dimmer bg-transparent border border-tl-border rounded-[4px] px-1.5 py-[2px] cursor-pointer font-body">Retake</button>
               )}
-              <button onClick={handleRegenerate} disabled={regenerating} style={{
-                fontSize: 9, color: theme.textDimmer, background: "none", border: `1px solid ${theme.border}`,
-                borderRadius: 4, padding: "2px 6px", cursor: "pointer", fontFamily: fontBody, display: "flex", alignItems: "center", gap: 3,
-              }}><RefreshCw size={9} style={regenerating ? { animation: "spin 1s linear infinite" } : {}} /> {regenerating ? "..." : "Refresh"}</button>
+              <button onClick={handleRegenerate} disabled={regenerating} className="text-[9px] text-tl-text-dimmer bg-transparent border border-tl-border rounded-[4px] px-1.5 py-[2px] cursor-pointer font-body flex items-center gap-[3px]"><RefreshCw size={9} style={regenerating ? { animation: "spin 1s linear infinite" } : {}} /> {regenerating ? "..." : "Refresh"}</button>
             </div>
           </div>
           {priorities.map((p: Priority, i: number) => (
-            <div key={i} style={{
-              display: "flex", gap: 8, padding: "8px 10px", borderRadius: 6, marginBottom: 4,
-              background: theme.bgAlt, border: `1px solid ${theme.border}`,
-            }}>
-              <div style={{ color: urgencyColor(p.urgency), flexShrink: 0, paddingTop: 1 }}>{urgencyIcon(p.urgency)}</div>
+            <div key={i} className="flex gap-2 px-2.5 py-2 rounded-[6px] mb-1 bg-tl-bg-alt border border-tl-border">
+              <div className="shrink-0 pt-[1px]" style={{ color: urgencyColor(p.urgency) }}>{urgencyIcon(p.urgency)}</div>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: urgencyColor(p.urgency) }}>{p.title}</div>
-                <div style={{ fontSize: 11, color: theme.textMuted, lineHeight: 1.4 }}>{p.detail}</div>
+                <div className="text-[12px] font-bold" style={{ color: urgencyColor(p.urgency) }}>{p.title}</div>
+                <div className="text-[11px] text-tl-text-muted leading-[1.4]">{p.detail}</div>
               </div>
             </div>
           ))}
@@ -690,37 +641,36 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
       )}
 
       {/* AI Plan Generation — spectacular loading experience */}
-      {planLoading && <AIGeneratingCard theme={theme} />}
+      {planLoading && <AIGeneratingCard />}
 
       {/* AI Ready Badge Celebration */}
-      {badgeCelebration && <AIBadgeCelebration theme={theme} onDismiss={() => setBadgeCelebration(null)} />}
+      {badgeCelebration && <AIBadgeCelebration onDismiss={() => setBadgeCelebration(null)} />}
 
       {/* Training Phases */}
       {plan && plan.phases && !showAssessment && (
-        <div style={{ ...card(theme), marginBottom: 10 }}>
-          <div onClick={() => setShowPhases(!showPhases)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="tl-card mb-2.5">
+          <div onClick={() => setShowPhases(!showPhases)} className="flex items-center justify-between cursor-pointer">
+            <div className="flex items-center gap-2">
               <Mountain size={14} color={theme.accent} />
-              <span style={{ fontSize: 13, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>Training Plan</span>
-              <span style={{ fontSize: 10, color: theme.textDimmer }}>{plan.total_phases || plan.phases.length} phases</span>
+              <span className="text-[13px] font-bold text-tl-heading font-display">Training Plan</span>
+              <span className="text-[10px] text-tl-text-dimmer">{plan.total_phases || plan.phases.length} phases</span>
             </div>
-            <span style={{ fontSize: 14, color: theme.textDimmer, transform: showPhases ? "rotate(90deg)" : "none", transition: "transform .2s" }}>&rsaquo;</span>
+            <span className="text-[14px] text-tl-text-dimmer transition-transform duration-200" style={{ transform: showPhases ? "rotate(90deg)" : "none" }}>&rsaquo;</span>
           </div>
 
           {plan.summary && (
-            <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 6, fontStyle: "italic", lineHeight: 1.4 }}>{plan.summary}</div>
+            <div className="text-[11px] text-tl-text-muted mt-1.5 italic leading-[1.4]">{plan.summary}</div>
           )}
 
           {/* Phase summary pills */}
-          <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" as const }}>
+          <div className="flex gap-1 mt-2 flex-wrap">
             {plan.phases.map((phase: PlanPhase) => {
               const status = phaseStatus(phase.number);
               return (
-                <div key={phase.number} style={{
-                  padding: "4px 10px", borderRadius: 12, fontSize: 10, fontWeight: 700, fontFamily: fontBody,
+                <div key={phase.number} className="px-2.5 py-1 rounded-[12px] text-[10px] font-bold font-body cursor-pointer" style={{
                   border: `1.5px solid ${phaseStatusColor(status)}`,
                   background: status === "complete" ? theme.accentBg : status === "working" ? `${theme.gold}15` : theme.bgAlt,
-                  color: phaseStatusColor(status), cursor: "pointer",
+                  color: phaseStatusColor(status),
                 }} onClick={(e: React.MouseEvent) => { e.stopPropagation(); setShowPhases(true); }}>
                   {status === "complete" ? "\u2713" : status === "working" ? "\u25B6" : phase.number} {phase.name}
                 </div>
@@ -729,40 +679,37 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
           </div>
 
           {showPhases && (
-            <div style={{ marginTop: 10 }}>
+            <div className="mt-2.5">
               {plan.phases.map((phase: PlanPhase) => {
                 const status = phaseStatus(phase.number);
                 return (
-                  <div key={phase.number} style={{
-                    padding: "10px 12px", borderRadius: 8, marginBottom: 6,
-                    background: theme.bgAlt, border: `1px solid ${status === "working" ? theme.gold : status === "complete" ? theme.accent : theme.border}`,
+                  <div key={phase.number} className="px-3 py-2.5 rounded-[8px] mb-1.5 bg-tl-bg-alt" style={{
+                    border: `1px solid ${status === "working" ? theme.gold : status === "complete" ? theme.accent : theme.border}`,
                   }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                    <div className="flex items-center justify-between mb-1">
                       <div>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: theme.heading }}>Phase {phase.number}: {phase.name}</span>
-                        <span style={{ fontSize: 10, color: theme.textDimmer, marginLeft: 8 }}>Weeks {phase.weeks}</span>
+                        <span className="text-[12px] font-bold text-tl-heading">Phase {phase.number}: {phase.name}</span>
+                        <span className="text-[10px] text-tl-text-dimmer ml-2">Weeks {phase.weeks}</span>
                       </div>
                       <select value={status} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updatePhaseProgress(phase.number, e.target.value)}
-                        style={{
-                          fontSize: 10, fontWeight: 600, fontFamily: fontBody, borderRadius: 4, padding: "2px 6px",
+                        className="text-[10px] font-semibold font-body rounded-[4px] px-1.5 py-[2px] bg-tl-bg cursor-pointer outline-none" style={{
                           border: `1px solid ${phaseStatusColor(status)}`, color: phaseStatusColor(status),
-                          background: theme.bg, cursor: "pointer", outline: "none",
                         }}>
                         <option value="not_started">Not Started</option>
                         <option value="working">In Progress</option>
                         <option value="complete">Done</option>
                       </select>
                     </div>
-                    <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 4 }}>{phase.focus}</div>
+                    <div className="text-[11px] text-tl-text-muted mb-1">{phase.focus}</div>
                     {phase.pack_weight && (
-                      <div style={{ fontSize: 10, color: theme.accent, fontWeight: 600, marginBottom: 4 }}>Pack: {phase.pack_weight}</div>
+                      <div className="text-[10px] text-tl-accent font-semibold mb-1">Pack: {phase.pack_weight}</div>
                     )}
                     {phase.benchmarks && (
                       <div>
                         {phase.benchmarks.map((b: string, i: number) => (
-                          <div key={i} style={{ display: "flex", gap: 6, marginBottom: 2 }}>
-                            <ChevronRight size={10} color={theme.textDimmer} style={{ flexShrink: 0, marginTop: 2 }} />
-                            <span style={{ fontSize: 10, color: theme.textDim, lineHeight: 1.4 }}>{b}</span>
+                          <div key={i} className="flex gap-1.5 mb-0.5">
+                            <ChevronRight size={10} className="text-tl-text-dimmer shrink-0 mt-0.5" />
+                            <span className="text-[10px] text-tl-text-dim leading-[1.4]">{b}</span>
                           </div>
                         ))}
                       </div>
@@ -770,7 +717,7 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
                   </div>
                 );
               })}
-              <div style={{ fontSize: 9, color: theme.textDimmest, lineHeight: 1.4, marginTop: 6, fontStyle: "italic", padding: "0 2px" }}>
+              <div className="text-[9px] text-tl-text-dimmest leading-[1.4] mt-1.5 italic px-0.5">
                 This AI-generated plan is for general guidance only and does not constitute medical, fitness, or professional advice. Every person is different. Consult a physician before beginning any exercise program. If you experience pain, dizziness, or shortness of breath, stop and seek medical attention.
               </div>
             </div>
@@ -780,25 +727,24 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
 
       {/* Leader AI Readiness Dashboard */}
       {isAdmin && leaderDashboard && leaderDashboard.length > 0 && !showAssessment && (
-        <div style={{ ...card(theme), marginBottom: 10 }}>
-          <div onClick={() => setShowLeaderView(!showLeaderView)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="tl-card mb-2.5">
+          <div onClick={() => setShowLeaderView(!showLeaderView)} className="flex items-center justify-between cursor-pointer">
+            <div className="flex items-center gap-2">
               <Activity size={14} color={theme.accent} />
-              <span style={{ fontSize: 13, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>Crew AI Readiness</span>
-              <span style={{ fontSize: 10, color: theme.textDimmer }}>
+              <span className="text-[13px] font-bold text-tl-heading font-display">Crew AI Readiness</span>
+              <span className="text-[10px] text-tl-text-dimmer">
                 {leaderDashboard.filter(m => m.assessment).length}/{leaderDashboard.filter(m => m.participation === "trekking").length} assessed
               </span>
             </div>
-            <span style={{ fontSize: 14, color: theme.textDimmer, transform: showLeaderView ? "rotate(90deg)" : "none", transition: "transform .2s" }}>&rsaquo;</span>
+            <span className="text-[14px] text-tl-text-dimmer transition-transform duration-200" style={{ transform: showLeaderView ? "rotate(90deg)" : "none" }}>&rsaquo;</span>
           </div>
 
           {/* Always show risk summary pills */}
-          <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" as const }}>
+          <div className="flex gap-1 mt-2 flex-wrap">
             {leaderDashboard.filter(m => m.participation === "trekking").map((m: LeaderDashboardMember) => {
               const risk = getMemberRisk(m);
               return (
-                <div key={m.user_id} title={`${m.name}: ${risk.label}`} style={{
-                  padding: "3px 8px", borderRadius: 10, fontSize: 9, fontWeight: 700, fontFamily: fontBody,
+                <div key={m.user_id} title={`${m.name}: ${risk.label}`} className="px-2 py-[3px] rounded-[10px] text-[9px] font-bold font-body" style={{
                   border: `1.5px solid ${riskColor(risk.level)}`,
                   background: risk.level === "green" ? theme.accentBg : risk.level === "yellow" ? `${theme.gold}15` : risk.level === "red" ? `${theme.danger}15` : theme.bgAlt,
                   color: riskColor(risk.level),
@@ -810,42 +756,39 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
           </div>
 
           {showLeaderView && (
-            <div style={{ marginTop: 10 }}>
+            <div className="mt-2.5">
               {leaderDashboard.filter(m => m.participation === "trekking").map((m: LeaderDashboardMember) => {
                 const risk = getMemberRisk(m);
                 const memberPlan = m.plan?.plan;
                 const prog = m.progress || [];
                 return (
-                  <div key={m.user_id} style={{
-                    padding: "8px 10px", borderRadius: 6, marginBottom: 4,
-                    background: theme.bgAlt, border: `1px solid ${riskColor(risk.level)}`,
+                  <div key={m.user_id} className="px-2.5 py-2 rounded-[6px] mb-1 bg-tl-bg-alt" style={{
+                    border: `1px solid ${riskColor(risk.level)}`,
                   }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
                         {m.avatar_url ? (
-                          <img src={m.avatar_url} alt="" style={{ width: 20, height: 20, borderRadius: "50%" }} />
+                          <img src={m.avatar_url} alt="" className="w-5 h-5 rounded-full" />
                         ) : (
-                          <div style={{ width: 20, height: 20, borderRadius: "50%", background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#fff", fontWeight: 700 }}>
+                          <div className="w-5 h-5 rounded-full bg-tl-accent flex items-center justify-center text-[9px] text-white font-bold">
                             {m.name[0]}
                           </div>
                         )}
-                        <span style={{ fontSize: 12, fontWeight: 600, color: theme.heading }}>{m.name}</span>
+                        <span className="text-[12px] font-semibold text-tl-heading">{m.name}</span>
                       </div>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: riskColor(risk.level) }}>{risk.label}</span>
+                      <span className="text-[10px] font-bold" style={{ color: riskColor(risk.level) }}>{risk.label}</span>
                     </div>
                     {m.assessment && (
-                      <div style={{ fontSize: 10, color: theme.textDimmer, marginTop: 4 }}>
+                      <div className="text-[10px] text-tl-text-dimmer mt-1">
                         {m.assessment.current_distance_miles}mi &middot; {m.assessment.pack_experience.replace("_", " ")} &middot; {m.assessment.activity_level.replace(/_/g, " ")}
                       </div>
                     )}
                     {memberPlan?.phases && (
-                      <div style={{ display: "flex", gap: 3, marginTop: 4 }}>
+                      <div className="flex gap-[3px] mt-1">
                         {memberPlan.phases.map((phase: PlanPhase) => {
                           const ps = prog.find(p => p.phase_number === phase.number)?.status || "not_started";
                           return (
-                            <div key={phase.number} style={{
-                              width: 18, height: 18, borderRadius: "50%", fontSize: 8, fontWeight: 700,
-                              display: "flex", alignItems: "center", justifyContent: "center",
+                            <div key={phase.number} className="w-[18px] h-[18px] rounded-full text-[8px] font-bold flex items-center justify-center" style={{
                               background: ps === "complete" ? theme.accent : ps === "working" ? theme.gold : theme.progressBg,
                               color: ps !== "not_started" ? "#fff" : theme.textDimmest,
                             }}>
@@ -856,7 +799,7 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
                       </div>
                     )}
                     {!m.assessment && (
-                      <div style={{ fontSize: 10, color: theme.warn, marginTop: 4 }}>Has not completed self-assessment</div>
+                      <div className="text-[10px] text-tl-warn mt-1">Has not completed self-assessment</div>
                     )}
                   </div>
                 );
@@ -868,24 +811,22 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
 
       {/* Journey Progress Trail */}
       {trekkingMembers.length > 0 && (
-        <div style={{ ...card(theme), marginBottom: 10, textAlign: "center" as const }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: theme.heading, marginBottom: 8, fontFamily: fontDisplay }}>Journey to Philmont</div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0, marginBottom: 8, padding: "0 10px" }}>
+        <div className="tl-card mb-2.5 text-center">
+          <div className="text-[11px] font-bold text-tl-heading mb-2 font-display">Journey to Philmont</div>
+          <div className="flex items-center justify-center gap-0 mb-2 px-2.5">
             {JOURNEY_WAYPOINTS.map((wp: JourneyWaypoint, i: number) => {
               const reached = readiness.overall >= wp.pct;
               const isCurrent = wp === currentWaypoint;
               return (
-                <div key={wp.pct} style={{ display: "flex", alignItems: "center" }}>
+                <div key={wp.pct} className="flex items-center">
                   {i > 0 && (
-                    <div style={{ width: 40, height: 3, background: reached ? theme.accent : theme.progressBg, borderRadius: 2, transition: "background .5s" }} />
+                    <div className="w-10 h-[3px] rounded-sm transition-[background] duration-500" style={{ background: reached ? theme.accent : theme.progressBg }} />
                   )}
-                  <div title={`${wp.name}: ${wp.message}`} style={{
-                    width: isCurrent ? 28 : 18, height: isCurrent ? 28 : 18, borderRadius: "50%",
+                  <div title={`${wp.name}: ${wp.message}`} className="rounded-full flex items-center justify-center font-bold transition-all duration-300 shrink-0" style={{
+                    width: isCurrent ? 28 : 18, height: isCurrent ? 28 : 18,
                     background: reached ? theme.accent : theme.progressBg,
                     border: isCurrent ? `3px solid ${theme.gold}` : "2px solid transparent",
-                    display: "flex", alignItems: "center", justifyContent: "center",
                     fontSize: isCurrent ? 12 : 9, color: reached ? "#fff" : theme.textDimmer,
-                    fontWeight: 700, transition: "all .3s", flexShrink: 0,
                   }}>
                     {wp.pct === 100 ? "\u2B50" : reached ? "\u2713" : `${wp.pct}`}
                   </div>
@@ -893,18 +834,18 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
               );
             })}
           </div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: theme.accent, fontFamily: fontDisplay }}>{currentWaypoint.name}</div>
-          <div style={{ fontSize: 10, color: theme.textMuted, fontStyle: "italic", marginTop: 2 }}>{currentWaypoint.message}</div>
+          <div className="text-[12px] font-bold text-tl-accent font-display">{currentWaypoint.name}</div>
+          <div className="text-[10px] text-tl-text-muted italic mt-0.5">{currentWaypoint.message}</div>
 
           {/* Member progress dots */}
           {trekkingMembers.length > 1 && (
-            <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 8, flexWrap: "wrap" as const }}>
+            <div className="flex justify-center gap-1.5 mt-2 flex-wrap">
               {trekkingMembers.map((m: SkillsMember) => {
                 const pct = computeMemberReadiness(m as any, skills, gearCatalog as any, memberGearMap as any);
                 return (
-                  <div key={m.user_id || m.id} title={`${m.name}: ${pct}%`} style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: m.color?.bg || theme.accent }} />
-                    <span style={{ fontSize: 9, color: theme.textDimmer }}>{pct}%</span>
+                  <div key={m.user_id || m.id} title={`${m.name}: ${pct}%`} className="flex items-center gap-[3px]">
+                    <div className="w-2 h-2 rounded-full" style={{ background: m.color?.bg || theme.accent }} />
+                    <span className="text-[9px] text-tl-text-dimmer">{pct}%</span>
                   </div>
                 );
               })}
@@ -914,25 +855,23 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
       )}
 
       {/* Trail Badge & Waypoint Legend */}
-      <div style={{ ...card(theme), marginBottom: 10 }}>
-        <div onClick={() => setShowBadgeLegend(!showBadgeLegend)} style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 14 }}>{"\uD83C\uDFC5"}</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>Trail Guide</span>
-            <span style={{ fontSize: 10, color: theme.textDimmer }}>badges & waypoints</span>
+      <div className="tl-card mb-2.5">
+        <div onClick={() => setShowBadgeLegend(!showBadgeLegend)} className="flex items-center justify-between cursor-pointer">
+          <div className="flex items-center gap-2">
+            <span className="text-[14px]">{"\uD83C\uDFC5"}</span>
+            <span className="text-[13px] font-bold text-tl-heading font-display">Trail Guide</span>
+            <span className="text-[10px] text-tl-text-dimmer">badges & waypoints</span>
           </div>
-          <span style={{ fontSize: 14, color: theme.textDimmer, transform: showBadgeLegend ? "rotate(90deg)" : "none", transition: "transform .2s" }}>&rsaquo;</span>
+          <span className="text-[14px] text-tl-text-dimmer transition-transform duration-200" style={{ transform: showBadgeLegend ? "rotate(90deg)" : "none" }}>&rsaquo;</span>
         </div>
 
         {showBadgeLegend && (
-          <div style={{ marginTop: 10 }}>
+          <div className="mt-2.5">
             {/* Trail Badges */}
-            <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: 1.2, textTransform: "uppercase" as const, marginBottom: 6, fontFamily: fontBody }}>
+            <div className="text-[10px] font-bold text-tl-text-dim tracking-[1.2px] uppercase mb-1.5 font-body">
               Trail Badges &mdash; Earn by completing each category
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 12 }}>
+            <div className="grid grid-cols-2 gap-1 mb-3">
               {Object.entries(TRAIL_BADGES).map(([key, badge]: [string, any]) => {
                 const descriptions: Record<string, string> = {
                   gear_ready: "All gear items owned or packed",
@@ -944,14 +883,11 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
                   fully_prepared: "All categories complete!",
                 };
                 return (
-                  <div key={key} style={{
-                    display: "flex", alignItems: "center", gap: 8, padding: "6px 8px",
-                    borderRadius: 8, background: theme.bgAlt, border: `1px solid ${theme.border}`,
-                  }}>
-                    <span style={{ fontSize: 16, flexShrink: 0 }}>{badge.icon}</span>
+                  <div key={key} className="flex items-center gap-2 px-2 py-1.5 rounded-[8px] bg-tl-bg-alt border border-tl-border">
+                    <span className="text-[16px] shrink-0">{badge.icon}</span>
                     <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: theme.heading }}>{badge.title}</div>
-                      <div style={{ fontSize: 9, color: theme.textDimmer, lineHeight: 1.3 }}>{descriptions[key]}</div>
+                      <div className="text-[11px] font-semibold text-tl-heading">{badge.title}</div>
+                      <div className="text-[9px] text-tl-text-dimmer leading-[1.3]">{descriptions[key]}</div>
                     </div>
                   </div>
                 );
@@ -959,27 +895,23 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
             </div>
 
             {/* Journey Waypoints */}
-            <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: 1.2, textTransform: "uppercase" as const, marginBottom: 6, fontFamily: fontBody }}>
+            <div className="text-[10px] font-bold text-tl-text-dim tracking-[1.2px] uppercase mb-1.5 font-body">
               Journey Waypoints &mdash; Crew readiness milestones
             </div>
             {JOURNEY_WAYPOINTS.map((wp: JourneyWaypoint, i: number) => (
-              <div key={wp.pct} style={{
-                display: "flex", alignItems: "center", gap: 8, padding: "4px 8px",
-                borderRadius: 6, marginBottom: 2,
+              <div key={wp.pct} className="flex items-center gap-2 px-2 py-1 rounded-[6px] mb-0.5" style={{
                 background: readiness.overall >= wp.pct ? theme.accentBg : "transparent",
-                border: readiness.overall >= wp.pct ? `1px solid ${theme.borderAccent}` : `1px solid transparent`,
+                border: readiness.overall >= wp.pct ? `1px solid ${theme.borderAccent}` : "1px solid transparent",
               }}>
-                <div style={{
-                  width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
+                <div className="w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-[9px] font-bold" style={{
                   background: readiness.overall >= wp.pct ? theme.accent : theme.progressBg,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 9, fontWeight: 700, color: readiness.overall >= wp.pct ? "#fff" : theme.textDimmer,
+                  color: readiness.overall >= wp.pct ? "#fff" : theme.textDimmer,
                 }}>
                   {wp.pct === 100 ? "\u2B50" : readiness.overall >= wp.pct ? "\u2713" : `${wp.pct}`}
                 </div>
                 <div>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: readiness.overall >= wp.pct ? theme.accentLight : theme.textMuted }}>{wp.pct}% &mdash; {wp.name}</span>
-                  <div style={{ fontSize: 9, color: theme.textDimmer, fontStyle: "italic" }}>{wp.message}</div>
+                  <span className="text-[11px] font-semibold" style={{ color: readiness.overall >= wp.pct ? theme.accentLight : theme.textMuted }}>{wp.pct}% &mdash; {wp.name}</span>
+                  <div className="text-[9px] text-tl-text-dimmer italic">{wp.message}</div>
                 </div>
               </div>
             ))}
@@ -988,38 +920,38 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
       </div>
 
       {/* Overall readiness */}
-      <div style={card(theme)}>
-        <div style={cardTitle(theme)}>Crew Readiness Dashboard</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
-          <div style={{ position: "relative", width: 64, height: 64 }}>
+      <div className="tl-card">
+        <div className="tl-card-title">Crew Readiness Dashboard</div>
+        <div className="flex items-center gap-3.5 mb-3">
+          <div className="relative w-16 h-16">
             <svg width="64" height="64" viewBox="0 0 64 64">
               <circle cx="32" cy="32" r="28" fill="none" stroke={theme.progressBg} strokeWidth="6" />
               <circle cx="32" cy="32" r="28" fill="none" stroke={theme.accent} strokeWidth="6"
                 strokeDasharray={`${readiness.overall * 1.76} ${176 - readiness.overall * 1.76}`}
                 strokeLinecap="round" transform="rotate(-90 32 32)" />
             </svg>
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontSize: 16, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>{readiness.overall}%</span>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-[16px] font-bold text-tl-heading font-display">{readiness.overall}%</span>
             </div>
           </div>
-          <div style={{ flex: 1 }}>
+          <div className="flex-1">
             {categories.map((cat: CategoryDef) => (
-              <div key={cat.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                <span style={{ fontSize: 11, color: theme.textMuted, width: 60 }}>{cat.label}</span>
-                <div style={{ flex: 1, height: 6, borderRadius: 3, background: theme.progressBg, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${cat.pct}%`, borderRadius: 3, background: cat.pct >= 80 ? theme.accent : cat.pct >= 50 ? theme.gold : theme.danger, transition: "width .3s" }} />
+              <div key={cat.id} className="flex items-center gap-2 mb-1">
+                <span className="text-[11px] text-tl-text-muted w-[60px]">{cat.label}</span>
+                <div className="flex-1 h-1.5 rounded-sm bg-tl-progress-bg overflow-hidden">
+                  <div className="h-full rounded-sm transition-[width] duration-300" style={{ width: `${cat.pct}%`, background: cat.pct >= 80 ? theme.accent : cat.pct >= 50 ? theme.gold : theme.danger }} />
                 </div>
-                <span style={{ fontSize: 10, fontWeight: 700, color: theme.textDimmer, width: 30, textAlign: "right" as const }}>{cat.pct}%</span>
+                <span className="text-[10px] font-bold text-tl-text-dimmer w-[30px] text-right">{cat.pct}%</span>
               </div>
             ))}
           </div>
         </div>
 
         {members.filter(m => m.participation === "support").length > 0 && (
-          <div style={{ fontSize: 10, color: theme.textDimmest, marginBottom: 4 }}>Readiness % based on trekking members only</div>
+          <div className="text-[10px] text-tl-text-dimmest mb-1">Readiness % based on trekking members only</div>
         )}
 
-        <div style={{ fontSize: 11, color: theme.textDim }}>
+        <div className="text-[11px] text-tl-text-dim">
           {active !== null
             ? <>Editing for <strong style={{ color: (am as any).color?.bg || theme.accent }}>{am!.name}</strong>. Click items to check off.</>
             : "Select your name above to check off completed items."}
@@ -1028,19 +960,19 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
 
       {/* Category sections */}
       {categories.filter(c => c.skills).map((cat: CategoryDef) => (
-        <div key={cat.id} style={{ marginBottom: 6 }}>
+        <div key={cat.id} className="mb-1.5">
           <div onClick={() => setExpandedCats(prev => { const next = new Set(prev); next.has(cat.id) ? next.delete(cat.id) : next.add(cat.id); return next; })}
-            style={{ ...card(theme), cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 14 }}>{cat.icon}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>{cat.label}</span>
-              <span style={{ fontSize: 10, color: theme.textDimmer }}>{trekkingMembers.length > 0 && `${cat.pct}% complete`}</span>
+            className="tl-card cursor-pointer flex items-center justify-between !mb-0">
+            <div className="flex items-center gap-2">
+              <span className="text-[14px]">{cat.icon}</span>
+              <span className="text-[13px] font-bold text-tl-heading font-display">{cat.label}</span>
+              <span className="text-[10px] text-tl-text-dimmer">{trekkingMembers.length > 0 && `${cat.pct}% complete`}</span>
             </div>
-            <span style={{ fontSize: 14, color: theme.textDimmer, transform: expandedCats.has(cat.id) ? "rotate(90deg)" : "none", transition: "transform .2s" }}>&rsaquo;</span>
+            <span className="text-[14px] text-tl-text-dimmer transition-transform duration-200" style={{ transform: expandedCats.has(cat.id) ? "rotate(90deg)" : "none" }}>&rsaquo;</span>
           </div>
 
           {expandedCats.has(cat.id) && (
-            <div style={{ padding: "4px 0" }}>
+            <div className="py-1">
               {/* Sort: system skills first, then manual */}
               {[...cat.skills!].sort((a, b) => ((b as any).is_system || 0) - ((a as any).is_system || 0)).map((s: any) => {
                 const chk = am && ((am as any)[cat.field!] || []).includes(s.id);
@@ -1049,64 +981,57 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
                 const isSystem = s.is_system === 1;
 
                 return (
-                  <div key={s.id} style={{
-                    display: "flex", alignItems: "center", gap: 9, padding: "8px 11px", borderRadius: 7, marginBottom: 2,
+                  <div key={s.id} className="flex items-center gap-[9px] px-[11px] py-2 rounded-[7px] mb-0.5" style={{
                     background: chk ? theme.accentBg : theme.bgAlt,
                     border: chk ? `1.5px solid ${theme.borderAccent}` : `1px solid ${theme.border}`,
                     cursor: isSystem ? "default" : (active !== null ? "pointer" : "default"),
                     opacity: isSystem && !chk ? 0.7 : 1,
                   }} onClick={() => !isSystem && cat.toggle!(s.id)}>
-                    <span style={{ fontSize: 16, width: 24, textAlign: "center" as const }}>{s.icon}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: chk ? theme.accentLight : theme.text, display: "flex", alignItems: "center", gap: 4 }}>
+                    <span className="text-[16px] w-6 text-center">{s.icon}</span>
+                    <div className="flex-1">
+                      <div className="text-[12px] font-semibold flex items-center gap-1" style={{ color: chk ? theme.accentLight : theme.text }}>
                         {s.name}
                         {isSystem && (
-                          <span style={{
-                            fontSize: 8, fontWeight: 700, padding: "1px 5px", borderRadius: 6,
-                            background: theme.bgAlt, color: theme.textDimmer, border: `1px solid ${theme.border}`,
-                            display: "inline-flex", alignItems: "center", gap: 2,
-                          }}>
+                          <span className="text-[8px] font-bold px-[5px] py-[1px] rounded-[6px] bg-tl-bg-alt text-tl-text-dimmer border border-tl-border inline-flex items-center gap-0.5">
                             <Lock size={7} /> AUTO
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: 10, color: theme.textDimmer }}>{isSystem ? (s.description || "Earned by attending training sessions") : s.desc}</div>
+                      <div className="text-[10px] text-tl-text-dimmer">{isSystem ? (s.description || "Earned by attending training sessions") : s.desc}</div>
                       {members.length > 0 && (
-                        <div style={{ fontSize: 10, color: completedBy.length > 0 ? theme.accent : theme.textDimmer, marginTop: 1 }}>
+                        <div className="text-[10px] mt-[1px]" style={{ color: completedBy.length > 0 ? theme.accent : theme.textDimmer }}>
                           {completedBy.length > 0 && completedBy.map((m: SkillsMember) => {
                             const badge = m.user_type === "adult" ? "(A)" : m.user_type === "scout" ? "(S)" : "";
                             return `${m.name}${badge}`;
                           }).join(", ")}
-                          {remaining.length > 0 && <span style={{ color: theme.warn }}>{completedBy.length > 0 ? " | " : ""}Needs: {remaining.map((m: SkillsMember) => m.name).join(", ")}</span>}
+                          {remaining.length > 0 && <span className="text-tl-warn">{completedBy.length > 0 ? " | " : ""}Needs: {remaining.map((m: SkillsMember) => m.name).join(", ")}</span>}
                         </div>
                       )}
                     </div>
                     {isSystem ? (
-                      <div style={{
-                        width: 18, height: 18, borderRadius: 4, border: `2px solid ${chk ? theme.accent : theme.borderLight}`,
-                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                      <div className="w-[18px] h-[18px] rounded-[4px] flex items-center justify-center shrink-0" style={{
+                        border: `2px solid ${chk ? theme.accent : theme.borderLight}`,
                         background: chk ? theme.accentBg : "transparent",
                       }}>
-                        {chk ? <span style={{ fontSize: 12, color: theme.accent }}>{"\u2713"}</span> : <Lock size={9} color={theme.textDimmest} />}
+                        {chk ? <span className="text-[12px] text-tl-accent">{"\u2713"}</span> : <Lock size={9} color={theme.textDimmest} />}
                       </div>
                     ) : (
-                      <div onClick={(e: React.MouseEvent) => { e.stopPropagation(); cat.toggle!(s.id); }} style={{
-                        width: 18, height: 18, borderRadius: 4, border: `2px solid ${chk ? theme.accent : theme.borderLight}`,
-                        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: theme.accent, flexShrink: 0,
+                      <div onClick={(e: React.MouseEvent) => { e.stopPropagation(); cat.toggle!(s.id); }} className="w-[18px] h-[18px] rounded-[4px] flex items-center justify-center text-[12px] text-tl-accent shrink-0" style={{
+                        border: `2px solid ${chk ? theme.accent : theme.borderLight}`,
                         cursor: active !== null ? "pointer" : "default",
                       }}>{chk && "\u2713"}</div>
                     )}
                     {isAdmin && !s.isDefault && !isSystem && (
                       confirmDeleteSkill === s.id ? (
-                        <div onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ display: "flex", gap: 3 }}>
+                        <div onClick={(e: React.MouseEvent) => e.stopPropagation()} className="flex gap-[3px]">
                           <button onClick={() => { onRemoveSkill(s.id); setConfirmDeleteSkill(null); }}
-                            style={{ fontSize: 9, color: "#fff", background: theme.danger, border: "none", borderRadius: 3, padding: "2px 6px", cursor: "pointer", fontFamily: fontBody, fontWeight: 600 }}>Delete</button>
+                            className="text-[9px] text-white bg-tl-danger border-none rounded-[3px] px-1.5 py-[2px] cursor-pointer font-body font-semibold">Delete</button>
                           <button onClick={() => setConfirmDeleteSkill(null)}
-                            style={{ fontSize: 9, color: theme.textDimmer, background: theme.bgAlt, border: `1px solid ${theme.border}`, borderRadius: 3, padding: "2px 6px", cursor: "pointer", fontFamily: fontBody }}>No</button>
+                            className="text-[9px] text-tl-text-dimmer bg-tl-bg-alt border border-tl-border rounded-[3px] px-1.5 py-[2px] cursor-pointer font-body">No</button>
                         </div>
                       ) : (
                         <button onClick={(e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); setConfirmDeleteSkill(s.id); }} title="Remove"
-                          style={{ background: "none", border: "none", color: theme.danger, fontSize: 12, cursor: "pointer", padding: "0 2px", lineHeight: 1 }}>x</button>
+                          className="bg-transparent border-none text-tl-danger text-[12px] cursor-pointer px-0.5 py-0 leading-none">x</button>
                       )
                     )}
                   </div>
@@ -1119,28 +1044,25 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
 
       {/* Add skill form */}
       {isAdmin && (
-        <div style={{ marginTop: 4 }}>
+        <div className="mt-1">
           {!showAddForm ? (
-            <button onClick={() => setShowAddForm(true)} style={{
-              width: "100%", padding: "10px 0", borderRadius: 8, border: `1.5px dashed ${theme.borderLight}`,
-              background: "transparent", color: theme.accent, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-            }}>+ Add Checklist Item</button>
+            <button onClick={() => setShowAddForm(true)} className="w-full py-2.5 rounded-[8px] border-[1.5px] border-dashed border-tl-border-light bg-transparent text-tl-accent text-[12px] font-semibold cursor-pointer font-body">+ Add Checklist Item</button>
           ) : (
-            <div style={card(theme)}>
+            <div className="tl-card">
               <select value={addCategory} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAddCategory(e.target.value)}
-                style={{ width: "100%", padding: "7px 10px", borderRadius: 5, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 12, fontFamily: fontBody, outline: "none", marginBottom: 6, boxSizing: "border-box" as const }}>
+                className="tl-input mb-1.5">
                 <option value="training">Training</option>
                 <option value="medical">Medical</option>
                 <option value="admin">Admin</option>
               </select>
               <input value={newSkillName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setNewSkillName(e.target.value); setAddError(""); }} placeholder="Item name"
-                style={{ width: "100%", padding: "7px 10px", borderRadius: 5, border: `1px solid ${addError ? theme.danger : theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 12, fontFamily: fontBody, outline: "none", marginBottom: addError ? 2 : 6, boxSizing: "border-box" as const }} />
-              {addError && <div style={{ fontSize: 10, color: theme.danger, marginBottom: 4 }}>{addError}</div>}
+                className="tl-input" style={{ marginBottom: addError ? 2 : 6, borderColor: addError ? theme.danger : undefined }} />
+              {addError && <div className="text-[10px] text-tl-danger mb-1">{addError}</div>}
               <input value={newSkillDesc} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSkillDesc(e.target.value)} placeholder="Description (optional)"
-                style={{ width: "100%", padding: "7px 10px", borderRadius: 5, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 12, fontFamily: fontBody, outline: "none", marginBottom: 6, boxSizing: "border-box" as const }} />
-              <div style={{ display: "flex", gap: 6 }}>
-                <button onClick={() => setShowAddForm(false)} style={{ flex: 1, padding: "7px 0", borderRadius: 5, border: `1px solid ${theme.borderLight}`, background: theme.bgAlt, color: theme.textMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
-                <button onClick={handleAdd} style={{ flex: 1, padding: "7px 0", borderRadius: 5, border: "none", background: theme.accent, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Add</button>
+                className="tl-input mb-1.5" />
+              <div className="flex gap-1.5">
+                <button onClick={() => setShowAddForm(false)} className="flex-1 py-[7px] rounded-[5px] border border-tl-border-light bg-tl-bg-alt text-tl-text-muted text-[12px] font-semibold cursor-pointer font-body">Cancel</button>
+                <button onClick={handleAdd} className="flex-1 py-[7px] rounded-[5px] border-none bg-tl-accent text-white text-[12px] font-semibold cursor-pointer font-body">Add</button>
               </div>
             </div>
           )}

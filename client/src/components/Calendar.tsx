@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { DAYS_ABBR, MONTH_NAMES } from "../utils/constants";
 import { daysInMonth, dateKey, dayOfWeek, isPast, normalizeDateEntry } from "../utils/dates";
 import { useTheme } from "../contexts/ThemeContext";
-import { toolbarBtn, fontBody, fontDisplay } from "../utils/theme";
+import clsx from "clsx";
 import { ChevronLeft, ChevronRight, Users, User, Check } from "lucide-react";
 import { useIsDesktop } from "../hooks/useIsDesktop";
 import type { AdventureMember, TrekDates, MonthRange } from "../types";
@@ -180,11 +180,11 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
   return (
     <div>
       {/* Header card */}
-      <div style={{ padding: "16px 18px", background: theme.bgCard, borderRadius: 14, border: `1px solid ${theme.border}`, marginBottom: 12, boxShadow: theme.shadow }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div className="py-4 px-[18px] bg-tl-card rounded-[14px] border border-tl-border mb-3 shadow-card">
+        <div className="flex justify-between items-center">
           <div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay }}>Training Availability</div>
-            <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 4, lineHeight: 1.5, fontFamily: fontBody }}>
+            <div className="text-base font-extrabold text-tl-heading font-display">Training Availability</div>
+            <div className="text-[13px] text-tl-text-muted mt-1 leading-normal font-body">
               {allCrewsMode
                 ? "Viewing combined availability across all crews. Select a specific crew to edit dates."
                 : active !== null
@@ -193,19 +193,17 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
             </div>
           </div>
           {active !== null && members.length > 1 && !allCrewsMode && (
-            <div style={{ display: "flex", gap: 2, background: theme.bgAlt, borderRadius: 8, padding: 2 }}>
-              <button onClick={() => setViewMode("my")} style={{
-                padding: "5px 10px", borderRadius: 6, border: "none", fontSize: 11, fontWeight: 600,
-                cursor: "pointer", fontFamily: fontBody, display: "flex", alignItems: "center", gap: 3,
-                background: viewMode === "my" ? theme.accent : "transparent",
-                color: viewMode === "my" ? "#fff" : theme.textDim,
-              }}><User size={11} /> Mine</button>
-              <button onClick={() => setViewMode("group")} style={{
-                padding: "5px 10px", borderRadius: 6, border: "none", fontSize: 11, fontWeight: 600,
-                cursor: "pointer", fontFamily: fontBody, display: "flex", alignItems: "center", gap: 3,
-                background: viewMode === "group" ? theme.accent : "transparent",
-                color: viewMode === "group" ? "#fff" : theme.textDim,
-              }}><Users size={11} /> Group</button>
+            <div className="flex gap-0.5 bg-tl-bg-alt rounded-btn p-0.5">
+              <button onClick={() => setViewMode("my")}
+                className={clsx(
+                  "py-[5px] px-2.5 rounded-badge-sm border-none text-[11px] font-semibold cursor-pointer font-body flex items-center gap-[3px]",
+                  viewMode === "my" ? "bg-tl-accent text-white" : "bg-transparent text-tl-text-dim"
+                )}><User size={11} /> Mine</button>
+              <button onClick={() => setViewMode("group")}
+                className={clsx(
+                  "py-[5px] px-2.5 rounded-badge-sm border-none text-[11px] font-semibold cursor-pointer font-body flex items-center gap-[3px]",
+                  viewMode === "group" ? "bg-tl-accent text-white" : "bg-transparent text-tl-text-dim"
+                )}><Users size={11} /> Group</button>
             </div>
           )}
         </div>
@@ -213,42 +211,45 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
 
       {/* Toolbar */}
       {active !== null && viewMode === "my" && (
-        <div style={{ display: "flex", gap: 5, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <button onClick={() => onBulkSelect("weekends")} style={toolbarBtn(theme, "primary")}>+ Weekends</button>
-          <button onClick={() => onBulkSelect("all")} style={toolbarBtn(theme)}>+ All Days</button>
-          <button onClick={onClearAll} style={toolbarBtn(theme)}>Clear Mine</button>
+        <div className="flex gap-[5px] mb-2.5 flex-wrap items-center">
+          <button onClick={() => onBulkSelect("weekends")} className="tl-btn-primary">+ Weekends</button>
+          <button onClick={() => onBulkSelect("all")} className="tl-btn">+ All Days</button>
+          <button onClick={onClearAll} className="tl-btn">Clear Mine</button>
         </div>
       )}
 
       {members.length === 0 && (
-        <div style={{ textAlign: "center", padding: 30, background: theme.bgCard, borderRadius: 10, border: `1px solid ${theme.border}`, boxShadow: theme.shadow }}>
-          <div style={{ fontSize: 28, marginBottom: 6 }}>{"\u{1F3D5}\uFE0F"}</div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: theme.heading }}>Waiting for crew members</div>
-          <div style={{ fontSize: 12, color: theme.textDim, marginTop: 4 }}>Once members are added, select your name and mark dates you're available for group training.</div>
+        <div className="text-center p-[30px] bg-tl-card rounded-[10px] border border-tl-border shadow-card">
+          <div className="text-[28px] mb-1.5">{"\u{1F3D5}\uFE0F"}</div>
+          <div className="text-sm font-semibold text-tl-heading">Waiting for crew members</div>
+          <div className="text-xs text-tl-text-dim mt-1">Once members are added, select your name and mark dates you're available for group training.</div>
         </div>
       )}
 
       {active === null && members.length > 0 && (
-        <div style={{ padding: "10px 12px", background: theme.bgCard, borderRadius: 8, border: `1px solid ${theme.border}`, marginBottom: 12, display: "flex", alignItems: "center", gap: 8, boxShadow: theme.shadow }}>
-          <span style={{ fontSize: 18 }}>{"\u{1F446}"}</span>
-          <span style={{ fontSize: 12, color: theme.textMuted }}>Select your name above to mark dates. The heat map below shows group overlap.</span>
+        <div className="py-2.5 px-3 bg-tl-card rounded-btn border border-tl-border mb-3 flex items-center gap-2 shadow-card">
+          <span className="text-lg">{"\u{1F446}"}</span>
+          <span className="text-xs text-tl-text-muted">Select your name above to mark dates. The heat map below shows group overlap.</span>
         </div>
       )}
 
       {/* Calendar grid */}
-      <div ref={calendarRef} style={{ display: "grid", gridTemplateColumns: isDesktop ? "repeat(2, 1fr)" : "repeat(auto-fill, minmax(310px, 1fr))", gap: isDesktop ? 12 : 14, position: "relative" }}>
+      <div ref={calendarRef} className={clsx(
+        "grid gap-3 relative",
+        isDesktop ? "grid-cols-2" : "grid-cols-[repeat(auto-fill,minmax(310px,1fr))]"
+      )} style={{ gap: isDesktop ? 12 : 14 }}>
         {months.map(({ year, month }) => {
           const dim = daysInMonth(year, month);
           const start = dayOfWeek(year, month, 1);
           const cells: (number | null)[] = Array(start).fill(null).concat(Array.from({ length: dim }, (_, i) => i + 1));
           return (
-            <div key={`${year}-${month}`} style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: theme.textMuted, marginBottom: 5, letterSpacing: "0.5px", textTransform: "uppercase" }}>
+            <div key={`${year}-${month}`} className="mb-2">
+              <div className="text-[13px] font-bold text-tl-text-muted mb-[5px] tracking-[0.5px] uppercase">
                 {MONTH_NAMES[month]} {year}
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
+              <div className="grid grid-cols-7 gap-0.5">
                 {DAYS_ABBR.map((d, i) => (
-                  <div key={i} style={{ height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: theme.textDimmest }}>{d}</div>
+                  <div key={i} className="h-5 flex items-center justify-center text-[10px] font-bold text-tl-text-dimmest">{d}</div>
                 ))}
                 {cells.map((d, i) => {
                   if (!d) return <div key={`e${i}`} />;
@@ -332,32 +333,34 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
                       }}
                       title={blocked ? (trekType === "adventure" ? "On Trek" : "Travel Day")
                         : hmData ? `${heatCount}/${members.length}: ${hmData.names.join(", ")}` : ""}
+                      className="w-full flex flex-col items-center justify-center text-xs rounded-badge-sm select-none relative"
                       style={{
-                        width: "100%", aspectRatio: "1", minHeight: 36, maxHeight: 44,
-                        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                        fontSize: 12, fontWeight: mySelected && !showGroupView ? 700 : 500, borderRadius: 6, touchAction: "none", userSelect: "none",
+                        aspectRatio: "1", minHeight: 36, maxHeight: 44,
+                        fontWeight: mySelected && !showGroupView ? 700 : 500,
+                        touchAction: "none",
                         cursor: past || (active === null && !showGroupView && !allCrewsMode) || blocked ? "default" : "pointer",
                         opacity: past ? 0.22 : 1,
                         background: bg, color,
                         border: borderStyle,
-                        transition: "all .08s", position: "relative",
+                        transition: "all .08s",
                         backgroundImage: trekType === "travel" ? "repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0,0,0,0.05) 3px, rgba(0,0,0,0.05) 4px)" : undefined,
                       }}>
                       {blocked ? (trekType === "adventure" ? "\u26FA" : "\u{1F690}") : (
                         <>
                           {!showGroupView && mySelected && (
-                            <Check size={14} strokeWidth={3} style={{ position: "absolute", top: 2, right: 2, color: theme.selectedText, opacity: 0.7 }} />
+                            <Check size={14} strokeWidth={3} className="absolute top-0.5 right-0.5 text-tl-selected-text opacity-70" />
                           )}
                           <span>{d}</span>
                           {showGroupView && heatCount > 0 && (
-                            <span style={{ fontSize: 8, fontWeight: 800, lineHeight: 1, opacity: 0.8, marginTop: -1 }}>
+                            <span className="text-[8px] font-extrabold leading-none opacity-80 -mt-px">
                               {heatCount}
                             </span>
                           )}
                           {!showGroupView && heatCount > 0 && !mySelected && (
-                            <div style={{ position: "absolute", bottom: 1, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 1 }}>
+                            <div className="absolute bottom-px left-1/2 -translate-x-1/2 flex gap-px">
                               {Array.from({ length: Math.min(heatCount, 6) }).map((_, j) => (
-                                <div key={j} style={{ width: 2.5, height: 2.5, borderRadius: "50%", background: heatCount === members.length ? theme.heatFull : theme.memberDot }} />
+                                <div key={j} className="w-[2.5px] h-[2.5px] rounded-full"
+                                  style={{ background: heatCount === members.length ? theme.heatFull : theme.memberDot }} />
                               ))}
                             </div>
                           )}
@@ -375,21 +378,20 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
 
       {/* Tooltip popover for group view — fixed position near clicked cell */}
       {tooltip && (
-        <div style={{
-          position: "fixed", left: tooltip.x, top: tooltip.y, transform: "translateX(-50%)",
-          padding: "8px 12px", background: theme.bgCard, borderRadius: 10, border: `1px solid ${theme.border}`,
-          boxShadow: `0 4px 16px ${mode === "dark" ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.15)"}`,
-          zIndex: 1000, minWidth: 140, maxWidth: 260, pointerEvents: "auto",
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: theme.heading }}>{tooltip.key}</span>
-            <button onClick={() => setTooltip(null)} style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDimmer, fontSize: 13, lineHeight: 1, padding: 0, marginLeft: 8 }}>{"\u2715"}</button>
+        <div className="fixed p-2 px-3 bg-tl-card rounded-[10px] border border-tl-border z-[1000] min-w-[140px] max-w-[260px] pointer-events-auto"
+          style={{
+            left: tooltip.x, top: tooltip.y, transform: "translateX(-50%)",
+            boxShadow: `0 4px 16px ${mode === "dark" ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.15)"}`,
+          }}>
+          <div className="flex justify-between items-center mb-[3px]">
+            <span className="text-[11px] font-bold text-tl-heading">{tooltip.key}</span>
+            <button onClick={() => setTooltip(null)} className="bg-transparent border-none cursor-pointer text-tl-text-dimmer text-[13px] leading-none p-0 ml-2">{"\u2715"}</button>
           </div>
-          <div style={{ fontSize: 11, color: theme.accent, marginBottom: 2 }}>
+          <div className="text-[11px] text-tl-accent mb-0.5">
             Available ({tooltip.names.length}): {tooltip.names.join(", ")}
           </div>
           {tooltip.missing?.length > 0 && (
-            <div style={{ fontSize: 11, color: theme.warn }}>
+            <div className="text-[11px] text-tl-warn">
               Unavailable ({tooltip.missing.length}): {tooltip.missing.join(", ")}
             </div>
           )}
@@ -397,10 +399,10 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
       )}
 
       {/* Legend */}
-      <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
+      <div className="flex gap-3.5 items-center mt-2 flex-wrap">
         {showGroupView ? (
           <>
-            <span style={{ fontSize: 11, color: theme.textDimmest }}>Overlap:</span>
+            <span className="text-[11px] text-tl-text-dimmest">Overlap:</span>
             {([
               [0.2, "Few"],
               [0.5, "Some"],
@@ -409,36 +411,36 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
             ] as [number, string][]).map(([opacity, label]) => {
               const baseGreen = mode === "dark" ? "76, 175, 80" : "56, 142, 60";
               return (
-                <div key={label} style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                  <div style={{ width: 12, height: 12, borderRadius: 3, background: `rgba(${baseGreen}, ${0.15 + opacity * 0.85})` }} />
-                  <span style={{ fontSize: 11, color: theme.textDimmer }}>{label}</span>
+                <div key={label} className="flex items-center gap-[3px]">
+                  <div className="w-3 h-3 rounded-[3px]" style={{ background: `rgba(${baseGreen}, ${0.15 + opacity * 0.85})` }} />
+                  <span className="text-[11px] text-tl-text-dimmer">{label}</span>
                 </div>
               );
             })}
           </>
         ) : (
           <>
-            <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-              <div style={{ width: 12, height: 12, borderRadius: 3, background: am?.color?.bg || theme.selectedBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Check size={8} color={theme.selectedText} strokeWidth={3} />
+            <div className="flex items-center gap-[3px]">
+              <div className="w-3 h-3 rounded-[3px] flex items-center justify-center" style={{ background: am?.color?.bg || theme.selectedBg }}>
+                <Check size={8} className="text-tl-selected-text" strokeWidth={3} />
               </div>
-              <span style={{ fontSize: 11, color: theme.textDimmer }}>Available</span>
+              <span className="text-[11px] text-tl-text-dimmer">Available</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-              <div style={{ width: 12, height: 12, borderRadius: 3, background: theme.weekendBg, border: `1px solid ${theme.border}` }} />
-              <span style={{ fontSize: 11, color: theme.textDimmer }}>Weekend</span>
+            <div className="flex items-center gap-[3px]">
+              <div className="w-3 h-3 rounded-[3px] bg-tl-weekend-bg border border-tl-border" />
+              <span className="text-[11px] text-tl-text-dimmer">Weekend</span>
             </div>
           </>
         )}
         {trekDateSet.size > 0 && (
           <>
-            <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-              <span style={{ fontSize: 10 }}>{"\u26FA"}</span>
-              <span style={{ fontSize: 11, color: theme.textDimmer }}>On Trek</span>
+            <div className="flex items-center gap-[3px]">
+              <span className="text-[10px]">{"\u26FA"}</span>
+              <span className="text-[11px] text-tl-text-dimmer">On Trek</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-              <span style={{ fontSize: 10 }}>{"\u{1F690}"}</span>
-              <span style={{ fontSize: 11, color: theme.textDimmer }}>Travel</span>
+            <div className="flex items-center gap-[3px]">
+              <span className="text-[10px]">{"\u{1F690}"}</span>
+              <span className="text-[11px] text-tl-text-dimmer">Travel</span>
             </div>
           </>
         )}
@@ -446,7 +448,7 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
 
       {/* Empty state for group view */}
       {showGroupView && Object.keys(heatmap).length === 0 && members.length > 0 && (
-        <div style={{ textAlign: "center", padding: "12px 16px", marginTop: 8, fontSize: 12, color: theme.textDimmer, background: theme.bgAlt, borderRadius: 10, border: `1px solid ${theme.border}` }}>
+        <div className="text-center py-3 px-4 mt-2 text-xs text-tl-text-dimmer bg-tl-bg-alt rounded-[10px] border border-tl-border">
           No one has marked availability yet. Ask your crew to tap dates they're free to train.
         </div>
       )}

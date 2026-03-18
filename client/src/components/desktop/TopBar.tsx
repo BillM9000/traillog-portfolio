@@ -1,7 +1,6 @@
 import { Sun, Moon } from "lucide-react";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useCountdown } from "../../hooks/useCountdown";
-import { fontBody, fontDisplay } from "../../utils/theme";
 import type { User, TrekDates } from "../../types";
 
 interface TopBarProps {
@@ -33,40 +32,31 @@ export default function TopBar({ user, sectionTitle, adventureName, trekDates, t
   }
 
   return (
-    <div style={{
-      height: 48, display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "0 24px", borderBottom: `1px solid ${theme.border}`,
-      background: theme.bg, flexShrink: 0,
-    }}>
+    <div className="h-12 flex items-center justify-between px-6 border-b border-tl-border bg-tl-bg shrink-0">
       {/* Left: section title */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <h1 style={{
-          fontFamily: fontDisplay, fontSize: 18, fontWeight: 700,
-          color: theme.heading, margin: 0,
-        }}>
+      <div className="flex items-center gap-3">
+        <h1 className="font-display text-lg font-bold text-tl-heading m-0">
           {sectionTitle}
         </h1>
         {saving && (
-          <span style={{
-            fontSize: 11, fontWeight: 500, fontFamily: fontBody,
-            color: theme.textDim, fontStyle: "italic",
-          }}>
+          <span className="text-[11px] font-medium font-body text-tl-text-dim italic">
             Saving...
           </span>
         )}
       </div>
 
       {/* Right: countdown badge + theme toggle + avatar */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        {/* Countdown badge */}
+      <div className="flex items-center gap-3">
+        {/* Countdown badge — keep inline style for dynamic color */}
         {countdownLabel && (
-          <div style={{
-            padding: "3px 10px", borderRadius: 14,
-            background: `${countdownColor}18`,
-            border: `1px solid ${countdownColor}40`,
-            fontSize: 12, fontWeight: 700, fontFamily: fontBody,
-            color: countdownColor,
-          }}>
+          <div
+            className="py-[3px] px-2.5 rounded-[14px] text-xs font-bold font-body"
+            style={{
+              background: `${countdownColor}18`,
+              border: `1px solid ${countdownColor}40`,
+              color: countdownColor,
+            }}
+          >
             {countdownLabel}
           </div>
         )}
@@ -75,14 +65,7 @@ export default function TopBar({ user, sectionTitle, adventureName, trekDates, t
         <button
           onClick={toggle}
           title={mode === "light" ? "Switch to dark mode" : "Switch to light mode"}
-          style={{
-            display: "flex", alignItems: "center", justifyContent: "center",
-            width: 32, height: 32, borderRadius: 8, border: "none",
-            background: "transparent", cursor: "pointer",
-            color: theme.textDim, transition: "background 0.15s ease",
-          }}
-          onMouseEnter={e => (e.currentTarget.style.background = theme.bgAlt)}
-          onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+          className="flex items-center justify-center w-8 h-8 rounded-btn border-none bg-transparent cursor-pointer text-tl-text-dim transition-colors duration-150 hover:bg-tl-bg-alt"
         >
           {mode === "light" ? <Moon size={16} /> : <Sun size={16} />}
         </button>
@@ -91,33 +74,16 @@ export default function TopBar({ user, sectionTitle, adventureName, trekDates, t
         <button
           onClick={onViewProfile}
           title={user.name}
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            padding: "4px 8px", borderRadius: 8, border: "none",
-            background: "transparent", cursor: "pointer",
-            transition: "background 0.15s ease",
-          }}
-          onMouseEnter={e => (e.currentTarget.style.background = theme.bgAlt)}
-          onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+          className="flex items-center gap-2 py-1 px-2 rounded-btn border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-tl-bg-alt"
         >
-          <div style={{
-            width: 28, height: 28, borderRadius: 14,
-            background: theme.accent, display: "flex", alignItems: "center",
-            justifyContent: "center", fontSize: 12, fontWeight: 700,
-            color: "#fff", fontFamily: fontBody,
-            overflow: "hidden",
-          }}>
+          <div className="w-7 h-7 rounded-full bg-tl-accent flex items-center justify-center text-xs font-bold text-white font-body overflow-hidden">
             {user.avatar_url ? (
-              <img src={user.avatar_url} alt="" style={{ width: 28, height: 28, borderRadius: 14 }} />
+              <img src={user.avatar_url} alt="" className="w-7 h-7 rounded-full" />
             ) : (
               user.name?.charAt(0)?.toUpperCase() || "?"
             )}
           </div>
-          <span style={{
-            fontSize: 13, fontWeight: 500, fontFamily: fontBody,
-            color: theme.text, maxWidth: 120,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>
+          <span className="text-[13px] font-medium font-body text-tl-text max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap">
             {user.name}
           </span>
         </button>

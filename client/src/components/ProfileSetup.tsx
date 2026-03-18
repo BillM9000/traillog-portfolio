@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { fontBody, fontDisplay } from "../utils/theme";
 import Logo from "./Logo";
 import { Compass, Users, ShieldCheck, LucideIcon } from "lucide-react";
+import clsx from "clsx";
 import type { User } from "../types";
 
 interface ProfileSetupProps {
@@ -56,14 +56,6 @@ export default function ProfileSetup({ user, onComplete }: ProfileSetupProps) {
     }
   };
 
-  const containerStyle: React.CSSProperties = {
-    minHeight: "100vh",
-    background: "linear-gradient(175deg, #1A2412 0%, #2A3620 40%, #1A1F16 100%)",
-    display: "flex", alignItems: "center", justifyContent: "center", fontFamily: fontBody,
-  };
-
-  const cardStyle: React.CSSProperties = { width: "100%", maxWidth: 440, padding: "0 20px", textAlign: "center" };
-
   const roleCards: RoleCard[] = [
     {
       type: "scout",
@@ -82,108 +74,102 @@ export default function ProfileSetup({ user, onComplete }: ProfileSetupProps) {
   ];
 
   return (
-    <div style={containerStyle}>
-      <div style={cardStyle}>
+    <div className="min-h-screen flex items-center justify-center font-body" style={{ background: "linear-gradient(175deg, #1A2412 0%, #2A3620 40%, #1A1F16 100%)" }}>
+      <div className="w-full max-w-[440px] px-5 text-center">
         <Logo size={72} />
-        <h1 style={{ fontFamily: fontDisplay, fontSize: 24, fontWeight: 900, color: "#FDFAF5", margin: "12px 0 6px" }}>
+        <h1 className="font-display text-2xl font-black text-[#FDFAF5] mt-3 mb-1.5">
           Welcome, {user.name}!
         </h1>
-        <p style={{ fontSize: 14, color: "#D4E4B8", marginBottom: 8 }}>
+        <p className="text-sm text-[#D4E4B8] mb-2">
           Tell us about yourself to get started.
         </p>
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 20, color: "#7A9A5A", fontSize: 12 }}>
+        <div className="flex items-center justify-center gap-2 mb-5 text-[#7A9A5A] text-xs">
           <ShieldCheck size={16} />
           <span>Required for BSA High Adventure eligibility</span>
         </div>
 
-        <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 20 }}>
+        <div className="flex gap-3 justify-center mb-5">
           {roleCards.map(({ type, label, subtitle, desc, Icon }) => {
             const selected = choice === type;
             return (
-              <button key={type} onClick={() => setChoice(type)} style={{
-                flex: 1, padding: "22px 14px", borderRadius: 14, cursor: "pointer", textAlign: "center",
-                background: selected ? "rgba(91,122,58,0.15)" : "rgba(26,36,18,0.4)",
-                border: selected ? "2px solid #5B7A3A" : "2px solid #3A4D2A",
-                transition: "all .2s",
-              }}>
+              <button key={type} onClick={() => setChoice(type)} className={clsx(
+                "flex-1 py-[22px] px-3.5 rounded-[14px] cursor-pointer text-center transition-all duration-200",
+                selected
+                  ? "bg-[rgba(91,122,58,0.15)] border-2 border-[#5B7A3A]"
+                  : "bg-[rgba(26,36,18,0.4)] border-2 border-[#3A4D2A]"
+              )}>
                 <Icon
                   size={48}
                   strokeWidth={1.5}
-                  style={{
-                    color: selected ? "#A3C47A" : "#5B7A3A",
-                    marginBottom: 10,
-                    transition: "color .2s",
-                  }}
+                  className={clsx(
+                    "mb-2.5 transition-colors duration-200",
+                    selected ? "text-[#A3C47A]" : "text-[#5B7A3A]"
+                  )}
                 />
-                <div style={{ fontSize: 15, fontWeight: 700, color: selected ? "#FDFAF5" : "#8B8478", fontFamily: fontDisplay }}>
+                <div className={clsx(
+                  "text-[15px] font-bold font-display",
+                  selected ? "text-[#FDFAF5]" : "text-[#8B8478]"
+                )}>
                   {label}
                 </div>
-                <div style={{ fontSize: 13, color: selected ? "#A3C47A" : "#7A9A5A", marginTop: 3, fontWeight: 600 }}>
+                <div className={clsx(
+                  "text-[13px] mt-[3px] font-semibold",
+                  selected ? "text-[#A3C47A]" : "text-[#7A9A5A]"
+                )}>
                   {subtitle}
                 </div>
-                <div style={{ fontSize: 11, color: "#7A9A5A", marginTop: 4 }}>{desc}</div>
+                <div className="text-[11px] text-[#7A9A5A] mt-1">{desc}</div>
               </button>
             );
           })}
         </div>
 
         {showParentForm && (
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 12, color: "#B8CC9A", display: "block", textAlign: "left", marginBottom: 4, fontFamily: fontBody }}>
+          <div className="mb-4">
+            <label className="text-xs text-[#B8CC9A] block text-left mb-1 font-body">
               Parent/Guardian Email (required)
             </label>
             <input value={parentEmail} onChange={e => setParentEmail(e.target.value)}
               placeholder="parent@email.com" type="email"
-              style={{
-                width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #3A4D2A",
-                background: "rgba(26,36,18,0.6)", color: "#E8E0D4", fontSize: 13, fontFamily: fontBody,
-                outline: "none", boxSizing: "border-box",
-              }} />
-            <label style={{ fontSize: 12, color: "#B8CC9A", display: "block", textAlign: "left", marginBottom: 4, marginTop: 10, fontFamily: fontBody }}>
+              className="w-full py-3 px-3.5 rounded-[10px] border-[1.5px] border-[#3A4D2A] bg-[rgba(26,36,18,0.6)] text-[#E8E0D4] text-[13px] font-body outline-none box-border" />
+            <label className="text-xs text-[#B8CC9A] block text-left mb-1 mt-2.5 font-body">
               Second Parent/Guardian Email (optional)
             </label>
             <input value={parentEmail2} onChange={e => setParentEmail2(e.target.value)}
               placeholder="parent2@email.com" type="email"
-              style={{
-                width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #3A4D2A",
-                background: "rgba(26,36,18,0.6)", color: "#E8E0D4", fontSize: 13, fontFamily: fontBody,
-                outline: "none", boxSizing: "border-box",
-              }} />
+              className="w-full py-3 px-3.5 rounded-[10px] border-[1.5px] border-[#3A4D2A] bg-[rgba(26,36,18,0.6)] text-[#E8E0D4] text-[13px] font-body outline-none box-border" />
           </div>
         )}
 
-        <p style={{ fontSize: 11, color: "#666", marginBottom: 14, lineHeight: 1.5 }}>
+        <p className="text-[11px] text-[#666] mb-3.5 leading-relaxed">
           This cannot be changed later. BSA High Adventure requires participants to be at least 13 years old.
         </p>
 
-        <label style={{
-          display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 14,
-          fontSize: 11, color: "#B8CC9A", cursor: "pointer", lineHeight: 1.4, textAlign: "left",
-        }}>
+        <label className="flex items-start gap-2 mb-3.5 text-[11px] text-[#B8CC9A] cursor-pointer leading-[1.4] text-left">
           <input
             type="checkbox"
             checked={tosAccepted}
             onChange={e => setTosAccepted(e.target.checked)}
-            style={{ marginTop: 2, accentColor: "#5B7A3A", cursor: "pointer", flexShrink: 0 }}
+            className="mt-0.5 accent-[#5B7A3A] cursor-pointer shrink-0"
           />
           <span>
             I agree to the{" "}
-            <a href="/terms" target="_blank" style={{ color: "#D4E4B8", textDecoration: "underline" }}>Terms of Service</a>
+            <a href="/terms" target="_blank" className="text-[#D4E4B8] underline">Terms of Service</a>
             {" "}and{" "}
-            <a href="/privacy" target="_blank" style={{ color: "#D4E4B8", textDecoration: "underline" }}>Privacy Policy</a>
+            <a href="/privacy" target="_blank" className="text-[#D4E4B8] underline">Privacy Policy</a>
           </span>
         </label>
 
-        {error && <div style={{ fontSize: 12, color: "#d08080", marginBottom: 10 }}>{error}</div>}
+        {error && <div className="text-xs text-[#d08080] mb-2.5">{error}</div>}
 
-        <button onClick={handleSubmit} disabled={loading || !choice || !tosAccepted} style={{
-          width: "100%", padding: "13px 0", borderRadius: 12, border: "none",
-          background: (choice && tosAccepted) ? "#5B7A3A" : "#3A4D2A", color: "#FDFAF5",
-          fontSize: 14, fontWeight: 600, cursor: (choice && tosAccepted && !loading) ? "pointer" : "default",
-          fontFamily: fontBody, opacity: (!choice || !tosAccepted || loading) ? 0.6 : 1,
-          boxShadow: (choice && tosAccepted) ? "0 2px 8px rgba(58,77,42,0.3)" : "none",
-        }}>
+        <button onClick={handleSubmit} disabled={loading || !choice || !tosAccepted} className={clsx(
+          "w-full py-[13px] rounded-xl border-none text-[#FDFAF5] text-sm font-semibold font-body",
+          choice && tosAccepted
+            ? "bg-[#5B7A3A] shadow-[0_2px_8px_rgba(58,77,42,0.3)]"
+            : "bg-[#3A4D2A] shadow-none",
+          (!choice || !tosAccepted || loading) ? "opacity-60 cursor-default" : "cursor-pointer"
+        )}>
           {loading ? "..." : "Confirm & Continue"}
         </button>
       </div>

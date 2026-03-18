@@ -3,9 +3,9 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
-import { fontBody, fontDisplay, card, cardTitle, toolbarBtn } from "../utils/theme";
 import { US_STATES, ADVENTURE_TYPES } from "../utils/constants";
 import CouncilPicker from "./CouncilPicker";
+import clsx from "clsx";
 import type { ThemeColors, GearCatalogItem, ProductOption, GearOverride, TroopCustomGear, User, Itinerary } from "../types";
 
 // ── Local interfaces ──
@@ -312,52 +312,48 @@ export default function GlobalAdmin({ isGlobalAdmin, troopId, onClose, onEnterTr
   }
   if (troopId) tabs.push(["troop", "Troop Overrides"]);
 
-  const outerStyle: React.CSSProperties = alwaysOpen
-    ? { minHeight: "100vh", background: theme.bg, fontFamily: fontBody }
-    : { position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.5)", overflowY: "auto" };
-  const innerStyle: React.CSSProperties = alwaysOpen
-    ? { maxWidth: 700, margin: "0 auto", background: theme.bgCard, minHeight: "100vh", border: `1px solid ${theme.border}` }
-    : { maxWidth: 700, margin: "20px auto", background: theme.bgCard, borderRadius: 16, border: `1px solid ${theme.border}`, boxShadow: theme.shadow };
-
   return (
-    <div style={outerStyle}>
-      <div style={innerStyle}>
+    <div className={clsx(
+      alwaysOpen ? "min-h-screen bg-tl-bg font-body" : "fixed inset-0 z-[1000] overflow-y-auto"
+    )} style={alwaysOpen ? undefined : { background: "rgba(0,0,0,0.5)" }}>
+      <div className={clsx(
+        "max-w-[700px] bg-tl-card border border-tl-border",
+        alwaysOpen ? "mx-auto min-h-screen" : "mx-auto my-5 rounded-2xl shadow-lg"
+      )}>
         {/* Header */}
-        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${theme.borderLight}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay, margin: 0 }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-tl-border-light">
+          <h2 className="text-lg font-extrabold text-tl-heading font-display m-0">
             {isGlobalAdmin ? "\uD83C\uDF10 Platform Admin" : "\u2699\uFE0F Gear Admin"}
           </h2>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div className="flex items-center gap-2">
             {alwaysOpen && user && (
               <>
-                {user.avatar_url && <img src={user.avatar_url} alt="" style={{ width: 24, height: 24, borderRadius: "50%" }} />}
-                <span style={{ fontSize: 11, color: theme.textDim, fontFamily: fontBody }}>{user.name}</span>
+                {user.avatar_url && <img src={user.avatar_url} alt="" className="w-6 h-6 rounded-full" />}
+                <span className="text-[11px] text-tl-text-dim font-body">{user.name}</span>
               </>
             )}
             {alwaysOpen && onClose && (
-              <button onClick={onClose} style={{ fontSize: 11, color: theme.accent, background: "none", border: `1px solid ${theme.accent}40`, padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontFamily: fontBody, fontWeight: 600 }}>Lobby</button>
+              <button onClick={onClose} className="text-[11px] text-tl-accent font-body font-semibold px-2.5 py-1 rounded-[5px] cursor-pointer" style={{ background: "none", border: `1px solid ${theme.accent}40` }}>Lobby</button>
             )}
             {alwaysOpen && onLogout ? (
-              <button onClick={onLogout} style={{ fontSize: 11, color: theme.warn, background: "none", border: `1px solid ${theme.warnBg}`, padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontFamily: fontBody, fontWeight: 600 }}>Sign Out</button>
+              <button onClick={onLogout} className="text-[11px] text-tl-warn font-body font-semibold px-2.5 py-1 rounded-[5px] cursor-pointer bg-transparent border border-tl-warn-bg">Sign Out</button>
             ) : (
-              <button onClick={onClose} style={{ ...toolbarBtn(theme), padding: "5px 12px" }}>{"\u2715"}</button>
+              <button onClick={onClose} className="tl-btn px-3 py-1.5">{"\u2715"}</button>
             )}
           </div>
         </div>
 
         {/* Tabs */}
-        <div style={{ display: "flex", gap: 4, padding: "10px 20px", borderBottom: `1px solid ${theme.borderLight}`, overflowX: "auto" }}>
+        <div className="flex gap-1 px-5 py-2.5 border-b border-tl-border-light overflow-x-auto">
           {tabs.map(([k, l]: [string, string]) => (
-            <button key={k} onClick={() => setTab(k)} style={{
-              padding: "6px 14px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 600,
-              cursor: "pointer", fontFamily: fontBody, whiteSpace: "nowrap" as const,
-              background: tab === k ? theme.pillActiveBg : theme.pillInactiveBg,
-              color: tab === k ? theme.pillActiveText : theme.pillInactiveText,
-            }}>{l}</button>
+            <button key={k} onClick={() => setTab(k)} className={clsx(
+              "px-3.5 py-1.5 rounded-lg border-none text-xs font-semibold cursor-pointer font-body whitespace-nowrap",
+              tab === k ? "bg-tl-pill-active-bg text-tl-pill-active-text" : "bg-tl-pill-inactive-bg text-tl-pill-inactive-text"
+            )}>{l}</button>
           ))}
         </div>
 
-        <div style={{ padding: 20, ...(alwaysOpen ? {} : { maxHeight: "70vh", overflowY: "auto" as const }) }}>
+        <div className={clsx("p-5", !alwaysOpen && "max-h-[70vh] overflow-y-auto")}>
           {/* ── Gear Catalog Tab ── */}
           {tab === "catalog" && isGlobalAdmin && (
             <CatalogTab
@@ -439,48 +435,48 @@ export default function GlobalAdmin({ isGlobalAdmin, troopId, onClose, onEnterTr
 function CatalogTab({ catalog, grouped, search, setSearch, theme, addToast, refreshCatalog, setEditItem, setEditOption }: CatalogTabProps): React.ReactElement {
   return (
     <div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+      <div className="flex gap-2 mb-3">
         <input value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)} placeholder="Search items..."
-          style={{ flex: 1, padding: "7px 10px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody, outline: "none" }} />
+          className="tl-input flex-1 text-[11px]" />
         <button onClick={() => setEditItem({ name: "", category: "Pack & Carry", priority: "recommended", weight_oz: "", msrp: "", description: "" })}
-          style={{ ...toolbarBtn(theme, "primary"), padding: "6px 12px", fontSize: 11 }}>+ Add Item</button>
+          className="tl-btn-primary px-3 py-1.5 text-[11px]">+ Add Item</button>
       </div>
 
-      <div style={{ fontSize: 10, color: theme.textDimmer, marginBottom: 8 }}>{catalog.length} items in catalog</div>
+      <div className="text-[10px] text-tl-text-dimmer mb-2">{catalog.length} items in catalog</div>
 
       {Object.entries(grouped).map(([cat, items]: [string, ExtendedCatalogItem[]]) => (
         <div key={cat}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: theme.heading, marginTop: 10, marginBottom: 4, fontFamily: fontDisplay }}>{cat}</div>
+          <div className="text-[11px] font-bold text-tl-heading mt-2.5 mb-1 font-display">{cat}</div>
           {items.map((item: ExtendedCatalogItem) => (
-            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 6, marginBottom: 2, background: theme.bgAlt, border: `1px solid ${theme.borderLight}` }}>
-              <span style={{ flex: 1, fontSize: 11, color: theme.text, fontWeight: 600 }}>{item.name}</span>
-              <span style={{ fontSize: 9, color: theme.textDimmer }}>{item.priority}</span>
-              <span style={{ fontSize: 9, color: theme.textDimmer }}>{item.options?.length || 0} opts</span>
+            <div key={item.id} className="flex items-center gap-2 px-2 py-1.5 rounded-md mb-0.5 bg-tl-bg-alt border border-tl-border-light">
+              <span className="flex-1 text-[11px] text-tl-text font-semibold">{item.name}</span>
+              <span className="text-[9px] text-tl-text-dimmer">{item.priority}</span>
+              <span className="text-[9px] text-tl-text-dimmer">{item.options?.length || 0} opts</span>
               <button onClick={() => setEditOption({ gearId: item.id, option: { product_name: "", brand: "", price: "", weight_oz: "", tier: "mid", notes: "", affiliate_url: "" } })}
-                style={{ padding: "2px 8px", borderRadius: 4, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.accent, fontSize: 9, cursor: "pointer", fontFamily: fontBody }}>+ Opt</button>
-              <button onClick={() => setEditItem(item as any)} style={{ padding: "2px 8px", borderRadius: 4, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.textDim, fontSize: 9, cursor: "pointer", fontFamily: fontBody }}>Edit</button>
+                className="px-2 py-0.5 rounded text-[9px] text-tl-accent cursor-pointer font-body bg-transparent border border-tl-border-light">+ Opt</button>
+              <button onClick={() => setEditItem(item as any)} className="px-2 py-0.5 rounded text-[9px] text-tl-text-dim cursor-pointer font-body bg-transparent border border-tl-border-light">Edit</button>
               <button onClick={async () => {
                 if (!confirm(`Archive "${item.name}"?`)) return;
                 await api.deleteGearCatalogItem(item.id);
                 addToast("Archived", "success"); refreshCatalog();
-              }} style={{ padding: "2px 8px", borderRadius: 4, border: "1px solid #DC262640", background: "transparent", color: "#DC2626", fontSize: 9, cursor: "pointer", fontFamily: fontBody }}>Archive</button>
+              }} className="px-2 py-0.5 rounded text-[9px] cursor-pointer font-body bg-transparent" style={{ border: "1px solid #DC262640", color: "#DC2626" }}>Archive</button>
             </div>
           ))}
           {/* Show existing product options under each item */}
           {items.map((item: ExtendedCatalogItem) => (item.options || []).length > 0 && (
-            <div key={`opts-${item.id}`} style={{ marginLeft: 16, marginBottom: 4 }}>
+            <div key={`opts-${item.id}`} className="ml-4 mb-1">
               {item.options!.map((opt: any) => (
-                <div key={opt.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 6px", borderRadius: 4, marginBottom: 1, background: theme.bgCard, border: `1px solid ${theme.borderLight}` }}>
-                  <span style={{ fontSize: 9, color: theme.textDimmer }}>{"\u21B3"}</span>
-                  <span style={{ flex: 1, fontSize: 10, color: theme.text }}>{opt.product_name} {opt.brand && `(${opt.brand})`}</span>
-                  {opt.affiliate_url && <span style={{ fontSize: 8, color: theme.accent }}>{"\uD83D\uDD17"}</span>}
-                  <span style={{ fontSize: 9, color: theme.textDimmer }}>{opt.tier} &middot; ${opt.price || "?"}</span>
+                <div key={opt.id} className="flex items-center gap-1.5 px-1.5 py-0.5 rounded mb-px bg-tl-card border border-tl-border-light">
+                  <span className="text-[9px] text-tl-text-dimmer">{"\u21B3"}</span>
+                  <span className="flex-1 text-[10px] text-tl-text">{opt.product_name} {opt.brand && `(${opt.brand})`}</span>
+                  {opt.affiliate_url && <span className="text-[8px] text-tl-accent">{"\uD83D\uDD17"}</span>}
+                  <span className="text-[9px] text-tl-text-dimmer">{opt.tier} &middot; ${opt.price || "?"}</span>
                   <button onClick={() => setEditOption({ gearId: item.id, option: opt })}
-                    style={{ padding: "1px 6px", borderRadius: 3, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.textDim, fontSize: 8, cursor: "pointer", fontFamily: fontBody }}>Edit</button>
+                    className="px-1.5 py-px rounded-sm text-[8px] text-tl-text-dim cursor-pointer font-body bg-transparent border border-tl-border-light">Edit</button>
                   <button onClick={async () => {
                     await api.deleteProductOption(opt.id);
                     addToast("Removed", "success"); refreshCatalog();
-                  }} style={{ padding: "1px 6px", borderRadius: 3, border: "1px solid #DC262640", background: "transparent", color: "#DC2626", fontSize: 8, cursor: "pointer", fontFamily: fontBody }}>{"\u2715"}</button>
+                  }} className="px-1.5 py-px rounded-sm text-[8px] cursor-pointer font-body bg-transparent" style={{ border: "1px solid #DC262640", color: "#DC2626" }}>{"\u2715"}</button>
                 </div>
               ))}
             </div>
@@ -612,25 +608,23 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop }:
     finally { setCreating(false); }
   };
 
-  const inputStyle: React.CSSProperties = { width: "100%", padding: "8px 10px", borderRadius: 6, border: `1.5px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody, outline: "none", marginBottom: 6, boxSizing: "border-box" };
-
   if (!loaded) {
-    return <div style={{ fontSize: 12, color: theme.textDimmer, fontStyle: "italic" }}>Loading troops...</div>;
+    return <div className="text-xs text-tl-text-dimmer italic">Loading troops...</div>;
   }
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <div style={{ fontSize: 10, color: theme.textDimmer }}>{troops.length} troop{troops.length !== 1 ? "s" : ""} registered</div>
+      <div className="flex justify-between items-center mb-2.5">
+        <div className="text-[10px] text-tl-text-dimmer">{troops.length} troop{troops.length !== 1 ? "s" : ""} registered</div>
         {!showCreate && (
-          <button onClick={() => setShowCreate(true)} style={{ fontSize: 10, fontWeight: 600, color: theme.accent, background: theme.accentBg, border: `1px solid ${theme.borderAccent}`, padding: "4px 12px", borderRadius: 6, cursor: "pointer", fontFamily: fontBody }}>+ Create Troop</button>
+          <button onClick={() => setShowCreate(true)} className="text-[10px] font-semibold text-tl-accent bg-tl-accent-bg border border-tl-border-accent px-3 py-1 rounded-md cursor-pointer font-body">+ Create Troop</button>
         )}
       </div>
 
       {showCreate && createStep === 2 && (
-        <div style={{ marginBottom: 12, padding: 14, borderRadius: 10, border: `1.5px solid ${theme.borderAccent}`, background: theme.bgAlt }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: theme.heading, marginBottom: 4, fontFamily: fontDisplay }}>Set Up First Adventure</div>
-          <div style={{ fontSize: 10, color: theme.textDim, marginBottom: 10 }}>
-            <strong style={{ color: theme.heading }}>{createdTroopName}</strong> is ready! Now create the first adventure so members can join.
+        <div className="mb-3 p-3.5 rounded-[10px] bg-tl-bg-alt" style={{ border: `1.5px solid ${theme.borderAccent}` }}>
+          <div className="text-xs font-bold text-tl-heading mb-1 font-display">Set Up First Adventure</div>
+          <div className="text-[10px] text-tl-text-dim mb-2.5">
+            <strong className="text-tl-heading">{createdTroopName}</strong> is ready! Now create the first adventure so members can join.
           </div>
           <form onSubmit={async (e: React.FormEvent) => {
             e.preventDefault();
@@ -649,30 +643,31 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop }:
             } catch (err: unknown) { addToast((err as Error).message, "error"); }
             finally { setCreating(false); }
           }}>
-            <div style={{ marginBottom: 6 }}>
-              <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" as const, marginBottom: 4 }}>Adventure Type</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
+            <div className="mb-1.5">
+              <div className="text-[9px] font-bold text-tl-text-dim uppercase mb-1">Adventure Type</div>
+              <div className="grid grid-cols-2 gap-1">
                 {ADVENTURE_TYPES.map((t: any) => (
                   <button key={t.id} type="button" disabled={!t.enabled}
                     onClick={() => t.enabled && setAdvForm({ ...advForm, adventure_type: t.id })}
+                    className="relative p-2.5 rounded-md font-body text-left"
                     style={{
-                      padding: "8px 10px", borderRadius: 6, cursor: t.enabled ? "pointer" : "default",
+                      cursor: t.enabled ? "pointer" : "default",
                       border: advForm.adventure_type === t.id ? `2px solid ${theme.accent}` : `1px solid ${theme.borderLight}`,
                       background: advForm.adventure_type === t.id ? theme.accentBg : theme.bgInput,
-                      opacity: t.enabled ? 1 : 0.45, textAlign: "left" as const, fontFamily: fontBody, position: "relative" as const,
+                      opacity: t.enabled ? 1 : 0.45,
                     }}>
-                    <div style={{ fontSize: 12, marginBottom: 1 }}>{t.icon}</div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: t.enabled ? theme.heading : theme.textDim }}>{t.name}</div>
-                    <div style={{ fontSize: 9, color: theme.textDim }}>{t.location}</div>
-                    {!t.enabled && <div style={{ position: "absolute" as const, top: 4, right: 6, fontSize: 7, fontWeight: 700, color: theme.textDim, background: theme.border, padding: "1px 4px", borderRadius: 3, textTransform: "uppercase" as const }}>Soon</div>}
+                    <div className="text-xs mb-px">{t.icon}</div>
+                    <div className={clsx("text-[10px] font-bold", t.enabled ? "text-tl-heading" : "text-tl-text-dim")}>{t.name}</div>
+                    <div className="text-[9px] text-tl-text-dim">{t.location}</div>
+                    {!t.enabled && <div className="absolute top-1 right-1.5 text-[7px] font-bold text-tl-text-dim bg-tl-border px-1 py-px rounded-sm uppercase">Soon</div>}
                   </button>
                 ))}
               </div>
             </div>
             <input value={advForm.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdvForm({ ...advForm, name: e.target.value })}
               placeholder={`Crew name (e.g. ${(ADVENTURE_TYPES.find((t: any) => t.id === advForm.adventure_type)?.name || "Philmont")} 2026)`}
-              style={inputStyle} required />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 6 }}>
+              className="tl-input text-[11px] mb-1.5" required />
+            <div className="grid grid-cols-2 gap-1 mb-1.5">
               {(() => {
                 const labels = (ADVENTURE_TYPES.find((t: any) => t.id === advForm.adventure_type) as any)?.dateLabels || (ADVENTURE_TYPES[0] as any).dateLabels;
                 return [
@@ -682,14 +677,14 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop }:
                   { key: "home_date", label: labels.home },
                 ].map((d: { key: string; label: string }) => (
                   <div key={d.key}>
-                    <label style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" as const }}>{d.label}</label>
-                    <input value={advForm[d.key]} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdvForm({ ...advForm, [d.key]: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} />
+                    <label className="text-[8px] font-bold text-tl-text-dim uppercase">{d.label}</label>
+                    <input value={advForm[d.key]} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdvForm({ ...advForm, [d.key]: e.target.value })} type="date" className="tl-input text-[11px]" />
                   </div>
                 ));
               })()}
             </div>
             <select value={advForm.itinerary_id} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAdvForm({ ...advForm, itinerary_id: e.target.value })}
-              style={{ ...inputStyle, color: advForm.itinerary_id ? theme.text : theme.textDim }}>
+              className={clsx("tl-input text-[11px] mb-1.5 cursor-pointer", !advForm.itinerary_id && "text-tl-text-dim")}>
               <option value="">Select itinerary (optional)...</option>
               {[12, 9, 7].map((days: number) => {
                 const group = gaItineraries.filter((it: Itinerary) => it.days === days).sort((a: Itinerary, b: Itinerary) => {
@@ -703,119 +698,107 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop }:
                 ) : null;
               })}
             </select>
-            <div style={{ display: "flex", gap: 6 }}>
-              <button type="submit" disabled={creating} style={{ flex: 1, padding: "7px 0", borderRadius: 6, border: "none", background: theme.accent, color: "#fff", fontSize: 11, fontWeight: 700, cursor: creating ? "wait" : "pointer", fontFamily: fontDisplay }}>{creating ? "..." : "Create Adventure"}</button>
+            <div className="flex gap-1.5">
+              <button type="submit" disabled={creating} className="flex-1 py-1.5 rounded-md border-none bg-tl-accent text-white text-[11px] font-bold font-display" style={{ cursor: creating ? "wait" : "pointer" }}>{creating ? "..." : "Create Adventure"}</button>
             </div>
           </form>
         </div>
       )}
 
       {showCreate && createStep === 1 && (
-        <div style={{ marginBottom: 12, padding: 14, borderRadius: 10, border: `1.5px solid ${theme.borderAccent}`, background: theme.bgAlt }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: theme.heading, marginBottom: 8, fontFamily: fontDisplay }}>Create a Troop</div>
+        <div className="mb-3 p-3.5 rounded-[10px] bg-tl-bg-alt" style={{ border: `1.5px solid ${theme.borderAccent}` }}>
+          <div className="text-xs font-bold text-tl-heading mb-2 font-display">Create a Troop</div>
           <form onSubmit={handleCreate}>
-            <input value={newTroop.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTroop({ ...newTroop, name: e.target.value })} placeholder="Troop name (e.g. Troop 444)" style={inputStyle} required />
+            <input value={newTroop.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTroop({ ...newTroop, name: e.target.value })} placeholder="Troop name (e.g. Troop 444)" className="tl-input text-[11px] mb-1.5" required />
             <CouncilPicker value={newTroop.council_id} onChange={(id: number | string | null) => setNewTroop({ ...newTroop, council_id: id })} />
-            <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-              <input value={newTroop.city} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTroop({ ...newTroop, city: e.target.value })} placeholder="City (required)" style={{ ...inputStyle, flex: 1, marginBottom: 0 }} required />
-              <select value={newTroop.state} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewTroop({ ...newTroop, state: e.target.value })} style={{ ...inputStyle, width: 70, marginBottom: 0, cursor: "pointer" }} required>
+            <div className="flex gap-1.5 mb-1.5">
+              <input value={newTroop.city} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTroop({ ...newTroop, city: e.target.value })} placeholder="City (required)" className="tl-input flex-1 text-[11px]" required />
+              <select value={newTroop.state} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewTroop({ ...newTroop, state: e.target.value })} className="tl-input w-[70px] cursor-pointer text-[11px]" required>
                 <option value="">ST</option>
                 {US_STATES.map((s: string) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             {/* Logo upload (optional) */}
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <div className="mb-2">
+              <div className="flex items-center gap-2 mb-1">
                 {newLogoPreview ? (
                   <img src={newLogoPreview} alt="Logo preview"
                     onError={() => { setNewLogoPreview(null); setNewLogoFile(null); }}
-                    style={{ width: 100, height: 100, borderRadius: 6, objectFit: "contain" as const, background: theme.bgAlt, border: `1px solid ${theme.border}` }} />
+                    className="w-[100px] h-[100px] rounded-md object-contain bg-tl-bg-alt border border-tl-border" />
                 ) : (
-                  <div style={{
-                    width: 56, height: 56, borderRadius: 6, background: theme.accent + "20",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    border: `1px dashed ${theme.borderLight}`, fontSize: 14, color: theme.textDim,
-                  }}>{"\uD83D\uDCF7"}</div>
+                  <div className="w-14 h-14 rounded-md flex items-center justify-center text-sm text-tl-text-dim border border-dashed border-tl-border-light" style={{ background: `${theme.accent}20` }}>{"\uD83D\uDCF7"}</div>
                 )}
                 <div>
-                  <label style={{
-                    display: "inline-block", padding: "4px 12px", borderRadius: 5,
-                    border: "none", background: theme.accent,
-                    color: "#fff", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: fontDisplay,
-                  }}>
+                  <label className="inline-block px-3 py-1 rounded-[5px] border-none bg-tl-accent text-white text-[10px] font-bold cursor-pointer font-display">
                     {newLogoPreview ? "Change" : "Add Logo"}
                     <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleLogoSelect}
-                      style={{ display: "none" }} />
+                      className="hidden" />
                   </label>
                   {newLogoPreview && (
-                    <button type="button" onClick={() => { setNewLogoFile(null); setNewLogoPreview(null); }} style={{
-                      marginLeft: 4, padding: "2px 6px", borderRadius: 4, border: "none", background: "transparent",
-                      color: theme.textDim, fontSize: 9, cursor: "pointer", fontFamily: fontBody,
-                    }}>Remove</button>
+                    <button type="button" onClick={() => { setNewLogoFile(null); setNewLogoPreview(null); }} className="ml-1 px-1.5 py-0.5 rounded text-[9px] text-tl-text-dim cursor-pointer font-body bg-transparent border-none">Remove</button>
                   )}
-                  <div style={{ fontSize: 9, color: theme.textDimmer, fontStyle: "italic" }}>
+                  <div className="text-[9px] text-tl-text-dimmer italic">
                     Optional &middot; change later in Troop Settings
                   </div>
                 </div>
               </div>
             </div>
 
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontSize: 10, fontWeight: 600, color: theme.textDim }}>Visibility:</span>
+            <div className="mb-2">
+              <div className="flex gap-1.5 items-center mb-1.5">
+                <span className="text-[10px] font-semibold text-tl-text-dim">Visibility:</span>
                 {[true, false].map((isPublic: boolean) => (
-                  <button key={String(isPublic)} type="button" onClick={() => setNewTroop({ ...newTroop, is_public: isPublic })} style={{
-                    padding: "3px 10px", borderRadius: 5, border: "none", fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-                    background: newTroop.is_public === isPublic ? theme.accent : theme.bgInput,
-                    color: newTroop.is_public === isPublic ? "#fff" : theme.textMuted,
-                  }}>{isPublic ? "Public" : "Private"}</button>
+                  <button key={String(isPublic)} type="button" onClick={() => setNewTroop({ ...newTroop, is_public: isPublic })} className={clsx(
+                    "px-2.5 py-0.5 rounded-[5px] border-none text-[10px] font-semibold cursor-pointer font-body",
+                    newTroop.is_public === isPublic ? "bg-tl-accent text-white" : "bg-tl-input text-tl-text-muted"
+                  )}>{isPublic ? "Public" : "Private"}</button>
                 ))}
               </div>
-              <div style={{ fontSize: 10, color: newTroop.is_public ? theme.textDim : theme.warn, padding: "6px 8px", borderRadius: 5, lineHeight: 1.4, background: newTroop.is_public ? theme.bgInput : `${theme.warn}10`, border: `1px solid ${newTroop.is_public ? theme.borderLight : theme.warn + "30"}` }}>
+              <div className={clsx("text-[10px] px-2 py-1.5 rounded-[5px] leading-snug", newTroop.is_public ? "text-tl-text-dim bg-tl-input border border-tl-border-light" : "text-tl-warn")}
+                style={!newTroop.is_public ? { background: `${theme.warn}10`, border: `1px solid ${theme.warn}30` } : undefined}>
                 {newTroop.is_public
                   ? "Troop will be listed so parents and scouts can search and request to join."
                   : "Troop will be hidden from search. Members must be invited by email."}
               </div>
             </div>
-            <div style={{ display: "flex", gap: 6 }}>
-              <button type="button" onClick={() => { setShowCreate(false); setCreateStep(1); }} style={{ flex: 1, padding: "7px 0", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.textDim, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
-              <button type="submit" disabled={creating} style={{ flex: 1, padding: "7px 0", borderRadius: 6, border: "none", background: theme.accent, color: "#fff", fontSize: 11, fontWeight: 700, cursor: creating ? "wait" : "pointer", fontFamily: fontDisplay }}>{creating ? "..." : "Create"}</button>
+            <div className="flex gap-1.5">
+              <button type="button" onClick={() => { setShowCreate(false); setCreateStep(1); }} className="flex-1 py-1.5 rounded-md border border-tl-border-light bg-transparent text-tl-text-dim text-[11px] font-semibold cursor-pointer font-body">Cancel</button>
+              <button type="submit" disabled={creating} className="flex-1 py-1.5 rounded-md border-none bg-tl-accent text-white text-[11px] font-bold font-display" style={{ cursor: creating ? "wait" : "pointer" }}>{creating ? "..." : "Create"}</button>
             </div>
           </form>
         </div>
       )}
 
       {troops.length === 0 && !showCreate && (
-        <div style={{ fontSize: 12, color: theme.textDimmer, fontStyle: "italic" }}>No troops registered yet. Click "+ Create Troop" to get started.</div>
+        <div className="text-xs text-tl-text-dimmer italic">No troops registered yet. Click "+ Create Troop" to get started.</div>
       )}
       {troops.map((t: AdminTroop) => (
-        <div key={t.id} style={{ marginBottom: 6, borderRadius: 8, border: `1px solid ${theme.borderLight}`, overflow: "hidden" }}>
+        <div key={t.id} className="mb-1.5 rounded-lg border border-tl-border-light overflow-hidden">
           {/* Troop row */}
-          <div onClick={() => toggleExpand(t.id)} style={{
-            display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", cursor: "pointer",
-            background: expanded === t.id ? theme.bgAlt : "transparent",
-          }}>
-            <span style={{ fontSize: 10, color: theme.textDimmer }}>{expanded === t.id ? "\u25BE" : "\u25B8"}</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: theme.heading }}>{t.name}{t.location ? ` \u00B7 ${t.location}` : ""}</div>
-              <div style={{ fontSize: 10, color: theme.textDimmer }}>{t.council || "\u2014"}</div>
+          <div onClick={() => toggleExpand(t.id)} className={clsx(
+            "flex items-center gap-2 px-2.5 py-2 cursor-pointer",
+            expanded === t.id ? "bg-tl-bg-alt" : "bg-transparent"
+          )}>
+            <span className="text-[10px] text-tl-text-dimmer">{expanded === t.id ? "\u25BE" : "\u25B8"}</span>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-bold text-tl-heading">{t.name}{t.location ? ` \u00B7 ${t.location}` : ""}</div>
+              <div className="text-[10px] text-tl-text-dimmer">{t.council || "\u2014"}</div>
             </div>
-            <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
-              <span style={{ fontSize: 10, color: theme.textMuted }}>{t.member_count} members</span>
+            <div className="flex gap-1.5 items-center shrink-0">
+              <span className="text-[10px] text-tl-text-muted">{t.member_count} members</span>
               {t.pending_count > 0 && (
-                <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 10, fontWeight: 700, background: `${theme.warn}25`, color: theme.warn }}>{t.pending_count} pending</span>
+                <span className="text-[9px] px-1.5 py-px rounded-[10px] font-bold text-tl-warn" style={{ background: `${theme.warn}25` }}>{t.pending_count} pending</span>
               )}
-              <span style={{ fontSize: 10, color: theme.textMuted }}>{t.adventure_count} adv</span>
-              <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 3, fontWeight: 600, background: t.is_public ? theme.accentBg : `${theme.warn}20`, color: t.is_public ? theme.accent : theme.warn }}>{t.is_public ? "Public" : "Private"}</span>
+              <span className="text-[10px] text-tl-text-muted">{t.adventure_count} adv</span>
+              <span className={clsx(
+                "text-[9px] px-1.5 py-px rounded-sm font-semibold",
+                t.is_public ? "bg-tl-accent-bg text-tl-accent" : "text-tl-warn"
+              )} style={!t.is_public ? { background: `${theme.warn}20` } : undefined}>{t.is_public ? "Public" : "Private"}</span>
               {onEnterTroop && (
                 showCreate && createStep === 2 && t.id === createdTroopId ? (
-                  <span style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, fontStyle: "italic" }}>Finish setup {"\u2193"}</span>
+                  <span className="text-[9px] font-semibold text-tl-text-dim italic">Finish setup {"\u2193"}</span>
                 ) : (
-                  <button onClick={(e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); onEnterTroop(t.id, t); }} style={{
-                    padding: "3px 10px", borderRadius: 5, border: `1px solid ${theme.borderAccent}`,
-                    background: theme.accentBg, color: theme.accentLight, fontSize: 10, fontWeight: 600,
-                    cursor: "pointer", fontFamily: fontBody,
-                  }}>Enter {"\u2192"}</button>
+                  <button onClick={(e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); onEnterTroop(t.id, t); }} className="px-2.5 py-0.5 rounded-[5px] border border-tl-border-accent bg-tl-accent-bg text-tl-accent-light text-[10px] font-semibold cursor-pointer font-body">Enter {"\u2192"}</button>
                 )
               )}
             </div>
@@ -823,50 +806,34 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop }:
 
           {/* Expanded member list */}
           {expanded === t.id && (
-            <div style={{ padding: "0 10px 10px", background: theme.bgAlt }}>
+            <div className="px-2.5 pb-2.5 bg-tl-bg-alt">
               {membersLoading ? (
-                <div style={{ fontSize: 11, color: theme.textDimmer, fontStyle: "italic", padding: 6 }}>Loading...</div>
+                <div className="text-[11px] text-tl-text-dimmer italic p-1.5">Loading...</div>
               ) : members.length === 0 ? (
-                <div style={{ fontSize: 11, color: theme.textDimmer, fontStyle: "italic", padding: 6 }}>No members.</div>
+                <div className="text-[11px] text-tl-text-dimmer italic p-1.5">No members.</div>
               ) : (
                 <div>
                   {members.map((m: AdminTroopMember) => (
-                    <div key={m.id} style={{
-                      display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", marginBottom: 2,
-                      borderRadius: 6, background: theme.bgCard, border: `1px solid ${theme.borderLight}`,
-                    }}>
-                      {m.avatar_url && <img src={m.avatar_url} alt="" style={{ width: 20, height: 20, borderRadius: "50%" }} />}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>{m.name}</span>
-                        <span style={{ fontSize: 9, color: theme.textDimmer, marginLeft: 6 }}>{m.email}</span>
+                    <div key={m.id} className="flex items-center gap-2 px-2 py-1 mb-0.5 rounded-md bg-tl-card border border-tl-border-light">
+                      {m.avatar_url && <img src={m.avatar_url} alt="" className="w-5 h-5 rounded-full" />}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[11px] font-semibold text-tl-text">{m.name}</span>
+                        <span className="text-[9px] text-tl-text-dimmer ml-1.5">{m.email}</span>
                       </div>
-                      <span style={{ fontSize: 9, color: theme.textDimmer }}>{m.user_type}</span>
-                      <span style={{
-                        fontSize: 9, padding: "1px 5px", borderRadius: 3, fontWeight: 600,
-                        background: m.role === "admin" ? theme.accentBg : "transparent",
-                        color: m.role === "admin" ? theme.accent : theme.textDimmer,
-                      }}>{m.role}</span>
+                      <span className="text-[9px] text-tl-text-dimmer">{m.user_type}</span>
+                      <span className={clsx(
+                        "text-[9px] px-1 py-px rounded-sm font-semibold",
+                        m.role === "admin" ? "bg-tl-accent-bg text-tl-accent" : "bg-transparent text-tl-text-dimmer"
+                      )}>{m.role}</span>
                       {m.status === "pending" ? (
-                        <div style={{ display: "flex", gap: 4 }}>
-                          <button onClick={() => handleApprove(t.id, m.user_id)} style={{
-                            padding: "2px 8px", borderRadius: 4, border: "none", fontSize: 9, fontWeight: 600,
-                            cursor: "pointer", fontFamily: fontBody, background: theme.accent, color: "#fff",
-                          }}>Approve</button>
-                          <button onClick={() => handleDeny(t.id, m.user_id)} style={{
-                            padding: "2px 8px", borderRadius: 4, border: "1px solid #DC262640", fontSize: 9, fontWeight: 600,
-                            cursor: "pointer", fontFamily: fontBody, background: "transparent", color: "#DC2626",
-                          }}>Deny</button>
+                        <div className="flex gap-1">
+                          <button onClick={() => handleApprove(t.id, m.user_id)} className="px-2 py-0.5 rounded text-[9px] font-semibold cursor-pointer font-body bg-tl-accent text-white border-none">Approve</button>
+                          <button onClick={() => handleDeny(t.id, m.user_id)} className="px-2 py-0.5 rounded text-[9px] font-semibold cursor-pointer font-body bg-transparent" style={{ border: "1px solid #DC262640", color: "#DC2626" }}>Deny</button>
                         </div>
                       ) : (
-                        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                          <span style={{
-                            fontSize: 9, padding: "1px 5px", borderRadius: 3, fontWeight: 600,
-                            background: `${theme.accent}15`, color: theme.accent,
-                          }}>{m.status}</span>
-                          <button onClick={() => handleRemove(t.id, m.user_id)} style={{
-                            padding: "2px 6px", borderRadius: 4, border: "1px solid #DC262640", fontSize: 9,
-                            cursor: "pointer", fontFamily: fontBody, background: "transparent", color: "#DC2626",
-                          }}>Remove</button>
+                        <div className="flex gap-1 items-center">
+                          <span className="text-[9px] px-1 py-px rounded-sm font-semibold text-tl-accent" style={{ background: `${theme.accent}15` }}>{m.status}</span>
+                          <button onClick={() => handleRemove(t.id, m.user_id)} className="px-1.5 py-0.5 rounded text-[9px] cursor-pointer font-body bg-transparent" style={{ border: "1px solid #DC262640", color: "#DC2626" }}>Remove</button>
                         </div>
                       )}
                     </div>
@@ -875,26 +842,23 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop }:
               )}
 
               {/* Delete troop */}
-              <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${theme.borderLight}` }}>
+              <div className="mt-2.5 pt-2 border-t border-tl-border-light">
                 {deleteConfirm === t.id ? (
                   <div>
-                    <div style={{ fontSize: 11, color: "#DC2626", fontWeight: 600, marginBottom: 6 }}>
+                    <div className="text-[11px] font-semibold mb-1.5" style={{ color: "#DC2626" }}>
                       Type &ldquo;{t.name}&rdquo; to confirm deletion. This removes the troop, all adventures, members, and gear data permanently.
                     </div>
-                    <div style={{ display: "flex", gap: 6 }}>
+                    <div className="flex gap-1.5">
                       <input value={deleteInput} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDeleteInput(e.target.value)} placeholder={t.name}
-                        style={{ flex: 1, padding: "5px 8px", borderRadius: 5, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody, outline: "none" }} />
+                        className="tl-input flex-1 text-[11px]" />
                       <button onClick={() => deleteInput === t.name && handleDelete(t.id)} disabled={deleteInput !== t.name}
-                        style={{ padding: "4px 12px", borderRadius: 5, border: "none", fontSize: 10, fontWeight: 700, cursor: deleteInput === t.name ? "pointer" : "not-allowed", fontFamily: fontBody, background: deleteInput === t.name ? "#DC2626" : "#DC262640", color: "#fff" }}>Delete</button>
+                        className="px-3 py-1 rounded-[5px] border-none text-[10px] font-bold font-body text-white" style={{ cursor: deleteInput === t.name ? "pointer" : "not-allowed", background: deleteInput === t.name ? "#DC2626" : "#DC262640" }}>Delete</button>
                       <button onClick={() => { setDeleteConfirm(null); setDeleteInput(""); }}
-                        style={{ padding: "4px 10px", borderRadius: 5, border: `1px solid ${theme.borderLight}`, fontSize: 10, cursor: "pointer", fontFamily: fontBody, background: "transparent", color: theme.textDim }}>Cancel</button>
+                        className="px-2.5 py-1 rounded-[5px] border border-tl-border-light text-[10px] cursor-pointer font-body bg-transparent text-tl-text-dim">Cancel</button>
                     </div>
                   </div>
                 ) : (
-                  <button onClick={() => setDeleteConfirm(t.id)} style={{
-                    padding: "4px 10px", borderRadius: 5, border: "1px solid #DC262630", background: "transparent",
-                    color: "#DC2626", fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-                  }}>Delete Troop</button>
+                  <button onClick={() => setDeleteConfirm(t.id)} className="px-2.5 py-1 rounded-[5px] bg-transparent text-[10px] font-semibold cursor-pointer font-body" style={{ border: "1px solid #DC262630", color: "#DC2626" }}>Delete Troop</button>
                 )}
               </div>
             </div>
@@ -908,46 +872,47 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop }:
 // ─── Affiliate Analytics Tab ───
 function AffiliateTab({ stats, theme }: AffiliateTabProps): React.ReactElement {
   if (!stats) {
-    return <div style={{ fontSize: 12, color: theme.textDimmer, fontStyle: "italic" }}>Loading affiliate data...</div>;
+    return <div className="text-xs text-tl-text-dimmer italic">Loading affiliate data...</div>;
   }
 
   return (
     <div>
       {/* Summary */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+      <div className="flex gap-3 mb-4">
         <StatCard label="Total Clicks" value={stats.totalClicks || 0} theme={theme} />
         <StatCard label="Products Clicked" value={stats.clicksByProduct?.length || 0} theme={theme} />
         <StatCard label="Active Days" value={stats.clicksByDay?.filter(d => d.clicks > 0).length || 0} theme={theme} />
       </div>
 
       {/* Top products */}
-      <div style={{ fontSize: 12, fontWeight: 700, color: theme.heading, marginBottom: 6, fontFamily: fontDisplay }}>Top Products by Clicks</div>
+      <div className="text-xs font-bold text-tl-heading mb-1.5 font-display">Top Products by Clicks</div>
       {(!stats.clicksByProduct || stats.clicksByProduct.length === 0) ? (
-        <div style={{ fontSize: 11, color: theme.textDimmer, fontStyle: "italic", marginBottom: 12 }}>No clicks recorded yet.</div>
+        <div className="text-[11px] text-tl-text-dimmer italic mb-3">No clicks recorded yet.</div>
       ) : (
-        <div style={{ marginBottom: 16 }}>
+        <div className="mb-4">
           {stats.clicksByProduct.slice(0, 15).map((p, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 8px", borderRadius: 4, marginBottom: 2, background: theme.bgAlt, border: `1px solid ${theme.borderLight}` }}>
-              <span style={{ fontSize: 10, color: theme.textDimmer, fontWeight: 700, width: 20 }}>#{i + 1}</span>
-              <span style={{ flex: 1, fontSize: 11, color: theme.text }}>{p.product_name || p.gear_name || "Unknown"}</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: theme.accent }}>{p.clicks}</span>
+            <div key={i} className="flex items-center gap-2 px-2 py-1 rounded mb-0.5 bg-tl-bg-alt border border-tl-border-light">
+              <span className="text-[10px] text-tl-text-dimmer font-bold w-5">#{i + 1}</span>
+              <span className="flex-1 text-[11px] text-tl-text">{p.product_name || p.gear_name || "Unknown"}</span>
+              <span className="text-[11px] font-bold text-tl-accent">{p.clicks}</span>
             </div>
           ))}
         </div>
       )}
 
       {/* Daily clicks (last 30 days) */}
-      <div style={{ fontSize: 12, fontWeight: 700, color: theme.heading, marginBottom: 6, fontFamily: fontDisplay }}>Daily Clicks (Last 30 Days)</div>
+      <div className="text-xs font-bold text-tl-heading mb-1.5 font-display">Daily Clicks (Last 30 Days)</div>
       {(!stats.clicksByDay || stats.clicksByDay.length === 0) ? (
-        <div style={{ fontSize: 11, color: theme.textDimmer, fontStyle: "italic" }}>No data yet.</div>
+        <div className="text-[11px] text-tl-text-dimmer italic">No data yet.</div>
       ) : (
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 80 }}>
+        <div className="flex items-end gap-0.5 h-20">
           {stats.clicksByDay.map((d, i) => {
             const maxClicks = Math.max(...stats.clicksByDay!.map(x => x.clicks), 1);
             const h = Math.max((d.clicks / maxClicks) * 70, 2);
             return (
               <div key={i} title={`${d.date}: ${d.clicks} clicks`}
-                style={{ flex: 1, height: h, background: d.clicks > 0 ? theme.accent : theme.borderLight, borderRadius: "2px 2px 0 0", minWidth: 4 }} />
+                className="flex-1 rounded-t min-w-1"
+                style={{ height: h, background: d.clicks > 0 ? theme.accent : theme.borderLight }} />
             );
           })}
         </div>
@@ -958,9 +923,9 @@ function AffiliateTab({ stats, theme }: AffiliateTabProps): React.ReactElement {
 
 function StatCard({ label, value, theme }: StatCardProps): React.ReactElement {
   return (
-    <div style={{ flex: 1, padding: "10px 12px", borderRadius: 8, background: theme.bgAlt, border: `1px solid ${theme.borderLight}`, textAlign: "center" as const }}>
-      <div style={{ fontSize: 20, fontWeight: 800, color: theme.accent, fontFamily: fontDisplay }}>{value}</div>
-      <div style={{ fontSize: 9, color: theme.textDimmer, fontWeight: 600, marginTop: 2 }}>{label}</div>
+    <div className="flex-1 px-3 py-2.5 rounded-lg bg-tl-bg-alt border border-tl-border-light text-center">
+      <div className="text-xl font-extrabold text-tl-accent font-display">{value}</div>
+      <div className="text-[9px] text-tl-text-dimmer font-semibold mt-0.5">{label}</div>
     </div>
   );
 }
@@ -968,7 +933,7 @@ function StatCard({ label, value, theme }: StatCardProps): React.ReactElement {
 // ─── Platform Settings Tab ───
 function SettingsTab({ settings, loaded, setSettings, theme, addToast, allUsers }: SettingsTabProps): React.ReactElement {
   if (!loaded) {
-    return <div style={{ fontSize: 12, color: theme.textDimmer, fontStyle: "italic" }}>Loading settings...</div>;
+    return <div className="text-xs text-tl-text-dimmer italic">Loading settings...</div>;
   }
 
   const get = (key: string): string => (settings.find(s => s.key === key)?.value || "");
@@ -989,31 +954,29 @@ function SettingsTab({ settings, loaded, setSettings, theme, addToast, allUsers 
   };
 
   const Toggle = ({ label, desc, checked, onChange }: ToggleProps): React.ReactElement => (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 8, background: theme.bgAlt, border: `1px solid ${theme.borderLight}`, marginBottom: 6 }}>
+    <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-tl-bg-alt border border-tl-border-light mb-1.5">
       <div>
-        <div style={{ fontSize: 12, fontWeight: 600, color: theme.text, fontFamily: fontBody }}>{label}</div>
-        {desc && <div style={{ fontSize: 10, color: theme.textDimmer, marginTop: 2 }}>{desc}</div>}
+        <div className="text-xs font-semibold text-tl-text font-body">{label}</div>
+        {desc && <div className="text-[10px] text-tl-text-dimmer mt-0.5">{desc}</div>}
       </div>
-      <div onClick={() => onChange(!checked)} style={{ width: 40, height: 22, borderRadius: 11, background: checked ? theme.accent : theme.borderLight, cursor: "pointer", position: "relative", transition: "background 0.2s" }}>
-        <div style={{ width: 18, height: 18, borderRadius: 9, background: "#fff", position: "absolute", top: 2, left: checked ? 20 : 2, transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+      <div onClick={() => onChange(!checked)} className="relative cursor-pointer transition-colors duration-200 rounded-[11px]" style={{ width: 40, height: 22, background: checked ? theme.accent : theme.borderLight }}>
+        <div className="absolute top-0.5 rounded-[9px] bg-white transition-[left] duration-200" style={{ width: 18, height: 18, left: checked ? 20 : 2, boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
       </div>
     </div>
   );
 
   const SectionLabel = ({ children }: SectionLabelProps): React.ReactElement => (
-    <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDimmer, textTransform: "uppercase" as const, letterSpacing: 1, marginTop: 16, marginBottom: 6 }}>{children}</div>
+    <div className="text-[10px] font-bold text-tl-text-dimmer uppercase tracking-wide mt-4 mb-1.5">{children}</div>
   );
-
-  const settingsInputStyle: React.CSSProperties = { width: "100%", padding: "7px 10px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody, outline: "none", boxSizing: "border-box" };
 
   return (
     <div>
       <SectionLabel>Site Access</SectionLabel>
       <Toggle label="Maintenance Mode" desc="Only global admin can access the app" checked={isOn("maintenance_mode", "false")} onChange={(v: boolean) => save("maintenance_mode", v ? "true" : "false")} />
       {isOn("maintenance_mode", "false") && (
-        <div style={{ padding: "8px 12px", marginBottom: 6 }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: theme.textDim, marginBottom: 4 }}>Maintenance Message</div>
-          <input defaultValue={get("maintenance_message") || "TrailLog is temporarily down for maintenance. Please check back soon."} onBlur={(e: React.FocusEvent<HTMLInputElement>) => save("maintenance_message", e.target.value)} style={settingsInputStyle} />
+        <div className="px-3 py-2 mb-1.5">
+          <div className="text-[10px] font-semibold text-tl-text-dim mb-1">Maintenance Message</div>
+          <input defaultValue={get("maintenance_message") || "TrailLog is temporarily down for maintenance. Please check back soon."} onBlur={(e: React.FocusEvent<HTMLInputElement>) => save("maintenance_message", e.target.value)} className="tl-input text-[11px]" />
         </div>
       )}
 
@@ -1022,11 +985,11 @@ function SettingsTab({ settings, loaded, setSettings, theme, addToast, allUsers 
       <SectionLabel>Announcement Banner</SectionLabel>
       <Toggle label="Show Banner" desc="Display a banner at the top of every page" checked={isOn("announcement_enabled", "false")} onChange={(v: boolean) => save("announcement_enabled", v ? "true" : "false")} />
       {isOn("announcement_enabled", "false") && (
-        <div style={{ padding: "8px 12px", marginBottom: 6 }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: theme.textDim, marginBottom: 4 }}>Banner Message</div>
-          <input defaultValue={get("announcement_banner")} onBlur={(e: React.FocusEvent<HTMLInputElement>) => save("announcement_banner", e.target.value)} placeholder="Enter announcement text..." style={{ ...settingsInputStyle, marginBottom: 8 }} />
-          <div style={{ fontSize: 10, fontWeight: 600, color: theme.textDim, marginBottom: 4 }}>Banner Type</div>
-          <select value={get("announcement_type") || "info"} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => save("announcement_type", e.target.value)} style={{ ...settingsInputStyle, cursor: "pointer" }}>
+        <div className="px-3 py-2 mb-1.5">
+          <div className="text-[10px] font-semibold text-tl-text-dim mb-1">Banner Message</div>
+          <input defaultValue={get("announcement_banner")} onBlur={(e: React.FocusEvent<HTMLInputElement>) => save("announcement_banner", e.target.value)} placeholder="Enter announcement text..." className="tl-input text-[11px] mb-2" />
+          <div className="text-[10px] font-semibold text-tl-text-dim mb-1">Banner Type</div>
+          <select value={get("announcement_type") || "info"} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => save("announcement_type", e.target.value)} className="tl-input text-[11px] cursor-pointer">
             <option value="info">Info (blue)</option>
             <option value="warning">Warning (yellow)</option>
             <option value="success">Success (green)</option>
@@ -1035,29 +998,29 @@ function SettingsTab({ settings, loaded, setSettings, theme, addToast, allUsers 
       )}
 
       <SectionLabel>Affiliate</SectionLabel>
-      <div style={{ padding: "10px 12px", borderRadius: 8, background: theme.bgAlt, border: `1px solid ${theme.borderLight}`, marginBottom: 6 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: theme.text, fontFamily: fontBody }}>Amazon Affiliate Tag</div>
-        <div style={{ fontSize: 10, color: theme.textDimmer, marginTop: 2, marginBottom: 6 }}>Used in AI gear recommendation buy links</div>
-        <input defaultValue={get("amazon_affiliate_tag") || "traillog-20"} onBlur={(e: React.FocusEvent<HTMLInputElement>) => save("amazon_affiliate_tag", e.target.value)} placeholder="e.g. traillog-20" style={{ ...settingsInputStyle, width: 200 }} />
+      <div className="px-3 py-2.5 rounded-lg bg-tl-bg-alt border border-tl-border-light mb-1.5">
+        <div className="text-xs font-semibold text-tl-text font-body">Amazon Affiliate Tag</div>
+        <div className="text-[10px] text-tl-text-dimmer mt-0.5 mb-1.5">Used in AI gear recommendation buy links</div>
+        <input defaultValue={get("amazon_affiliate_tag") || "traillog-20"} onBlur={(e: React.FocusEvent<HTMLInputElement>) => save("amazon_affiliate_tag", e.target.value)} placeholder="e.g. traillog-20" className="tl-input text-[11px] w-[200px]" />
       </div>
 
       <GearRefreshSection theme={theme} addToast={addToast} />
 
       <SectionLabel>Limits</SectionLabel>
-      <div style={{ padding: "10px 12px", borderRadius: 8, background: theme.bgAlt, border: `1px solid ${theme.borderLight}`, marginBottom: 6 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: theme.text, fontFamily: fontBody }}>Max Troops per User</div>
-        <div style={{ fontSize: 10, color: theme.textDimmer, marginTop: 2, marginBottom: 6 }}>Global admin is exempt from this limit</div>
-        <input type="number" min="1" max="10" defaultValue={get("max_troops_per_user") || "2"} onBlur={(e: React.FocusEvent<HTMLInputElement>) => save("max_troops_per_user", e.target.value)} style={{ ...settingsInputStyle, width: 60 }} />
+      <div className="px-3 py-2.5 rounded-lg bg-tl-bg-alt border border-tl-border-light mb-1.5">
+        <div className="text-xs font-semibold text-tl-text font-body">Max Troops per User</div>
+        <div className="text-[10px] text-tl-text-dimmer mt-0.5 mb-1.5">Global admin is exempt from this limit</div>
+        <input type="number" min="1" max="10" defaultValue={get("max_troops_per_user") || "2"} onBlur={(e: React.FocusEvent<HTMLInputElement>) => save("max_troops_per_user", e.target.value)} className="tl-input text-[11px] w-[60px]" />
       </div>
 
       <SystemAdminsSection allUsers={allUsers} theme={theme} addToast={addToast} />
 
       <SectionLabel>System</SectionLabel>
       {settings.filter(s => !["maintenance_mode", "maintenance_message", "registration_enabled", "announcement_enabled", "announcement_banner", "announcement_type", "max_troops_per_user", "amazon_affiliate_tag"].includes(s.key)).map((s: AdminSetting) => (
-        <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 6, marginBottom: 3, background: theme.bgAlt, border: `1px solid ${theme.borderLight}` }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: theme.text, minWidth: 140 }}>{s.key}</span>
-          <span style={{ flex: 1, fontSize: 11, color: theme.textMuted }}>{s.value}</span>
-          <span style={{ fontSize: 9, color: theme.textDimmer, fontStyle: "italic" }}>system</span>
+        <div key={s.key} className="flex items-center gap-2 px-2 py-1.5 rounded-md mb-0.5 bg-tl-bg-alt border border-tl-border-light">
+          <span className="text-[11px] font-semibold text-tl-text min-w-[140px]">{s.key}</span>
+          <span className="flex-1 text-[11px] text-tl-text-muted">{s.value}</span>
+          <span className="text-[9px] text-tl-text-dimmer italic">system</span>
         </div>
       ))}
     </div>
@@ -1093,19 +1056,19 @@ function GearRefreshSection({ theme, addToast }: GearRefreshSectionProps): React
     : "Never";
 
   return (
-    <div style={{ padding: "10px 12px", borderRadius: 8, background: theme.bgAlt, border: `1px solid ${theme.borderLight}`, marginBottom: 6 }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: theme.text, fontFamily: fontBody }}>AI Gear Recommendations</div>
-      <div style={{ fontSize: 10, color: theme.textDimmer, marginTop: 2, marginBottom: 6 }}>
+    <div className="px-3 py-2.5 rounded-lg bg-tl-bg-alt border border-tl-border-light mb-1.5">
+      <div className="text-xs font-semibold text-tl-text font-body">AI Gear Recommendations</div>
+      <div className="text-[10px] text-tl-text-dimmer mt-0.5 mb-1.5">
         Background job refreshes cached recommendations every 7 days. Last refresh: {lastRefresh}
-        {status?.in_progress && <span style={{ color: "#f59e0b", marginLeft: 6 }}>(refresh in progress)</span>}
+        {status?.in_progress && <span className="ml-1.5" style={{ color: "#f59e0b" }}>(refresh in progress)</span>}
       </div>
       <button
         onClick={handleRefresh}
         disabled={refreshing || status?.in_progress}
+        className="px-3.5 py-1.5 rounded-md border-none text-[11px] font-semibold font-body text-white"
         style={{
-          padding: "6px 14px", borderRadius: 6, border: "none", fontSize: 11, fontWeight: 600,
-          fontFamily: fontBody, cursor: refreshing ? "not-allowed" : "pointer",
-          background: refreshing ? theme.borderLight : "#10b981", color: "#fff",
+          cursor: refreshing ? "not-allowed" : "pointer",
+          background: refreshing ? theme.borderLight : "#10b981",
           opacity: refreshing || status?.in_progress ? 0.6 : 1,
         }}
       >
@@ -1148,31 +1111,29 @@ function SystemAdminsSection({ allUsers, theme, addToast }: SystemAdminsSectionP
     } catch (e: unknown) { addToast((e as Error).message, "error"); }
   };
 
-  const adminInputStyle: React.CSSProperties = { width: "100%", padding: "7px 10px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody, outline: "none", boxSizing: "border-box" };
-
   return (
-    <div style={{ marginTop: 16 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDimmer, textTransform: "uppercase" as const, letterSpacing: 1, marginBottom: 6 }}>System Administrators</div>
+    <div className="mt-4">
+      <div className="text-[10px] font-bold text-tl-text-dimmer uppercase tracking-wide mb-1.5">System Administrators</div>
       {admins.map((a: SystemAdmin) => (
-        <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", borderRadius: 8, background: theme.bgAlt, border: `1px solid ${theme.borderLight}`, marginBottom: 4 }}>
+        <div key={a.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-tl-bg-alt border border-tl-border-light mb-1">
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{a.name || "Unnamed"}</div>
-            <div style={{ fontSize: 10, color: theme.textDimmer }}>{a.email}</div>
+            <div className="text-xs font-semibold text-tl-text">{a.name || "Unnamed"}</div>
+            <div className="text-[10px] text-tl-text-dimmer">{a.email}</div>
           </div>
           {admins.length > 1 && (
-            <button onClick={() => handleDemote(a.id, a.name || a.email)} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 4, border: `1px solid ${(theme as any).danger || "#dc3545"}`, background: "transparent", color: (theme as any).danger || "#dc3545", cursor: "pointer", fontFamily: fontBody }}>Remove</button>
+            <button onClick={() => handleDemote(a.id, a.name || a.email)} className="text-[10px] px-2 py-1 rounded cursor-pointer font-body bg-transparent" style={{ border: `1px solid ${(theme as any).danger || "#dc3545"}`, color: (theme as any).danger || "#dc3545" }}>Remove</button>
           )}
         </div>
       ))}
       {!showAdd ? (
-        <button onClick={() => setShowAdd(true)} style={{ fontSize: 11, padding: "6px 12px", borderRadius: 6, border: `1px dashed ${theme.borderLight}`, background: "transparent", color: theme.accent, cursor: "pointer", fontFamily: fontBody, marginTop: 4, width: "100%" }}>+ Add System Admin</button>
+        <button onClick={() => setShowAdd(true)} className="text-[11px] px-3 py-1.5 rounded-md border border-dashed border-tl-border-light bg-transparent text-tl-accent cursor-pointer font-body mt-1 w-full">+ Add System Admin</button>
       ) : (
-        <div style={{ padding: "8px 12px", marginTop: 4, borderRadius: 8, background: theme.bgAlt, border: `1px solid ${theme.borderLight}` }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: theme.textDim, marginBottom: 4 }}>Email of existing user to promote</div>
-          <div style={{ display: "flex", gap: 6 }}>
-            <input value={addEmail} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAddEmail(e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && handlePromote()} placeholder="user@example.com" style={{ ...adminInputStyle, flex: 1 }} />
-            <button onClick={handlePromote} style={{ fontSize: 11, padding: "6px 12px", borderRadius: 6, background: theme.accent, color: "#fff", border: "none", cursor: "pointer", fontFamily: fontBody, whiteSpace: "nowrap" as const }}>Promote</button>
-            <button onClick={() => { setShowAdd(false); setAddEmail(""); }} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 6, background: "transparent", color: theme.textDim, border: `1px solid ${theme.borderLight}`, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
+        <div className="px-3 py-2 mt-1 rounded-lg bg-tl-bg-alt border border-tl-border-light">
+          <div className="text-[10px] font-semibold text-tl-text-dim mb-1">Email of existing user to promote</div>
+          <div className="flex gap-1.5">
+            <input value={addEmail} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAddEmail(e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && handlePromote()} placeholder="user@example.com" className="tl-input flex-1 text-[11px]" />
+            <button onClick={handlePromote} className="text-[11px] px-3 py-1.5 rounded-md bg-tl-accent text-white border-none cursor-pointer font-body whitespace-nowrap">Promote</button>
+            <button onClick={() => { setShowAdd(false); setAddEmail(""); }} className="text-[11px] px-2.5 py-1.5 rounded-md bg-transparent text-tl-text-dim border border-tl-border-light cursor-pointer font-body">Cancel</button>
           </div>
         </div>
       )}
@@ -1184,32 +1145,33 @@ function SystemAdminsSection({ allUsers, theme, addToast }: SystemAdminsSectionP
 function TroopOverridesTab({ grouped, search, setSearch, hiddenIds, troopId, troopCustomGear, theme, addToast, refreshTroopData, setEditCustomItem }: TroopOverridesTabProps): React.ReactElement {
   return (
     <div>
-      <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 12 }}>
+      <div className="text-xs text-tl-text-muted mb-3">
         Toggle visibility of global gear items for your troop. Hidden items won't appear in your troop's gear list.
       </div>
 
       <input value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)} placeholder="Search items..."
-        style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody, outline: "none", marginBottom: 10, boxSizing: "border-box" as const }} />
+        className="tl-input text-[11px] mb-2.5" />
 
       {Object.entries(grouped).map(([cat, items]: [string, ExtendedCatalogItem[]]) => (
         <div key={cat}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: theme.heading, marginTop: 10, marginBottom: 4, fontFamily: fontDisplay }}>{cat}</div>
+          <div className="text-[11px] font-bold text-tl-heading mt-2.5 mb-1 font-display">{cat}</div>
           {items.map((item: ExtendedCatalogItem) => {
             const isHidden = hiddenIds.has(item.id);
             return (
-              <div key={item.id} style={{
-                display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", borderRadius: 6, marginBottom: 2,
-                background: isHidden ? theme.bgAlt + "80" : theme.bgAlt,
-                border: `1px solid ${theme.borderLight}`, opacity: isHidden ? 0.5 : 1,
-              }}>
-                <span style={{ flex: 1, fontSize: 11, color: theme.text, fontWeight: isHidden ? 400 : 600, textDecoration: isHidden ? "line-through" as const : "none" as const }}>{item.name}</span>
+              <div key={item.id} className="flex items-center gap-2 px-2 py-1 rounded-md mb-0.5 border border-tl-border-light"
+                style={{
+                  background: isHidden ? theme.bgAlt + "80" : theme.bgAlt,
+                  opacity: isHidden ? 0.5 : 1,
+                }}>
+                <span className={clsx("flex-1 text-[11px] text-tl-text", isHidden ? "font-normal line-through" : "font-semibold")}>{item.name}</span>
                 <button onClick={async () => {
                   await api.setTroopGearOverride(troopId!, item.id, !isHidden);
                   refreshTroopData(); addToast(isHidden ? "Shown" : "Hidden", "success");
-                }} style={{
-                  padding: "3px 8px", borderRadius: 4, border: "none", fontSize: 9, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-                  background: isHidden ? theme.accent : "#DC262620", color: isHidden ? "#fff" : "#DC2626",
-                }}>{isHidden ? "Show" : "Hide"}</button>
+                }} className="px-2 py-0.5 rounded border-none text-[9px] font-semibold cursor-pointer font-body"
+                  style={{
+                    background: isHidden ? theme.accent : "#DC262620",
+                    color: isHidden ? "#fff" : "#DC2626",
+                  }}>{isHidden ? "Show" : "Hide"}</button>
               </div>
             );
           })}
@@ -1217,21 +1179,21 @@ function TroopOverridesTab({ grouped, search, setSearch, hiddenIds, troopId, tro
       ))}
 
       {/* Troop Custom Gear */}
-      <div style={{ marginTop: 20, paddingTop: 12, borderTop: `1px solid ${theme.borderLight}` }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>Custom Troop Items</div>
+      <div className="mt-5 pt-3 border-t border-tl-border-light">
+        <div className="flex justify-between items-center mb-2">
+          <div className="text-[13px] font-bold text-tl-heading font-display">Custom Troop Items</div>
           <button onClick={() => setEditCustomItem({ name: "", category: "Custom", priority: "recommended", weight_oz: "", description: "" })}
-            style={{ ...toolbarBtn(theme, "primary"), padding: "4px 10px", fontSize: 10 }}>+ Add</button>
+            className="tl-btn-primary px-2.5 py-1 text-[10px]">+ Add</button>
         </div>
         {troopCustomGear.length === 0 && (
-          <div style={{ fontSize: 11, color: theme.textDimmer, fontStyle: "italic" }}>No custom items yet. Add troop-specific gear here.</div>
+          <div className="text-[11px] text-tl-text-dimmer italic">No custom items yet. Add troop-specific gear here.</div>
         )}
         {troopCustomGear.map((item: TroopCustomGear) => (
-          <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", borderRadius: 6, marginBottom: 2, background: theme.bgAlt, border: `1px solid ${theme.borderLight}` }}>
-            <span style={{ flex: 1, fontSize: 11, color: theme.text, fontWeight: 600 }}>{item.name}</span>
-            <span style={{ fontSize: 9, color: theme.textDimmer }}>{item.category}</span>
+          <div key={item.id} className="flex items-center gap-2 px-2 py-1 rounded-md mb-0.5 bg-tl-bg-alt border border-tl-border-light">
+            <span className="flex-1 text-[11px] text-tl-text font-semibold">{item.name}</span>
+            <span className="text-[9px] text-tl-text-dimmer">{item.category}</span>
             <button onClick={async () => { await api.deleteTroopCustomGear(troopId!, item.id); refreshTroopData(); addToast("Removed", "success"); }}
-              style={{ padding: "2px 8px", borderRadius: 4, border: "1px solid #DC262640", background: "transparent", color: "#DC2626", fontSize: 9, cursor: "pointer", fontFamily: fontBody }}>Remove</button>
+              className="px-2 py-0.5 rounded text-[9px] cursor-pointer font-body bg-transparent" style={{ border: "1px solid #DC262640", color: "#DC2626" }}>Remove</button>
           </div>
         ))}
       </div>
@@ -1245,34 +1207,34 @@ function ItemEditModal({ item, theme, onClose, onSave, simple }: ItemEditModalPr
   const set = (k: string, v: unknown): void => setForm(prev => ({ ...prev, [k]: v }));
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ width: 450, background: theme.bgCard, borderRadius: 14, border: `1px solid ${theme.border}`, boxShadow: theme.shadow, padding: 20 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay, marginTop: 0 }}>
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)" }}>
+      <div className="w-[450px] bg-tl-card rounded-[14px] border border-tl-border shadow-lg p-5">
+        <h3 className="text-[15px] font-bold text-tl-heading font-display mt-0">
           {item.id ? "Edit Item" : "Add Item"}
         </h3>
-        <div style={{ display: "flex", flexDirection: "column" as const, gap: 8 }}>
+        <div className="flex flex-col gap-2">
           <LabeledInput label="Name" value={form.name} onChange={(v: string) => set("name", v)} theme={theme} />
           <LabeledInput label="Category" value={form.category} onChange={(v: string) => set("category", v)} theme={theme} />
           {!simple && <LabeledInput label="Subcategory" value={form.subcategory || ""} onChange={(v: string) => set("subcategory", v)} theme={theme} />}
           <LabeledInput label="Description" value={form.description || ""} onChange={(v: string) => set("description", v)} theme={theme} textarea />
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="flex gap-2">
             <LabeledInput label="Weight (oz)" value={form.weight_oz as string || ""} onChange={(v: string) => set("weight_oz", v ? parseFloat(v) : null)} theme={theme} type="number" />
             <LabeledInput label="MSRP ($)" value={form.msrp as string || ""} onChange={(v: string) => set("msrp", v ? parseFloat(v) : null)} theme={theme} type="number" />
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="flex gap-2">
             <div>
-              <label style={{ fontSize: 9, color: theme.textDimmer, fontWeight: 600 }}>Priority</label>
+              <label className="text-[9px] text-tl-text-dimmer font-semibold">Priority</label>
               <select value={form.priority || "recommended"} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => set("priority", e.target.value)}
-                style={{ display: "block", width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody }}>
+                className="block w-full px-2 py-1.5 rounded-md border border-tl-border-light bg-tl-input text-tl-text text-[11px] font-body">
                 <option value="essential">Essential</option>
                 <option value="recommended">Recommended</option>
                 <option value="optional">Optional</option>
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 9, color: theme.textDimmer, fontWeight: 600 }}>Sharing Type</label>
+              <label className="text-[9px] text-tl-text-dimmer font-semibold">Sharing Type</label>
               <select value={form.sharing_type || "personal"} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { set("sharing_type", e.target.value); set("is_crew_shared", e.target.value !== "personal" ? 1 : 0); }}
-                style={{ display: "block", width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody }}>
+                className="block w-full px-2 py-1.5 rounded-md border border-tl-border-light bg-tl-input text-tl-text text-[11px] font-body">
                 <option value="personal">Personal</option>
                 <option value="crew">Crew Shared</option>
                 <option value="buddy">Buddy Split</option>
@@ -1281,9 +1243,9 @@ function ItemEditModal({ item, theme, onClose, onSave, simple }: ItemEditModalPr
             </div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: "6px 14px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.textDim, fontSize: 11, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
-          <button onClick={() => onSave(form)} style={{ padding: "6px 14px", borderRadius: 6, border: "none", background: (theme as any).forestDeep || theme.accent, color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Save</button>
+        <div className="flex gap-2 justify-end mt-4">
+          <button onClick={onClose} className="px-3.5 py-1.5 rounded-md border border-tl-border-light bg-transparent text-tl-text-dim text-[11px] cursor-pointer font-body">Cancel</button>
+          <button onClick={() => onSave(form)} className="px-3.5 py-1.5 rounded-md border-none text-white text-[11px] font-semibold cursor-pointer font-body" style={{ background: (theme as any).forestDeep || theme.accent }}>Save</button>
         </div>
       </div>
     </div>
@@ -1296,23 +1258,23 @@ function OptionEditModal({ option, gearId, theme, onClose, onSave }: OptionEditM
   const set = (k: string, v: unknown): void => setForm(prev => ({ ...prev, [k]: v }));
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ width: 450, background: theme.bgCard, borderRadius: 14, border: `1px solid ${theme.border}`, boxShadow: theme.shadow, padding: 20 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay, marginTop: 0 }}>
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)" }}>
+      <div className="w-[450px] bg-tl-card rounded-[14px] border border-tl-border shadow-lg p-5">
+        <h3 className="text-[15px] font-bold text-tl-heading font-display mt-0">
           {option.id ? "Edit Product Option" : "Add Product Option"}
         </h3>
-        <div style={{ display: "flex", flexDirection: "column" as const, gap: 8 }}>
+        <div className="flex flex-col gap-2">
           <LabeledInput label="Product Name" value={form.product_name || ""} onChange={(v: string) => set("product_name", v)} theme={theme} />
           <LabeledInput label="Brand" value={form.brand || ""} onChange={(v: string) => set("brand", v)} theme={theme} />
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="flex gap-2">
             <LabeledInput label="Price ($)" value={form.price as string || ""} onChange={(v: string) => set("price", v ? parseFloat(v) : null)} theme={theme} type="number" />
             <LabeledInput label="Weight (oz)" value={form.weight_oz as string || ""} onChange={(v: string) => set("weight_oz", v ? parseFloat(v) : null)} theme={theme} type="number" />
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: 9, color: theme.textDimmer, fontWeight: 600 }}>Tier</label>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="text-[9px] text-tl-text-dimmer font-semibold">Tier</label>
               <select value={form.tier || "mid"} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => set("tier", e.target.value)}
-                style={{ display: "block", width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody }}>
+                className="block w-full px-2 py-1.5 rounded-md border border-tl-border-light bg-tl-input text-tl-text text-[11px] font-body">
                 <option value="budget">Budget</option>
                 <option value="mid">Mid-Range</option>
                 <option value="premium">Premium</option>
@@ -1323,9 +1285,9 @@ function OptionEditModal({ option, gearId, theme, onClose, onSave }: OptionEditM
           <LabeledInput label="Notes" value={form.notes || ""} onChange={(v: string) => set("notes", v)} theme={theme} textarea />
           <LabeledInput label="Affiliate URL" value={form.affiliate_url || ""} onChange={(v: string) => set("affiliate_url", v)} theme={theme} placeholder="https://amazon.com/dp/...?tag=yourtag-20" />
         </div>
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: "6px 14px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.textDim, fontSize: 11, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
-          <button onClick={() => onSave(form)} style={{ padding: "6px 14px", borderRadius: 6, border: "none", background: (theme as any).forestDeep || theme.accent, color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Save</button>
+        <div className="flex gap-2 justify-end mt-4">
+          <button onClick={onClose} className="px-3.5 py-1.5 rounded-md border border-tl-border-light bg-transparent text-tl-text-dim text-[11px] cursor-pointer font-body">Cancel</button>
+          <button onClick={() => onSave(form)} className="px-3.5 py-1.5 rounded-md border-none text-white text-[11px] font-semibold cursor-pointer font-body" style={{ background: (theme as any).forestDeep || theme.accent }}>Save</button>
         </div>
       </div>
     </div>
@@ -1333,13 +1295,12 @@ function OptionEditModal({ option, gearId, theme, onClose, onSave }: OptionEditM
 }
 
 function LabeledInput({ label, value, onChange, theme, type = "text", textarea, placeholder }: LabeledInputProps): React.ReactElement {
-  const style: React.CSSProperties = { width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody, outline: "none", boxSizing: "border-box" };
   return (
-    <div style={{ flex: 1 }}>
-      <label style={{ fontSize: 9, color: theme.textDimmer, fontWeight: 600, display: "block", marginBottom: 2 }}>{label}</label>
+    <div className="flex-1">
+      <label className="text-[9px] text-tl-text-dimmer font-semibold block mb-0.5">{label}</label>
       {textarea
-        ? <textarea value={value} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)} rows={3} style={{ ...style, resize: "vertical" as const }} placeholder={placeholder} />
-        : <input value={value} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)} type={type} style={style} placeholder={placeholder} />
+        ? <textarea value={value} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)} rows={3} className="tl-input text-[11px] resize-y" placeholder={placeholder} />
+        : <input value={value} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)} type={type} className="tl-input text-[11px]" placeholder={placeholder} />
       }
     </div>
   );

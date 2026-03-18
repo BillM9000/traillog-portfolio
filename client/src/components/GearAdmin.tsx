@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
-import { fontBody, fontDisplay, card, cardTitle, toolbarBtn } from "../utils/theme";
+import clsx from "clsx";
 import type { ThemeColors } from "../types";
 
 interface GearCatalogItemLocal {
@@ -118,55 +118,56 @@ export default function GearAdmin({ isGlobalAdmin, troopId, onClose }: GearAdmin
   tabs.push(["troop", "Troop Overrides"]);
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.5)", overflowY: "auto" }}>
-      <div style={{ maxWidth: 700, margin: "20px auto", background: theme.bgCard, borderRadius: 16, border: `1px solid ${theme.border}`, boxShadow: theme.shadow }}>
+    <div className="fixed inset-0 z-[1000] overflow-y-auto" style={{ background: "rgba(0,0,0,0.5)" }}>
+      <div className="max-w-[700px] mx-auto my-5 bg-tl-card rounded-[16px] border border-tl-border shadow-card">
         {/* Header */}
-        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${theme.borderLight}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay, margin: 0 }}>
+        <div className="px-5 py-4 border-b border-tl-border-light flex justify-between items-center">
+          <h2 className="text-lg font-extrabold text-tl-heading font-display m-0">
             {"\u2699\uFE0F"} Gear Admin
           </h2>
-          <button onClick={onClose} style={{ ...toolbarBtn(theme), padding: "5px 12px" }}>{"\u2715"}</button>
+          <button onClick={onClose} className="tl-btn py-[5px] px-3">{"\u2715"}</button>
         </div>
 
         {/* Tabs */}
-        <div style={{ display: "flex", gap: 4, padding: "10px 20px", borderBottom: `1px solid ${theme.borderLight}` }}>
+        <div className="flex gap-1 px-5 py-2.5 border-b border-tl-border-light">
           {tabs.map(([k, l]) => (
-            <button key={k} onClick={() => setTab(k)} style={{
-              padding: "6px 14px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 600,
-              cursor: "pointer", fontFamily: fontBody,
-              background: tab === k ? theme.pillActiveBg : theme.pillInactiveBg,
-              color: tab === k ? theme.pillActiveText : theme.pillInactiveText,
-            }}>{l}</button>
+            <button key={k} onClick={() => setTab(k)}
+              className={clsx(
+                "py-1.5 px-3.5 rounded-btn border-none text-xs font-semibold cursor-pointer font-body",
+                tab === k
+                  ? "bg-tl-pill-active-bg text-tl-pill-active-text"
+                  : "bg-tl-pill-inactive-bg text-tl-pill-inactive-text"
+              )}>{l}</button>
           ))}
         </div>
 
-        <div style={{ padding: 20, maxHeight: "70vh", overflowY: "auto" }}>
+        <div className="p-5 max-h-[70vh] overflow-y-auto">
           {/* Global Admin: Items */}
           {tab === "items" && isGlobalAdmin && (
             <div>
-              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <div className="flex gap-2 mb-3">
                 <input value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)} placeholder="Search items..."
-                  style={{ flex: 1, padding: "7px 10px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody, outline: "none" }} />
+                  className="flex-1 py-[7px] px-2.5 rounded-badge-sm border border-tl-border-light bg-tl-input text-tl-text text-[11px] font-body outline-none" />
                 <button onClick={() => setEditItem({ name: "", category: "Pack & Carry", priority: "recommended", weight_oz: "", msrp: "", description: "" })}
-                  style={{ ...toolbarBtn(theme, "primary"), padding: "6px 12px", fontSize: 11 }}>+ Add Item</button>
+                  className="tl-btn-primary py-1.5 px-3 text-[11px]">+ Add Item</button>
               </div>
 
-              <div style={{ fontSize: 10, color: theme.textDimmer, marginBottom: 8 }}>{catalog.length} items in catalog</div>
+              <div className="text-[10px] text-tl-text-dimmer mb-2">{catalog.length} items in catalog</div>
 
               {Object.entries(grouped).map(([cat, items]) => (
                 <div key={cat}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: theme.heading, marginTop: 10, marginBottom: 4, fontFamily: fontDisplay }}>{cat}</div>
+                  <div className="text-[11px] font-bold text-tl-heading mt-2.5 mb-1 font-display">{cat}</div>
                   {items.map(item => (
-                    <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 6, marginBottom: 2, background: theme.bgAlt, border: `1px solid ${theme.borderLight}` }}>
-                      <span style={{ flex: 1, fontSize: 11, color: theme.text, fontWeight: 600 }}>{item.name}</span>
-                      <span style={{ fontSize: 9, color: theme.textDimmer }}>{item.priority}</span>
-                      <span style={{ fontSize: 9, color: theme.textDimmer }}>{item.options?.length || 0} opts</span>
-                      <button onClick={() => setEditItem(item)} style={{ padding: "2px 8px", borderRadius: 4, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.textDim, fontSize: 9, cursor: "pointer", fontFamily: fontBody }}>Edit</button>
+                    <div key={item.id} className="flex items-center gap-2 py-1.5 px-2 rounded-badge-sm mb-0.5 bg-tl-bg-alt border border-tl-border-light">
+                      <span className="flex-1 text-[11px] text-tl-text font-semibold">{item.name}</span>
+                      <span className="text-[9px] text-tl-text-dimmer">{item.priority}</span>
+                      <span className="text-[9px] text-tl-text-dimmer">{item.options?.length || 0} opts</span>
+                      <button onClick={() => setEditItem(item)} className="py-0.5 px-2 rounded-[4px] border border-tl-border-light bg-transparent text-tl-text-dim text-[9px] cursor-pointer font-body">Edit</button>
                       <button onClick={async () => {
                         if (!confirm(`Archive "${item.name}"?`)) return;
                         await api.deleteGearCatalogItem(item.id!);
                         addToast("Archived", "success"); refreshCatalog();
-                      }} style={{ padding: "2px 8px", borderRadius: 4, border: "1px solid #DC262640", background: "transparent", color: "#DC2626", fontSize: 9, cursor: "pointer", fontFamily: fontBody }}>Archive</button>
+                      }} className="py-0.5 px-2 rounded-[4px] bg-transparent text-[#DC2626] text-[9px] cursor-pointer font-body" style={{ border: "1px solid #DC262640" }}>Archive</button>
                     </div>
                   ))}
                 </div>
@@ -178,12 +179,12 @@ export default function GearAdmin({ isGlobalAdmin, troopId, onClose }: GearAdmin
           {tab === "retailers" && isGlobalAdmin && (
             <div>
               <button onClick={() => setEditRetailer({ name: "", url: "", has_affiliate: 0 })}
-                style={{ ...toolbarBtn(theme, "primary"), padding: "6px 12px", fontSize: 11, marginBottom: 12 }}>+ Add Retailer</button>
+                className="tl-btn-primary py-1.5 px-3 text-[11px] mb-3">+ Add Retailer</button>
               {retailers.map(r => (
-                <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px", borderRadius: 6, marginBottom: 3, background: theme.bgAlt, border: `1px solid ${theme.borderLight}` }}>
-                  <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: theme.text }}>{r.name}</span>
-                  <span style={{ fontSize: 9, color: theme.textDimmer }}>{r.has_affiliate ? `${r.commission_rate}% via ${r.affiliate_network}` : "No affiliate"}</span>
-                  <button onClick={() => setEditRetailer(r)} style={{ padding: "2px 8px", borderRadius: 4, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.textDim, fontSize: 9, cursor: "pointer", fontFamily: fontBody }}>Edit</button>
+                <div key={r.id} className="flex items-center gap-2 p-2 rounded-badge-sm mb-[3px] bg-tl-bg-alt border border-tl-border-light">
+                  <span className="flex-1 text-xs font-semibold text-tl-text">{r.name}</span>
+                  <span className="text-[9px] text-tl-text-dimmer">{r.has_affiliate ? `${r.commission_rate}% via ${r.affiliate_network}` : "No affiliate"}</span>
+                  <button onClick={() => setEditRetailer(r)} className="py-0.5 px-2 rounded-[4px] border border-tl-border-light bg-transparent text-tl-text-dim text-[9px] cursor-pointer font-body">Edit</button>
                 </div>
               ))}
             </div>
@@ -192,32 +193,36 @@ export default function GearAdmin({ isGlobalAdmin, troopId, onClose }: GearAdmin
           {/* Troop Overrides */}
           {tab === "troop" && (
             <div>
-              <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 12 }}>
+              <div className="text-xs text-tl-text-muted mb-3">
                 Toggle visibility of global gear items for your troop. Hidden items won't appear in your troop's gear list.
               </div>
 
               <input value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)} placeholder="Search items..."
-                style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody, outline: "none", marginBottom: 10, boxSizing: "border-box" }} />
+                className="w-full py-[7px] px-2.5 rounded-badge-sm border border-tl-border-light bg-tl-input text-tl-text text-[11px] font-body outline-none mb-2.5 box-border" />
 
               {Object.entries(grouped).map(([cat, items]) => (
                 <div key={cat}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: theme.heading, marginTop: 10, marginBottom: 4, fontFamily: fontDisplay }}>{cat}</div>
+                  <div className="text-[11px] font-bold text-tl-heading mt-2.5 mb-1 font-display">{cat}</div>
                   {items.map(item => {
                     const isHidden = hiddenIds.has(item.id!);
                     return (
-                      <div key={item.id} style={{
-                        display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", borderRadius: 6, marginBottom: 2,
-                        background: isHidden ? theme.bgAlt + "80" : theme.bgAlt,
-                        border: `1px solid ${theme.borderLight}`, opacity: isHidden ? 0.5 : 1,
-                      }}>
-                        <span style={{ flex: 1, fontSize: 11, color: theme.text, fontWeight: isHidden ? 400 : 600, textDecoration: isHidden ? "line-through" : "none" }}>{item.name}</span>
+                      <div key={item.id}
+                        className={clsx(
+                          "flex items-center gap-2 py-[5px] px-2 rounded-badge-sm mb-0.5 border border-tl-border-light",
+                          isHidden ? "opacity-50" : "opacity-100"
+                        )}
+                        style={{ background: isHidden ? theme.bgAlt + "80" : theme.bgAlt }}>
+                        <span className={clsx(
+                          "flex-1 text-[11px] text-tl-text",
+                          isHidden ? "font-normal line-through" : "font-semibold"
+                        )}>{item.name}</span>
                         <button onClick={async () => {
                           await api.setTroopGearOverride(troopId!, item.id!, !isHidden);
                           refreshTroopData(); addToast(isHidden ? "Shown" : "Hidden", "success");
-                        }} style={{
-                          padding: "3px 8px", borderRadius: 4, border: "none", fontSize: 9, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-                          background: isHidden ? theme.accent : "#DC262620", color: isHidden ? "#fff" : "#DC2626",
-                        }}>{isHidden ? "Show" : "Hide"}</button>
+                        }} className={clsx(
+                          "py-[3px] px-2 rounded-[4px] border-none text-[9px] font-semibold cursor-pointer font-body",
+                          isHidden ? "bg-tl-accent text-white" : "bg-[#DC262620] text-[#DC2626]"
+                        )}>{isHidden ? "Show" : "Hide"}</button>
                       </div>
                     );
                   })}
@@ -225,21 +230,21 @@ export default function GearAdmin({ isGlobalAdmin, troopId, onClose }: GearAdmin
               ))}
 
               {/* Troop Custom Gear */}
-              <div style={{ marginTop: 20, paddingTop: 12, borderTop: `1px solid ${theme.borderLight}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>Custom Troop Items</div>
+              <div className="mt-5 pt-3 border-t border-tl-border-light">
+                <div className="flex justify-between items-center mb-2">
+                  <div className="text-[13px] font-bold text-tl-heading font-display">Custom Troop Items</div>
                   <button onClick={() => setEditCustomItem({ name: "", category: "Custom", priority: "recommended", weight_oz: "", description: "" })}
-                    style={{ ...toolbarBtn(theme, "primary"), padding: "4px 10px", fontSize: 10 }}>+ Add</button>
+                    className="tl-btn-primary py-1 px-2.5 text-[10px]">+ Add</button>
                 </div>
                 {troopCustomGear.length === 0 && (
-                  <div style={{ fontSize: 11, color: theme.textDimmer, fontStyle: "italic" }}>No custom items yet. Add troop-specific gear here.</div>
+                  <div className="text-[11px] text-tl-text-dimmer italic">No custom items yet. Add troop-specific gear here.</div>
                 )}
                 {troopCustomGear.map(item => (
-                  <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", borderRadius: 6, marginBottom: 2, background: theme.bgAlt, border: `1px solid ${theme.borderLight}` }}>
-                    <span style={{ flex: 1, fontSize: 11, color: theme.text, fontWeight: 600 }}>{item.name}</span>
-                    <span style={{ fontSize: 9, color: theme.textDimmer }}>{item.category}</span>
+                  <div key={item.id} className="flex items-center gap-2 py-[5px] px-2 rounded-badge-sm mb-0.5 bg-tl-bg-alt border border-tl-border-light">
+                    <span className="flex-1 text-[11px] text-tl-text font-semibold">{item.name}</span>
+                    <span className="text-[9px] text-tl-text-dimmer">{item.category}</span>
                     <button onClick={async () => { await api.deleteTroopCustomGear(troopId!, item.id); refreshTroopData(); addToast("Removed", "success"); }}
-                      style={{ padding: "2px 8px", borderRadius: 4, border: "1px solid #DC262640", background: "transparent", color: "#DC2626", fontSize: 9, cursor: "pointer", fontFamily: fontBody }}>Remove</button>
+                      className="py-0.5 px-2 rounded-[4px] bg-transparent text-[#DC2626] text-[9px] cursor-pointer font-body" style={{ border: "1px solid #DC262640" }}>Remove</button>
                   </div>
                 ))}
               </div>
@@ -314,34 +319,34 @@ function ItemEditModal({ item, theme, onClose, onSave, simple }: ItemEditModalPr
   const set = (k: string, v: any) => setForm(prev => ({ ...prev, [k]: v }));
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ width: 450, background: theme.bgCard, borderRadius: 14, border: `1px solid ${theme.border}`, boxShadow: theme.shadow, padding: 20 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay, marginTop: 0 }}>
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)" }}>
+      <div className="w-[450px] bg-tl-card rounded-[14px] border border-tl-border shadow-card p-5">
+        <h3 className="text-[15px] font-bold text-tl-heading font-display mt-0">
           {item.id ? "Edit Item" : "Add Item"}
         </h3>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="flex flex-col gap-2">
           <LabeledInput label="Name" value={form.name} onChange={(v: string) => set("name", v)} theme={theme} />
           <LabeledInput label="Category" value={form.category} onChange={(v: string) => set("category", v)} theme={theme} />
           {!simple && <LabeledInput label="Subcategory" value={form.subcategory || ""} onChange={(v: string) => set("subcategory", v)} theme={theme} />}
           <LabeledInput label="Description" value={form.description || ""} onChange={(v: string) => set("description", v)} theme={theme} textarea />
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="flex gap-2">
             <LabeledInput label="Weight (oz)" value={form.weight_oz || ""} onChange={(v: string) => set("weight_oz", v ? parseFloat(v) : null)} theme={theme} type="number" />
             <LabeledInput label="MSRP ($)" value={form.msrp || ""} onChange={(v: string) => set("msrp", v ? parseFloat(v) : null)} theme={theme} type="number" />
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="flex gap-2">
             <div>
-              <label style={{ fontSize: 9, color: theme.textDimmer, fontWeight: 600 }}>Priority</label>
+              <label className="text-[9px] text-tl-text-dimmer font-semibold">Priority</label>
               <select value={form.priority || "recommended"} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => set("priority", e.target.value)}
-                style={{ display: "block", width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody }}>
+                className="block w-full py-1.5 px-2 rounded-badge-sm border border-tl-border-light bg-tl-input text-tl-text text-[11px] font-body">
                 <option value="essential">Essential</option>
                 <option value="recommended">Recommended</option>
                 <option value="optional">Optional</option>
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 9, color: theme.textDimmer, fontWeight: 600 }}>Sharing Type</label>
+              <label className="text-[9px] text-tl-text-dimmer font-semibold">Sharing Type</label>
               <select value={form.sharing_type || "personal"} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { set("sharing_type", e.target.value); set("is_crew_shared", e.target.value !== "personal" ? 1 : 0); }}
-                style={{ display: "block", width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody }}>
+                className="block w-full py-1.5 px-2 rounded-badge-sm border border-tl-border-light bg-tl-input text-tl-text text-[11px] font-body">
                 <option value="personal">Personal</option>
                 <option value="crew">Crew Shared</option>
                 <option value="buddy">Buddy Split</option>
@@ -350,9 +355,9 @@ function ItemEditModal({ item, theme, onClose, onSave, simple }: ItemEditModalPr
             </div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: "6px 14px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.textDim, fontSize: 11, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
-          <button onClick={() => onSave(form)} style={{ padding: "6px 14px", borderRadius: 6, border: "none", background: theme.forestDeep || theme.accent, color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Save</button>
+        <div className="flex gap-2 justify-end mt-4">
+          <button onClick={onClose} className="py-1.5 px-3.5 rounded-badge-sm border border-tl-border-light bg-transparent text-tl-text-dim text-[11px] cursor-pointer font-body">Cancel</button>
+          <button onClick={() => onSave(form)} className="py-1.5 px-3.5 rounded-badge-sm border-none bg-tl-forest-deep text-white text-[11px] font-semibold cursor-pointer font-body">Save</button>
         </div>
       </div>
     </div>
@@ -380,22 +385,22 @@ function RetailerEditModal({ retailer, theme, onClose, onSave }: RetailerEditMod
   const set = (k: string, v: any) => setForm(prev => ({ ...prev, [k]: v }));
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ width: 400, background: theme.bgCard, borderRadius: 14, border: `1px solid ${theme.border}`, boxShadow: theme.shadow, padding: 20 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay, marginTop: 0 }}>
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)" }}>
+      <div className="w-[400px] bg-tl-card rounded-[14px] border border-tl-border shadow-card p-5">
+        <h3 className="text-[15px] font-bold text-tl-heading font-display mt-0">
           {retailer.id ? "Edit Retailer" : "Add Retailer"}
         </h3>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="flex flex-col gap-2">
           <LabeledInput label="Name" value={form.name} onChange={(v: string) => set("name", v)} theme={theme} />
           <LabeledInput label="URL" value={form.url || ""} onChange={(v: string) => set("url", v)} theme={theme} />
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="flex gap-2">
             <LabeledInput label="Commission Rate (%)" value={form.commission_rate || ""} onChange={(v: string) => set("commission_rate", v ? parseFloat(v) : null)} theme={theme} type="number" />
             <LabeledInput label="Network" value={form.affiliate_network || ""} onChange={(v: string) => set("affiliate_network", v)} theme={theme} />
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: "6px 14px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.textDim, fontSize: 11, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
-          <button onClick={() => onSave(form)} style={{ padding: "6px 14px", borderRadius: 6, border: "none", background: theme.forestDeep || theme.accent, color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Save</button>
+        <div className="flex gap-2 justify-end mt-4">
+          <button onClick={onClose} className="py-1.5 px-3.5 rounded-badge-sm border border-tl-border-light bg-transparent text-tl-text-dim text-[11px] cursor-pointer font-body">Cancel</button>
+          <button onClick={() => onSave(form)} className="py-1.5 px-3.5 rounded-badge-sm border-none bg-tl-forest-deep text-white text-[11px] font-semibold cursor-pointer font-body">Save</button>
         </div>
       </div>
     </div>
@@ -412,13 +417,14 @@ interface LabeledInputProps {
 }
 
 function LabeledInput({ label, value, onChange, theme, type = "text", textarea }: LabeledInputProps) {
-  const style: React.CSSProperties = { width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody, outline: "none", boxSizing: "border-box" };
   return (
-    <div style={{ flex: 1 }}>
-      <label style={{ fontSize: 9, color: theme.textDimmer, fontWeight: 600, display: "block", marginBottom: 2 }}>{label}</label>
+    <div className="flex-1">
+      <label className="text-[9px] text-tl-text-dimmer font-semibold block mb-0.5">{label}</label>
       {textarea
-        ? <textarea value={value ?? ""} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)} rows={3} style={{ ...style, resize: "vertical" }} />
-        : <input value={value ?? ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)} type={type} style={style} />
+        ? <textarea value={value ?? ""} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)} rows={3}
+            className="w-full py-1.5 px-2 rounded-badge-sm border border-tl-border-light bg-tl-input text-tl-text text-[11px] font-body outline-none box-border resize-y" />
+        : <input value={value ?? ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)} type={type}
+            className="w-full py-1.5 px-2 rounded-badge-sm border border-tl-border-light bg-tl-input text-tl-text text-[11px] font-body outline-none box-border" />
       }
     </div>
   );

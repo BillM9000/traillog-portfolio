@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { Users, ClipboardCheck, Backpack, CalendarCheck } from "lucide-react";
 import { useTheme } from "../../contexts/ThemeContext";
 import { computeCrewReadiness } from "../../utils/readiness";
-import { fontBody, fontDisplay } from "../../utils/theme";
 import type { AdventureMember, Skill, GearCatalogItem, MemberGearItem, Adventure, TrekDates } from "../../types";
 
 interface DashboardOverviewProps {
@@ -63,26 +62,10 @@ export default function DashboardOverview({
   }, [members, skills]);
 
   const statCards = [
-    {
-      icon: Users,
-      label: "Members",
-      value: `${trekkingCount} / ${members.length}`,
-    },
-    {
-      icon: ClipboardCheck,
-      label: "Readiness",
-      value: `${readiness.overall}%`,
-    },
-    {
-      icon: Backpack,
-      label: "Gear",
-      value: `${avgGearPct}%`,
-    },
-    {
-      icon: CalendarCheck,
-      label: "Training",
-      value: `${completedTrainingCount} / ${totalTrainingItems}`,
-    },
+    { icon: Users, label: "Members", value: `${trekkingCount} / ${members.length}` },
+    { icon: ClipboardCheck, label: "Readiness", value: `${readiness.overall}%` },
+    { icon: Backpack, label: "Gear", value: `${avgGearPct}%` },
+    { icon: CalendarCheck, label: "Training", value: `${completedTrainingCount} / ${totalTrainingItems}` },
   ];
 
   const readinessBreakdown = [
@@ -93,54 +76,21 @@ export default function DashboardOverview({
   ];
 
   return (
-    <div style={{ marginBottom: 16 }}>
+    <div className="mb-4">
       {/* Stat cards row */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: 12,
-          marginBottom: 12,
-        }}
-      >
+      <div className="grid grid-cols-4 gap-3 mb-3">
         {statCards.map((card) => (
           <div
             key={card.label}
-            style={{
-              background: theme.bgCard,
-              border: `1px solid ${theme.border}`,
-              borderRadius: 14,
-              boxShadow: theme.shadow,
-              padding: "12px 16px",
-              display: "flex",
-              flexDirection: "column",
-              gap: 4,
-            }}
+            className="tl-card flex flex-col gap-1 !mb-0"
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <card.icon size={16} color={theme.accent} strokeWidth={1.8} />
-              <span
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
-                  color: theme.textDim,
-                }}
-              >
+            <div className="flex items-center gap-1.5">
+              <card.icon size={16} className="text-tl-accent" strokeWidth={1.8} />
+              <span className="font-body text-[11px] font-semibold uppercase tracking-wide text-tl-text-dim">
                 {card.label}
               </span>
             </div>
-            <span
-              style={{
-                fontFamily: fontBody,
-                fontSize: 20,
-                fontWeight: 700,
-                color: theme.text,
-                lineHeight: 1.2,
-              }}
-            >
+            <span className="font-body text-xl font-bold text-tl-text leading-tight">
               {card.value}
             </span>
           </div>
@@ -148,67 +98,21 @@ export default function DashboardOverview({
       </div>
 
       {/* Readiness breakdown bars */}
-      <div
-        style={{
-          background: theme.bgCard,
-          border: `1px solid ${theme.border}`,
-          borderRadius: 14,
-          boxShadow: theme.shadow,
-          padding: "12px 16px",
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: 12,
-        }}
-      >
+      <div className="tl-card grid grid-cols-4 gap-3 !mb-0">
         {readinessBreakdown.map((item) => (
           <div key={item.label}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-                marginBottom: 4,
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
-                  color: theme.textDim,
-                }}
-              >
+            <div className="flex justify-between items-baseline mb-1">
+              <span className="font-body text-[11px] font-semibold uppercase tracking-wide text-tl-text-dim">
                 {item.label}
               </span>
-              <span
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: theme.text,
-                }}
-              >
+              <span className="font-body text-[13px] font-semibold text-tl-text">
                 {item.value}%
               </span>
             </div>
-            <div
-              style={{
-                height: 4,
-                borderRadius: 2,
-                background: theme.progressBg,
-                overflow: "hidden",
-              }}
-            >
+            <div className="h-1 rounded-sm bg-tl-progress-bg overflow-hidden">
               <div
-                style={{
-                  height: "100%",
-                  width: `${item.value}%`,
-                  borderRadius: 2,
-                  background: item.color,
-                  transition: "width 0.3s ease",
-                }}
+                className="h-full rounded-sm transition-[width] duration-300 ease-in-out"
+                style={{ width: `${item.value}%`, background: item.color }}
               />
             </div>
           </div>

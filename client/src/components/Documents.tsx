@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
-import { fontBody, fontDisplay } from "../utils/theme";
+import clsx from "clsx";
 import type { AdventureDocument } from "../types";
 
 interface FileIconEntry {
@@ -128,7 +128,7 @@ export default function Documents({ adventureId, isAdmin }: DocumentsProps) {
 
   if (loading) {
     return (
-      <div style={{ textAlign: "center", padding: 40, color: theme.textDim, fontFamily: fontBody }}>
+      <div className="text-center p-10 text-tl-text-dim font-body">
         Loading documents...
       </div>
     );
@@ -137,27 +137,19 @@ export default function Documents({ adventureId, isAdmin }: DocumentsProps) {
   return (
     <div>
       {/* Header */}
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        marginBottom: 16,
-      }}>
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay, margin: 0 }}>
+          <h2 className="text-lg font-extrabold text-tl-heading font-display m-0">
             Documents
           </h2>
-          <p style={{ fontSize: 12, color: theme.textDim, margin: "2px 0 0", fontFamily: fontBody }}>
+          <p className="text-xs text-tl-text-dim mt-0.5 font-body">
             Share trek docs, training materials, and planning files
           </p>
         </div>
         {isAdmin && (
           <button
             onClick={() => { setShowUpload(true); setSelectedFile(null); setDescription(""); }}
-            style={{
-              display: "flex", alignItems: "center", gap: 6,
-              padding: "8px 16px", borderRadius: 10, border: "none",
-              background: theme.accent, color: "#fff", fontSize: 13, fontWeight: 700,
-              cursor: "pointer", fontFamily: fontBody,
-            }}
+            className="flex items-center gap-1.5 py-2 px-4 rounded-[10px] border-none bg-tl-accent text-white text-[13px] font-bold cursor-pointer font-body"
           >
             <Upload size={14} /> Upload
           </button>
@@ -166,24 +158,21 @@ export default function Documents({ adventureId, isAdmin }: DocumentsProps) {
 
       {/* Upload modal */}
       {showUpload && isAdmin && (
-        <div style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000,
-          display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
-        }} onClick={() => { if (!uploading) { setShowUpload(false); setSelectedFile(null); } }}>
+        <div
+          className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+          onClick={() => { if (!uploading) { setShowUpload(false); setSelectedFile(null); } }}>
           <div
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            style={{
-              background: theme.bgCard, borderRadius: 16, padding: 24, maxWidth: 440, width: "100%",
-              border: `1px solid ${theme.border}`, boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
-            }}
+            className="bg-tl-card rounded-[16px] p-6 max-w-[440px] w-full border border-tl-border"
+            style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay, margin: 0 }}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-extrabold text-tl-heading font-display m-0">
                 Upload Document
               </h3>
-              <button onClick={() => { if (!uploading) { setShowUpload(false); setSelectedFile(null); } }} style={{
-                background: "none", border: "none", cursor: "pointer", color: theme.textDim, padding: 4,
-              }}>
+              <button onClick={() => { if (!uploading) { setShowUpload(false); setSelectedFile(null); } }}
+                className="bg-transparent border-none cursor-pointer text-tl-text-dim p-1">
                 <X size={18} />
               </button>
             </div>
@@ -194,43 +183,43 @@ export default function Documents({ adventureId, isAdmin }: DocumentsProps) {
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
+              className={clsx(
+                "rounded-xl text-center cursor-pointer mb-3 transition-all duration-200",
+                selectedFile ? "py-3 px-4" : "py-8 px-4"
+              )}
               style={{
                 border: `2px dashed ${dragOver ? theme.accent : theme.borderLight}`,
-                borderRadius: 12, padding: selectedFile ? "12px 16px" : "32px 16px",
-                textAlign: "center", cursor: "pointer",
                 background: dragOver ? theme.accentBg : (mode === "dark" ? "#1E2218" : "#FAFAF5"),
-                transition: "all 0.2s ease", marginBottom: 12,
               }}
             >
               <input
                 ref={fileInputRef}
                 type="file"
                 accept={ACCEPT}
-                style={{ display: "none" }}
+                className="hidden"
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFileSelect(e.target.files?.[0])}
               />
               {selectedFile ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div className="flex items-center gap-2.5">
                   {(() => { const fi = getFileIcon(selectedFile.type); return <fi.icon size={20} color={fi.color} />; })()}
-                  <div style={{ flex: 1, textAlign: "left" }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: theme.heading, fontFamily: fontBody }}>
+                  <div className="flex-1 text-left">
+                    <div className="text-[13px] font-semibold text-tl-heading font-body">
                       {selectedFile.name}
                     </div>
-                    <div style={{ fontSize: 11, color: theme.textDim }}>{formatFileSize(selectedFile.size)}</div>
+                    <div className="text-[11px] text-tl-text-dim">{formatFileSize(selectedFile.size)}</div>
                   </div>
-                  <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); setSelectedFile(null); }} style={{
-                    background: "none", border: "none", cursor: "pointer", color: theme.textDim, padding: 4,
-                  }}>
+                  <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); setSelectedFile(null); }}
+                    className="bg-transparent border-none cursor-pointer text-tl-text-dim p-1">
                     <X size={14} />
                   </button>
                 </div>
               ) : (
                 <>
-                  <Upload size={28} color={theme.textDim} style={{ marginBottom: 8 }} />
-                  <div style={{ fontSize: 13, fontWeight: 600, color: theme.heading, fontFamily: fontBody }}>
+                  <Upload size={28} color={theme.textDim} className="mb-2" />
+                  <div className="text-[13px] font-semibold text-tl-heading font-body">
                     Drop a file here or click to browse
                   </div>
-                  <div style={{ fontSize: 11, color: theme.textDim, marginTop: 4 }}>
+                  <div className="text-[11px] text-tl-text-dim mt-1">
                     PDF, images, Word, Excel, CSV, TXT — max 5MB
                   </div>
                 </>
@@ -244,27 +233,22 @@ export default function Documents({ adventureId, isAdmin }: DocumentsProps) {
               value={description}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDescription(e.target.value)}
               maxLength={200}
-              style={{
-                width: "100%", padding: "10px 12px", borderRadius: 8,
-                border: `1px solid ${theme.borderLight}`, background: mode === "dark" ? "#1E2218" : "#fff",
-                color: theme.text, fontSize: 13, fontFamily: fontBody, outline: "none",
-                boxSizing: "border-box", marginBottom: 14,
-              }}
+              className="w-full py-2.5 px-3 rounded-btn border border-tl-border-light text-tl-text text-[13px] font-body outline-none box-border mb-3.5"
+              style={{ background: mode === "dark" ? "#1E2218" : "#fff" }}
             />
 
             {/* Upload button */}
             <button
               onClick={handleUpload}
               disabled={!selectedFile || uploading}
-              style={{
-                width: "100%", padding: "10px 0", borderRadius: 10, border: "none",
-                background: !selectedFile || uploading ? theme.borderLight : theme.accent,
-                color: !selectedFile || uploading ? theme.textDim : "#fff",
-                fontSize: 14, fontWeight: 700, cursor: !selectedFile || uploading ? "default" : "pointer",
-                fontFamily: fontBody, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              }}
+              className={clsx(
+                "w-full py-2.5 rounded-[10px] border-none text-sm font-bold font-body flex items-center justify-center gap-1.5",
+                !selectedFile || uploading
+                  ? "bg-tl-border-light text-tl-text-dim cursor-default"
+                  : "bg-tl-accent text-white cursor-pointer"
+              )}
             >
-              {uploading ? (<><Loader size={14} style={{ animation: "spin 1s linear infinite" }} /> Uploading...</>) : "Upload Document"}
+              {uploading ? (<><Loader size={14} className="animate-spin" /> Uploading...</>) : "Upload Document"}
             </button>
           </div>
         </div>
@@ -272,83 +256,64 @@ export default function Documents({ adventureId, isAdmin }: DocumentsProps) {
 
       {/* Document list */}
       {docs.length === 0 ? (
-        <div style={{
-          background: theme.bgCard, borderRadius: 14, border: `1px solid ${theme.border}`,
-          padding: "40px 20px", textAlign: "center",
-        }}>
-          <FileText size={36} color={theme.textDim} style={{ marginBottom: 8, opacity: 0.5 }} />
-          <div style={{ fontSize: 14, fontWeight: 600, color: theme.textDim, fontFamily: fontBody }}>
+        <div className="bg-tl-card rounded-[14px] border border-tl-border py-10 px-5 text-center">
+          <FileText size={36} color={theme.textDim} className="mb-2 opacity-50" />
+          <div className="text-sm font-semibold text-tl-text-dim font-body">
             No documents yet
           </div>
-          <div style={{ fontSize: 12, color: theme.textDimmer, marginTop: 4, fontFamily: fontBody }}>
+          <div className="text-xs text-tl-text-dimmer mt-1 font-body">
             {isAdmin ? "Upload trek documents, training materials, or planning files." : "Your troop leader hasn't uploaded any documents yet."}
           </div>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="flex flex-col gap-2">
           {docs.map(doc => {
             const fi = getFileIcon(doc.mime_type);
             const IconComp = fi.icon;
             const isImage = doc.mime_type?.startsWith("image/");
             return (
-              <div key={doc.id} style={{
-                background: theme.bgCard, borderRadius: 12, border: `1px solid ${theme.border}`,
-                padding: "12px 14px", display: "flex", alignItems: "center", gap: 12,
-              }}>
+              <div key={doc.id} className="bg-tl-card rounded-xl border border-tl-border py-3 px-3.5 flex items-center gap-3">
                 {/* Icon */}
-                <div style={{
-                  width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-                  background: mode === "dark" ? "#2A2E24" : "#F5F5F0",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
+                <div className="w-10 h-10 rounded-[10px] shrink-0 flex items-center justify-center"
+                  style={{ background: mode === "dark" ? "#2A2E24" : "#F5F5F0" }}>
                   <IconComp size={20} color={fi.color} />
                 </div>
 
                 {/* Info */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: 13, fontWeight: 700, color: theme.heading, fontFamily: fontBody,
-                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                  }}>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-bold text-tl-heading font-body truncate">
                     {doc.original_name}
                   </div>
-                  <div style={{ fontSize: 11, color: theme.textDim, display: "flex", gap: 8, marginTop: 2 }}>
+                  <div className="text-[11px] text-tl-text-dim flex gap-2 mt-0.5">
                     <span>{formatFileSize(doc.size)}</span>
                     <span>{formatDate(doc.created_at)}</span>
                   </div>
                   {doc.description && (
-                    <div style={{ fontSize: 11, color: theme.textDim, marginTop: 2, fontStyle: "italic" }}>
+                    <div className="text-[11px] text-tl-text-dim mt-0.5 italic">
                       {doc.description}
                     </div>
                   )}
                 </div>
 
                 {/* Actions */}
-                <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <div className="flex gap-1.5 shrink-0">
                   <a
                     href={api.getDocumentUrl(adventureId, doc.id)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      width: 34, height: 34, borderRadius: 8,
-                      background: mode === "dark" ? "#2A2E24" : "#F5F5F0",
-                      border: `1px solid ${theme.borderLight}`, cursor: "pointer",
-                      textDecoration: "none",
-                    }}
+                    className="flex items-center justify-center w-[34px] h-[34px] rounded-btn border border-tl-border-light cursor-pointer no-underline"
+                    style={{ background: mode === "dark" ? "#2A2E24" : "#F5F5F0" }}
                     title={isImage ? "View" : "Download"}
                   >
-                    <Download size={14} color={theme.accent} />
+                    <Download size={14} className="text-tl-accent" />
                   </a>
                   {isAdmin && (
                     <button
                       onClick={() => setConfirmDelete(doc)}
+                      className="flex items-center justify-center w-[34px] h-[34px] rounded-btn cursor-pointer"
                       style={{
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        width: 34, height: 34, borderRadius: 8,
                         background: mode === "dark" ? "#2E2020" : "#FFF5F5",
                         border: `1px solid ${mode === "dark" ? "#5C3030" : "#F5D5D5"}`,
-                        cursor: "pointer",
                       }}
                       title="Delete"
                     >
@@ -364,33 +329,26 @@ export default function Documents({ adventureId, isAdmin }: DocumentsProps) {
 
       {/* Confirm delete modal */}
       {confirmDelete && (
-        <div style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000,
-          display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
-        }} onClick={() => setConfirmDelete(null)}>
-          <div onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{
-            background: theme.bgCard, borderRadius: 14, padding: 20, maxWidth: 360, width: "100%",
-            border: `1px solid ${theme.border}`, boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
-          }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay, margin: "0 0 8px" }}>
+        <div
+          className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+          onClick={() => setConfirmDelete(null)}>
+          <div onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            className="bg-tl-card rounded-[14px] p-5 max-w-[360px] w-full border border-tl-border"
+            style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
+            <h3 className="text-[15px] font-bold text-tl-heading font-display m-0 mb-2">
               Delete Document?
             </h3>
-            <p style={{ fontSize: 13, color: theme.textDim, fontFamily: fontBody, margin: "0 0 16px" }}>
+            <p className="text-[13px] text-tl-text-dim font-body m-0 mb-4">
               Are you sure you want to delete <strong>{confirmDelete.original_name}</strong>? This cannot be undone.
             </p>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button onClick={() => setConfirmDelete(null)} style={{
-                padding: "8px 16px", borderRadius: 8, border: `1px solid ${theme.borderLight}`,
-                background: theme.bgAlt, color: theme.text, fontSize: 13, fontWeight: 600,
-                cursor: "pointer", fontFamily: fontBody,
-              }}>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setConfirmDelete(null)}
+                className="py-2 px-4 rounded-btn border border-tl-border-light bg-tl-bg-alt text-tl-text text-[13px] font-semibold cursor-pointer font-body">
                 Cancel
               </button>
-              <button onClick={() => handleDelete(confirmDelete.id)} style={{
-                padding: "8px 16px", borderRadius: 8, border: "none",
-                background: "#E53935", color: "#fff", fontSize: 13, fontWeight: 700,
-                cursor: "pointer", fontFamily: fontBody,
-              }}>
+              <button onClick={() => handleDelete(confirmDelete.id)}
+                className="py-2 px-4 rounded-btn border-none bg-[#E53935] text-white text-[13px] font-bold cursor-pointer font-body">
                 Delete
               </button>
             </div>

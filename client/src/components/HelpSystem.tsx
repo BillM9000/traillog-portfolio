@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTheme } from "../contexts/ThemeContext";
-import { fontBody, fontDisplay } from "../utils/theme";
+import clsx from "clsx";
 import {
   HelpCircle, X, Compass, Calendar, ClipboardCheck, Map, Backpack,
   FileText, User, Users, Award, UserCog, Settings, Wrench, Shield, Server,
@@ -226,12 +226,13 @@ export default function HelpSystem({ onClose, user, isAdmin, isGlobalAdmin }: He
   const catPill = (key: CategoryFilter, label: string) => {
     const active = category === key;
     return (
-      <button key={key} onClick={() => setCategory(key)} style={{
-        padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, fontFamily: fontBody, cursor: "pointer",
-        border: active ? `1.5px solid ${theme.accent}` : `1px solid ${theme.borderLight}`,
-        background: active ? theme.pillActiveBg : theme.pillInactiveBg,
-        color: active ? theme.pillActiveText : theme.pillInactiveText,
-      }}>{label}</button>
+      <button key={key} onClick={() => setCategory(key)}
+        className={clsx(
+          "py-[5px] px-3 rounded-btn text-[11px] font-semibold font-body cursor-pointer",
+          active
+            ? "border-[1.5px] border-tl-accent bg-tl-pill-active-bg text-tl-pill-active-text"
+            : "border border-tl-border-light bg-tl-pill-inactive-bg text-tl-pill-inactive-text"
+        )}>{label}</button>
     );
   };
 
@@ -239,88 +240,69 @@ export default function HelpSystem({ onClose, user, isAdmin, isGlobalAdmin }: He
     if (cat === "everyone") return null;
     const isS = cat === "sysadmin";
     return (
-      <span style={{
-        fontSize: 8, fontWeight: 700, padding: "1px 5px", borderRadius: 4, marginLeft: 6,
-        background: isS ? "#b8860b20" : `${theme.accent}20`,
-        color: isS ? "#b8860b" : theme.accent,
-        fontFamily: fontBody, letterSpacing: 0.5, textTransform: "uppercase",
-      }}>{isS ? "Sys Admin" : "Admin"}</span>
+      <span className={clsx(
+        "text-[8px] font-bold py-px px-[5px] rounded-[4px] ml-1.5 font-body tracking-[0.5px] uppercase",
+        isS ? "bg-[#b8860b20] text-[#b8860b]" : "text-tl-accent"
+      )} style={!isS ? { background: `${theme.accent}20` } : undefined}>{isS ? "Sys Admin" : "Admin"}</span>
     );
   };
 
   return (
-    <div onClick={onClose} style={{
-      position: "fixed", inset: 0, zIndex: 9999,
-      background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      padding: 16,
-    }}>
-      <div onClick={(e: React.MouseEvent) => e.stopPropagation()} role="dialog" aria-label="Help Center" style={{
-        background: theme.bg, borderRadius: 20, padding: "20px 18px",
-        maxWidth: 520, width: "100%", maxHeight: "85vh", overflowY: "auto",
-        border: `1px solid ${theme.borderLight}`,
-        boxShadow: "0 12px 48px rgba(0,0,0,0.4)",
-      }}>
+    <div onClick={onClose}
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
+      <div onClick={(e: React.MouseEvent) => e.stopPropagation()} role="dialog" aria-label="Help Center"
+        className="bg-tl-bg rounded-[20px] py-5 px-[18px] max-w-[520px] w-full max-h-[85vh] overflow-y-auto border border-tl-border-light"
+        style={{ boxShadow: "0 12px 48px rgba(0,0,0,0.4)" }}>
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <HelpCircle size={20} style={{ color: theme.accent }} />
-            <span style={{ fontSize: 18, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay }}>Help Center</span>
+        <div className="flex items-center justify-between mb-3.5">
+          <div className="flex items-center gap-2">
+            <HelpCircle size={20} className="text-tl-accent" />
+            <span className="text-lg font-extrabold text-tl-heading font-display">Help Center</span>
           </div>
-          <button onClick={onClose} style={{
-            width: 28, height: 28, borderRadius: 8, border: `1px solid ${theme.borderLight}`,
-            background: theme.bgAlt, color: theme.textDim, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14,
-          }} aria-label="Close help"><X size={14} /></button>
+          <button onClick={onClose}
+            className="w-7 h-7 rounded-btn border border-tl-border-light bg-tl-bg-alt text-tl-text-dim cursor-pointer flex items-center justify-center text-sm"
+            aria-label="Close help"><X size={14} /></button>
         </div>
 
         {/* Category pills */}
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+        <div className="flex gap-1.5 flex-wrap mb-3.5">
           {catPill("all", "All Topics")}
           {(isAdmin || isGlobalAdmin) && catPill("admin", "Troop Admin")}
           {isGlobalAdmin && catPill("sysadmin", "System Admin")}
         </div>
 
         {/* Sections */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <div className="flex flex-col gap-1">
           {filtered.map((s) => {
             const open = openSection === s.id;
             return (
-              <div key={s.id} style={{
-                background: theme.bgCard, borderRadius: 10,
-                border: `1px solid ${open ? theme.accent + "40" : theme.borderLight}`,
-                overflow: "hidden",
-              }}>
+              <div key={s.id}
+                className="bg-tl-card rounded-[10px] overflow-hidden"
+                style={{ border: `1px solid ${open ? theme.accent + "40" : theme.borderLight}` }}>
                 {/* Section header */}
                 <button onClick={() => setOpenSection(open ? null : s.id)}
-                  style={{
-                    width: "100%", padding: "10px 12px", cursor: "pointer",
-                    display: "flex", alignItems: "center", gap: 8,
-                    background: "none", border: "none", textAlign: "left",
-                  }}
+                  className="w-full py-2.5 px-3 cursor-pointer flex items-center gap-2 bg-transparent border-none text-left"
                   role="button" tabIndex={0} aria-expanded={open}
                 >
-                  <s.Icon size={14} style={{ color: theme.accent, flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: theme.heading, fontFamily: fontBody, flex: 1 }}>
+                  <s.Icon size={14} className="text-tl-accent shrink-0" />
+                  <span className="text-[13px] font-bold text-tl-heading font-body flex-1">
                     {s.title}
                   </span>
                   {catBadge(s.cat)}
-                  <ChevronRight size={13} style={{
-                    color: theme.textDim, flexShrink: 0,
-                    transform: open ? "rotate(90deg)" : "rotate(0deg)",
-                    transition: "transform 0.2s ease",
-                  }} />
+                  <ChevronRight size={13} className="text-tl-text-dim shrink-0 transition-transform duration-200"
+                    style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }} />
                 </button>
 
                 {/* Section content */}
                 {open && (
-                  <div style={{ padding: "0 12px 12px 34px" }}>
+                  <div className="px-3 pb-3" style={{ paddingLeft: 34 }}>
                     {s.items.map((item, i) => (
-                      <div key={i} style={{ marginTop: i === 0 ? 0 : 10 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: theme.accent, fontFamily: fontBody, marginBottom: 2, letterSpacing: 0.3 }}>
+                      <div key={i} className={i === 0 ? "" : "mt-2.5"}>
+                        <div className="text-[11px] font-bold text-tl-accent font-body mb-0.5 tracking-[0.3px]">
                           {item.h}
                         </div>
-                        <div style={{ fontSize: 12, color: theme.textDim, fontFamily: fontBody, lineHeight: 1.5 }}>
+                        <div className="text-xs text-tl-text-dim font-body leading-normal">
                           {item.t}
                         </div>
                       </div>
@@ -333,7 +315,7 @@ export default function HelpSystem({ onClose, user, isAdmin, isGlobalAdmin }: He
         </div>
 
         {/* Footer */}
-        <div style={{ marginTop: 14, textAlign: "center", fontSize: 10, color: theme.textDimmest, fontFamily: fontBody }}>
+        <div className="mt-3.5 text-center text-[10px] text-tl-text-dimmest font-body">
           TrailLog Help • {filtered.length} topic{filtered.length !== 1 ? "s" : ""}
         </div>
       </div>

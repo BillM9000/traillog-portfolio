@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
+import clsx from "clsx";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
-import { card, fontBody, fontDisplay } from "../utils/theme";
 import { formatDateFull, formatDateShort } from "../utils/dates";
 import { CalendarCheck, MapPin, Clock, Trash2, ThumbsUp, ThumbsDown, CheckCircle2, XCircle, Users, Zap, ChevronDown, ChevronUp, Pencil, Download } from "lucide-react";
 import type { AdventureMember, TrainingEvent, TrainingRSVP, TrainingAttendance, ThemeColors, ThemeMode } from "../types";
@@ -150,29 +150,25 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
     <div>
       {/* Best Dates chip bar */}
       {bestDates && bestDates.length > 0 && (
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: theme.textMuted, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+        <div className="mb-3.5">
+          <div className="text-xs font-bold text-tl-text-muted mb-1.5 uppercase tracking-[0.5px]">
             Best Dates
           </div>
-          <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch" }}>
+          <div className="flex gap-1.5 overflow-x-auto pb-1" style={{ WebkitOverflowScrolling: "touch" }}>
             {bestDates.slice(0, 5).map(d => (
-              <div key={d.key} style={{
-                padding: "6px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap",
-                background: d.count === (members?.length || 0) ? theme.accentBg : theme.bgAlt,
-                border: d.count === (members?.length || 0) ? `1.5px solid ${theme.accent}` : `1px solid ${theme.border}`,
-                color: d.count === (members?.length || 0) ? theme.accent : theme.text,
-                display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
-              }}>
+              <div key={d.key} className={clsx(
+                "py-1.5 px-3 rounded-pill text-[11px] font-semibold whitespace-nowrap flex items-center gap-1.5 shrink-0",
+                d.count === (members?.length || 0)
+                  ? "bg-tl-accent-bg border-[1.5px] border-tl-accent text-tl-accent"
+                  : "bg-tl-bg-alt border border-tl-border text-tl-text"
+              )}>
                 <span>{formatDateShort(d.key)}</span>
-                <span style={{ fontSize: 9, color: theme.textDimmer }}>
-                  <Users size={9} style={{ verticalAlign: "middle", marginRight: 2 }} />{d.count}/{members?.length || 0}
+                <span className="text-[9px] text-tl-text-dimmer">
+                  <Users size={9} className="align-middle mr-0.5 inline" />{d.count}/{members?.length || 0}
                 </span>
                 {isAdmin && (
-                  <button onClick={() => handleScheduleFromChip(d.key)} style={{
-                    padding: "2px 8px", borderRadius: 10, border: `1px solid ${theme.accent}`,
-                    background: "transparent", color: theme.accent, fontSize: 9, fontWeight: 700,
-                    cursor: "pointer", fontFamily: fontBody,
-                  }}>+ Propose</button>
+                  <button onClick={() => handleScheduleFromChip(d.key)}
+                    className="py-0.5 px-2 rounded-badge border border-tl-accent bg-transparent text-tl-accent text-[9px] font-bold cursor-pointer font-body">+ Propose</button>
                 )}
               </div>
             ))}
@@ -180,27 +176,23 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
         </div>
       )}
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <div style={{ fontSize: 16, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay }}>
+      <div className="flex items-center justify-between mb-2.5">
+        <div className="text-base font-[800] text-tl-heading font-display">
           Training Events
         </div>
-        <div style={{ display: "flex", gap: 6 }}>
+        <div className="flex gap-1.5">
           {upcoming.length > 0 && (
-            <a href={api.getCalendarExportUrl(adventureId)} download style={{
-              padding: "6px 10px", borderRadius: 8, border: `1px solid ${theme.border}`,
-              background: "transparent", color: theme.textDim,
-              fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-              display: "flex", alignItems: "center", gap: 4, textDecoration: "none",
-            }} title="Export to Google Calendar / iCal">
+            <a href={api.getCalendarExportUrl(adventureId)} download
+              className="py-1.5 px-2.5 rounded-btn border border-tl-border bg-transparent text-tl-text-dim text-xs font-semibold cursor-pointer font-body flex items-center gap-1 no-underline"
+              title="Export to Google Calendar / iCal">
               <Download size={12} /> .ics
             </a>
           )}
           {isAdmin && (
-            <button onClick={() => setShowForm(!showForm)} style={{
-              padding: "6px 14px", borderRadius: 8, border: `1px solid ${theme.accent}`,
-              background: showForm ? theme.accent : "transparent", color: showForm ? "#fff" : theme.accent,
-              fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: fontBody,
-            }}>
+            <button onClick={() => setShowForm(!showForm)} className={clsx(
+              "py-1.5 px-3.5 rounded-btn border border-tl-accent text-xs font-bold cursor-pointer font-body",
+              showForm ? "bg-tl-accent text-white" : "bg-transparent text-tl-accent"
+            )}>
               {showForm ? "Cancel" : "+ New Event"}
             </button>
           )}
@@ -209,53 +201,56 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
 
       {/* Create form */}
       {showForm && isAdmin && (
-        <div style={{ ...card(theme), marginBottom: 12, padding: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: theme.heading, marginBottom: 10 }}>New Training Event</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <label style={labelStyle(theme)}>
+        <div className="tl-card mb-3 p-4">
+          <div className="text-[13px] font-bold text-tl-heading mb-2.5">New Training Event</div>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-[11px] font-semibold text-tl-text-dim flex flex-col gap-[3px]">
               Date
               <input type="date" value={form.date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, date: e.target.value }))}
-                style={inputStyle(theme)} />
+                className="py-[7px] px-2.5 rounded-badge-sm border border-tl-border bg-tl-bg-alt text-tl-text text-[13px] font-body outline-none" />
             </label>
-            <label style={labelStyle(theme)}>
+            <label className="text-[11px] font-semibold text-tl-text-dim flex flex-col gap-[3px]">
               Type
               <select value={form.type} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm(f => ({ ...f, type: e.target.value }))}
-                style={inputStyle(theme)}>
+                className="py-[7px] px-2.5 rounded-badge-sm border border-tl-border bg-tl-bg-alt text-tl-text text-[13px] font-body outline-none">
                 <option value="proposed">Proposed (no email)</option>
                 <option value="scheduled">Confirmed (emails sent)</option>
               </select>
             </label>
-            <label style={labelStyle(theme)}>
+            <label className="text-[11px] font-semibold text-tl-text-dim flex flex-col gap-[3px]">
               Time (optional)
               <input type="text" placeholder="e.g. 9:00 AM" value={form.time_label}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, time_label: e.target.value }))} style={inputStyle(theme)} />
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, time_label: e.target.value }))}
+                className="py-[7px] px-2.5 rounded-badge-sm border border-tl-border bg-tl-bg-alt text-tl-text text-[13px] font-body outline-none" />
             </label>
-            <label style={labelStyle(theme)}>
+            <label className="text-[11px] font-semibold text-tl-text-dim flex flex-col gap-[3px]">
               Location
               <input type="text" placeholder="e.g. Busse Woods" value={form.location}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, location: e.target.value }))} style={inputStyle(theme)} />
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, location: e.target.value }))}
+                className="py-[7px] px-2.5 rounded-badge-sm border border-tl-border bg-tl-bg-alt text-tl-text text-[13px] font-body outline-none" />
             </label>
           </div>
-          <label style={{ ...labelStyle(theme), marginTop: 8 }}>
+          <label className="text-[11px] font-semibold text-tl-text-dim flex flex-col gap-[3px] mt-2">
             Notes (optional)
             <input type="text" placeholder="What to bring, focus areas..." value={form.notes}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, notes: e.target.value }))} style={inputStyle(theme)} />
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, notes: e.target.value }))}
+              className="py-[7px] px-2.5 rounded-badge-sm border border-tl-border bg-tl-bg-alt text-tl-text text-[13px] font-body outline-none" />
           </label>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
-            <label style={labelStyle(theme)}>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <label className="text-[11px] font-semibold text-tl-text-dim flex flex-col gap-[3px]">
               Repeat
               <select value={form.repeat} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm(f => ({ ...f, repeat: e.target.value }))}
-                style={inputStyle(theme)}>
+                className="py-[7px] px-2.5 rounded-badge-sm border border-tl-border bg-tl-bg-alt text-tl-text text-[13px] font-body outline-none">
                 <option value="none">No repeat</option>
                 <option value="weekly">Weekly</option>
                 <option value="biweekly">Every 2 weeks</option>
               </select>
             </label>
             {form.repeat !== "none" && (
-              <label style={labelStyle(theme)}>
+              <label className="text-[11px] font-semibold text-tl-text-dim flex flex-col gap-[3px]">
                 How many
                 <select value={form.repeatCount} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm(f => ({ ...f, repeatCount: parseInt(e.target.value) }))}
-                  style={inputStyle(theme)}>
+                  className="py-[7px] px-2.5 rounded-badge-sm border border-tl-border bg-tl-bg-alt text-tl-text text-[13px] font-body outline-none">
                   {[2, 3, 4, 5, 6, 8, 10, 12].map(n => (
                     <option key={n} value={n}>{n} events</option>
                   ))}
@@ -264,7 +259,7 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
             )}
           </div>
           {form.repeat !== "none" && form.date && (
-            <div style={{ fontSize: 10, color: theme.textDim, marginTop: 4 }}>
+            <div className="text-[10px] text-tl-text-dim mt-1">
               Creates {form.repeatCount} events: {form.date} through{" "}
               {(() => {
                 const interval = form.repeat === "weekly" ? 7 : 14;
@@ -274,10 +269,8 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
               })()}
             </div>
           )}
-          <button onClick={handleCreate} style={{
-            marginTop: 10, padding: "8px 20px", borderRadius: 8, border: "none",
-            background: theme.accent, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer",
-          }}>
+          <button onClick={handleCreate}
+            className="mt-2.5 py-2 px-5 rounded-btn border-none bg-tl-accent text-white text-[13px] font-bold cursor-pointer">
             {form.type === "scheduled" ? "Schedule & Notify Crew" : "Propose Date"}
           </button>
         </div>
@@ -285,9 +278,9 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
 
       {/* Empty state */}
       {upcoming.length === 0 && pastActive.length === 0 && !showForm && (
-        <div style={{ ...card(theme), textAlign: "center", padding: 24 }}>
+        <div className="tl-card text-center p-6">
           <CalendarCheck size={28} color={theme.textDimmer} strokeWidth={1.5} />
-          <div style={{ fontSize: 13, color: theme.textDim, marginTop: 6 }}>
+          <div className="text-[13px] text-tl-text-dim mt-1.5">
             {isAdmin ? "No training events yet. Use Best Dates above or create one manually." : "No training events yet. Check back soon!"}
           </div>
         </div>
@@ -304,7 +297,7 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
       {/* Past active events that need completion */}
       {pastActive.length > 0 && (
         <>
-          <div style={{ fontSize: 12, fontWeight: 700, color: theme.warn, marginTop: 14, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          <div className="text-xs font-bold text-tl-warn mt-3.5 mb-1.5 uppercase tracking-[0.5px]">
             Past — Needs Completion
           </div>
           {pastActive.map(event => (
@@ -319,12 +312,8 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
       {/* Completed events (collapsible) */}
       {completed.length > 0 && (
         <>
-          <button onClick={() => setShowCompleted(!showCompleted)} style={{
-            display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700,
-            color: theme.textDimmest, marginTop: 14, marginBottom: 6, textTransform: "uppercase",
-            letterSpacing: "0.5px", background: "none", border: "none", cursor: "pointer", padding: 0,
-            fontFamily: fontBody,
-          }}>
+          <button onClick={() => setShowCompleted(!showCompleted)}
+            className="flex items-center gap-1 text-xs font-bold text-tl-text-dimmest mt-3.5 mb-1.5 uppercase tracking-[0.5px] bg-none border-none cursor-pointer p-0 font-body">
             {showCompleted ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             Completed ({completed.length})
           </button>
@@ -408,55 +397,48 @@ function EventCard({ event, theme, mode, isAdmin, currentUserId, members, isPast
   };
 
   return (
-    <div style={{
-      ...card(theme), marginBottom: 8, padding: 12,
+    <div className="tl-card mb-2 p-3" style={{
       opacity: event.status === "cancelled" ? 0.5 : 1,
       borderLeft: `3px solid ${statusInfo.border}`,
     }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div className="flex justify-between items-start">
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: theme.heading }}>
+          <div className="flex items-center gap-1.5 mb-1">
+            <div className="text-sm font-bold text-tl-heading">
               {formatDateFull(event.date)}
             </div>
-            <span style={{
-              fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 10,
-              background: statusInfo.bg,
-              color: statusInfo.text,
-              textTransform: "uppercase", letterSpacing: "0.5px",
-            }}>
+            <span className="text-[9px] font-bold py-0.5 px-[7px] rounded-badge uppercase tracking-[0.5px]"
+              style={{ background: statusInfo.bg, color: statusInfo.text }}>
               {statusLabel}
             </span>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="flex gap-2 flex-wrap">
             {event.time_label && (
-              <span style={{ fontSize: 11, color: theme.textDim, display: "flex", alignItems: "center", gap: 3 }}>
+              <span className="text-[11px] text-tl-text-dim flex items-center gap-[3px]">
                 <Clock size={11} strokeWidth={2.5} />
                 {event.time_label}
               </span>
             )}
             {event.location && (
-              <span style={{ fontSize: 11, color: theme.textDim, display: "flex", alignItems: "center", gap: 3 }}>
+              <span className="text-[11px] text-tl-text-dim flex items-center gap-[3px]">
                 <MapPin size={11} strokeWidth={2.5} />
                 {event.location}
               </span>
             )}
           </div>
           {event.notes && (
-            <div style={{ fontSize: 11, color: theme.textDimmer, marginTop: 3, fontStyle: "italic" }}>{event.notes}</div>
+            <div className="text-[11px] text-tl-text-dimmer mt-[3px] italic">{event.notes}</div>
           )}
         </div>
-        <div style={{ display: "flex", gap: 4 }}>
+        <div className="flex gap-1">
           {isAdmin && event.status !== "cancelled" && event.status !== "completed" && (
             <>
-              <button onClick={() => { setEditing(true); setEditForm({ date: event.date, period: event.period || "all", time_label: event.time_label || "", location: event.location || "", notes: event.notes || "" }); }} style={{
-                background: "none", border: "none", cursor: "pointer", padding: 4, color: theme.textDimmest,
-              }} title="Edit event">
+              <button onClick={() => { setEditing(true); setEditForm({ date: event.date, period: event.period || "all", time_label: event.time_label || "", location: event.location || "", notes: event.notes || "" }); }}
+                className="bg-none border-none cursor-pointer p-1 text-tl-text-dimmest" title="Edit event">
                 <Pencil size={14} strokeWidth={2} />
               </button>
-              <button onClick={() => onDelete(event.id)} style={{
-                background: "none", border: "none", cursor: "pointer", padding: 4, color: theme.textDimmest,
-              }} title="Delete event">
+              <button onClick={() => onDelete(event.id)}
+                className="bg-none border-none cursor-pointer p-1 text-tl-text-dimmest" title="Delete event">
                 <Trash2 size={14} strokeWidth={2} />
               </button>
             </>
@@ -466,71 +448,61 @@ function EventCard({ event, theme, mode, isAdmin, currentUserId, members, isPast
 
       {/* Inline edit form */}
       {editing && (
-        <div style={{ marginTop: 8, padding: "10px 12px", background: theme.bgAlt, borderRadius: 8, border: `1px solid ${theme.border}` }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div className="mt-2 py-2.5 px-3 bg-tl-bg-alt rounded-btn border border-tl-border">
+          <div className="flex flex-col gap-1.5">
             <input type="date" value={editForm.date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm(f => ({ ...f, date: e.target.value }))}
-              style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.bgCard, color: theme.text, fontSize: 12, fontFamily: fontBody }} />
+              className="py-1.5 px-2.5 rounded-badge-sm border border-tl-border bg-tl-card text-tl-text text-xs font-body" />
             <input placeholder="Time (e.g. 9:00 AM)" value={editForm.time_label} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm(f => ({ ...f, time_label: e.target.value }))}
-              style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.bgCard, color: theme.text, fontSize: 12, fontFamily: fontBody }} />
+              className="py-1.5 px-2.5 rounded-badge-sm border border-tl-border bg-tl-card text-tl-text text-xs font-body" />
             <input placeholder="Location" value={editForm.location} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm(f => ({ ...f, location: e.target.value }))}
-              style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.bgCard, color: theme.text, fontSize: 12, fontFamily: fontBody }} />
+              className="py-1.5 px-2.5 rounded-badge-sm border border-tl-border bg-tl-card text-tl-text text-xs font-body" />
             <input placeholder="Notes" value={editForm.notes} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm(f => ({ ...f, notes: e.target.value }))}
-              style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.bgCard, color: theme.text, fontSize: 12, fontFamily: fontBody }} />
+              className="py-1.5 px-2.5 rounded-badge-sm border border-tl-border bg-tl-card text-tl-text text-xs font-body" />
           </div>
-          <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-            <button onClick={async () => { await onEdit(event.id, editForm as unknown as Record<string, unknown>); setEditing(false); }} style={{
-              padding: "5px 14px", borderRadius: 8, border: "none", background: theme.accent, color: "#fff",
-              fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: fontBody,
-            }}>Save</button>
-            <button onClick={() => setEditing(false)} style={{
-              padding: "5px 14px", borderRadius: 8, border: `1px solid ${theme.border}`, background: "transparent", color: theme.textDim,
-              fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-            }}>Cancel</button>
+          <div className="flex gap-1.5 mt-2">
+            <button onClick={async () => { await onEdit(event.id, editForm as unknown as Record<string, unknown>); setEditing(false); }}
+              className="py-[5px] px-3.5 rounded-btn border-none bg-tl-accent text-white text-[11px] font-bold cursor-pointer font-body">Save</button>
+            <button onClick={() => setEditing(false)}
+              className="py-[5px] px-3.5 rounded-btn border border-tl-border bg-transparent text-tl-text-dim text-[11px] font-semibold cursor-pointer font-body">Cancel</button>
           </div>
         </div>
       )}
 
       {/* RSVP counts */}
       {event.status !== "cancelled" && (
-        <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center" }}>
-          <span style={{
-            fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 10,
-            background: goingCount > 0 ? (mode === "dark" ? "#2a3a20" : "#d4e4b820") : "transparent",
-            color: "#5B7A3A", border: `1px solid #5B7A3A40`,
-          }}>
+        <div className="flex gap-2 mt-2 items-center">
+          <span className="text-[11px] font-bold py-0.5 px-2 rounded-badge border border-[#5B7A3A40] text-[#5B7A3A]"
+            style={{ background: goingCount > 0 ? (mode === "dark" ? "#2a3a20" : "#d4e4b820") : "transparent" }}>
             {goingCount} going
           </span>
           {cantCount > 0 && (
-            <span style={{
-              fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 10,
-              color: "#b07060", border: `1px solid #b0706040`,
-            }}>
+            <span className="text-[11px] font-bold py-0.5 px-2 rounded-badge text-[#b07060] border border-[#b0706040]">
               {cantCount} can't
             </span>
           )}
           {noReply > 0 && (
-            <span style={{ fontSize: 10, color: theme.textDimmest }}>{noReply} no reply</span>
+            <span className="text-[10px] text-tl-text-dimmest">{noReply} no reply</span>
           )}
         </div>
       )}
 
       {/* RSVP buttons */}
       {event.status !== "completed" && event.status !== "cancelled" && (
-        <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-          <button onClick={() => onRsvp(event.id, "going")} style={{
-            padding: "5px 14px", borderRadius: 8, border: `1px solid ${myRsvp?.status === "going" ? "#5B7A3A" : theme.border}`,
-            background: myRsvp?.status === "going" ? "#5B7A3A" : "transparent",
-            color: myRsvp?.status === "going" ? "#fff" : theme.textDim,
-            fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
-          }}>
+        <div className="flex gap-1.5 mt-2">
+          <button onClick={() => onRsvp(event.id, "going")} className="py-[5px] px-3.5 rounded-btn text-xs font-semibold cursor-pointer flex items-center gap-1"
+            style={{
+              border: `1px solid ${myRsvp?.status === "going" ? "#5B7A3A" : theme.border}`,
+              background: myRsvp?.status === "going" ? "#5B7A3A" : "transparent",
+              color: myRsvp?.status === "going" ? "#fff" : theme.textDim,
+            }}>
             <ThumbsUp size={12} strokeWidth={2.5} /> Going
           </button>
-          <button onClick={() => onRsvp(event.id, "cant")} style={{
-            padding: "5px 14px", borderRadius: 8, border: `1px solid ${myRsvp?.status === "cant" ? "#b07060" : theme.border}`,
-            background: myRsvp?.status === "cant" ? "#b07060" : "transparent",
-            color: myRsvp?.status === "cant" ? "#fff" : theme.textDim,
-            fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
-          }}>
+          <button onClick={() => onRsvp(event.id, "cant")} className="py-[5px] px-3.5 rounded-btn text-xs font-semibold cursor-pointer flex items-center gap-1"
+            style={{
+              border: `1px solid ${myRsvp?.status === "cant" ? "#b07060" : theme.border}`,
+              background: myRsvp?.status === "cant" ? "#b07060" : "transparent",
+              color: myRsvp?.status === "cant" ? "#fff" : theme.textDim,
+            }}>
             <ThumbsDown size={12} strokeWidth={2.5} /> Can't
           </button>
         </div>
@@ -538,30 +510,21 @@ function EventCard({ event, theme, mode, isAdmin, currentUserId, members, isPast
 
       {/* Admin action buttons */}
       {isAdmin && event.status !== "cancelled" && event.status !== "completed" && (
-        <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+        <div className="flex gap-1.5 mt-2 flex-wrap">
           {event.type === "proposed" && (
-            <button onClick={() => onStatusChange(event.id, "scheduled", "active")} style={{
-              padding: "5px 12px", borderRadius: 8, border: `1px solid ${theme.accent}`,
-              background: theme.accent, color: "#fff",
-              fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
-            }}>
+            <button onClick={() => onStatusChange(event.id, "scheduled", "active")}
+              className="py-[5px] px-3 rounded-btn border border-tl-accent bg-tl-accent text-white text-[11px] font-bold cursor-pointer flex items-center gap-1">
               <Zap size={11} /> Confirm & Notify
             </button>
           )}
           {datePassed && (
-            <button onClick={() => { onStatusChange(event.id, event.type, "completed"); setShowAttendance(true); }} style={{
-              padding: "5px 12px", borderRadius: 8, border: "1px solid #42A5F5",
-              background: "#42A5F5", color: "#fff",
-              fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
-            }}>
+            <button onClick={() => { onStatusChange(event.id, event.type, "completed"); setShowAttendance(true); }}
+              className="py-[5px] px-3 rounded-btn border border-[#42A5F5] bg-[#42A5F5] text-white text-[11px] font-bold cursor-pointer flex items-center gap-1">
               <CheckCircle2 size={11} /> Complete & Mark Attendance
             </button>
           )}
-          <button onClick={() => onStatusChange(event.id, event.type, "cancelled")} style={{
-            padding: "5px 12px", borderRadius: 8, border: `1px solid ${theme.border}`,
-            background: "transparent", color: theme.textDim,
-            fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
-          }}>
+          <button onClick={() => onStatusChange(event.id, event.type, "cancelled")}
+            className="py-[5px] px-3 rounded-btn border border-tl-border bg-transparent text-tl-text-dim text-[11px] font-semibold cursor-pointer flex items-center gap-1">
             <XCircle size={11} /> Cancel
           </button>
         </div>
@@ -569,43 +532,36 @@ function EventCard({ event, theme, mode, isAdmin, currentUserId, members, isPast
 
       {/* Attendance UI */}
       {isAdmin && (isCompleted || showAttendance) && (
-        <div style={{ marginTop: 10, padding: "10px 12px", background: theme.bgAlt, borderRadius: 8, border: `1px solid ${theme.border}` }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: theme.heading }}>Attendance</span>
+        <div className="mt-2.5 py-2.5 px-3 bg-tl-bg-alt rounded-btn border border-tl-border">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs font-bold text-tl-heading">Attendance</span>
             <button onClick={() => {
               setAttendees(new Set(members.map(m => m.user_id).filter((id): id is number => id !== null)));
-            }} style={{
-              fontSize: 10, fontWeight: 600, color: theme.accent, background: "none", border: "none", cursor: "pointer", fontFamily: fontBody,
-            }}>Mark All Present</button>
+            }} className="text-[10px] font-semibold text-tl-accent bg-none border-none cursor-pointer font-body">Mark All Present</button>
           </div>
           {members?.map(m => {
             const attended = m.user_id !== null && attendees.has(m.user_id);
             return (
-              <div key={m.user_id} onClick={() => m.user_id !== null && toggleAttendee(m.user_id)} style={{
-                display: "flex", alignItems: "center", gap: 8, padding: "5px 0", cursor: "pointer",
-                borderBottom: `1px solid ${theme.border}`,
-              }}>
-                <div style={{
-                  width: 18, height: 18, borderRadius: 4, border: `2px solid ${attended ? theme.accent : theme.borderLight}`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  background: attended ? theme.accentBg : "transparent",
-                }}>
-                  {attended && <span style={{ fontSize: 12, color: theme.accent }}>{"\u2713"}</span>}
+              <div key={m.user_id} onClick={() => m.user_id !== null && toggleAttendee(m.user_id)}
+                className="flex items-center gap-2 py-[5px] cursor-pointer border-b border-tl-border">
+                <div className={clsx(
+                  "w-[18px] h-[18px] rounded-[4px] flex items-center justify-center border-2",
+                  attended ? "border-tl-accent bg-tl-accent-bg" : "border-tl-border-light bg-transparent"
+                )}>
+                  {attended && <span className="text-xs text-tl-accent">{"\u2713"}</span>}
                 </div>
-                <span style={{ fontSize: 12, fontWeight: 500, color: attended ? theme.text : theme.textDim }}>{m.name}</span>
+                <span className={clsx("text-xs font-medium", attended ? "text-tl-text" : "text-tl-text-dim")}>{m.name}</span>
               </div>
             );
           })}
-          <button onClick={saveAttendance} style={{
-            marginTop: 8, padding: "6px 16px", borderRadius: 8, border: "none",
-            background: theme.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer",
-          }}>Save Attendance</button>
+          <button onClick={saveAttendance}
+            className="mt-2 py-1.5 px-4 rounded-btn border-none bg-tl-accent text-white text-xs font-bold cursor-pointer">Save Attendance</button>
         </div>
       )}
 
       {/* Self-report + attendance summary for non-admin on completed events */}
       {!isAdmin && isCompleted && (
-        <div style={{ marginTop: 8 }}>
+        <div className="mt-2">
           {(() => {
             const myRecord = event.attendance?.find(a => a.user_id === currentUserId);
             const iAttended = myRecord?.attended === 1;
@@ -616,21 +572,19 @@ function EventCard({ event, theme, mode, isAdmin, currentUserId, members, isPast
                   addToast(iAttended ? "Attendance removed" : "Marked as attended!", iAttended ? "info" : "success");
                   onRefresh && onRefresh(); // trigger refresh
                 } catch { addToast("Failed to update attendance", "error"); }
-              }} style={{
-                padding: "5px 14px", borderRadius: 8,
-                border: `1px solid ${iAttended ? "#5B7A3A" : theme.border}`,
-                background: iAttended ? "#5B7A3A" : "transparent",
-                color: iAttended ? "#fff" : theme.textDim,
-                fontSize: 12, fontWeight: 600, cursor: "pointer",
-                display: "flex", alignItems: "center", gap: 5,
-              }}>
+              }} className="py-[5px] px-3.5 rounded-btn text-xs font-semibold cursor-pointer flex items-center gap-[5px]"
+                style={{
+                  border: `1px solid ${iAttended ? "#5B7A3A" : theme.border}`,
+                  background: iAttended ? "#5B7A3A" : "transparent",
+                  color: iAttended ? "#fff" : theme.textDim,
+                }}>
                 <CheckCircle2 size={13} strokeWidth={2.5} />
                 {iAttended ? "I attended \u2713" : "I attended this"}
               </button>
             );
           })()}
           {event.attendance?.filter(a => a.attended).length && event.attendance.filter(a => a.attended).length > 0 && (
-            <div style={{ fontSize: 10, color: theme.textDimmer, marginTop: 5 }}>
+            <div className="text-[10px] text-tl-text-dimmer mt-[5px]">
               Attended: {event.attendance.filter(a => a.attended).map(a => (a as TrainingAttendance & { name?: string }).name).join(", ")}
             </div>
           )}
@@ -639,10 +593,10 @@ function EventCard({ event, theme, mode, isAdmin, currentUserId, members, isPast
 
       {/* Who's going for non-completed events */}
       {!isCompleted && event.rsvps && event.rsvps.length > 0 && (
-        <div style={{ fontSize: 10, color: theme.textDimmer, marginTop: 6 }}>
+        <div className="text-[10px] text-tl-text-dimmer mt-1.5">
           {event.rsvps.filter(r => r.status === "going").map(r => r.user_name).join(", ")}
           {cantCount > 0 && (
-            <span style={{ color: "#b08070" }}>
+            <span className="text-[#b08070]">
               {goingCount > 0 ? " \u00B7 " : ""}Can't: {event.rsvps.filter(r => r.status === "cant").map(r => r.user_name).join(", ")}
             </span>
           )}
@@ -651,13 +605,3 @@ function EventCard({ event, theme, mode, isAdmin, currentUserId, members, isPast
     </div>
   );
 }
-
-const labelStyle = (theme: ThemeColors): React.CSSProperties => ({
-  fontSize: 11, fontWeight: 600, color: theme.textDim, display: "flex", flexDirection: "column", gap: 3,
-});
-
-const inputStyle = (theme: ThemeColors): React.CSSProperties => ({
-  padding: "7px 10px", borderRadius: 6, border: `1px solid ${theme.border}`,
-  background: theme.bgAlt, color: theme.text, fontSize: 13, fontFamily: fontBody,
-  outline: "none",
-});

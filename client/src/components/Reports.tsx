@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
+import clsx from "clsx";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useAdventure } from "../contexts/AdventureContext";
 import { useToast } from "../contexts/ToastContext";
 import { api } from "../api";
-import { card, cardTitle, fontBody, fontDisplay } from "../utils/theme";
 import { useIsDesktop } from "../hooks/useIsDesktop";
 import { computeCrewReadiness, computeMemberReadiness } from "../utils/readiness";
-import { Printer, FileSpreadsheet, ClipboardList, Users, Backpack, CalendarCheck, Map, ChevronDown, ChevronUp, Package } from "lucide-react";
+import { Printer, FileSpreadsheet, ClipboardList, Users, Backpack, CalendarCheck, Map, Package } from "lucide-react";
 import { exportXLSX, exportXLSXWithSummary, printHTML, gearStatusFormat, gearMatrixFormat } from "../utils/exportUtils";
 import type { LucideIcon } from "lucide-react";
 import type { Adventure, AdventureMember, TrekDates, ThemeColors, TrainingEvent, GearCatalogItem, MemberGearItem, PackWeightResult } from "../types";
@@ -26,38 +26,38 @@ interface ReportCardProps {
 
 function ReportCard({ icon: Icon, title, description, formats, onXLSX, onPrint, theme, compact }: ReportCardProps) {
   return (
-    <div style={{
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: compact ? "10px 14px" : "14px 16px", borderRadius: compact ? 10 : 12,
-      background: theme.bgAlt, border: `1px solid ${theme.borderLight}`,
-      marginBottom: compact ? 6 : 8,
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: compact ? 10 : 12, flex: 1, minWidth: 0 }}>
-        <div style={{
-          width: compact ? 32 : 36, height: compact ? 32 : 36, borderRadius: compact ? 8 : 10, flexShrink: 0,
-          background: theme.accentBg, display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
+    <div className={clsx(
+      "flex items-center justify-between bg-tl-bg-alt border border-tl-border-light",
+      compact ? "py-2.5 px-3.5 rounded-badge mb-1.5" : "py-3.5 px-4 rounded-[12px] mb-2"
+    )}>
+      <div className={clsx("flex items-center flex-1 min-w-0", compact ? "gap-2.5" : "gap-3")}>
+        <div className={clsx(
+          "shrink-0 bg-tl-accent-bg flex items-center justify-center",
+          compact ? "w-8 h-8 rounded-btn" : "w-9 h-9 rounded-badge"
+        )}>
           <Icon size={compact ? 16 : 18} color={theme.accent} strokeWidth={2} />
         </div>
         <div>
-          <div style={{ fontSize: compact ? 12 : 13, fontWeight: 700, color: theme.heading, fontFamily: fontBody }}>{title}</div>
-          <div style={{ fontSize: compact ? 11 : 12, color: theme.textMuted, lineHeight: 1.3 }}>{description}</div>
+          <div className={clsx("font-bold text-tl-heading font-body", compact ? "text-xs" : "text-[13px]")}>{title}</div>
+          <div className={clsx("text-tl-text-muted leading-[1.3]", compact ? "text-[11px]" : "text-xs")}>{description}</div>
         </div>
       </div>
-      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+      <div className="flex gap-1.5 shrink-0">
         {formats.includes("xlsx") && (
-          <button onClick={onXLSX} title="Download Excel" style={{
-            width: compact ? 30 : 32, height: compact ? 30 : 32, borderRadius: 8, border: `1px solid ${theme.borderLight}`,
-            background: theme.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
+          <button onClick={onXLSX} title="Download Excel"
+            className={clsx(
+              "rounded-btn border border-tl-border-light bg-tl-bg cursor-pointer flex items-center justify-center",
+              compact ? "w-[30px] h-[30px]" : "w-8 h-8"
+            )}>
             <FileSpreadsheet size={14} color={theme.accent} />
           </button>
         )}
         {formats.includes("print") && (
-          <button onClick={onPrint} title="Print" style={{
-            width: compact ? 30 : 32, height: compact ? 30 : 32, borderRadius: 8, border: `1px solid ${theme.borderLight}`,
-            background: theme.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
+          <button onClick={onPrint} title="Print"
+            className={clsx(
+              "rounded-btn border border-tl-border-light bg-tl-bg cursor-pointer flex items-center justify-center",
+              compact ? "w-[30px] h-[30px]" : "w-8 h-8"
+            )}>
             <Printer size={14} color={theme.accent} />
           </button>
         )}
@@ -442,21 +442,21 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
   return (
     <div>
       {/* Guide card */}
-      <div style={{ ...card(theme), marginBottom: 16 }}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay, marginBottom: 4 }}>
+      <div className="tl-card mb-4">
+        <div className="text-[15px] font-[800] text-tl-heading font-display mb-1">
           Reports
         </div>
-        <div style={{ fontSize: 11, color: theme.textDimmer, lineHeight: 1.4, marginBottom: 12 }}>
+        <div className="text-[11px] text-tl-text-dimmer leading-[1.4] mb-3">
           Export data for planning meetings, shakedown prep, and trek readiness.
           {isAdmin ? " Admin reports show full crew data." : ""}
         </div>
 
         {/* Format legend */}
-        <div style={{ display: "flex", gap: 12, fontSize: 11, color: theme.textDim }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <div className="flex gap-3 text-[11px] text-tl-text-dim">
+          <span className="flex items-center gap-1">
             <FileSpreadsheet size={12} /> Excel download
           </span>
-          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span className="flex items-center gap-1">
             <Printer size={12} /> Printable
           </span>
         </div>
@@ -465,10 +465,7 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
       {/* Admin Reports */}
       {isAdmin && (
         <>
-          <div style={{
-            fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: 1.2,
-            textTransform: "uppercase", marginBottom: 8, fontFamily: fontBody,
-          }}>
+          <div className="text-[10px] font-bold text-tl-text-dim tracking-[1.2px] uppercase mb-2 font-body">
             Admin Reports
           </div>
 
@@ -506,10 +503,7 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
       )}
 
       {/* Everyone Reports */}
-      <div style={{
-        fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: 1.2,
-        textTransform: "uppercase", marginBottom: 8, marginTop: isAdmin ? 20 : 0, fontFamily: fontBody,
-      }}>
+      <div className={clsx("text-[10px] font-bold text-tl-text-dim tracking-[1.2px] uppercase mb-2 font-body", isAdmin ? "mt-5" : "mt-0")}>
         My Reports
       </div>
 

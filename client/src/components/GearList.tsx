@@ -1,15 +1,15 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import clsx from "clsx";
 import { ClipboardList, CircleCheckBig, Backpack, Info, Download, Printer } from "lucide-react";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useAdventure } from "../contexts/AdventureContext";
 import { useToast } from "../contexts/ToastContext";
-import { fontBody, fontDisplay, card, cardTitle, tag } from "../utils/theme";
 import { useIsDesktop } from "../hooks/useIsDesktop";
 import { exportXLSX, printHTML, gearStatusFormat } from "../utils/exportUtils";
 import PackWeightWidget from "./PackWeightWidget";
-import type { ThemeColors, GearCatalogItem, MemberGearItem, AdventureMember } from "../types";
+import type { GearCatalogItem, MemberGearItem, AdventureMember } from "../types";
 import type { LucideIcon } from "lucide-react";
 
 interface PriorityColorSet {
@@ -312,47 +312,50 @@ export default function GearList({ troopId, adventureId, members, active, setAct
       {am && <PackWeightWidget key={weightKey} adventureId={adventureId} userId={am.user_id} memberName={am.name} />}
 
       {/* Gear Guide — explains sharing types and weight estimates */}
-      <div style={{ ...card(theme), padding: "10px 14px" }}>
-        <div onClick={() => setShowGearGuide(!showGearGuide)} style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Info size={14} color={theme.accent} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>Gear Guide</span>
-            <span style={{ fontSize: 9, color: theme.textDimmer }}>weight & sharing info</span>
+      <div className="tl-card px-3.5 py-2.5">
+        <div onClick={() => setShowGearGuide(!showGearGuide)} className="flex items-center justify-between cursor-pointer">
+          <div className="flex items-center gap-1.5">
+            <Info size={14} className="text-tl-accent" />
+            <span className="text-[12px] font-bold text-tl-heading font-display">Gear Guide</span>
+            <span className="text-[9px] text-tl-text-dimmer">weight & sharing info</span>
           </div>
-          <span style={{ fontSize: 14, color: theme.textDimmer, transform: showGearGuide ? "rotate(90deg)" : "none", transition: "transform .2s" }}>›</span>
+          <span className="text-[14px] text-tl-text-dimmer transition-transform duration-200" style={{ transform: showGearGuide ? "rotate(90deg)" : "none" }}>&rsaquo;</span>
         </div>
         {showGearGuide && (
-          <div style={{ marginTop: 10 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 6, fontFamily: fontBody }}>
+          <div className="mt-2.5">
+            <div className="text-[10px] font-bold text-tl-text-dim tracking-[1.2px] uppercase mb-1.5 font-body">
               Gear Sharing Types
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 12 }}>
+            <div className="grid grid-cols-2 gap-1 mb-3">
               {[
-                { label: "PERSONAL", color: theme.heading, bg: theme.bgAlt, border: theme.borderLight, desc: "Your own gear — counted toward your pack weight" },
-                { label: "CREW", color: theme.accent, bg: theme.accentBg, border: theme.borderAccent, desc: "Shared crew gear — weight split among members on trail" },
-                { label: "BUDDY", color: "#3B6BB0", bg: "#E8F0FE", border: "#B0C8E8", desc: "Split between tent partners (e.g. one carries tent, other carries poles)" },
-                { label: "PROVIDED", color: "#B8740A", bg: "#FFF3E0", border: "#E8C896", desc: "Provided by Philmont on-site — you still carry it but don't buy it" },
+                { label: "PERSONAL", color: "text-tl-heading", bg: "bg-tl-bg-alt", border: "border-tl-border-light", desc: "Your own gear — counted toward your pack weight" },
+                { label: "CREW", color: "text-tl-accent", bg: "bg-tl-accent-bg", border: "border-tl-border-accent", desc: "Shared crew gear — weight split among members on trail" },
+                { label: "BUDDY", colorVal: "#3B6BB0", bgVal: "#E8F0FE", borderVal: "#B0C8E8", desc: "Split between tent partners (e.g. one carries tent, other carries poles)" },
+                { label: "PROVIDED", colorVal: "#B8740A", bgVal: "#FFF3E0", borderVal: "#E8C896", desc: "Provided by Philmont on-site — you still carry it but don't buy it" },
               ].map(t => (
-                <div key={t.label} style={{ padding: "6px 8px", borderRadius: 8, background: t.bg, border: `1px solid ${t.border}` }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: t.color, letterSpacing: 0.5 }}>{t.label}</div>
-                  <div style={{ fontSize: 9, color: theme.textDimmer, lineHeight: 1.3, marginTop: 2 }}>{t.desc}</div>
+                <div key={t.label}
+                  className={clsx("p-1.5 rounded-btn border", t.bg, t.border)}
+                  style={t.bgVal ? { background: t.bgVal, borderColor: t.borderVal } : undefined}
+                >
+                  <div className="text-[9px] font-bold tracking-[0.5px]" style={t.colorVal ? { color: t.colorVal } : undefined}>
+                    {!t.colorVal ? <span className={t.color}>{t.label}</span> : t.label}
+                  </div>
+                  <div className="text-[9px] text-tl-text-dimmer leading-[1.3] mt-0.5">{t.desc}</div>
                 </div>
               ))}
             </div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 6, fontFamily: fontBody }}>
+            <div className="text-[10px] font-bold text-tl-text-dim tracking-[1.2px] uppercase mb-1.5 font-body">
               Pack Weight Estimates
             </div>
-            <div style={{ fontSize: 10, color: theme.textMuted, lineHeight: 1.5 }}>
-              <div style={{ marginBottom: 4 }}>
-                <strong style={{ color: theme.heading }}>⚖️ Personal gear only</strong> — Only items you mark as "Packed" with type Personal count toward your pack weight.
+            <div className="text-[10px] text-tl-text-muted leading-[1.5]">
+              <div className="mb-1">
+                <strong className="text-tl-heading">⚖️ Personal gear only</strong> — Only items you mark as "Packed" with type Personal count toward your pack weight.
               </div>
-              <div style={{ marginBottom: 4 }}>
-                <strong style={{ color: theme.heading }}>🍽️ Food: ~1.75 lbs/day</strong> — Philmont provides all trail food in 2-person buddy bags (~0.50 lb breakfast, ~0.75 lb lunch, ~0.50 lb dinner). You carry 2-4 days of food between commissary pickups.
+              <div className="mb-1">
+                <strong className="text-tl-heading">🍽️ Food: ~1.75 lbs/day</strong> — Philmont provides all trail food in 2-person buddy bags (~0.50 lb breakfast, ~0.75 lb lunch, ~0.50 lb dinner). You carry 2-4 days of food between commissary pickups.
               </div>
               <div>
-                <strong style={{ color: theme.heading }}>💧 Water: ~6.6 lbs (3L)</strong> — Typical hiking carry. Philmont requires 4L minimum capacity. Dry camp days can be 11-13 lbs (5-6L).
+                <strong className="text-tl-heading">💧 Water: ~6.6 lbs (3L)</strong> — Typical hiking carry. Philmont requires 4L minimum capacity. Dry camp days can be 11-13 lbs (5-6L).
               </div>
             </div>
           </div>
@@ -360,55 +363,51 @@ export default function GearList({ troopId, adventureId, members, active, setAct
       </div>
 
       {/* Crew gear readiness overview */}
-      <div style={card(theme)}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-          <div style={cardTitle(theme)}>Gear Catalog</div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: crewGearPct >= 80 ? theme.accent : crewGearPct >= 50 ? theme.gold : theme.danger }}>
+      <div className="tl-card">
+        <div className="flex justify-between items-center mb-1.5">
+          <div className="tl-card-title">Gear Catalog</div>
+          <div className="text-right">
+            <div className={clsx("text-[12px] font-bold", crewGearPct >= 80 ? "text-tl-accent" : crewGearPct >= 50 ? "text-tl-gold" : "text-tl-danger")}>
               Crew: {crewGearPct}%
             </div>
-            <div style={{ fontSize: 9, color: theme.textDimmer }}>{gearCatalog.length} items</div>
+            <div className="text-[9px] text-tl-text-dimmer">{gearCatalog.length} items</div>
           </div>
         </div>
 
         {/* Active member summary */}
         {am && (
-          <div style={{ display: "flex", gap: 10, marginBottom: 8, fontSize: 11 }}>
-            <span style={{ color: (am as any).color?.bg, fontWeight: 700 }}>{am.name}</span>
-            <span style={{ color: theme.accent }}>✅ {myStats.owned + myStats.packed}</span>
+          <div className="flex gap-2.5 mb-2 text-[11px]">
+            <span className="font-bold" style={{ color: (am as any).color?.bg }}>{am.name}</span>
+            <span className="text-tl-accent">✅ {myStats.owned + myStats.packed}</span>
             <span style={{ color: "#E07A5F" }}>📋 {myStats.needed}</span>
-            <span style={{ color: theme.textDimmer }}>{myStats.total - myStats.owned - myStats.packed - myStats.needed} unchecked</span>
+            <span className="text-tl-text-dimmer">{myStats.total - myStats.owned - myStats.packed - myStats.needed} unchecked</span>
           </div>
         )}
         {!am && (
-          <div style={{ fontSize: 11, color: theme.textDim, marginBottom: 6 }}>Select your name above to manage your gear.</div>
+          <div className="text-[11px] text-tl-text-dim mb-1.5">Select your name above to manage your gear.</div>
         )}
 
         {/* Search */}
         <input value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)} placeholder="Search gear or products..."
-          style={{
-            width: "100%", padding: "7px 10px", borderRadius: 6, border: `1px solid ${theme.borderLight}`,
-            background: theme.bgInput, color: theme.text, fontSize: 11, fontFamily: fontBody,
-            outline: "none", marginBottom: 8, boxSizing: "border-box" as const,
-          }} />
+          className="tl-input mb-2 !text-[11px] !py-[7px] !px-2.5 !rounded-badge-sm" />
 
         {/* Category filter pills */}
-        <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 3, marginBottom: 6 }}>
-          <button onClick={() => setCategory("all")} style={pillStyle(theme, category === "all")}>
+        <div className="flex flex-wrap gap-[3px] mb-1.5">
+          <button onClick={() => setCategory("all")} className={clsx("gear-pill", category === "all" ? "gear-pill-active" : "gear-pill-inactive")}>
             All {gearCatalog.length}
           </button>
           {catKeys.map(c => (
-            <button key={c} onClick={() => setCategory(c)} style={pillStyle(theme, category === c)}>
+            <button key={c} onClick={() => setCategory(c)} className={clsx("gear-pill", category === c ? "gear-pill-active" : "gear-pill-inactive")}>
               {c} {categories[c].count}
-              {am && categories[c].checked > 0 && <span style={{ color: theme.accent, marginLeft: 2 }}>✓{categories[c].checked}</span>}
+              {am && categories[c].checked > 0 && <span className="text-tl-accent ml-0.5">✓{categories[c].checked}</span>}
             </button>
           ))}
         </div>
 
         {/* Priority filter */}
-        <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 3, marginBottom: 4 }}>
+        <div className="flex flex-wrap gap-[3px] mb-1">
           {[{ id: "all", label: "All" }, { id: "essential", label: "Essential" }, { id: "recommended", label: "Recommended" }, { id: "optional", label: "Optional" }].map(p => (
-            <button key={p.id} onClick={() => setPriority(p.id)} style={pillStyle(theme, priority === p.id)}>
+            <button key={p.id} onClick={() => setPriority(p.id)} className={clsx("gear-pill", priority === p.id ? "gear-pill-active" : "gear-pill-inactive")}>
               {p.label}
             </button>
           ))}
@@ -416,11 +415,11 @@ export default function GearList({ troopId, adventureId, members, active, setAct
 
         {/* Status filter */}
         {am && (
-          <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 3 }}>
-            <button onClick={() => setStatusFilter("all")} style={pillStyle(theme, statusFilter === "all")}>All</button>
-            <button onClick={() => setStatusFilter("none")} style={pillStyle(theme, statusFilter === "none")}>Unchecked</button>
+          <div className="flex flex-wrap gap-[3px]">
+            <button onClick={() => setStatusFilter("all")} className={clsx("gear-pill", statusFilter === "all" ? "gear-pill-active" : "gear-pill-inactive")}>All</button>
+            <button onClick={() => setStatusFilter("none")} className={clsx("gear-pill", statusFilter === "none" ? "gear-pill-active" : "gear-pill-inactive")}>Unchecked</button>
             {STATUS_OPTIONS.map(s => (
-              <button key={s.value} onClick={() => setStatusFilter(s.value)} style={pillStyle(theme, statusFilter === s.value)}>
+              <button key={s.value} onClick={() => setStatusFilter(s.value)} className={clsx("gear-pill", statusFilter === s.value ? "gear-pill-active" : "gear-pill-inactive")}>
                 <s.Icon size={11} strokeWidth={2.5} /> {s.label}
               </button>
             ))}
@@ -429,7 +428,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
 
         {/* Export actions */}
         {am && (
-          <div style={{ display: "flex", gap: 6, marginTop: 8, borderTop: `1px solid ${theme.borderLight}`, paddingTop: 8 }}>
+          <div className="flex gap-1.5 mt-2 border-t border-tl-border-light pt-2">
             <button onClick={async () => {
               const myGear: ExtendedMemberGearItem[] = memberGearMap[currentUserId!] || [];
               const activeGear = (gearCatalog as ExtendedGearCatalogItem[]).filter(g => g.active !== 0);
@@ -439,7 +438,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
               });
               await exportXLSX([{ name: "Gear Checklist", rows, title: `${am.name} — Gear Checklist`, conditionalFormat: gearStatusFormat }], `my-gear-checklist-${new Date().toISOString().slice(0,10)}.xlsx`);
               addToast("Gear checklist exported", "success");
-            }} style={{ ...pillStyle(theme, false), display: "flex", alignItems: "center", gap: 4 }}>
+            }} className="gear-pill gear-pill-inactive flex items-center gap-1">
               <Download size={10} /> Excel
             </button>
             <button onClick={() => {
@@ -470,7 +469,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
                 ${section("Need to Get", gearByStatus.need)}
                 ${section("Unchecked", gearByStatus.unchecked)}
               `);
-            }} style={{ ...pillStyle(theme, false), display: "flex", alignItems: "center", gap: 4 }}>
+            }} className="gear-pill gear-pill-inactive flex items-center gap-1">
               <Printer size={10} /> Print
             </button>
             <button onClick={async () => {
@@ -484,7 +483,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
               if (!needItems.length) { addToast("Nothing left to get!", "success"); return; }
               await exportXLSX([{ name: "Still Need", rows: needItems, title: `${am.name} — Still Need` }], `still-need-${new Date().toISOString().slice(0,10)}.xlsx`);
               addToast(`${needItems.length} items exported`, "success");
-            }} style={{ ...pillStyle(theme, false), display: "flex", alignItems: "center", gap: 4 }}>
+            }} className="gear-pill gear-pill-inactive flex items-center gap-1">
               <Download size={10} /> Still Need
             </button>
           </div>
@@ -494,9 +493,9 @@ export default function GearList({ troopId, adventureId, members, active, setAct
       {/* Gear items by category */}
       {Object.entries(groupedItems).map(([cat, items]) => (
         <div key={cat}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: theme.heading, textTransform: "uppercase" as const, letterSpacing: 1, marginTop: isDesktop ? 10 : 14, marginBottom: isDesktop ? 4 : 6, fontFamily: fontDisplay }}>
+          <div className={clsx("text-[11px] font-extrabold text-tl-heading uppercase tracking-[1px] font-display", isDesktop ? "mt-2.5 mb-1" : "mt-3.5 mb-1.5")}>
             {cat}
-            <span style={{ color: theme.textDimmer, fontWeight: 400, marginLeft: 6 }}>{items.length} items</span>
+            <span className="text-tl-text-dimmer font-normal ml-1.5">{items.length} items</span>
           </div>
 
           {items.map(item => {
@@ -511,62 +510,58 @@ export default function GearList({ troopId, adventureId, members, active, setAct
             }).length : 0;
 
             return (
-              <div key={item.id} style={{
-                ...card(theme),
-                background: sel ? (sel.status === "packed" ? theme.accentBg : theme.bgCard) : theme.bgCard,
-                border: sel ? `1.5px solid ${sel.status === "packed" ? theme.borderAccent : theme.accent + "40"}` : `1px solid ${theme.border}`,
-                transition: "all .12s", padding: isDesktop ? 10 : 12,
-              }}>
+              <div key={item.id} className="tl-card transition-all duration-[120ms]"
+                style={{
+                  background: sel ? (sel.status === "packed" ? "var(--tl-accent-bg)" : "var(--tl-card)") : "var(--tl-card)",
+                  border: sel ? `1.5px solid ${sel.status === "packed" ? "var(--tl-border-accent)" : "var(--tl-accent)" + "40"}` : "1px solid var(--tl-border)",
+                  padding: isDesktop ? 10 : 12,
+                }}>
                 {/* Item header — clickable for status */}
-                <div style={{ display: "flex", alignItems: "flex-start", gap: isDesktop ? 6 : 8 }}>
+                <div className={clsx("flex items-start", isDesktop ? "gap-1.5" : "gap-2")}>
                   {/* Status indicator / checkbox */}
                   <div
                     onClick={(e: React.MouseEvent) => { e.stopPropagation(); cycleGearStatus(item.id); }}
+                    className="w-6 h-6 rounded-badge-sm shrink-0 flex items-center justify-center text-[13px] transition-all duration-150"
                     style={{
-                      width: 24, height: 24, borderRadius: 6, flexShrink: 0,
-                      border: `2px solid ${statusInfo ? statusInfo.color : theme.borderLight}`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 13, cursor: am ? "pointer" : "default",
+                      border: `2px solid ${statusInfo ? statusInfo.color : "var(--tl-border-light)"}`,
+                      cursor: am ? "pointer" : "default",
                       background: sel ? statusInfo?.color + "20" : "transparent",
-                      transition: "all .15s",
                     }}
                   >
                     {statusInfo ? <statusInfo.Icon size={14} strokeWidth={2.5} /> : ""}
                   </div>
 
-                  <div style={{ flex: 1, cursor: "pointer" }} onClick={() => toggleExpand(item.id)}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" as const }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: sel ? theme.accentLight : theme.heading, fontFamily: fontDisplay }}>
+                  <div className="flex-1 cursor-pointer" onClick={() => toggleExpand(item.id)}>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={clsx("text-[13px] font-bold font-display", sel ? "text-tl-accent-light" : "text-tl-heading")}>
                         {item.name}
                       </span>
-                      <span style={{
-                        fontSize: 8, fontWeight: 700, padding: "1px 5px", borderRadius: 3, textTransform: "uppercase" as const,
-                        background: p.bg, color: p.color, border: `1px solid ${p.border}`,
-                      }}>{item.priority}</span>
+                      <span className="text-[8px] font-bold py-px px-[5px] rounded-[3px] uppercase"
+                        style={{ background: p.bg, color: p.color, border: `1px solid ${p.border}` }}>{item.priority}</span>
                       {(item.sharing_type === "crew") && (
-                        <span style={{ fontSize: 8, fontWeight: 600, padding: "1px 5px", borderRadius: 3, background: theme.accentBg, color: theme.accent, border: `1px solid ${theme.borderAccent}` }}>
+                        <span className="text-[8px] font-semibold py-px px-[5px] rounded-[3px] bg-tl-accent-bg text-tl-accent border border-tl-border-accent">
                           CREW
                         </span>
                       )}
                       {(item.sharing_type === "buddy") && (
-                        <span style={{ fontSize: 8, fontWeight: 600, padding: "1px 5px", borderRadius: 3, background: "#E8F0FE", color: "#3B6BB0", border: "1px solid #B0C8E8" }}>
+                        <span className="text-[8px] font-semibold py-px px-[5px] rounded-[3px]" style={{ background: "#E8F0FE", color: "#3B6BB0", border: "1px solid #B0C8E8" }}>
                           BUDDY
                         </span>
                       )}
                       {(item.sharing_type === "provided") && (
-                        <span style={{ fontSize: 8, fontWeight: 600, padding: "1px 5px", borderRadius: 3, background: "#FFF3E0", color: "#B8740A", border: "1px solid #E8C896" }}>
+                        <span className="text-[8px] font-semibold py-px px-[5px] rounded-[3px]" style={{ background: "#FFF3E0", color: "#B8740A", border: "1px solid #E8C896" }}>
                           PROVIDED
                         </span>
                       )}
                       {item.philmont_compliant === 0 && (
-                        <span style={{ fontSize: 8, fontWeight: 600, padding: "1px 5px", borderRadius: 3, background: "#FEE2E2", color: "#DC2626" }}>
+                        <span className="text-[8px] font-semibold py-px px-[5px] rounded-[3px]" style={{ background: "#FEE2E2", color: "#DC2626" }}>
                           ⚠️ COMPLIANCE
                         </span>
                       )}
                     </div>
 
                     {/* Weight / Price / Rating row */}
-                    <div style={{ display: "flex", gap: 10, marginTop: 3, fontSize: 10, color: theme.textMuted }}>
+                    <div className="flex gap-2.5 mt-[3px] text-[10px] text-tl-text-muted">
                       {item.weight_oz && <span>⚖️ {item.weight_oz} oz ({(item.weight_oz / 16).toFixed(1)} lbs)</span>}
                       {item.msrp && <span>💰 ~${item.msrp}</span>}
                       {item.rating_stars && <span>{"★".repeat(Math.round(item.rating_stars))}{"☆".repeat(5 - Math.round(item.rating_stars))}</span>}
@@ -574,24 +569,24 @@ export default function GearList({ troopId, adventureId, members, active, setAct
 
                     {/* Custom gear name if selected */}
                     {sel?.custom_product_name && (
-                      <div style={{ fontSize: 10, color: theme.accent, marginTop: 2 }}>
+                      <div className="text-[10px] text-tl-accent mt-0.5">
                         📦 {sel.custom_product_name} {sel.custom_weight_oz ? `(${sel.custom_weight_oz} oz)` : ""}
                       </div>
                     )}
                     {sel?.selected_option_id && !sel.custom_product_name && (() => {
                       const opt = (item.options || []).find((o: ProductOptionRuntime) => o.id === sel.selected_option_id);
                       return opt ? (
-                        <div style={{ fontSize: 10, color: theme.accent, marginTop: 2 }}>
+                        <div className="text-[10px] text-tl-accent mt-0.5">
                           📦 {opt.product_name} {opt.weight_oz ? `(${opt.weight_oz} oz)` : ""}
                         </div>
                       ) : null;
                     })()}
 
-                    <div style={{ display: "flex", gap: 8, marginTop: 2 }}>
+                    <div className="flex gap-2 mt-0.5">
                       {ownCount > 0 && (
-                        <span style={{ fontSize: 10, color: theme.accent }}>{ownCount}/{trekkingMembers.length || members?.length || 0} have this</span>
+                        <span className="text-[10px] text-tl-accent">{ownCount}/{trekkingMembers.length || members?.length || 0} have this</span>
                       )}
-                      <span style={{ fontSize: 10, color: theme.textDimmest, cursor: "pointer" }}>
+                      <span className="text-[10px] text-tl-text-dimmest cursor-pointer">
                         {isExpanded ? "▲ less" : "▼ details"}
                       </span>
                     </div>
@@ -599,7 +594,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
 
                   {/* Status buttons on the right — click to set, click again to uncheck */}
                   {am && (
-                    <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+                    <div className="flex gap-0.5 shrink-0">
                       {STATUS_OPTIONS.map(s => {
                         const isActive = sel?.status === s.value;
                         return (
@@ -612,15 +607,14 @@ export default function GearList({ troopId, adventureId, members, active, setAct
                               setGearStatus(item.id, s.value);
                             }
                           }}
+                            className="flex flex-col items-center gap-px rounded-[4px] border-none cursor-pointer font-body transition-all duration-[120ms] min-w-[36px]"
                             style={{
-                              display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 1,
-                              padding: "3px 8px", borderRadius: 4, border: "none", cursor: "pointer", fontSize: 9, fontWeight: 600,
-                              background: isActive ? s.color : theme.bgAlt, color: isActive ? "#fff" : theme.textDimmer,
-                              fontFamily: fontBody, transition: "all .12s", minWidth: 36,
+                              padding: "3px 8px", fontSize: 9, fontWeight: 600,
+                              background: isActive ? s.color : "var(--tl-bg-alt)", color: isActive ? "#fff" : "var(--tl-text-dimmer)",
                             }}
                           >
                             <s.Icon size={11} strokeWidth={2.5} />
-                            <span style={{ fontSize: 7, fontWeight: 700, letterSpacing: 0.3, textTransform: "uppercase" as const }}>{s.label}</span>
+                            <span className="text-[7px] font-bold tracking-[0.3px] uppercase">{s.label}</span>
                           </button>
                         );
                       })}
@@ -630,54 +624,53 @@ export default function GearList({ troopId, adventureId, members, active, setAct
 
                 {/* Expanded details */}
                 {isExpanded && (
-                  <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${theme.borderLight}` }}>
+                  <div className="mt-2.5 pt-2 border-t border-tl-border-light">
                     {/* Description / Rating Notes */}
                     {(item.description || item.rating_notes) && (
-                      <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8, lineHeight: 1.5 }}>
-                        {item.rating_notes && <div style={{ fontStyle: "italic", marginBottom: 4 }}>"{item.rating_notes}"</div>}
+                      <div className="text-[11px] text-tl-text-muted mb-2 leading-[1.5]">
+                        {item.rating_notes && <div className="italic mb-1">"{item.rating_notes}"</div>}
                         {item.description && <div>{item.description}</div>}
                       </div>
                     )}
 
                     {/* Compliance notes */}
                     {item.compliance_notes && (
-                      <div style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: theme.urgencyBg || "#FEF3C7", color: "#92400E", marginBottom: 8, border: "1px solid #F59E0B40" }}>
+                      <div className="text-[10px] py-1 px-2 rounded-badge-sm mb-2" style={{ background: "var(--tl-urgency-bg, #FEF3C7)", color: "#92400E", border: "1px solid #F59E0B40" }}>
                         ⚠️ Philmont: {item.compliance_notes}
                       </div>
                     )}
 
                     {/* Product Options */}
                     {(item.options || []).length > 0 && (
-                      <div style={{ marginBottom: 8 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: theme.heading, marginBottom: 4 }}>Product Options:</div>
+                      <div className="mb-2">
+                        <div className="text-[10px] font-bold text-tl-heading mb-1">Product Options:</div>
                         {item.options!.map((opt: ProductOptionRuntime) => {
                           const isSelected = sel?.selected_option_id === opt.id;
                           return (
                             <div key={opt.id}
                               onClick={() => am && selectOption(item.id, opt.id, opt.weight_oz || null)}
-                              style={{
-                                display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", borderRadius: 6, marginBottom: 3,
-                                background: isSelected ? theme.accentBg : theme.bgAlt,
-                                border: isSelected ? `1.5px solid ${theme.borderAccent}` : `1px solid ${theme.borderLight}`,
-                                cursor: am ? "pointer" : "default", transition: "all .12s",
-                              }}
+                              className={clsx(
+                                "flex items-center gap-2 py-[5px] px-2 rounded-badge-sm mb-[3px] transition-all duration-[120ms]",
+                                isSelected ? "bg-tl-accent-bg border-[1.5px] border-tl-border-accent" : "bg-tl-bg-alt border border-tl-border-light",
+                              )}
+                              style={{ cursor: am ? "pointer" : "default" }}
                             >
-                              <span style={{ fontSize: 12 }}>
+                              <span className="text-[12px]">
                                 {opt.tier === "budget" ? "💲" : opt.tier === "mid" ? "⭐" : "⚡"}
                               </span>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: 11, fontWeight: 600, color: isSelected ? theme.accent : theme.text }}>
+                              <div className="flex-1">
+                                <div className={clsx("text-[11px] font-semibold", isSelected ? "text-tl-accent" : "text-tl-text")}>
                                   {opt.product_name}
-                                  {opt.is_ultralight_pick === 1 && <span style={{ color: "#F59E0B", marginLeft: 4, fontSize: 9 }}>⚡ UL</span>}
+                                  {opt.is_ultralight_pick === 1 && <span className="ml-1 text-[9px]" style={{ color: "#F59E0B" }}>⚡ UL</span>}
                                 </div>
-                                <div style={{ fontSize: 9, color: theme.textDimmer }}>
+                                <div className="text-[9px] text-tl-text-dimmer">
                                   {opt.brand && `${opt.brand} · `}
                                   {opt.price && `$${opt.price}`}
                                   {opt.weight_oz && ` · ${opt.weight_oz} oz`}
                                 </div>
-                                {opt.notes && <div style={{ fontSize: 9, color: theme.textMuted, marginTop: 1 }}>{opt.notes}</div>}
+                                {opt.notes && <div className="text-[9px] text-tl-text-muted mt-px">{opt.notes}</div>}
                               </div>
-                              <div style={{ fontSize: 10, color: theme.textDimmer }}>
+                              <div className="text-[10px] text-tl-text-dimmer">
                                 {"★".repeat(opt.star_rating || 3)}{"☆".repeat(5 - (opt.star_rating || 3))}
                               </div>
                             </div>
@@ -688,17 +681,14 @@ export default function GearList({ troopId, adventureId, members, active, setAct
 
                     {/* Buy Links — from product options with affiliate URLs */}
                     {(item.options || []).some((o: ProductOptionRuntime) => o.affiliate_url) && (
-                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" as const, marginBottom: 6 }}>
+                      <div className="flex gap-1 flex-wrap mb-1.5">
                         {item.options!.filter((o: ProductOptionRuntime) => o.affiliate_url).map((opt: ProductOptionRuntime) => (
                           <a key={opt.id} href={opt.affiliate_url} target="_blank" rel="noopener noreferrer"
                             onClick={(e: React.MouseEvent) => {
                               e.stopPropagation();
                               api.trackAffiliateClick(opt.id, item.id, opt.affiliate_url!).catch(() => {});
                             }}
-                            style={{
-                              padding: "4px 10px", borderRadius: 5, background: theme.accent, color: "#fff",
-                              fontSize: 9, fontWeight: 600, textDecoration: "none", fontFamily: fontBody,
-                            }}>
+                            className="py-1 px-2.5 rounded-[5px] bg-tl-accent text-white text-[9px] font-semibold no-underline font-body">
                             🛒 Buy {opt.product_name}
                           </a>
                         ))}
@@ -709,66 +699,57 @@ export default function GearList({ troopId, adventureId, members, active, setAct
                     {am && adventureId && (() => {
                       const rec = aiRecs[item.id];
                       return (
-                        <div style={{ marginBottom: 8 }}>
+                        <div className="mb-2">
                           <button
                             onClick={() => fetchAIRecommendation(item.id)}
                             disabled={rec?.loading}
+                            className="flex items-center gap-1.5 py-1.5 px-3.5 rounded-badge-sm border-[1.5px] border-tl-border-light text-[11px] font-bold font-body transition-all duration-150"
                             style={{
-                              padding: "6px 14px", borderRadius: 6, border: `1.5px solid ${theme.borderLight}`,
-                              background: rec?.loading ? theme.bgAlt : theme.forestDeep || theme.accent,
-                              color: rec?.loading ? theme.textDimmer : "#fff",
-                              fontSize: 11, fontWeight: 700, cursor: rec?.loading ? "wait" : "pointer",
-                              fontFamily: fontBody, display: "flex", alignItems: "center", gap: 6,
-                              transition: "all .15s",
+                              background: rec?.loading ? "var(--tl-bg-alt)" : "var(--tl-forest-deep, var(--tl-accent))",
+                              color: rec?.loading ? "var(--tl-text-dimmer)" : "#fff",
+                              cursor: rec?.loading ? "wait" : "pointer",
                             }}
                           >
                             {rec?.loading ? (
-                              <><span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⏳</span> AI is thinking...</>
+                              <><span className="inline-block" style={{ animation: "spin 1s linear infinite" }}>⏳</span> AI is thinking...</>
                             ) : (
                               <>🤖 AI Recommend</>
                             )}
                           </button>
 
                           {rec?.badge_earned && (
-                            <div style={{
-                              marginTop: 6, padding: "6px 10px", borderRadius: 6,
-                              background: theme.accentBg, border: `1px solid ${theme.borderAccent}`,
-                              fontSize: 11, fontWeight: 700, color: theme.accent,
-                            }}>
+                            <div className="mt-1.5 py-1.5 px-2.5 rounded-badge-sm bg-tl-accent-bg border border-tl-border-accent text-[11px] font-bold text-tl-accent">
                               🎖️ AI Gear Badge Earned!
                             </div>
                           )}
 
                           {rec?.error && (
-                            <div style={{ marginTop: 6, fontSize: 10, color: theme.danger }}>
+                            <div className="mt-1.5 text-[10px] text-tl-danger">
                               Error: {rec.error}
                             </div>
                           )}
 
                           {rec?.recommendations && (
-                            <div style={{ marginTop: 8 }}>
-                              <div style={{ fontSize: 10, fontWeight: 700, color: theme.heading, marginBottom: 6, fontFamily: fontDisplay }}>
+                            <div className="mt-2">
+                              <div className="text-[10px] font-bold text-tl-heading mb-1.5 font-display">
                                 AI Recommendations for {item.name}
                               </div>
                               {rec.recommendations.map((r: AIRecommendation, idx: number) => (
-                                <div key={idx} style={{
-                                  padding: "8px 10px", borderRadius: 8, marginBottom: 4,
-                                  background: theme.bgAlt, border: `1px solid ${theme.borderLight}`,
-                                }}>
-                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                                <div key={idx} className="py-2 px-2.5 rounded-btn mb-1 bg-tl-bg-alt border border-tl-border-light">
+                                  <div className="flex justify-between items-start">
                                     <div>
-                                      <div style={{ fontSize: 12, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>
+                                      <div className="text-[12px] font-bold text-tl-heading font-display">
                                         {r.product_name}
                                       </div>
-                                      <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 1 }}>
+                                      <div className="text-[10px] text-tl-text-muted mt-px">
                                         {r.brand}{r.estimated_price ? ` · ${r.estimated_price}` : ""}{r.weight_oz ? ` · ${r.weight_oz} oz` : ""}
                                       </div>
                                     </div>
                                   </div>
-                                  <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 4, lineHeight: 1.4 }}>
+                                  <div className="text-[10px] text-tl-text-muted mt-1 leading-[1.4]">
                                     {r.why_recommended}
                                   </div>
-                                  <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" as const }}>
+                                  <div className="flex gap-1.5 mt-1 flex-wrap">
                                     <a
                                       href={r.buy_url}
                                       target="_blank"
@@ -777,11 +758,8 @@ export default function GearList({ troopId, adventureId, members, active, setAct
                                         e.stopPropagation();
                                         api.trackAffiliateClick(null, item.id, r.buy_url).catch(() => {});
                                       }}
-                                      style={{
-                                        display: "inline-block", padding: "3px 10px", borderRadius: 5,
-                                        background: "#FF9900", color: "#111", fontSize: 9, fontWeight: 700,
-                                        textDecoration: "none", fontFamily: fontBody,
-                                      }}
+                                      className="inline-block py-[3px] px-2.5 rounded-[5px] text-[9px] font-bold no-underline font-body"
+                                      style={{ background: "#FF9900", color: "#111" }}
                                     >
                                       Amazon
                                     </a>
@@ -794,11 +772,8 @@ export default function GearList({ troopId, adventureId, members, active, setAct
                                           e.stopPropagation();
                                           api.trackAffiliateClick(null, item.id, r.rei_url!).catch(() => {});
                                         }}
-                                        style={{
-                                          display: "inline-block", padding: "3px 10px", borderRadius: 5,
-                                          background: "#2D5F2D", color: "#fff", fontSize: 9, fontWeight: 700,
-                                          textDecoration: "none", fontFamily: fontBody,
-                                        }}
+                                        className="inline-block py-[3px] px-2.5 rounded-[5px] text-[9px] font-bold no-underline font-body"
+                                        style={{ background: "#2D5F2D", color: "#fff" }}
                                       >
                                         REI
                                       </a>
@@ -819,7 +794,6 @@ export default function GearList({ troopId, adventureId, members, active, setAct
                         current={sel}
                         adventureId={adventureId}
                         userId={am.user_id!}
-                        theme={theme}
                         onUpdate={async () => { await refreshMemberGear(); setWeightKey(k => k + 1); }}
                       />
                     )}
@@ -832,7 +806,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
       ))}
 
       {filtered.length === 0 && (
-        <div style={{ ...card(theme), textAlign: "center" as const, color: theme.textDimmer, fontSize: 12, fontStyle: "italic" }}>
+        <div className="tl-card text-center text-tl-text-dimmer text-[12px] italic">
           No gear items match your filters.
         </div>
       )}
@@ -846,11 +820,10 @@ interface CustomGearInputProps {
   current: ExtendedMemberGearItem | undefined;
   adventureId: number;
   userId: number;
-  theme: ThemeColors;
   onUpdate: () => Promise<void>;
 }
 
-function CustomGearInput({ gearId, current, adventureId, userId, theme, onUpdate }: CustomGearInputProps) {
+function CustomGearInput({ gearId, current, adventureId, userId, onUpdate }: CustomGearInputProps) {
   const [editing, setEditing] = useState<boolean>(false);
   const [name, setName] = useState<string>(current?.custom_product_name || "");
   const [weight, setWeight] = useState<string>(String(current?.custom_weight_oz || ""));
@@ -869,33 +842,21 @@ function CustomGearInput({ gearId, current, adventureId, userId, theme, onUpdate
 
   if (!editing) {
     return (
-      <button onClick={() => setEditing(true)} style={{
-        padding: "4px 10px", borderRadius: 5, border: `1px dashed ${theme.borderLight}`,
-        background: "transparent", color: theme.textDimmer, fontSize: 9, cursor: "pointer", fontFamily: fontBody,
-      }}>
+      <button onClick={() => setEditing(true)}
+        className="py-1 px-2.5 rounded-[5px] border border-dashed border-tl-border-light bg-transparent text-tl-text-dimmer text-[9px] cursor-pointer font-body">
         ✏️ {current?.custom_product_name ? "Edit my gear" : "Enter your actual gear model"}
       </button>
     );
   }
 
   return (
-    <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+    <div className="flex gap-1 mt-1">
       <input value={name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)} placeholder="Your model (e.g. MSR Hubba Hubba)"
-        style={{ flex: 1, padding: "4px 8px", borderRadius: 4, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 10, fontFamily: fontBody, outline: "none" }} />
+        className="flex-1 py-1 px-2 rounded-[4px] border border-tl-border-light bg-tl-input text-tl-text text-[10px] font-body outline-none" />
       <input value={weight} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWeight(e.target.value)} placeholder="oz" type="number" step="0.1"
-        style={{ width: 50, padding: "4px 6px", borderRadius: 4, border: `1px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 10, fontFamily: fontBody, outline: "none" }} />
-      <button onClick={save} style={{ padding: "4px 8px", borderRadius: 4, border: "none", background: theme.accent, color: "#fff", fontSize: 10, cursor: "pointer", fontFamily: fontBody }}>Save</button>
-      <button onClick={() => setEditing(false)} style={{ padding: "4px 8px", borderRadius: 4, border: `1px solid ${theme.borderLight}`, background: "transparent", color: theme.textDim, fontSize: 10, cursor: "pointer", fontFamily: fontBody }}>✕</button>
+        className="w-[50px] py-1 px-1.5 rounded-[4px] border border-tl-border-light bg-tl-input text-tl-text text-[10px] font-body outline-none" />
+      <button onClick={save} className="py-1 px-2 rounded-[4px] border-none bg-tl-accent text-white text-[10px] cursor-pointer font-body">Save</button>
+      <button onClick={() => setEditing(false)} className="py-1 px-2 rounded-[4px] border border-tl-border-light bg-transparent text-tl-text-dim text-[10px] cursor-pointer font-body">✕</button>
     </div>
   );
-}
-
-// Pill button style helper
-function pillStyle(theme: ThemeColors, active: boolean): React.CSSProperties {
-  return {
-    padding: "3px 9px", borderRadius: 5, border: "none", fontSize: 10, fontWeight: 600,
-    cursor: "pointer", fontFamily: fontBody,
-    background: active ? theme.pillActiveBg : theme.pillInactiveBg,
-    color: active ? theme.pillActiveText : theme.pillInactiveText,
-  };
 }

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAdventure } from "../contexts/AdventureContext";
 import { computeMemberReadiness } from "../utils/readiness";
-import { fontBody, fontDisplay } from "../utils/theme";
+import clsx from "clsx";
 import { Heart, Backpack, ClipboardCheck, Shield, Calendar, ChevronRight, LucideIcon } from "lucide-react";
 import type { AdventureMember, ThemeColors, ThemeMode, Skill, GearCatalogItem, MemberGearItem } from "../types";
 
@@ -68,14 +68,11 @@ export default function ParentDashboard({ linkedScouts, onViewScout }: ParentDas
   if (scouts.length === 0) return null;
 
   return (
-    <div style={{ padding: "0 16px", marginBottom: 16 }}>
-      <div style={{
-        background: theme.bgCard, borderRadius: 16, border: `1px solid ${theme.border}`,
-        padding: "18px 20px", boxShadow: theme.shadow,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+    <div className="px-4 mb-4">
+      <div className="bg-tl-card rounded-[16px] border border-tl-border px-5 py-[18px] shadow-card">
+        <div className="flex items-center gap-2 mb-3.5">
           <Heart size={16} color={theme.accent} />
-          <span style={{ fontSize: 16, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay }}>
+          <span className="text-[16px] font-extrabold text-tl-heading font-display">
             My Scout{scouts.length > 1 ? "s" : ""}
           </span>
         </div>
@@ -139,34 +136,31 @@ function ScoutCard({ scout, skills, gearCatalog, memberGearMap, theme, mode, onV
 
   const scoutIdx = members.indexOf(scout);
 
+  const cardBg = mode === "dark" ? "bg-[#2A2E24]" : "bg-[#FAFAF5]";
+  const innerBg = mode === "dark" ? "bg-[#1E2218]" : "bg-white";
+
   return (
-    <div style={{
-      background: mode === "dark" ? "#2A2E24" : "#FAFAF5", borderRadius: 14,
-      border: `1px solid ${theme.borderLight}`, padding: "14px 16px", marginBottom: 10,
-    }}>
+    <div className={clsx(cardBg, "rounded-[14px] border border-tl-border-light px-4 py-3.5 mb-2.5")}>
       {/* Scout header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+      <div className="flex items-center gap-2.5 mb-3">
         {(scout as AdventureMember & { avatar_url?: string }).avatar_url ? (
-          <img src={(scout as AdventureMember & { avatar_url?: string }).avatar_url} alt="" style={{ width: 36, height: 36, borderRadius: 18 }} />
+          <img src={(scout as AdventureMember & { avatar_url?: string }).avatar_url} alt="" className="w-9 h-9 rounded-full" />
         ) : (
-          <div style={{
-            width: 36, height: 36, borderRadius: 18, display: "flex", alignItems: "center", justifyContent: "center",
-            fontWeight: 700, fontSize: 14, background: avatarBg, color: "#FDFAF5", fontFamily: fontDisplay,
-          }}>
+          <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm text-[#FDFAF5] font-display" style={{ background: avatarBg }}>
             {(scout.name || "?")[0].toUpperCase()}
           </div>
         )}
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>
+        <div className="flex-1">
+          <div className="text-[15px] font-bold text-tl-heading font-display">
             {scout.name}
           </div>
-          <div style={{ fontSize: 11, color: theme.textDim, fontFamily: fontBody }}>
+          <div className="text-[11px] text-tl-text-dim font-body">
             {scout.is_manual ? "Scout" : (scout.user_type === "adult" ? "Adult" : "Scout")}
             {datesCount > 0 && ` · ${datesCount} date${datesCount === 1 ? "" : "s"} marked`}
           </div>
         </div>
         {/* Overall readiness ring */}
-        <div style={{ position: "relative", width: 44, height: 44 }}>
+        <div className="relative w-11 h-11">
           <svg width="44" height="44" viewBox="0 0 44 44">
             <circle cx="22" cy="22" r="18" fill="none" stroke={theme.border} strokeWidth="3" />
             <circle cx="22" cy="22" r="18" fill="none"
@@ -174,37 +168,31 @@ function ScoutCard({ scout, skills, gearCatalog, memberGearMap, theme, mode, onV
               strokeWidth="3" strokeDasharray={`${readiness.overall * 1.131} 113.1`}
               strokeLinecap="round" transform="rotate(-90 22 22)" />
           </svg>
-          <div style={{
-            position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 11, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay,
-          }}>
+          <div className="absolute inset-0 flex items-center justify-center text-[11px] font-extrabold text-tl-heading font-display">
             {readiness.overall}%
           </div>
         </div>
       </div>
 
       {/* Category progress bars */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+      <div className="grid grid-cols-2 gap-2 mb-2.5">
         {categories.map(({ key, label, icon: Icon, data, color }) => {
           if (!data || data.pct === undefined) return null;
           return (
-            <div key={key} style={{
-              background: mode === "dark" ? "#1E2218" : "#fff", borderRadius: 10,
-              padding: "8px 10px", border: `1px solid ${theme.borderLight}`,
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+            <div key={key} className={clsx(innerBg, "rounded-[10px] px-2.5 py-2 border border-tl-border-light")}>
+              <div className="flex items-center gap-1 mb-1">
                 <Icon size={11} color={color} strokeWidth={2.5} />
-                <span style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                <span className="text-[10px] font-bold text-tl-text-dim uppercase tracking-[0.5px]">
                   {label}
                 </span>
-                <span style={{ fontSize: 10, fontWeight: 600, color: theme.textDimmer, marginLeft: "auto" }}>
+                <span className="text-[10px] font-semibold text-tl-text-dimmer ml-auto">
                   {data.done}/{data.total}
                 </span>
               </div>
-              <div style={{ height: 5, borderRadius: 3, background: theme.border, overflow: "hidden" }}>
-                <div style={{
-                  height: "100%", borderRadius: 3, background: color,
-                  width: `${data.pct}%`, transition: "width 0.5s ease",
+              <div className="h-[5px] rounded-[3px] bg-tl-border overflow-hidden">
+                <div className="h-full rounded-[3px] transition-[width] duration-500 ease-in-out" style={{
+                  background: color,
+                  width: `${data.pct}%`,
                 }} />
               </div>
             </div>
@@ -213,31 +201,19 @@ function ScoutCard({ scout, skills, gearCatalog, memberGearMap, theme, mode, onV
       </div>
 
       {/* Quick stats row */}
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <div style={{
-          display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: theme.textDim,
-          background: mode === "dark" ? "#1E2218" : "#fff", borderRadius: 8, padding: "4px 10px",
-          border: `1px solid ${theme.borderLight}`,
-        }}>
+      <div className="flex gap-2 items-center">
+        <div className={clsx(innerBg, "flex items-center gap-1 text-[11px] text-tl-text-dim rounded-lg px-2.5 py-1 border border-tl-border-light")}>
           <Calendar size={11} color={theme.accent} />
           <span>{datesCount} date{datesCount === 1 ? "" : "s"}</span>
         </div>
         {readiness.gear && (
-          <div style={{
-            display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: theme.textDim,
-            background: mode === "dark" ? "#1E2218" : "#fff", borderRadius: 8, padding: "4px 10px",
-            border: `1px solid ${theme.borderLight}`,
-          }}>
+          <div className={clsx(innerBg, "flex items-center gap-1 text-[11px] text-tl-text-dim rounded-lg px-2.5 py-1 border border-tl-border-light")}>
             <Backpack size={11} color="#FF9800" />
             <span>{readiness.gear.packed} packed</span>
           </div>
         )}
         {scoutIdx >= 0 && onViewScout && (
-          <button onClick={() => onViewScout(scoutIdx)} style={{
-            marginLeft: "auto", display: "flex", alignItems: "center", gap: 3,
-            fontSize: 11, fontWeight: 600, color: theme.accent, background: "none",
-            border: "none", cursor: "pointer", fontFamily: fontBody, padding: "4px 6px",
-          }}>
+          <button onClick={() => onViewScout(scoutIdx)} className="ml-auto flex items-center gap-[3px] text-[11px] font-semibold text-tl-accent bg-none border-none cursor-pointer font-body px-1.5 py-1">
             View Details <ChevronRight size={12} />
           </button>
         )}

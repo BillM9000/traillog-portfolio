@@ -1,17 +1,18 @@
 import React, { useState, useRef, useEffect } from "react";
+import clsx from "clsx";
 import { useCountdown } from "../hooks/useCountdown";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAdventure } from "../contexts/AdventureContext";
 import { useToast } from "../contexts/ToastContext";
 import { api } from "../api";
-import { fontBody, fontDisplay, JOURNEY_WAYPOINTS, TRAIL_BADGES } from "../utils/theme";
+import { JOURNEY_WAYPOINTS, TRAIL_BADGES } from "../utils/theme";
 import { computeCrewReadiness } from "../utils/readiness";
 import { ProgressRing } from "./ProgressWidgets";
 import { Settings, Sun, Moon, HelpCircle } from "lucide-react";
 import { ADVENTURE_TYPES } from "../utils/constants";
 import Logo from "./Logo";
 import TroopLogo from "./TroopLogo";
-import type { User, Adventure, AdventureMember, TrekDates, ThemeColors, Achievement, AdventureType as AdventureTypeT } from "../types";
+import type { User, Adventure, AdventureMember, TrekDates, Achievement, AdventureType as AdventureTypeT } from "../types";
 
 interface ApprovedTroop {
   troop_id: number;
@@ -154,7 +155,6 @@ export default function Header({ user, troop, adventure, members, analysis, trek
 
   // Texture pattern (cross pattern at 6% opacity)
   const textureStyle: React.CSSProperties = {
-    position: "absolute", inset: 0, opacity: 0.06, pointerEvents: "none",
     backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
   };
 
@@ -162,123 +162,79 @@ export default function Header({ user, troop, adventure, members, analysis, trek
   const titleDef: Record<string, string> = { gear_ready: "Gear Ready", trail_medic: "Trail Medic", admin_pro: "Admin Pro", training_complete: "Training Complete", ai_ready: "AI Ready", ai_gear: "AI Gear Scout", fully_prepared: "Fully Prepared" };
 
   return (<>
-    <div style={{
-      background: theme.bgHeader,
-      borderRadius: "0 0 24px 24px",
-      padding: "20px 20px 0 20px",
-      position: "relative",
-    }}>
+    <div className="rounded-b-[24px] p-5 pb-0 relative" style={{ background: theme.bgHeader }}>
       {/* Texture overlay — clipped to rounded corners independently */}
-      <div style={{ position: "absolute", inset: 0, borderRadius: "0 0 24px 24px", overflow: "hidden", pointerEvents: "none" }}>
-        <div style={textureStyle} />
+      <div className="absolute inset-0 rounded-b-[24px] overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 opacity-[0.06] pointer-events-none" style={textureStyle} />
       </div>
 
       {/* ── ROW 1: Logo Bar ── */}
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        position: "relative", marginBottom: 14, paddingBottom: 12,
-        borderBottom: "1px solid rgba(255,255,255,0.1)",
-      }}>
-        <div onClick={onGoHome} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }} role="button" aria-label="Go home">
+      <div className="flex items-center justify-between relative mb-3.5 pb-3 border-b border-white/10">
+        <div onClick={onGoHome} className="flex items-center gap-2.5 cursor-pointer" role="button" aria-label="Go home">
           <Logo size={32} />
           <div>
-            <div style={{
-              fontSize: 17, fontWeight: 800, color: "#FDFAF5", letterSpacing: 0.5,
-              fontFamily: fontDisplay, lineHeight: 1.1,
-            }}>
-              Trail<span style={{ color: "#B8CC9A" }}>Log</span>
+            <div className="text-[17px] font-[800] text-[#FDFAF5] tracking-[0.5px] font-display leading-[1.1]">
+              Trail<span className="text-[#B8CC9A]">Log</span>
             </div>
-            <div style={{
-              fontSize: 9, color: "rgba(184,204,154,0.7)", fontWeight: 600,
-              letterSpacing: 2, textTransform: "uppercase", fontFamily: fontBody,
-            }}>
+            <div className="text-[9px] text-[rgba(184,204,154,0.7)] font-semibold tracking-[2px] uppercase font-body">
               by GraceZero.ai
             </div>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {saving && <span style={{ fontSize: 10, color: "#B8CC9A" }}>saving...</span>}
-          <button onClick={toggle} title={`Switch to ${mode === "dark" ? "light" : "dark"} mode`} aria-label={`Switch to ${mode === "dark" ? "light" : "dark"} mode`} style={{
-            width: 32, height: 32, borderRadius: 10,
-            background: "rgba(255,255,255,0.1)", backdropFilter: "blur(4px)",
-            border: "none", cursor: "pointer", fontSize: 14, color: "#FDFAF5",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
+        <div className="flex items-center gap-2">
+          {saving && <span className="text-[10px] text-[#B8CC9A]">saving...</span>}
+          <button onClick={toggle} title={`Switch to ${mode === "dark" ? "light" : "dark"} mode`} aria-label={`Switch to ${mode === "dark" ? "light" : "dark"} mode`}
+            className="w-8 h-8 rounded-[10px] bg-white/10 backdrop-blur-[4px] border-none cursor-pointer text-sm text-[#FDFAF5] flex items-center justify-center">
             {mode === "dark" ? <Sun size={18} color="#FDFAF5" strokeWidth={2} /> : <Moon size={18} color="#FDFAF5" strokeWidth={2} />}
           </button>
-          <button onClick={onHelpClick} title="Help" aria-label="Open Help" style={{
-            width: 32, height: 32, borderRadius: 10,
-            background: "rgba(255,255,255,0.1)", backdropFilter: "blur(4px)",
-            border: "none", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
+          <button onClick={onHelpClick} title="Help" aria-label="Open Help"
+            className="w-8 h-8 rounded-[10px] bg-white/10 backdrop-blur-[4px] border-none cursor-pointer flex items-center justify-center">
             <HelpCircle size={18} color="#FDFAF5" strokeWidth={2} />
           </button>
           {isAdmin && (
-            <button onClick={onAdminClick} title="Admin Panel" aria-label="Open Admin Panel" style={{
-              width: 32, height: 32, borderRadius: 10,
-              background: "rgba(255,255,255,0.1)", backdropFilter: "blur(4px)",
-              border: "none", cursor: "pointer", fontSize: 14,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
+            <button onClick={onAdminClick} title="Admin Panel" aria-label="Open Admin Panel"
+              className="w-8 h-8 rounded-[10px] bg-white/10 backdrop-blur-[4px] border-none cursor-pointer text-sm flex items-center justify-center">
               <Settings size={18} color="#fff" strokeWidth={2} />
             </button>
           )}
-          <div ref={profileRef} style={{ position: "relative" }}>
-            <div onClick={() => { setEditName(user.name || ""); setShowProfile(!showProfile); }} role="button" aria-label="Profile menu" title="Profile" style={{
-              width: 32, height: 32, borderRadius: 10,
-              background: "rgba(255,255,255,0.12)", backdropFilter: "blur(4px)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              cursor: "pointer", overflow: "hidden",
-            }}>
+          <div ref={profileRef} className="relative">
+            <div onClick={() => { setEditName(user.name || ""); setShowProfile(!showProfile); }} role="button" aria-label="Profile menu" title="Profile"
+              className="w-8 h-8 rounded-[10px] bg-white/[0.12] backdrop-blur-[4px] flex items-center justify-center cursor-pointer overflow-hidden">
               {user.avatar_url ? (
-                <img src={user.avatar_url} alt="" style={{ width: 32, height: 32, borderRadius: 10 }} />
+                <img src={user.avatar_url} alt="" className="w-8 h-8 rounded-[10px]" />
               ) : (
-                <span style={{ fontSize: 13, fontWeight: 800, color: "#FDFAF5", fontFamily: fontDisplay }}>
+                <span className="text-[13px] font-[800] text-[#FDFAF5] font-display">
                   {(user.name || "?")[0].toUpperCase()}
                 </span>
               )}
             </div>
             {showProfile && (
-              <div style={{ position: "absolute", top: "100%", right: 0, marginTop: 8, background: theme.bgCard, borderRadius: 14, border: `1px solid ${theme.border}`, boxShadow: "0 8px 24px rgba(0,0,0,0.3)", padding: 16, width: 230, zIndex: 100 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8, fontFamily: fontBody }}>Profile</div>
-                <input value={editName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)} style={{
-                  width: "100%", padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${theme.borderLight}`,
-                  background: theme.bgInput, color: theme.text, fontSize: 13, fontFamily: fontBody, outline: "none", boxSizing: "border-box" as const, marginBottom: 8,
-                }} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && saveProfile()} />
-                <div style={{ fontSize: 11, color: theme.textDim, marginBottom: 10, fontFamily: fontBody }}>
+              <div className="absolute top-full right-0 mt-2 bg-tl-card rounded-card border border-tl-border p-4 w-[230px] z-[100]" style={{ boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
+                <div className="text-[10px] font-bold text-tl-text-dim uppercase tracking-[1.5px] mb-2 font-body">Profile</div>
+                <input value={editName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
+                  className="w-full py-2 px-3 rounded-btn border-[1.5px] border-tl-border-light bg-tl-input text-tl-text text-[13px] font-body outline-none box-border mb-2"
+                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && saveProfile()} />
+                <div className="text-[11px] text-tl-text-dim mb-2.5 font-body">
                   {user.user_type === "adult" ? "Adult Leader" : "Scout"} &bull; {user.email}
                 </div>
                 {approvedTroops.length > 1 && (
-                  <select onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onSwitchTroop(parseInt(e.target.value))} value={troop?.id || ""} style={{
-                    width: "100%", fontSize: 12, padding: "6px 8px", borderRadius: 8, border: `1.5px solid ${theme.borderLight}`,
-                    background: theme.bgInput, color: theme.text, fontFamily: fontBody, cursor: "pointer", marginBottom: 10,
-                  }}>
+                  <select onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onSwitchTroop(parseInt(e.target.value))} value={troop?.id || ""}
+                    className="w-full text-xs py-1.5 px-2 rounded-btn border-[1.5px] border-tl-border-light bg-tl-input text-tl-text font-body cursor-pointer mb-2.5">
                     {approvedTroops.map(t => <option key={t.troop_id} value={t.troop_id}>{t.troop_name}</option>)}
                   </select>
                 )}
-                <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                  <button onClick={() => { setShowProfile(false); onGoHome(); }} style={{
-                    flex: 1, padding: "8px 0", borderRadius: 8, border: `1.5px solid ${theme.borderLight}`,
-                    background: theme.bgAlt, color: theme.text, fontSize: 12, fontWeight: 600,
-                    cursor: "pointer", fontFamily: fontBody,
-                  }}>Home</button>
-                  <button onClick={() => { setShowProfile(false); onViewProfile?.(); }} style={{
-                    flex: 1, padding: "8px 0", borderRadius: 8, border: `1.5px solid ${theme.borderLight}`,
-                    background: theme.bgAlt, color: theme.accent, fontSize: 12, fontWeight: 600,
-                    cursor: "pointer", fontFamily: fontBody,
-                  }}>Profile</button>
+                <div className="flex gap-1.5 mb-2">
+                  <button onClick={() => { setShowProfile(false); onGoHome(); }}
+                    className="flex-1 py-2 rounded-btn border-[1.5px] border-tl-border-light bg-tl-bg-alt text-tl-text text-xs font-semibold cursor-pointer font-body">Home</button>
+                  <button onClick={() => { setShowProfile(false); onViewProfile?.(); }}
+                    className="flex-1 py-2 rounded-btn border-[1.5px] border-tl-border-light bg-tl-bg-alt text-tl-accent text-xs font-semibold cursor-pointer font-body">Profile</button>
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={saveProfile} disabled={savingProfile} style={{
-                    flex: 1, padding: "8px 0", borderRadius: 8, border: "none",
-                    background: theme.forestDeep, color: theme.name === "dark" ? "#1A1F16" : "#FDFAF5",
-                    fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-                  }}>{savingProfile ? "..." : "Save"}</button>
-                  <button onClick={onLogout} style={{
-                    flex: 1, padding: "8px 0", borderRadius: 8, border: `1.5px solid ${theme.borderLight}`,
-                    background: theme.bgAlt, color: theme.danger, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-                  }}>Sign Out</button>
+                <div className="flex gap-2">
+                  <button onClick={saveProfile} disabled={savingProfile}
+                    className="flex-1 py-2 rounded-btn border-none bg-tl-forest-deep text-xs font-semibold cursor-pointer font-body"
+                    style={{ color: theme.name === "dark" ? "#1A1F16" : "#FDFAF5" }}>{savingProfile ? "..." : "Save"}</button>
+                  <button onClick={onLogout}
+                    className="flex-1 py-2 rounded-btn border-[1.5px] border-tl-border-light bg-tl-bg-alt text-tl-danger text-xs font-semibold cursor-pointer font-body">Sign Out</button>
                 </div>
               </div>
             )}
@@ -287,93 +243,74 @@ export default function Header({ user, troop, adventure, members, analysis, trek
       </div>
 
       {/* ── ROW 2: Hero — Logo + Crew Identity + Dates + Countdown ── */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", position: "relative", marginBottom: 16, textAlign: "center" }}>
+      <div className="flex flex-col items-center relative mb-4 text-center">
         {/* Troop Logo — hero size, clickable for lightbox */}
-        <div style={{ marginBottom: 8, cursor: "pointer" }} onClick={() => setShowLogoLightbox(true)}>
+        <div className="mb-2 cursor-pointer" onClick={() => setShowLogoLightbox(true)}>
           <TroopLogo troopId={troop?.id} name={troopName} size={88} theme={{ bgAlt: "rgba(253,250,245,0.92)" }} />
         </div>
 
         {/* Troop name + adventure type */}
-        <button onClick={onGoHome} aria-label="Go home" style={{
-          fontSize: 11, color: "rgba(255,255,255,0.85)", fontWeight: 700, letterSpacing: 1.5,
-          textTransform: "uppercase", background: "none", border: "none", cursor: "pointer",
-          fontFamily: fontBody, padding: 0, marginBottom: 2,
-          textShadow: "0 1px 4px rgba(0,0,0,0.4)",
-        }}>
+        <button onClick={onGoHome} aria-label="Go home"
+          className="text-[11px] text-white/85 font-bold tracking-[1.5px] uppercase bg-none border-none cursor-pointer font-body p-0 mb-0.5"
+          style={{ textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>
           {troopName}{adventureType ? ` \u00B7 ${adventureType.name}` : ""}
         </button>
 
         {/* Crew name — big and bold */}
-        <h1 style={{
-          fontSize: 24, fontWeight: 900, color: "#fff", margin: "0 0 4px 0", lineHeight: 1.15,
-          fontFamily: fontDisplay, textShadow: "0 2px 6px rgba(0,0,0,0.35)",
-        }}>
+        <h1 className="text-2xl font-[900] text-white m-0 mb-1 leading-[1.15] font-display"
+          style={{ textShadow: "0 2px 6px rgba(0,0,0,0.35)" }}>
           {hasMultipleCrews && selectedCrew ? selectedCrew.name : adventureName}
         </h1>
 
         {/* Date range */}
         {dateRangeStr && (
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 600, fontFamily: fontBody, marginBottom: 2 }}>
+          <div className="text-xs text-white/80 font-semibold font-body mb-0.5">
             {dateRangeStr}
           </div>
         )}
 
         {/* Countdown */}
         {cd && (
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 4,
-            fontSize: 13, fontWeight: 800, color: "#fff", fontFamily: fontBody,
-            background: "rgba(0,0,0,0.25)", backdropFilter: "blur(4px)",
-            padding: "4px 14px", borderRadius: 20, marginTop: 2,
-            textShadow: "0 1px 3px rgba(0,0,0,0.5)",
-          }}>
+          <div className="inline-flex items-center gap-1 text-[13px] font-[800] text-white font-body bg-black/25 backdrop-blur-[4px] py-1 px-3.5 rounded-pill mt-0.5"
+            style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>
             {cd.icon} {cd.text}
           </div>
         )}
 
         {/* Member count */}
         {members.length > 0 && (
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginTop: 4, fontFamily: fontBody, fontWeight: 600 }}>
+          <div className="text-[11px] text-white/60 mt-1 font-body font-semibold">
             {trekkingMembers.length} trekking{members.length - trekkingMembers.length > 0 ? ` \u00B7 ${members.length - trekkingMembers.length} support` : ""}
           </div>
         )}
       </div>
 
       {/* ── ROW 3: Journey Progress Card (frosted glass) ── */}
-      <div onClick={() => setShowTrailGuide(true)} style={{
-        display: "flex", alignItems: "center", gap: 16,
-        background: "rgba(0,0,0,0.15)", backdropFilter: "blur(6px)",
-        borderRadius: 16, padding: "16px 18px",
-        marginBottom: -28, position: "relative", zIndex: 2, cursor: "pointer",
-      }}>
-        <div style={{ position: "relative", flexShrink: 0 }}>
+      <div onClick={() => setShowTrailGuide(true)}
+        className="flex items-center gap-4 bg-black/15 backdrop-blur-[6px] rounded-[16px] py-4 px-[18px] -mb-7 relative z-[2] cursor-pointer">
+        <div className="relative shrink-0">
           <ProgressRing percent={crewReadiness} size={56} stroke={5} color="#B8CC9A" bgColor="rgba(255,255,255,0.15)" />
-          <div style={{
-            position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 14, fontWeight: 900, color: "#FDFAF5", fontFamily: fontDisplay,
-          }}>
+          <div className="absolute inset-0 flex items-center justify-center text-sm font-[900] text-[#FDFAF5] font-display">
             {crewReadiness}%
           </div>
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#FDFAF5", marginBottom: 4, fontFamily: fontBody, display: "flex", alignItems: "center", gap: 6 }}>
+        <div className="flex-1 min-w-0">
+          <div className="text-[13px] font-bold text-[#FDFAF5] mb-1 font-body flex items-center gap-1.5">
             {currentWaypoint.name}
-            <span style={{ fontSize: 9, color: "#fff", fontWeight: 400, fontStyle: "italic", opacity: 0.8 }}>Trail Guide</span>
+            <span className="text-[9px] text-white font-normal italic opacity-80">Trail Guide</span>
           </div>
-          <div style={{ fontSize: 11, color: "#D4E4B8", lineHeight: 1.4, fontFamily: fontBody }}>
+          <div className="text-[11px] text-[#D4E4B8] leading-[1.4] font-body">
             {currentWaypoint.message}
           </div>
           {badgeCount > 0 && (
-            <div style={{ marginTop: 6 }}>
-              <div style={{ fontSize: 9, fontWeight: 600, color: "rgba(184,204,154,0.7)", letterSpacing: 1, textTransform: "uppercase", marginBottom: 3, fontFamily: fontBody }}>
+            <div className="mt-1.5">
+              <div className="text-[9px] font-semibold text-[rgba(184,204,154,0.7)] tracking-[1px] uppercase mb-[3px] font-body">
                 Trail Badges
               </div>
-              <div style={{ display: "flex", gap: 4 }}>
+              <div className="flex gap-1">
                 {myBadges.slice(0, 6).map((b, i) => (
-                  <span key={i} title={titleDef[b.badge_id] || b.badge_id} style={{
-                    fontSize: 12, background: "rgba(184,204,154,0.3)", padding: "2px 6px", borderRadius: 6,
-                    border: "1px solid rgba(184,204,154,0.5)",
-                  }}>
+                  <span key={i} title={titleDef[b.badge_id] || b.badge_id}
+                    className="text-xs bg-[rgba(184,204,154,0.3)] py-0.5 px-1.5 rounded-badge-sm border border-[rgba(184,204,154,0.5)]">
                     {badgeDef[b.badge_id] || "\u2B50"}
                   </span>
                 ))}
@@ -386,34 +323,26 @@ export default function Header({ user, troop, adventure, members, analysis, trek
 
     {/* ── Logo Lightbox ── */}
     {showLogoLightbox && (
-      <div onClick={() => setShowLogoLightbox(false)} style={{
-        position: "fixed", inset: 0, zIndex: 9999,
-        background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: 20, cursor: "pointer",
-      }}>
-        <div onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{
-          position: "relative", background: theme.bgCard, borderRadius: 20,
-          padding: 24, textAlign: "center", maxWidth: 340,
-          boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
-        }}>
-          <button onClick={() => setShowLogoLightbox(false)} style={{
-            position: "absolute", top: 10, right: 14, background: "none", border: "none",
-            fontSize: 20, color: theme.textDim, cursor: "pointer",
-          }}>{"\u2715"}</button>
-          <div style={{ marginBottom: 16 }}>
+      <div onClick={() => setShowLogoLightbox(false)}
+        className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-[6px] flex items-center justify-center p-5 cursor-pointer">
+        <div onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          className="relative bg-tl-card rounded-[20px] p-6 text-center max-w-[340px]"
+          style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
+          <button onClick={() => setShowLogoLightbox(false)}
+            className="absolute top-2.5 right-3.5 bg-none border-none text-xl text-tl-text-dim cursor-pointer">{"\u2715"}</button>
+          <div className="mb-4">
             <TroopLogo troopId={troop?.id} name={troopName} size={200} theme={theme} />
           </div>
-          <div style={{ fontSize: 16, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay, marginBottom: 4 }}>
+          <div className="text-base font-[800] text-tl-heading font-display mb-1">
             {troopName}
           </div>
           {troop?.council && (
-            <div style={{ fontSize: 12, color: theme.textDim, fontFamily: fontBody }}>
+            <div className="text-xs text-tl-text-dim font-body">
               {troop.council}{troop.location ? ` \u00B7 ${troop.location}` : ""}
             </div>
           )}
           {adventure?.name && (
-            <div style={{ fontSize: 13, fontWeight: 700, color: theme.accent, fontFamily: fontDisplay, marginTop: 8 }}>
+            <div className="text-[13px] font-bold text-tl-accent font-display mt-2">
               {adventure.name}
             </div>
           )}
@@ -423,62 +352,52 @@ export default function Header({ user, troop, adventure, members, analysis, trek
 
     {/* ── Trail Guide Modal ── */}
     {showTrailGuide && (
-      <div onClick={() => setShowTrailGuide(false)} style={{
-        position: "fixed", inset: 0, zIndex: 9999,
-        background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: 20,
-      }}>
-        <div onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{
-          background: theme.bg, borderRadius: 20, padding: "24px 20px",
-          maxWidth: 400, width: "100%", maxHeight: "80vh", overflowY: "auto",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-          border: `1px solid ${theme.borderLight}`,
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: theme.heading, fontFamily: fontDisplay }}>
+      <div onClick={() => setShowTrailGuide(false)}
+        className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-[4px] flex items-center justify-center p-5">
+        <div onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          className="bg-tl-bg rounded-[20px] py-6 px-5 max-w-[400px] w-full max-h-[80vh] overflow-y-auto border border-tl-border-light"
+          style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+          <div className="flex justify-between items-center mb-4">
+            <div className="text-lg font-[800] text-tl-heading font-display">
               Trail Guide
             </div>
-            <button onClick={() => setShowTrailGuide(false)} style={{
-              background: theme.bgAlt, border: `1px solid ${theme.borderLight}`,
-              borderRadius: 8, width: 28, height: 28, cursor: "pointer",
-              fontSize: 14, color: theme.textDim, display: "flex", alignItems: "center", justifyContent: "center",
-            }}>&times;</button>
+            <button onClick={() => setShowTrailGuide(false)}
+              className="bg-tl-bg-alt border border-tl-border-light rounded-btn w-7 h-7 cursor-pointer text-sm text-tl-text-dim flex items-center justify-center">&times;</button>
           </div>
 
           {/* Journey Waypoints */}
-          <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 8, fontFamily: fontBody }}>
+          <div className="text-[10px] font-bold text-tl-text-dim tracking-[1.2px] uppercase mb-2 font-body">
             Journey Waypoints — Crew readiness milestones
           </div>
           {JOURNEY_WAYPOINTS.map((wp) => (
-            <div key={wp.pct} style={{
-              display: "flex", alignItems: "center", gap: 10, padding: "6px 10px",
-              borderRadius: 8, marginBottom: 3,
-              background: crewReadiness >= wp.pct ? theme.accentBg : "transparent",
-              border: crewReadiness >= wp.pct ? `1px solid ${theme.borderAccent}` : `1px solid transparent`,
-            }}>
-              <div style={{
-                width: 24, height: 24, borderRadius: "50%", flexShrink: 0,
-                background: crewReadiness >= wp.pct ? theme.accent : theme.progressBg,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 10, fontWeight: 700, color: crewReadiness >= wp.pct ? "#fff" : theme.textDimmer,
-              }}>
+            <div key={wp.pct}
+              className={clsx(
+                "flex items-center gap-2.5 py-1.5 px-2.5 rounded-btn mb-[3px]",
+                crewReadiness >= wp.pct ? "bg-tl-accent-bg border border-tl-border-accent" : "border border-transparent"
+              )}>
+              <div className={clsx(
+                "w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold",
+                crewReadiness >= wp.pct ? "bg-tl-accent text-white" : "bg-tl-progress-bg text-tl-text-dimmer"
+              )}>
                 {wp.pct === 100 ? "\u2B50" : crewReadiness >= wp.pct ? "\u2713" : `${wp.pct}`}
               </div>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: crewReadiness >= wp.pct ? theme.heading : theme.textMuted, fontFamily: fontBody }}>
+                <div className={clsx(
+                  "text-xs font-bold font-body",
+                  crewReadiness >= wp.pct ? "text-tl-heading" : "text-tl-text-muted"
+                )}>
                   {wp.pct}% — {wp.name}
                 </div>
-                <div style={{ fontSize: 11, color: theme.textDimmer, fontStyle: "italic", lineHeight: 1.3 }}>{wp.message}</div>
+                <div className="text-[11px] text-tl-text-dimmer italic leading-[1.3]">{wp.message}</div>
               </div>
             </div>
           ))}
 
           {/* Trail Badges */}
-          <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: 1.2, textTransform: "uppercase", marginTop: 16, marginBottom: 8, fontFamily: fontBody }}>
+          <div className="text-[10px] font-bold text-tl-text-dim tracking-[1.2px] uppercase mt-4 mb-2 font-body">
             Trail Badges — Earn by completing each category
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+          <div className="grid grid-cols-2 gap-1.5">
             {Object.entries(TRAIL_BADGES).map(([key, badge]) => {
               const descriptions: Record<string, string> = {
                 gear_ready: "All gear items packed",
@@ -491,24 +410,24 @@ export default function Header({ user, troop, adventure, members, analysis, trek
               };
               const earned = myBadges.some(b => b.badge_id === key);
               return (
-                <div key={key} style={{
-                  display: "flex", alignItems: "center", gap: 8, padding: "8px 10px",
-                  borderRadius: 10, background: earned ? theme.accentBg : theme.bgAlt,
-                  border: `1px solid ${earned ? theme.borderAccent : theme.borderLight}`,
-                  opacity: earned ? 1 : 0.6,
-                }}>
-                  <span style={{ fontSize: 18, flexShrink: 0 }}>{badge.icon}</span>
+                <div key={key}
+                  className={clsx(
+                    "flex items-center gap-2 py-2 px-2.5 rounded-badge",
+                    earned ? "bg-tl-accent-bg border border-tl-border-accent" : "bg-tl-bg-alt border border-tl-border-light",
+                    !earned && "opacity-60"
+                  )}>
+                  <span className="text-lg shrink-0">{badge.icon}</span>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: earned ? theme.heading : theme.textMuted }}>{badge.title}</div>
-                    <div style={{ fontSize: 9, color: theme.textDimmer, lineHeight: 1.3 }}>{descriptions[key]}</div>
+                    <div className={clsx("text-[11px] font-bold", earned ? "text-tl-heading" : "text-tl-text-muted")}>{badge.title}</div>
+                    <div className="text-[9px] text-tl-text-dimmer leading-[1.3]">{descriptions[key]}</div>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <div style={{ fontSize: 10, color: theme.textDimmest, textAlign: "center", marginTop: 16, fontFamily: fontBody }}>
-            Your crew is at <strong style={{ color: theme.heading }}>{crewReadiness}%</strong> readiness — <strong style={{ color: theme.accent }}>{currentWaypoint.name}</strong>
+          <div className="text-[10px] text-tl-text-dimmest text-center mt-4 font-body">
+            Your crew is at <strong className="text-tl-heading">{crewReadiness}%</strong> readiness — <strong className="text-tl-accent">{currentWaypoint.name}</strong>
           </div>
         </div>
       </div>

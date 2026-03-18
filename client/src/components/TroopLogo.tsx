@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { fontDisplay } from "../utils/theme";
 import type { ThemeColors } from "../types";
 
 // Deterministic color from troop name
@@ -26,7 +25,8 @@ export default function TroopLogo({ troopId, name, size = 40, theme }: Props): R
       <img
         src={`/api/troops/${troopId}/logo`}
         alt={name || "Logo"}
-        style={{ width: size, height: size, borderRadius: radius, objectFit: "contain", flexShrink: 0, background: theme?.bgAlt || "transparent" }}
+        className="shrink-0 object-contain"
+        style={{ width: size, height: size, borderRadius: radius, background: theme?.bgAlt || "transparent" }}
         onError={() => setErr(true)}
       />
     );
@@ -34,13 +34,12 @@ export default function TroopLogo({ troopId, name, size = 40, theme }: Props): R
 
   // Fallback: colored circle with first letter
   return (
-    <div style={{
-      width: size, height: size, borderRadius: radius, flexShrink: 0,
-      background: nameColor(name),
-      display: "flex", alignItems: "center", justifyContent: "center",
-      fontSize: size * 0.45, fontWeight: 800, color: "#FDFAF5",
-      fontFamily: fontDisplay,
-    }}>
+    <div className="shrink-0 flex items-center justify-center font-extrabold text-[#FDFAF5] font-display"
+      style={{
+        width: size, height: size, borderRadius: radius,
+        background: nameColor(name),
+        fontSize: size * 0.45,
+      }}>
       {(name || "?")[0].toUpperCase()}
     </div>
   );

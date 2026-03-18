@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
-import { fontBody } from "../../utils/theme";
 import { computeMemberReadiness } from "../../utils/readiness";
+import clsx from "clsx";
 import type { AdventureMember, Skill, GearCatalogItem, MemberGearItem } from "../../types";
 
 interface MembersTableProps {
@@ -100,65 +100,23 @@ export default function MembersTable({
   };
 
   const arrow = (key: SortKey) =>
-    sortKey === key ? (sortDir === "asc" ? " ▲" : " ▼") : "";
-
-  const headerStyle: React.CSSProperties = {
-    fontFamily: fontBody,
-    fontSize: 11,
-    fontWeight: 600,
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-    color: theme.textDim,
-    padding: "8px 12px",
-    cursor: "pointer",
-    userSelect: "none",
-    borderBottom: `1px solid ${theme.border}`,
-    textAlign: "left",
-    whiteSpace: "nowrap",
-  };
-
-  const cellStyle: React.CSSProperties = {
-    fontFamily: fontBody,
-    fontSize: 13,
-    fontWeight: 400,
-    padding: "8px 12px",
-    whiteSpace: "nowrap",
-  };
+    sortKey === key ? (sortDir === "asc" ? " \u25B2" : " \u25BC") : "";
 
   return (
-    <div
-      style={{
-        background: theme.bgCard,
-        border: `1px solid ${theme.border}`,
-        borderRadius: 14,
-        boxShadow: theme.shadow,
-        overflow: "hidden",
-      }}
-    >
-      <table
-        style={{
-          width: "100%",
-          borderCollapse: "collapse",
-          tableLayout: "auto",
-        }}
-      >
+    <div className="tl-card overflow-hidden !p-0 !mb-0">
+      <table className="w-full border-collapse table-auto">
         <thead>
           <tr>
-            <th style={headerStyle} onClick={() => handleSort("name")}>
-              Name{arrow("name")}
-            </th>
-            <th style={headerStyle} onClick={() => handleSort("role")}>
-              Role{arrow("role")}
-            </th>
-            <th style={headerStyle} onClick={() => handleSort("readiness")}>
-              Readiness %{arrow("readiness")}
-            </th>
-            <th style={headerStyle} onClick={() => handleSort("training")}>
-              Training{arrow("training")}
-            </th>
-            <th style={headerStyle} onClick={() => handleSort("gear")}>
-              Gear{arrow("gear")}
-            </th>
+            {(["name", "role", "readiness", "training", "gear"] as SortKey[]).map((key) => (
+              <th
+                key={key}
+                className="tl-table-header cursor-pointer select-none"
+                onClick={() => handleSort(key)}
+              >
+                {key === "readiness" ? "Readiness %" : key.charAt(0).toUpperCase() + key.slice(1)}
+                {arrow(key)}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -168,21 +126,10 @@ export default function MembersTable({
             const isCurrentUser = row.member.user_id === currentUserId;
             const rColor = readinessColor(row.readiness);
 
-            let rowBg = "transparent";
-            let rowColor = theme.text;
-            if (isSelected) {
-              rowBg = theme.selectedBg;
-              rowColor = theme.selectedText;
-            } else if (isHovered) {
-              rowBg = theme.bgAlt;
-            }
-
             return (
               <tr
                 key={row.member.id}
-                onClick={() =>
-                  setActive(isSelected ? null : row.origIdx)
-                }
+                onClick={() => setActive(isSelected ? null : row.origIdx)}
                 onMouseEnter={() => setHoveredIdx(row.origIdx)}
                 onMouseLeave={() => setHoveredIdx(null)}
                 tabIndex={0}
@@ -192,112 +139,63 @@ export default function MembersTable({
                     setActive(isSelected ? null : row.origIdx);
                   }
                 }}
-                style={{
-                  height: 38,
-                  background: rowBg,
-                  color: rowColor,
-                  cursor: "pointer",
-                  borderBottom: `1px solid ${theme.border}`,
-                  transition: "background 150ms ease",
-                  outline: "none",
-                }}
-                onFocus={(e) => {
-                  (e.currentTarget as HTMLElement).style.outline = `2px solid ${theme.accent}`;
-                }}
-                onBlur={(e) => {
-                  (e.currentTarget as HTMLElement).style.outline = "none";
-                }}
+                className={clsx(
+                  "h-[38px] cursor-pointer border-b border-tl-border transition-colors duration-150 outline-none",
+                  isSelected ? "bg-tl-selected-bg text-tl-selected-text" : isHovered ? "bg-tl-bg-alt text-tl-text" : "bg-transparent text-tl-text",
+                  "focus:ring-2 focus:ring-tl-accent"
+                )}
               >
                 {/* Name */}
-                <td style={cellStyle}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        background: theme.memberDot,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <span
-                      style={{
-                        fontWeight: isCurrentUser ? 700 : 400,
-                      }}
-                    >
+                <td className="font-body text-[13px] py-2 px-3 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-tl-member-dot shrink-0" />
+                    <span className={isCurrentUser ? "font-bold" : ""}>
                       {row.member.name}
                     </span>
                   </div>
                 </td>
 
                 {/* Role */}
-                <td style={cellStyle}>
+                <td className="font-body text-[13px] py-2 px-3 whitespace-nowrap">
                   <span
-                    style={{
-                      display: "inline-block",
-                      padding: "2px 8px",
-                      borderRadius: 10,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      fontFamily: fontBody,
-                      background:
-                        row.member.role === "admin"
-                          ? theme.accent
-                          : theme.bgAlt,
-                      color:
-                        row.member.role === "admin"
-                          ? "#fff"
-                          : theme.textDim,
-                    }}
+                    className={clsx(
+                      "inline-block py-0.5 px-2 rounded-badge text-[11px] font-semibold font-body",
+                      row.member.role === "admin"
+                        ? "bg-tl-accent text-white"
+                        : "bg-tl-bg-alt text-tl-text-dim"
+                    )}
                   >
                     {row.member.role === "admin" ? "Admin" : "Member"}
                   </span>
                 </td>
 
                 {/* Readiness % */}
-                <td style={cellStyle}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <span style={{ minWidth: 28, textAlign: "right" }}>
+                <td className="font-body text-[13px] py-2 px-3 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    <span className="min-w-[28px] text-right">
                       {row.readiness}%
                     </span>
                     <div
-                      style={{
-                        width: 60,
-                        height: 4,
-                        borderRadius: 2,
-                        background: isSelected
-                          ? "rgba(255,255,255,0.25)"
-                          : theme.bgAlt,
-                        overflow: "hidden",
-                        flexShrink: 0,
-                      }}
+                      className={clsx(
+                        "w-[60px] h-1 rounded-sm overflow-hidden shrink-0",
+                        isSelected ? "bg-white/25" : "bg-tl-bg-alt"
+                      )}
                     >
                       <div
-                        style={{
-                          width: `${row.readiness}%`,
-                          height: "100%",
-                          borderRadius: 2,
-                          background: rColor,
-                          transition: "width 300ms ease",
-                        }}
+                        className="h-full rounded-sm transition-[width] duration-300 ease-in-out"
+                        style={{ width: `${row.readiness}%`, background: rColor }}
                       />
                     </div>
                   </div>
                 </td>
 
                 {/* Training */}
-                <td style={cellStyle}>
+                <td className="font-body text-[13px] py-2 px-3 whitespace-nowrap">
                   {row.trainDone}/{row.trainTotal}
                 </td>
 
                 {/* Gear */}
-                <td style={cellStyle}>
+                <td className="font-body text-[13px] py-2 px-3 whitespace-nowrap">
                   {row.gearDone}/{row.gearTotal}
                 </td>
               </tr>

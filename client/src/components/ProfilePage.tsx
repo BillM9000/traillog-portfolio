@@ -3,11 +3,11 @@ import { api } from "../api";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
-import { fontBody, fontDisplay, card, cardTitle } from "../utils/theme";
+import clsx from "clsx";
 import { ArrowLeft, Shield, Mail, User, Calendar, FileCheck, Lock, LogOut, Users, Crown } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import TroopLogo from "./TroopLogo";
-import type { Membership, ThemeColors } from "../types";
+import type { Membership } from "../types";
 
 interface ProfilePageProps {
   memberships: Membership[];
@@ -81,31 +81,6 @@ export default function ProfilePage({ memberships, onBack, onEnterTroop, onLogou
     setLeavingTroop(null);
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%", padding: "10px 14px", borderRadius: 8,
-    border: `1.5px solid ${theme.borderLight}`, background: theme.bgInput,
-    color: theme.text, fontSize: 14, fontFamily: fontBody, outline: "none", boxSizing: "border-box",
-  };
-
-  const btnPrimary: React.CSSProperties = {
-    padding: "10px 20px", borderRadius: 8, border: "none",
-    background: theme.forestDeep, color: theme.name === "dark" ? "#1A1F16" : "#FDFAF5",
-    fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-  };
-
-  const btnOutline: React.CSSProperties = {
-    padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${theme.borderLight}`,
-    background: theme.bgAlt, color: theme.text, fontSize: 12, fontWeight: 600,
-    cursor: "pointer", fontFamily: fontBody,
-  };
-
-  const labelStyle: React.CSSProperties = {
-    fontSize: 11, fontWeight: 700, color: theme.textDim, textTransform: "uppercase",
-    letterSpacing: 1.2, marginBottom: 4, fontFamily: fontBody,
-  };
-
-  const valueStyle: React.CSSProperties = { fontSize: 14, color: theme.text, fontFamily: fontBody };
-
   const fmtDate = (d: string | null | undefined): string => d ? new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "\u2014";
 
   interface InfoRowProps {
@@ -116,19 +91,17 @@ export default function ProfilePage({ memberships, onBack, onEnterTroop, onLogou
   }
 
   const InfoRow = ({ icon: Icon, label, value, badge }: InfoRowProps) => (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${theme.borderLight}` }}>
-      <Icon size={16} color={theme.textDim} strokeWidth={2} style={{ flexShrink: 0 }} />
-      <div style={{ flex: 1 }}>
-        <div style={labelStyle}>{label}</div>
-        <div style={{ ...valueStyle, display: "flex", alignItems: "center", gap: 8 }}>
+    <div className="flex items-center gap-2.5 py-2 border-b border-tl-border-light">
+      <Icon size={16} className="text-tl-text-dim shrink-0" strokeWidth={2} />
+      <div className="flex-1">
+        <div className="text-[11px] font-bold text-tl-text-dim uppercase tracking-[1.2px] mb-1 font-body">{label}</div>
+        <div className="text-sm text-tl-text font-body flex items-center gap-2">
           {value}
           {badge && (
-            <span style={{
-              fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 10,
-              background: badge === "Google" ? "#4285F420" : theme.bgAlt,
-              color: badge === "Google" ? "#4285F4" : theme.textDim,
-              textTransform: "uppercase", letterSpacing: 0.8,
-            }}>{badge}</span>
+            <span className={clsx(
+              "text-[9px] font-bold py-0.5 px-2 rounded-[10px] uppercase tracking-[0.8px]",
+              badge === "Google" ? "bg-[#4285F420] text-[#4285F4]" : "bg-tl-bg-alt text-tl-text-dim"
+            )}>{badge}</span>
           )}
         </div>
       </div>
@@ -136,34 +109,33 @@ export default function ProfilePage({ memberships, onBack, onEnterTroop, onLogou
   );
 
   return (
-    <div style={{ maxWidth: 560, margin: "0 auto", padding: "16px 16px 40px" }}>
+    <div className="max-w-[560px] mx-auto px-4 pt-4 pb-10">
       {/* Back button */}
-      <button onClick={onBack} style={{
-        display: "flex", alignItems: "center", gap: 6, background: "none", border: "none",
-        color: theme.accent, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-        padding: "8px 0", marginBottom: 12,
-      }}>
+      <button onClick={onBack}
+        className="flex items-center gap-1.5 bg-transparent border-none text-tl-accent text-[13px] font-semibold cursor-pointer font-body py-2 mb-3">
         <ArrowLeft size={16} /> Back
       </button>
 
-      <h2 style={{ fontSize: 22, fontWeight: 800, color: theme.text, fontFamily: fontDisplay, margin: "0 0 20px" }}>
+      <h2 className="text-[22px] font-extrabold text-tl-text font-display mb-5">
         My Profile
       </h2>
 
       {/* Account Info */}
-      <div style={card(theme)}>
-        <div style={cardTitle(theme)}>Account</div>
+      <div className="tl-card">
+        <div className="tl-card-title">Account</div>
         <InfoRow icon={Mail} label="Email" value={user.email} badge={isGoogle ? "Google" : "Email"} />
-        <div style={{ padding: "10px 0", borderBottom: `1px solid ${theme.borderLight}` }}>
-          <div style={{ ...labelStyle, display: "flex", alignItems: "center", gap: 6 }}>
-            <User size={14} color={theme.textDim} strokeWidth={2} /> Name
+        <div className="py-2.5 border-b border-tl-border-light">
+          <div className="text-[11px] font-bold text-tl-text-dim uppercase tracking-[1.2px] mb-1 font-body flex items-center gap-1.5">
+            <User size={14} className="text-tl-text-dim" strokeWidth={2} /> Name
           </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+          <div className="flex gap-2 mt-1">
             <input value={editName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
               onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && saveName()}
-              style={{ ...inputStyle, flex: 1 }} />
+              className="tl-input flex-1 border-tl-border-light" style={{ borderWidth: "1.5px" }} />
             {editName.trim() !== user.name && (
-              <button onClick={saveName} disabled={savingName} style={btnPrimary}>
+              <button onClick={saveName} disabled={savingName}
+                className="py-2.5 px-5 rounded-btn border-none bg-tl-forest-deep text-sm font-semibold cursor-pointer font-body"
+                style={{ color: theme.name === "dark" ? "#1A1F16" : "#FDFAF5" }}>
                 {savingName ? "..." : "Save"}
               </button>
             )}
@@ -180,62 +152,59 @@ export default function ProfilePage({ memberships, onBack, onEnterTroop, onLogou
 
       {/* Parent/Guardian (scouts only) */}
       {user.user_type === "scout" && (user.parent_email || user.parent_email_2) && (
-        <div style={{ ...card(theme), marginTop: 16 }}>
-          <div style={cardTitle(theme)}>Parent / Guardian</div>
+        <div className="tl-card mt-4">
+          <div className="tl-card-title">Parent / Guardian</div>
           {user.parent_email && <InfoRow icon={Mail} label="Parent Email" value={user.parent_email} />}
           {user.parent_email_2 && <InfoRow icon={Mail} label="Parent Email 2" value={user.parent_email_2} />}
-          <div style={{ fontSize: 10, color: theme.textDimmest, marginTop: 6, fontFamily: fontBody }}>
+          <div className="text-[10px] text-tl-text-dimmest mt-1.5 font-body">
             Parent emails are set during signup and cannot be changed here.
           </div>
         </div>
       )}
 
       {/* Troop Memberships */}
-      <div style={{ ...card(theme), marginTop: 16 }}>
-        <div style={cardTitle(theme)}>My Troops</div>
+      <div className="tl-card mt-4">
+        <div className="tl-card-title">My Troops</div>
         {approvedTroops.length === 0 && pendingTroops.length === 0 && (
-          <div style={{ fontSize: 13, color: theme.textDim, fontFamily: fontBody, padding: "8px 0" }}>
+          <div className="text-[13px] text-tl-text-dim font-body py-2">
             You're not a member of any troops yet.
           </div>
         )}
         {approvedTroops.map(m => (
-          <div key={m.troop_id} style={{
-            display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
-            borderBottom: `1px solid ${theme.borderLight}`,
-          }}>
+          <div key={m.troop_id} className="flex items-center gap-3 py-2.5 border-b border-tl-border-light">
             <TroopLogo troopId={m.troop_id} name={m.troop_name} size={40} theme={theme} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: theme.text, fontFamily: fontBody }}>{m.troop_name}</div>
-              <div style={{ fontSize: 11, color: theme.textDim, fontFamily: fontBody }}>
+            <div className="flex-1">
+              <div className="text-sm font-bold text-tl-text font-body">{m.troop_name}</div>
+              <div className="text-[11px] text-tl-text-dim font-body">
                 {(m as any).troop_council}{(m as any).troop_location ? ` · ${(m as any).troop_location}` : ""}
-                {m.role === "admin" && <span style={{ color: theme.accent, fontWeight: 700 }}> · Admin</span>}
+                {m.role === "admin" && <span className="text-tl-accent font-bold"> · Admin</span>}
               </div>
             </div>
-            <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={() => onEnterTroop(m.troop_id)} style={btnPrimary}>Enter</button>
+            <div className="flex gap-1.5">
+              <button onClick={() => onEnterTroop(m.troop_id)}
+                className="py-2.5 px-5 rounded-btn border-none bg-tl-forest-deep text-[13px] font-semibold cursor-pointer font-body"
+                style={{ color: theme.name === "dark" ? "#1A1F16" : "#FDFAF5" }}>Enter</button>
               <button onClick={() => handleLeave(m.troop_id, m.troop_name!)}
                 disabled={leavingTroop === m.troop_id}
-                style={{ ...btnOutline, color: theme.danger, borderColor: theme.danger + "40" }}>
+                className="py-2 px-4 rounded-btn bg-tl-bg-alt text-xs font-semibold cursor-pointer font-body text-tl-danger"
+                style={{ border: `1.5px solid ${theme.danger}40` }}>
                 {leavingTroop === m.troop_id ? "..." : "Leave"}
               </button>
             </div>
           </div>
         ))}
         {pendingTroops.map(m => (
-          <div key={m.troop_id} style={{
-            display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
-            borderBottom: `1px solid ${theme.borderLight}`, opacity: 0.7,
-          }}>
+          <div key={m.troop_id} className="flex items-center gap-3 py-2.5 border-b border-tl-border-light opacity-70">
             <TroopLogo troopId={m.troop_id} name={m.troop_name} size={40} theme={theme} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: theme.text, fontFamily: fontBody }}>{m.troop_name}</div>
-              <div style={{ fontSize: 11, color: theme.textDim, fontFamily: fontBody }}>
+            <div className="flex-1">
+              <div className="text-sm font-bold text-tl-text font-body">{m.troop_name}</div>
+              <div className="text-[11px] text-tl-text-dim font-body">
                 Pending approval
               </div>
             </div>
             <button onClick={() => handleWithdraw(m.troop_id, m.troop_name!)}
               disabled={leavingTroop === m.troop_id}
-              style={btnOutline}>
+              className="py-2 px-4 rounded-btn border-[1.5px] border-tl-border-light bg-tl-bg-alt text-tl-text text-xs font-semibold cursor-pointer font-body">
               {leavingTroop === m.troop_id ? "..." : "Withdraw"}
             </button>
           </div>
@@ -244,27 +213,31 @@ export default function ProfilePage({ memberships, onBack, onEnterTroop, onLogou
 
       {/* Change Password (email/password users only) */}
       {hasPassword && (
-        <div style={{ ...card(theme), marginTop: 16 }}>
-          <div style={cardTitle(theme)}>
-            <Lock size={14} style={{ marginRight: 6, verticalAlign: "middle" }} />
+        <div className="tl-card mt-4">
+          <div className="tl-card-title">
+            <Lock size={14} className="mr-1.5 align-middle inline" />
             Change Password
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+          <div className="flex flex-col gap-2.5 mt-2">
             <div>
-              <div style={labelStyle}>Current Password</div>
-              <input type="password" value={currentPw} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCurrentPw(e.target.value)} style={inputStyle} />
+              <div className="text-[11px] font-bold text-tl-text-dim uppercase tracking-[1.2px] mb-1 font-body">Current Password</div>
+              <input type="password" value={currentPw} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCurrentPw(e.target.value)}
+                className="tl-input border-tl-border-light" style={{ borderWidth: "1.5px" }} />
             </div>
             <div>
-              <div style={labelStyle}>New Password</div>
+              <div className="text-[11px] font-bold text-tl-text-dim uppercase tracking-[1.2px] mb-1 font-body">New Password</div>
               <input type="password" value={newPw} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPw(e.target.value)}
-                placeholder="8+ characters" style={inputStyle} />
+                placeholder="8+ characters" className="tl-input border-tl-border-light" style={{ borderWidth: "1.5px" }} />
             </div>
             <div>
-              <div style={labelStyle}>Confirm New Password</div>
+              <div className="text-[11px] font-bold text-tl-text-dim uppercase tracking-[1.2px] mb-1 font-body">Confirm New Password</div>
               <input type="password" value={confirmPw} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPw(e.target.value)}
-                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && changePassword()} style={inputStyle} />
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && changePassword()}
+                className="tl-input border-tl-border-light" style={{ borderWidth: "1.5px" }} />
             </div>
-            <button onClick={changePassword} disabled={savingPw} style={{ ...btnPrimary, width: "100%", marginTop: 4 }}>
+            <button onClick={changePassword} disabled={savingPw}
+              className="w-full mt-1 py-2.5 px-5 rounded-btn border-none bg-tl-forest-deep text-[13px] font-semibold cursor-pointer font-body"
+              style={{ color: theme.name === "dark" ? "#1A1F16" : "#FDFAF5" }}>
               {savingPw ? "Changing..." : "Change Password"}
             </button>
           </div>
@@ -272,13 +245,11 @@ export default function ProfilePage({ memberships, onBack, onEnterTroop, onLogou
       )}
 
       {/* Sign Out */}
-      <div style={{ marginTop: 20 }}>
-        <button onClick={onLogout} style={{
-          width: "100%", padding: "12px 0", borderRadius: 10,
-          border: `1.5px solid ${theme.danger}40`, background: theme.bgAlt,
-          color: theme.danger, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: fontBody,
-        }}>
-          <LogOut size={14} style={{ marginRight: 6, verticalAlign: "middle" }} />
+      <div className="mt-5">
+        <button onClick={onLogout}
+          className="w-full py-3 rounded-[10px] bg-tl-bg-alt text-tl-danger text-sm font-bold cursor-pointer font-body"
+          style={{ border: `1.5px solid ${theme.danger}40` }}>
+          <LogOut size={14} className="mr-1.5 align-middle inline" />
           Sign Out
         </button>
       </div>

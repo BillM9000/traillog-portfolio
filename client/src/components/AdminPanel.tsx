@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
+import clsx from "clsx";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import { useAdventure } from "../contexts/AdventureContext";
-import { fontBody, fontDisplay, memberTypeBadge, participationBadge, toolbarBtn } from "../utils/theme";
 import { US_STATES, ADVENTURE_TYPES } from "../utils/constants";
 import Logo from "./Logo";
 import ConfirmModal from "./ConfirmModal";
 import CouncilPicker from "./CouncilPicker";
-import type { ThemeColors, Adventure, AdventureMember, Crew, AdventureType, Invitation, LinkRequest, Itinerary } from "../types";
+import type { Adventure, AdventureMember, Crew, Invitation, LinkRequest, Itinerary } from "../types";
 
 interface Troop {
   id: number;
@@ -82,7 +82,7 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({ troop, adventure, troopMembers, adventureMembers, currentUserId, onClose, onRefresh, onSelectAdventure }: AdminPanelProps) {
-  const { theme } = useTheme();
+  const { mode } = useTheme();
   const { addToast } = useToast();
   const { selectedCrewId, crews, selectedCrew, refreshCrews, refreshAll: refreshAdventureAll } = useAdventure();
   const [tab, setTab] = useState<string>("adventure");
@@ -417,78 +417,82 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   const availableMembers = (troopMembers || []).filter(m => m.status === "approved" && !advMemberIds.has(m.user_id));
   const allScouts = (adventureMembers || []).filter(m => m.is_manual || m.user_type === "scout");
 
-  const inputStyle: React.CSSProperties = { width: "100%", padding: "9px 12px", borderRadius: 7, border: `1.5px solid ${theme.borderLight}`, background: theme.bgInput, color: theme.text, fontSize: 12, fontFamily: fontBody, outline: "none", marginBottom: 8, boxSizing: "border-box" };
-  const labelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: theme.textDim, textTransform: "uppercase", marginBottom: 4, display: "block" };
+  const isDark = mode === "dark";
   const tabs: [string, string][] = [["adventure", "Adventure"], ["crews", "Crews"], ["members", "Members"], ["troop", "Troop"]];
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999 }} onClick={onClose}>
-      <div onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ background: theme.bgCard, borderRadius: 14, padding: 0, width: 420, maxHeight: "85vh", overflow: "hidden", boxShadow: "0 12px 48px rgba(0,0,0,0.3)", border: `1px solid ${theme.border}`, display: "flex", flexDirection: "column" }}>
+    <div className="fixed inset-0 flex items-center justify-center z-[999]" style={{ background: "rgba(0,0,0,0.6)" }} onClick={onClose}>
+      <div onClick={(e: React.MouseEvent) => e.stopPropagation()} className="bg-tl-card rounded-[14px] p-0 w-[420px] max-h-[85vh] overflow-hidden border border-tl-border flex flex-col" style={{ boxShadow: "0 12px 48px rgba(0,0,0,0.3)" }}>
         {/* Header */}
-        <div style={{ padding: "16px 18px 12px", borderBottom: `1px solid ${theme.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="px-[18px] pt-4 pb-3 border-b border-tl-border flex justify-between items-center">
+          <div className="flex items-center gap-2">
             <Logo size={24} />
-            <div style={{ fontFamily: fontDisplay, fontSize: 16, fontWeight: 700, color: theme.heading }}>Admin Panel</div>
+            <div className="font-display text-[16px] font-bold text-tl-heading">Admin Panel</div>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, color: theme.textDimmer, cursor: "pointer", lineHeight: 1 }}>&times;</button>
+          <button onClick={onClose} className="bg-transparent border-none text-[18px] text-tl-text-dimmer cursor-pointer leading-none">&times;</button>
         </div>
 
         {/* Tab bar */}
-        <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${theme.border}` }}>
+        <div className="flex border-b border-tl-border">
           {tabs.map(([k, l]) => (
-            <button key={k} onClick={() => setTab(k)} style={{ flex: 1, padding: "9px 0", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody, background: tab === k ? theme.bgAlt : "transparent", color: tab === k ? theme.text : theme.textMuted, border: "none", borderBottom: tab === k ? `2px solid ${theme.accent}` : "2px solid transparent" }}>{l}</button>
+            <button key={k} onClick={() => setTab(k)} className={clsx(
+              "flex-1 py-[9px] text-[11px] font-semibold cursor-pointer font-body border-none",
+              tab === k ? "bg-tl-bg-alt text-tl-text border-b-2 border-b-tl-accent" : "bg-transparent text-tl-text-muted border-b-2 border-b-transparent"
+            )}>{l}</button>
           ))}
         </div>
 
         {/* Content */}
-        <div style={{ padding: "16px 18px", overflowY: "auto", flex: 1 }}>
+        <div className="px-[18px] py-4 overflow-y-auto flex-1">
           {tab === "adventure" && (
             <>
-              <label style={labelStyle}>Crew Name</label>
-              <input value={advName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdvName(e.target.value.slice(0, 30))} maxLength={30} style={inputStyle} />
-              <label style={labelStyle}>Description</label>
-              <input value={advDesc} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdvDesc(e.target.value)} style={inputStyle} placeholder="Optional description" />
+              <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Crew Name</label>
+              <input value={advName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdvName(e.target.value.slice(0, 30))} maxLength={30} className="tl-input mb-2" />
+              <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Description</label>
+              <input value={advDesc} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdvDesc(e.target.value)} className="tl-input mb-2" placeholder="Optional description" />
 
-              <label style={labelStyle}>Adventure Type</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 10 }}>
+              <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Adventure Type</label>
+              <div className="grid grid-cols-2 gap-1.5 mb-2.5">
                 {ADVENTURE_TYPES.map((at: any) => (
-                  <button key={at.id} type="button" onClick={() => at.enabled && setAdvType(at.id)} style={{
-                    padding: "8px 10px", borderRadius: 7, cursor: at.enabled ? "pointer" : "default",
-                    border: advType === at.id ? `2px solid ${theme.accent}` : `1.5px solid ${theme.borderLight}`,
-                    background: advType === at.id ? theme.accentBg : (at.enabled ? theme.bgAlt : theme.bg),
-                    opacity: at.enabled ? 1 : 0.45, textAlign: "left", fontFamily: fontBody,
-                  }}>
-                    <div style={{ fontSize: 16 }}>{at.icon}</div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: advType === at.id ? theme.accent : theme.heading }}>{at.name}</div>
-                    <div style={{ fontSize: 9, color: theme.textDim }}>{at.enabled ? at.location : "Coming Soon"}</div>
+                  <button key={at.id} type="button" onClick={() => at.enabled && setAdvType(at.id)} className={clsx(
+                    "p-[8px_10px] rounded-[7px] text-left font-body",
+                    advType === at.id ? "border-2 border-tl-accent bg-tl-accent-bg" : "border-[1.5px] border-tl-border-light",
+                    !at.enabled && "opacity-45 cursor-default",
+                    at.enabled && advType !== at.id && "bg-tl-bg-alt",
+                    !at.enabled && "bg-tl-bg",
+                    at.enabled && "cursor-pointer"
+                  )}>
+                    <div className="text-[16px]">{at.icon}</div>
+                    <div className={clsx("text-[11px] font-bold", advType === at.id ? "text-tl-accent" : "text-tl-heading")}>{at.name}</div>
+                    <div className="text-[9px] text-tl-text-dim">{at.enabled ? at.location : "Coming Soon"}</div>
                   </button>
                 ))}
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-                <div><label style={labelStyle}>{dateLabels.depart}</label><input value={departDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.depart}</label><input value={departDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   const v = e.target.value;
                   setDepartDate(v);
                   if (v && arriveDate && arriveDate < v) setArriveDate("");
                   if (v && returnDate && returnDate < v) setReturnDate("");
                   if (v && homeDate && homeDate < v) setHomeDate("");
-                }} type="date" max={arriveDate || undefined} style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                <div><label style={labelStyle}>{dateLabels.arrive}</label><input value={arriveDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                }} type="date" max={arriveDate || undefined} className="tl-input !mb-0" /></div>
+                <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.arrive}</label><input value={arriveDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   const v = e.target.value;
                   setArriveDate(v);
                   if (v && returnDate && returnDate < v) setReturnDate("");
                   if (v && homeDate && homeDate < v) setHomeDate("");
-                }} type="date" min={departDate || undefined} max={returnDate || undefined} style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                <div><label style={labelStyle}>{dateLabels.return}</label><input value={returnDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                }} type="date" min={departDate || undefined} max={returnDate || undefined} className="tl-input !mb-0" /></div>
+                <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.return}</label><input value={returnDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   const v = e.target.value;
                   setReturnDate(v);
                   if (v && homeDate && homeDate < v) setHomeDate("");
-                }} type="date" min={arriveDate || departDate || undefined} max={homeDate || undefined} style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                <div><label style={labelStyle}>{dateLabels.home}</label><input value={homeDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setHomeDate(e.target.value)} type="date" min={returnDate || arriveDate || undefined} style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                }} type="date" min={arriveDate || departDate || undefined} max={homeDate || undefined} className="tl-input !mb-0" /></div>
+                <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.home}</label><input value={homeDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setHomeDate(e.target.value)} type="date" min={returnDate || arriveDate || undefined} className="tl-input !mb-0" /></div>
               </div>
 
-              <label style={labelStyle}>Itinerary</label>
-              <select value={advItinerary} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAdvItinerary(e.target.value)} style={{ ...inputStyle, color: advItinerary ? theme.text : theme.textDim }}>
+              <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Itinerary</label>
+              <select value={advItinerary} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAdvItinerary(e.target.value)} className={clsx("tl-input mb-2", advItinerary ? "text-tl-text" : "text-tl-text-dim")}>
                 <option value="">Select itinerary...</option>
                 {[12, 9, 7].map(days => {
                   const group = itineraries.filter(it => it.days === days).sort((a, b) => {
@@ -503,8 +507,8 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                 })}
               </select>
 
-              <label style={labelStyle}>Status</label>
-              <select value={advStatus} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAdvStatus(e.target.value)} style={{ ...inputStyle, color: theme.text }}>
+              <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Status</label>
+              <select value={advStatus} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAdvStatus(e.target.value)} className="tl-input mb-2 text-tl-text">
                 <option value="active">Active</option>
                 <option value="completed">Completed</option>
                 <option value="archived">Archived</option>
@@ -512,32 +516,30 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
 
               {/* Training Milestones */}
               {milestonesLoaded && (
-                <div style={{ marginTop: 12, padding: 12, borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.bgAlt }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: theme.heading, marginBottom: 6 }}>Attendance Milestones</div>
-                  <div style={{ fontSize: 10, color: theme.textDim, marginBottom: 8 }}>Badges awarded when members reach these attendance counts.</div>
+                <div className="mt-3 p-3 rounded-[8px] border border-tl-border bg-tl-bg-alt">
+                  <div className="text-[11px] font-bold text-tl-heading mb-1.5">Attendance Milestones</div>
+                  <div className="text-[10px] text-tl-text-dim mb-2">Badges awarded when members reach these attendance counts.</div>
                   {milestones.map((ms, i) => (
-                    <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 4 }}>
+                    <div key={i} className="flex gap-1.5 items-center mb-1">
                       <input type="number" min={1} max={100} value={ms.count} onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                         const next = [...milestones];
                         next[i] = { ...next[i], count: parseInt(e.target.value) || 1 };
                         setMilestones(next);
-                      }} style={{ width: 50, padding: "4px 6px", borderRadius: 4, border: `1px solid ${theme.border}`, background: theme.bgCard, color: theme.text, fontSize: 12, textAlign: "center" as const, fontFamily: fontBody }} />
+                      }} className="w-[50px] px-1.5 py-1 rounded-[4px] border border-tl-border bg-tl-card text-tl-text text-[12px] text-center font-body outline-none" />
                       <input type="text" maxLength={2} value={ms.icon} onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                         const next = [...milestones];
                         next[i] = { ...next[i], icon: e.target.value };
                         setMilestones(next);
-                      }} style={{ width: 36, padding: "4px 6px", borderRadius: 4, border: `1px solid ${theme.border}`, background: theme.bgCard, color: theme.text, fontSize: 14, textAlign: "center" as const }} />
-                      <span style={{ fontSize: 10, color: theme.textDim, flex: 1 }}>{ms.count === 1 ? "Attended 1 Training" : `Attended ${ms.count} Trainings`}</span>
+                      }} className="w-[36px] px-1.5 py-1 rounded-[4px] border border-tl-border bg-tl-card text-tl-text text-[14px] text-center outline-none" />
+                      <span className="text-[10px] text-tl-text-dim flex-1">{ms.count === 1 ? "Attended 1 Training" : `Attended ${ms.count} Trainings`}</span>
                       {milestones.length > 1 && (
-                        <button onClick={() => setMilestones(milestones.filter((_, j) => j !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDimmest, fontSize: 14, padding: "0 4px" }}>✕</button>
+                        <button onClick={() => setMilestones(milestones.filter((_, j) => j !== i))} className="bg-transparent border-none cursor-pointer text-tl-text-dimmest text-[14px] px-1 py-0">✕</button>
                       )}
                     </div>
                   ))}
-                  <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                  <div className="flex gap-1.5 mt-1.5">
                     {milestones.length < 10 && (
-                      <button onClick={() => setMilestones([...milestones, { count: (milestones[milestones.length - 1]?.count || 0) + 2, icon: "⭐" }])} style={{
-                        padding: "3px 10px", borderRadius: 6, border: `1px solid ${theme.border}`, background: "transparent", color: theme.textDim, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-                      }}>+ Add</button>
+                      <button onClick={() => setMilestones([...milestones, { count: (milestones[milestones.length - 1]?.count || 0) + 2, icon: "⭐" }])} className="px-2.5 py-[3px] rounded-[6px] border border-tl-border bg-transparent text-tl-text-dim text-[10px] font-semibold cursor-pointer font-body">+ Add</button>
                     )}
                     <button onClick={async () => {
                       try {
@@ -545,70 +547,70 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                         setMilestones(result.milestones);
                         addToast("Milestones updated", "success");
                       } catch (e: unknown) { addToast((e as Error).message, "error"); }
-                    }} style={{
-                      padding: "3px 10px", borderRadius: 6, border: "none", background: theme.accent, color: "#fff", fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-                    }}>Save Milestones</button>
+                    }} className="px-2.5 py-[3px] rounded-[6px] border-none bg-tl-accent text-white text-[10px] font-semibold cursor-pointer font-body">Save Milestones</button>
                   </div>
                 </div>
               )}
 
-              <button onClick={saveAdventure} disabled={saving} style={{ width: "100%", padding: "10px 0", borderRadius: 7, border: "none", background: theme.accent, color: "#fff", fontSize: 12, fontWeight: 600, cursor: saving ? "wait" : "pointer", fontFamily: fontBody, marginTop: 4 }}>
+              <button onClick={saveAdventure} disabled={saving} className={clsx("w-full py-2.5 rounded-[7px] border-none bg-tl-accent text-white text-[12px] font-semibold font-body mt-1", saving ? "cursor-wait" : "cursor-pointer")}>
                 {saving ? "Saving..." : "Save Adventure"}
               </button>
 
               {/* Create New Adventure */}
-              <div style={{ marginTop: 20, padding: 12, borderRadius: 8, border: `1.5px solid ${theme.borderAccent}`, background: theme.name === "dark" ? "#1e2418" : "#f4f9ee" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: theme.accent, textTransform: "uppercase" as const, marginBottom: 8 }}>New Adventure</div>
+              <div className="mt-5 p-3 rounded-[8px] border-[1.5px] border-tl-border-accent" style={{ background: isDark ? "#1e2418" : "#f4f9ee" }}>
+                <div className="text-[10px] font-bold text-tl-accent uppercase mb-2">New Adventure</div>
                 {!showCreateAdv ? (
-                  <button onClick={openCreateAdventure} style={{ width: "100%", padding: "10px 0", borderRadius: 7, border: `1.5px dashed ${theme.borderAccent}`, background: "transparent", color: theme.accent, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>+ Create Another Adventure</button>
+                  <button onClick={openCreateAdventure} className="w-full py-2.5 rounded-[7px] border-[1.5px] border-dashed border-tl-border-accent bg-transparent text-tl-accent text-[12px] font-semibold cursor-pointer font-body">+ Create Another Adventure</button>
                 ) : (() => {
                   const newTypeConfig = ADVENTURE_TYPES.find((t: any) => t.id === newAdv.adventure_type) || ADVENTURE_TYPES[0];
                   const newDateLabels = newTypeConfig.dateLabels;
                   return (
                   <>
-                    <label style={labelStyle}>Adventure Type</label>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
+                    <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Adventure Type</label>
+                    <div className="grid grid-cols-2 gap-1.5 mb-2">
                       {ADVENTURE_TYPES.map((at: any) => (
-                        <button key={at.id} type="button" onClick={() => at.enabled && setNewAdv({ ...newAdv, adventure_type: at.id })} style={{
-                          padding: "6px 8px", borderRadius: 6, cursor: at.enabled ? "pointer" : "default",
-                          border: newAdv.adventure_type === at.id ? `2px solid ${theme.accent}` : `1.5px solid ${theme.borderLight}`,
-                          background: newAdv.adventure_type === at.id ? theme.accentBg : (at.enabled ? theme.bgAlt : theme.bg),
-                          opacity: at.enabled ? 1 : 0.45, textAlign: "left" as const, fontFamily: fontBody,
-                        }}>
-                          <div style={{ fontSize: 14 }}>{at.icon}</div>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: newAdv.adventure_type === at.id ? theme.accent : theme.heading }}>{at.name}</div>
-                          <div style={{ fontSize: 8, color: theme.textDim }}>{at.enabled ? at.location : "Coming Soon"}</div>
+                        <button key={at.id} type="button" onClick={() => at.enabled && setNewAdv({ ...newAdv, adventure_type: at.id })} className={clsx(
+                          "p-[6px_8px] rounded-[6px] text-left font-body",
+                          newAdv.adventure_type === at.id ? "border-2 border-tl-accent bg-tl-accent-bg" : "border-[1.5px] border-tl-border-light",
+                          !at.enabled && "opacity-45 cursor-default",
+                          at.enabled && newAdv.adventure_type !== at.id && "bg-tl-bg-alt",
+                          !at.enabled && "bg-tl-bg",
+                          at.enabled && "cursor-pointer"
+                        )}>
+                          <div className="text-[14px]">{at.icon}</div>
+                          <div className={clsx("text-[10px] font-bold", newAdv.adventure_type === at.id ? "text-tl-accent" : "text-tl-heading")}>{at.name}</div>
+                          <div className="text-[8px] text-tl-text-dim">{at.enabled ? at.location : "Coming Soon"}</div>
                         </button>
                       ))}
                     </div>
-                    <label style={labelStyle}>Crew Name</label>
-                    <input value={newAdv.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewAdv({ ...newAdv, name: e.target.value.slice(0, 30) })} placeholder="e.g. Crew 614" maxLength={30} style={inputStyle} />
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
-                      <div><label style={labelStyle}>{newDateLabels.depart}</label><input value={newAdv.depart_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Crew Name</label>
+                    <input value={newAdv.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewAdv({ ...newAdv, name: e.target.value.slice(0, 30) })} placeholder="e.g. Crew 614" maxLength={30} className="tl-input mb-2" />
+                    <div className="grid grid-cols-2 gap-1.5 mb-2">
+                      <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{newDateLabels.depart}</label><input value={newAdv.depart_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                         const v = e.target.value;
                         const u = { ...newAdv, depart_date: v };
                         if (v && u.arrive_date && u.arrive_date < v) u.arrive_date = "";
                         if (v && u.return_date && u.return_date < v) u.return_date = "";
                         if (v && u.home_date && u.home_date < v) u.home_date = "";
                         setNewAdv(u);
-                      }} type="date" max={newAdv.arrive_date || undefined} style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                      <div><label style={labelStyle}>{newDateLabels.arrive}</label><input value={newAdv.arrive_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      }} type="date" max={newAdv.arrive_date || undefined} className="tl-input !mb-0" /></div>
+                      <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{newDateLabels.arrive}</label><input value={newAdv.arrive_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                         const v = e.target.value;
                         const u = { ...newAdv, arrive_date: v };
                         if (v && u.return_date && u.return_date < v) u.return_date = "";
                         if (v && u.home_date && u.home_date < v) u.home_date = "";
                         setNewAdv(u);
-                      }} type="date" min={newAdv.depart_date || undefined} max={newAdv.return_date || undefined} style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                      <div><label style={labelStyle}>{newDateLabels.return}</label><input value={newAdv.return_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      }} type="date" min={newAdv.depart_date || undefined} max={newAdv.return_date || undefined} className="tl-input !mb-0" /></div>
+                      <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{newDateLabels.return}</label><input value={newAdv.return_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                         const v = e.target.value;
                         const u = { ...newAdv, return_date: v };
                         if (v && u.home_date && u.home_date < v) u.home_date = "";
                         setNewAdv(u);
-                      }} type="date" min={newAdv.arrive_date || newAdv.depart_date || undefined} max={newAdv.home_date || undefined} style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                      <div><label style={labelStyle}>{newDateLabels.home}</label><input value={newAdv.home_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewAdv({ ...newAdv, home_date: e.target.value })} type="date" min={newAdv.return_date || newAdv.arrive_date || undefined} style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                      }} type="date" min={newAdv.arrive_date || newAdv.depart_date || undefined} max={newAdv.home_date || undefined} className="tl-input !mb-0" /></div>
+                      <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{newDateLabels.home}</label><input value={newAdv.home_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewAdv({ ...newAdv, home_date: e.target.value })} type="date" min={newAdv.return_date || newAdv.arrive_date || undefined} className="tl-input !mb-0" /></div>
                     </div>
-                    <label style={labelStyle}>Itinerary</label>
-                    <select value={newAdv.itinerary_id} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewAdv({ ...newAdv, itinerary_id: e.target.value })} style={{ ...inputStyle, color: newAdv.itinerary_id ? theme.text : theme.textDim }}>
+                    <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Itinerary</label>
+                    <select value={newAdv.itinerary_id} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewAdv({ ...newAdv, itinerary_id: e.target.value })} className={clsx("tl-input mb-2", newAdv.itinerary_id ? "text-tl-text" : "text-tl-text-dim")}>
                       <option value="">Select itinerary...</option>
                       {[12, 9, 7].map(days => {
                         const group = itineraries.filter(it => it.days === days).sort((a, b) => {
@@ -622,39 +624,42 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                         ) : null;
                       })}
                     </select>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button type="button" onClick={() => setShowCreateAdv(false)} style={{ flex: 1, padding: "10px 0", borderRadius: 7, border: `1px solid ${theme.borderLight}`, background: theme.bgAlt, color: theme.text, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
-                      <button onClick={createNewAdventure} disabled={creatingAdv} style={{ flex: 1, padding: "10px 0", borderRadius: 7, border: "none", background: theme.accent, color: "#fff", fontSize: 12, fontWeight: 600, cursor: creatingAdv ? "wait" : "pointer", fontFamily: fontBody }}>{creatingAdv ? "Creating..." : "Create Adventure"}</button>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setShowCreateAdv(false)} className="flex-1 py-2.5 rounded-[7px] border border-tl-border-light bg-tl-bg-alt text-tl-text text-[12px] font-semibold cursor-pointer font-body">Cancel</button>
+                      <button onClick={createNewAdventure} disabled={creatingAdv} className={clsx("flex-1 py-2.5 rounded-[7px] border-none bg-tl-accent text-white text-[12px] font-semibold font-body", creatingAdv ? "cursor-wait" : "cursor-pointer")}>{creatingAdv ? "Creating..." : "Create Adventure"}</button>
                     </div>
                   </>
                   );
                 })()}
               </div>
 
-              <div style={{ marginTop: 20, padding: 12, borderRadius: 8, border: `1.5px solid ${theme.danger}40`, background: theme.name === "dark" ? "#2a1a1a" : "#fdf0f0" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: theme.danger, textTransform: "uppercase" as const, marginBottom: 8 }}>Danger Zone</div>
-                <button onClick={() => setConfirmDeleteAdv(true)} style={{ ...toolbarBtn(theme, "danger"), width: "100%", padding: "8px 0" }}>Delete Adventure</button>
+              <div className="mt-5 p-3 rounded-[8px]" style={{ border: "1.5px solid #c0604040", background: isDark ? "#2a1a1a" : "#fdf0f0" }}>
+                <div className="text-[10px] font-bold text-tl-danger uppercase mb-2">Danger Zone</div>
+                <button onClick={() => setConfirmDeleteAdv(true)} className="tl-btn-danger w-full py-2">Delete Adventure</button>
               </div>
             </>
           )}
 
           {tab === "crews" && (
             <>
-              <div style={{ fontSize: 11, fontWeight: 700, color: theme.heading, marginBottom: 8 }}>Crews ({crews.length})</div>
+              <div className="text-[11px] font-bold text-tl-heading mb-2">Crews ({crews.length})</div>
               {crews.map((crew: Crew) => (
-                <div key={crew.id} style={{ padding: "10px 12px", background: crew.id === selectedCrewId ? theme.accentBg : theme.bgAlt, borderRadius: 8, marginBottom: 6, border: `1.5px solid ${crew.id === selectedCrewId ? theme.borderAccent : theme.border}` }}>
+                <div key={crew.id} className={clsx(
+                  "p-[10px_12px] rounded-[8px] mb-1.5 border-[1.5px]",
+                  crew.id === selectedCrewId ? "bg-tl-accent-bg border-tl-border-accent" : "bg-tl-bg-alt border-tl-border"
+                )}>
                   {editingCrew === crew.id ? (
                     <>
-                      <label style={labelStyle}>Crew Name</label>
-                      <input value={crewForm.name || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCrewForm({ ...crewForm, name: e.target.value.slice(0, 30) })} maxLength={30} style={inputStyle} />
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 6 }}>
-                        <div><label style={labelStyle}>{dateLabels.depart}</label><input value={crewForm.depart_date || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCrewForm({ ...crewForm, depart_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                        <div><label style={labelStyle}>{dateLabels.arrive}</label><input value={crewForm.arrive_date || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCrewForm({ ...crewForm, arrive_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                        <div><label style={labelStyle}>{dateLabels.return}</label><input value={crewForm.return_date || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCrewForm({ ...crewForm, return_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                        <div><label style={labelStyle}>{dateLabels.home}</label><input value={crewForm.home_date || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCrewForm({ ...crewForm, home_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                      <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Crew Name</label>
+                      <input value={crewForm.name || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCrewForm({ ...crewForm, name: e.target.value.slice(0, 30) })} maxLength={30} className="tl-input mb-2" />
+                      <div className="grid grid-cols-2 gap-1.5 mb-1.5">
+                        <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.depart}</label><input value={crewForm.depart_date || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCrewForm({ ...crewForm, depart_date: e.target.value })} type="date" className="tl-input !mb-0" /></div>
+                        <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.arrive}</label><input value={crewForm.arrive_date || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCrewForm({ ...crewForm, arrive_date: e.target.value })} type="date" className="tl-input !mb-0" /></div>
+                        <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.return}</label><input value={crewForm.return_date || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCrewForm({ ...crewForm, return_date: e.target.value })} type="date" className="tl-input !mb-0" /></div>
+                        <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.home}</label><input value={crewForm.home_date || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCrewForm({ ...crewForm, home_date: e.target.value })} type="date" className="tl-input !mb-0" /></div>
                       </div>
-                      <label style={labelStyle}>Itinerary</label>
-                      <select value={crewForm.itinerary_id || ""} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setCrewForm({ ...crewForm, itinerary_id: e.target.value })} style={{ ...inputStyle, color: crewForm.itinerary_id ? theme.text : theme.textDim }}>
+                      <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Itinerary</label>
+                      <select value={crewForm.itinerary_id || ""} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setCrewForm({ ...crewForm, itinerary_id: e.target.value })} className={clsx("tl-input mb-2", crewForm.itinerary_id ? "text-tl-text" : "text-tl-text-dim")}>
                         <option value="">Select itinerary...</option>
                         {[12, 9, 7].map(days => {
                           const group = itineraries.filter(it => it.days === days).sort((a, b) => {
@@ -668,25 +673,25 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                           ) : null;
                         })}
                       </select>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <button onClick={() => setEditingCrew(null)} style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgAlt, color: theme.text, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
-                        <button onClick={saveCrew} disabled={savingCrew} style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: "none", background: theme.accent, color: "#fff", fontSize: 11, fontWeight: 600, cursor: savingCrew ? "wait" : "pointer", fontFamily: fontBody }}>{savingCrew ? "Saving..." : "Save"}</button>
+                      <div className="flex gap-1.5">
+                        <button onClick={() => setEditingCrew(null)} className="flex-1 py-2 rounded-[6px] border border-tl-border-light bg-tl-bg-alt text-tl-text text-[11px] font-semibold cursor-pointer font-body">Cancel</button>
+                        <button onClick={saveCrew} disabled={savingCrew} className={clsx("flex-1 py-2 rounded-[6px] border-none bg-tl-accent text-white text-[11px] font-semibold font-body", savingCrew ? "cursor-wait" : "cursor-pointer")}>{savingCrew ? "Saving..." : "Save"}</button>
                       </div>
                     </>
                   ) : (
                     <>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>{crew.name}</div>
-                        <div style={{ display: "flex", gap: 4 }}>
-                          <button onClick={() => startEditCrew(crew)} style={{ fontSize: 9, color: theme.accent, background: "none", border: `1px solid ${theme.borderAccent}`, padding: "2px 8px", borderRadius: 4, cursor: "pointer", fontFamily: fontBody }}>Edit</button>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="text-[13px] font-bold text-tl-heading font-display">{crew.name}</div>
+                        <div className="flex gap-1">
+                          <button onClick={() => startEditCrew(crew)} className="text-[9px] text-tl-accent bg-transparent border border-tl-border-accent px-2 py-[2px] rounded-[4px] cursor-pointer font-body">Edit</button>
                           {crews.length > 1 && (
-                            <button onClick={() => setConfirmDeleteCrew(crew.id)} style={{ fontSize: 9, color: theme.danger, background: "none", border: `1px solid ${theme.danger}40`, padding: "2px 8px", borderRadius: 4, cursor: "pointer", fontFamily: fontBody }}>Delete</button>
+                            <button onClick={() => setConfirmDeleteCrew(crew.id)} className="text-[9px] text-tl-danger bg-transparent px-2 py-[2px] rounded-[4px] cursor-pointer font-body" style={{ border: "1px solid #c0604040" }}>Delete</button>
                           )}
                         </div>
                       </div>
-                      {crew.itinerary_id && <div style={{ fontSize: 10, color: theme.textDim }}>Itinerary: {crew.itinerary_id}</div>}
+                      {crew.itinerary_id && <div className="text-[10px] text-tl-text-dim">Itinerary: {crew.itinerary_id}</div>}
                       {crew.depart_date && crew.home_date && (
-                        <div style={{ fontSize: 10, color: theme.textDim }}>
+                        <div className="text-[10px] text-tl-text-dim">
                           {new Date(crew.depart_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })} — {new Date(crew.home_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                         </div>
                       )}
@@ -696,22 +701,22 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
               ))}
 
               {/* Create new crew */}
-              <div style={{ marginTop: 10, padding: 12, borderRadius: 8, border: `1.5px solid ${theme.borderAccent}`, background: theme.name === "dark" ? "#1e2418" : "#f4f9ee" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: theme.accent, textTransform: "uppercase" as const, marginBottom: 8 }}>Add Crew</div>
+              <div className="mt-2.5 p-3 rounded-[8px] border-[1.5px] border-tl-border-accent" style={{ background: isDark ? "#1e2418" : "#f4f9ee" }}>
+                <div className="text-[10px] font-bold text-tl-accent uppercase mb-2">Add Crew</div>
                 {!showCreateCrew ? (
-                  <button onClick={() => setShowCreateCrew(true)} style={{ width: "100%", padding: "10px 0", borderRadius: 7, border: `1.5px dashed ${theme.borderAccent}`, background: "transparent", color: theme.accent, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>+ Add Sister Crew</button>
+                  <button onClick={() => setShowCreateCrew(true)} className="w-full py-2.5 rounded-[7px] border-[1.5px] border-dashed border-tl-border-accent bg-transparent text-tl-accent text-[12px] font-semibold cursor-pointer font-body">+ Add Sister Crew</button>
                 ) : (
                   <>
-                    <label style={labelStyle}>Crew Name</label>
-                    <input value={newCrew.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCrew({ ...newCrew, name: e.target.value.slice(0, 30) })} maxLength={30} style={inputStyle} placeholder="e.g. Crew 614-B" />
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 6 }}>
-                      <div><label style={labelStyle}>{dateLabels.depart}</label><input value={newCrew.depart_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCrew({ ...newCrew, depart_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                      <div><label style={labelStyle}>{dateLabels.arrive}</label><input value={newCrew.arrive_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCrew({ ...newCrew, arrive_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                      <div><label style={labelStyle}>{dateLabels.return}</label><input value={newCrew.return_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCrew({ ...newCrew, return_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
-                      <div><label style={labelStyle}>{dateLabels.home}</label><input value={newCrew.home_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCrew({ ...newCrew, home_date: e.target.value })} type="date" style={{ ...inputStyle, marginBottom: 0 }} /></div>
+                    <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Crew Name</label>
+                    <input value={newCrew.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCrew({ ...newCrew, name: e.target.value.slice(0, 30) })} maxLength={30} className="tl-input mb-2" placeholder="e.g. Crew 614-B" />
+                    <div className="grid grid-cols-2 gap-1.5 mb-1.5">
+                      <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.depart}</label><input value={newCrew.depart_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCrew({ ...newCrew, depart_date: e.target.value })} type="date" className="tl-input !mb-0" /></div>
+                      <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.arrive}</label><input value={newCrew.arrive_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCrew({ ...newCrew, arrive_date: e.target.value })} type="date" className="tl-input !mb-0" /></div>
+                      <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.return}</label><input value={newCrew.return_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCrew({ ...newCrew, return_date: e.target.value })} type="date" className="tl-input !mb-0" /></div>
+                      <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.home}</label><input value={newCrew.home_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCrew({ ...newCrew, home_date: e.target.value })} type="date" className="tl-input !mb-0" /></div>
                     </div>
-                    <label style={labelStyle}>Itinerary</label>
-                    <select value={newCrew.itinerary_id} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewCrew({ ...newCrew, itinerary_id: e.target.value })} style={{ ...inputStyle, color: newCrew.itinerary_id ? theme.text : theme.textDim }}>
+                    <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Itinerary</label>
+                    <select value={newCrew.itinerary_id} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewCrew({ ...newCrew, itinerary_id: e.target.value })} className={clsx("tl-input mb-2", newCrew.itinerary_id ? "text-tl-text" : "text-tl-text-dim")}>
                       <option value="">Select itinerary...</option>
                       {[12, 9, 7].map(days => {
                         const group = itineraries.filter(it => it.days === days).sort((a, b) => {
@@ -725,9 +730,9 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                         ) : null;
                       })}
                     </select>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={() => setShowCreateCrew(false)} style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: `1px solid ${theme.borderLight}`, background: theme.bgAlt, color: theme.text, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody }}>Cancel</button>
-                      <button onClick={createNewCrew} disabled={creatingCrew} style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: "none", background: theme.accent, color: "#fff", fontSize: 11, fontWeight: 600, cursor: creatingCrew ? "wait" : "pointer", fontFamily: fontBody }}>{creatingCrew ? "Creating..." : "Create Crew"}</button>
+                    <div className="flex gap-1.5">
+                      <button onClick={() => setShowCreateCrew(false)} className="flex-1 py-2 rounded-[6px] border border-tl-border-light bg-tl-bg-alt text-tl-text text-[11px] font-semibold cursor-pointer font-body">Cancel</button>
+                      <button onClick={createNewCrew} disabled={creatingCrew} className={clsx("flex-1 py-2 rounded-[6px] border-none bg-tl-accent text-white text-[11px] font-semibold font-body", creatingCrew ? "cursor-wait" : "cursor-pointer")}>{creatingCrew ? "Creating..." : "Create Crew"}</button>
                     </div>
                   </>
                 )}
@@ -739,21 +744,21 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
             <>
               {/* Pending Troop Join Requests */}
               {(troopMembers || []).filter(m => m.status === "pending").length > 0 && (
-                <div style={{ marginBottom: 14, padding: "10px 12px", background: theme.name === "dark" ? "#2a2820" : "#faf5e8", border: `1px solid ${theme.gold}40`, borderRadius: 8 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: theme.gold, textTransform: "uppercase" as const, marginBottom: 6 }}>Pending Join Requests</div>
+                <div className="mb-3.5 p-[10px_12px] rounded-[8px]" style={{ background: isDark ? "#2a2820" : "#faf5e8", border: `1px solid ${isDark ? "#E8A84C40" : "#C4A03540"}` }}>
+                  <div className="text-[10px] font-bold text-tl-gold uppercase mb-1.5">Pending Join Requests</div>
                   {(troopMembers || []).filter(m => m.status === "pending").map(m => (
-                    <div key={m.user_id} style={{ padding: "6px 0", borderBottom: `1px solid ${theme.border}` }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: theme.text, fontFamily: fontBody }}>{m.name}</span>
-                        <span style={memberTypeBadge(theme, m.user_type)}>{(m.user_type || "?").toUpperCase()}</span>
+                    <div key={m.user_id} className="py-1.5 border-b border-tl-border">
+                      <div className="flex items-center gap-1.5">
+                        <span className="flex-1 text-[12px] font-semibold text-tl-text font-body">{m.name}</span>
+                        <span className={m.user_type === "adult" ? "tl-member-badge-adult" : "tl-member-badge-scout"}>{(m.user_type || "?").toUpperCase()}</span>
                         {m.participation === "support" && (
-                          <span style={{ fontSize: 8, fontWeight: 700, color: "#6c757d", background: "#6c757d20", padding: "1px 5px", borderRadius: 3 }}>SUPPORT</span>
+                          <span className="text-[8px] font-bold rounded-[3px] px-[5px] py-[1px]" style={{ color: "#6c757d", background: "#6c757d20" }}>SUPPORT</span>
                         )}
-                        <button onClick={async () => { try { await api.approveMember(troop.id, m.user_id); onRefresh(); addToast(`${m.name} approved`, "success"); } catch (e: unknown) { addToast((e as Error).message, "error"); } }} style={{ fontSize: 10, fontWeight: 600, color: theme.accent, background: theme.accentBg, border: `1px solid ${theme.borderAccent}`, padding: "3px 10px", borderRadius: 6, cursor: "pointer", fontFamily: fontBody }}>Approve</button>
-                        <button onClick={async () => { try { await api.denyMember(troop.id, m.user_id); onRefresh(); addToast(`${m.name} denied`, "success"); } catch (e: unknown) { addToast((e as Error).message, "error"); } }} style={{ fontSize: 10, fontWeight: 600, color: "#c08080", background: theme.name === "dark" ? "#3a2020" : "#fde8e8", border: "1px solid #5a3030", padding: "3px 10px", borderRadius: 6, cursor: "pointer", fontFamily: fontBody }}>Deny</button>
+                        <button onClick={async () => { try { await api.approveMember(troop.id, m.user_id); onRefresh(); addToast(`${m.name} approved`, "success"); } catch (e: unknown) { addToast((e as Error).message, "error"); } }} className="text-[10px] font-semibold text-tl-accent bg-tl-accent-bg border border-tl-border-accent px-2.5 py-[3px] rounded-[6px] cursor-pointer font-body">Approve</button>
+                        <button onClick={async () => { try { await api.denyMember(troop.id, m.user_id); onRefresh(); addToast(`${m.name} denied`, "success"); } catch (e: unknown) { addToast((e as Error).message, "error"); } }} className="text-[10px] font-semibold px-2.5 py-[3px] rounded-[6px] cursor-pointer font-body" style={{ color: "#c08080", background: isDark ? "#3a2020" : "#fde8e8", border: "1px solid #5a3030" }}>Deny</button>
                       </div>
                       {m.requested_adventures && m.requested_adventures.length > 0 && (
-                        <div style={{ fontSize: 9, color: theme.textDim, marginTop: 2, paddingLeft: 2 }}>
+                        <div className="text-[9px] text-tl-text-dim mt-0.5 pl-0.5">
                           Requested {m.requested_adventures.length} adventure{m.requested_adventures.length > 1 ? "s" : ""}
                         </div>
                       )}
@@ -762,39 +767,42 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                 </div>
               )}
 
-              <div style={{ fontSize: 11, fontWeight: 700, color: theme.heading, marginBottom: 8 }}>Adventure Members</div>
+              <div className="text-[11px] font-bold text-tl-heading mb-2">Adventure Members</div>
               {(adventureMembers || []).map(m => {
                 const key = m.is_manual ? `manual-${m.id}` : `user-${m.user_id}`;
                 return (
-                  <div key={key} style={{ padding: "8px 10px", background: theme.bgAlt, borderRadius: 7, marginBottom: 4, border: `1px solid ${theme.border}` }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" as const }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{m.name}</span>
+                  <div key={key} className="p-[8px_10px] bg-tl-bg-alt rounded-[7px] mb-1 border border-tl-border">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span className="text-[12px] font-semibold text-tl-text">{m.name}</span>
                         {m.is_manual ? (
                           <>
-                            <span style={memberTypeBadge(theme, "scout")}>SCOUT</span>
-                            <span style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, background: theme.bgAlt, padding: "1px 4px", borderRadius: 3, border: `1px solid ${theme.borderLight}` }}>manual</span>
+                            <span className="tl-member-badge-scout">SCOUT</span>
+                            <span className="text-[9px] font-semibold text-tl-text-dim bg-tl-bg-alt px-1 py-[1px] rounded-[3px] border border-tl-border-light">manual</span>
                           </>
                         ) : (
                           <>
-                            <span style={memberTypeBadge(theme, m.user_type)}>{(m.user_type || "?").toUpperCase()}</span>
-                            <span style={participationBadge(theme, m.participation)}>{m.participation}</span>
+                            <span className={m.user_type === "adult" ? "tl-member-badge-adult" : "tl-member-badge-scout"}>{(m.user_type || "?").toUpperCase()}</span>
+                            <span className={clsx(
+                              "inline-block px-1.5 py-[2px] rounded-[6px] text-[9px] font-semibold ml-1",
+                              m.participation === "support" ? "bg-[#8a6d3b] text-white border-none" : "bg-transparent text-tl-text-muted border border-tl-border-light"
+                            )}>{m.participation}</span>
                           </>
                         )}
-                        {m.role === "admin" && <span style={{ fontSize: 8, fontWeight: 700, color: theme.accent, background: theme.accentBg, padding: "1px 4px", borderRadius: 3 }}>ADMIN</span>}
+                        {m.role === "admin" && <span className="text-[8px] font-bold text-tl-accent bg-tl-accent-bg px-1 py-[1px] rounded-[3px]">ADMIN</span>}
                       </div>
                       {m.is_manual ? (
-                        <button onClick={() => setConfirmRemoveMember({ userId: null, name: m.name, isManual: true, memberId: m.id })} style={{ fontSize: 10, color: theme.danger, background: "none", border: `1px solid ${theme.danger}40`, padding: "2px 8px", borderRadius: 4, cursor: "pointer", fontFamily: fontBody }}>Remove</button>
+                        <button onClick={() => setConfirmRemoveMember({ userId: null, name: m.name, isManual: true, memberId: m.id })} className="text-[10px] text-tl-danger bg-transparent px-2 py-[2px] rounded-[4px] cursor-pointer font-body" style={{ border: "1px solid #c0604040" }}>Remove</button>
                       ) : m.user_id !== currentUserId && m.role !== "admin" ? (
-                        <button onClick={() => setConfirmRemoveMember({ userId: m.user_id, name: m.name, isManual: false })} style={{ fontSize: 10, color: theme.danger, background: "none", border: `1px solid ${theme.danger}40`, padding: "2px 8px", borderRadius: 4, cursor: "pointer", fontFamily: fontBody }}>Remove</button>
+                        <button onClick={() => setConfirmRemoveMember({ userId: m.user_id, name: m.name, isManual: false })} className="text-[10px] text-tl-danger bg-transparent px-2 py-[2px] rounded-[4px] cursor-pointer font-body" style={{ border: "1px solid #c0604040" }}>Remove</button>
                       ) : null}
                     </div>
                     {!m.is_manual && (
-                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" as const, alignItems: "center" }}>
-                        {m.email && <span style={{ fontSize: 10, color: theme.textDimmest }}>{m.email}</span>}
-                        <button onClick={() => toggleRole(m.user_id!, m.role)} style={{ fontSize: 10, color: theme.accent, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontFamily: fontBody }}>{m.role === "admin" ? "Demote" : "Make Admin"}</button>
-                        <button onClick={() => toggleUserType(m.user_id!, m.user_type || "")} style={{ fontSize: 10, color: m.user_type === "adult" ? "#5080b0" : "#508050", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontFamily: fontBody }}>{m.user_type === "adult" ? "Change to Scout" : "Change to Adult"}</button>
-                        <button onClick={() => toggleParticipation(m.user_id!, m.participation)} style={{ fontSize: 10, color: "#8a6d3b", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontFamily: fontBody }}>{m.participation === "trekking" ? "Set Support" : "Set Trekking"}</button>
+                      <div className="flex gap-1 flex-wrap items-center">
+                        {m.email && <span className="text-[10px] text-tl-text-dimmest">{m.email}</span>}
+                        <button onClick={() => toggleRole(m.user_id!, m.role)} className="text-[10px] text-tl-accent bg-transparent border-none cursor-pointer underline font-body">{m.role === "admin" ? "Demote" : "Make Admin"}</button>
+                        <button onClick={() => toggleUserType(m.user_id!, m.user_type || "")} className="text-[10px] bg-transparent border-none cursor-pointer underline font-body" style={{ color: m.user_type === "adult" ? "#5080b0" : "#508050" }}>{m.user_type === "adult" ? "Change to Scout" : "Change to Adult"}</button>
+                        <button onClick={() => toggleParticipation(m.user_id!, m.participation)} className="text-[10px] bg-transparent border-none cursor-pointer underline font-body" style={{ color: "#8a6d3b" }}>{m.participation === "trekking" ? "Set Support" : "Set Trekking"}</button>
                         {m.user_type === "adult" && (() => {
                           const scouts = m.linked_scouts || [];
                           const linkedScoutIds = new Set(scouts);
@@ -803,19 +811,19 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                             return !linkedScoutIds.has(sid!);
                           });
                           return (
-                            <div style={{ display: "flex", gap: 3, flexWrap: "wrap" as const, alignItems: "center" }}>
+                            <div className="flex gap-[3px] flex-wrap items-center">
                               {scouts.map(sid => {
                                 const linked = sid > 0 ? (adventureMembers || []).find(x => x.user_id === sid) : (adventureMembers || []).find(x => x.id === Math.abs(sid));
                                 if (!linked) return null;
                                 return (
-                                  <span key={sid} style={{ fontSize: 9, color: theme.accent, background: theme.accentBg, padding: "1px 6px", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 3, border: `1px solid ${theme.borderAccent}` }}>
+                                  <span key={sid} className="text-[9px] text-tl-accent bg-tl-accent-bg px-1.5 py-[1px] rounded-[4px] inline-flex items-center gap-[3px] border border-tl-border-accent">
                                     {linked.name}
-                                    <span onClick={() => handleRemoveScoutLink(m.user_id!, scouts, sid)} style={{ cursor: "pointer", fontWeight: 700, fontSize: 10, color: theme.danger, lineHeight: 1 }}>×</span>
+                                    <span onClick={() => handleRemoveScoutLink(m.user_id!, scouts, sid)} className="cursor-pointer font-bold text-[10px] text-tl-danger leading-none">×</span>
                                   </span>
                                 );
                               })}
                               {scouts.length < 3 && availScouts.length > 0 && (
-                                <select value="" onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { const v = parseInt(e.target.value); if (v) handleAddScoutLink(m.user_id!, scouts, v); }} style={{ fontSize: 9, padding: "1px 4px", background: theme.bgInput, border: `1px solid ${theme.borderLight}`, borderRadius: 3, color: theme.text, fontFamily: fontBody }}>
+                                <select value="" onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { const v = parseInt(e.target.value); if (v) handleAddScoutLink(m.user_id!, scouts, v); }} className="text-[9px] px-1 py-[1px] bg-tl-input border border-tl-border-light rounded-[3px] text-tl-text font-body">
                                   <option value="">{scouts.length === 0 ? "Link to scout..." : "+ Add scout"}</option>
                                   {availScouts.map(s => <option key={s.is_manual ? `m${s.id}` : s.user_id} value={s.is_manual ? -s.id : s.user_id!}>{s.name}</option>)}
                                 </select>
@@ -831,44 +839,44 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
 
               {availableMembers.length > 0 && (
                 <>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: theme.heading, marginTop: 14, marginBottom: 8 }}>Add from Troop</div>
+                  <div className="text-[11px] font-bold text-tl-heading mt-3.5 mb-2">Add from Troop</div>
                   {availableMembers.map(m => (
-                    <div key={m.user_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", background: theme.bgAlt, borderRadius: 7, marginBottom: 4, border: `1px solid ${theme.border}` }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <span style={{ fontSize: 12, color: theme.text }}>{m.name}</span>
-                        <span style={memberTypeBadge(theme, m.user_type)}>{(m.user_type || "?").toUpperCase()}</span>
+                    <div key={m.user_id} className="flex items-center justify-between p-[8px_10px] bg-tl-bg-alt rounded-[7px] mb-1 border border-tl-border">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[12px] text-tl-text">{m.name}</span>
+                        <span className={m.user_type === "adult" ? "tl-member-badge-adult" : "tl-member-badge-scout"}>{(m.user_type || "?").toUpperCase()}</span>
                       </div>
-                      <button onClick={() => addMemberToAdventure(m.user_id)} style={{ fontSize: 10, color: theme.accent, background: "none", border: `1px solid ${theme.borderAccent}`, padding: "2px 8px", borderRadius: 4, cursor: "pointer", fontFamily: fontBody }}>Add</button>
+                      <button onClick={() => addMemberToAdventure(m.user_id)} className="text-[10px] text-tl-accent bg-transparent border border-tl-border-accent px-2 py-[2px] rounded-[4px] cursor-pointer font-body">Add</button>
                     </div>
                   ))}
                 </>
               )}
 
               {/* Add Manual Member */}
-              <div style={{ marginTop: 14, padding: "10px 12px", background: theme.bgAlt, borderRadius: 8, border: `1px solid ${theme.border}` }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: theme.heading, marginBottom: 4 }}>Add Manual Member</div>
-                <div style={{ fontSize: 10, color: theme.textDim, marginBottom: 6 }}>For scouts without email accounts</div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <input value={manualName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setManualName(e.target.value)} placeholder="Scout name" style={{ ...inputStyle, flex: 1, marginBottom: 0 }} onKeyDown={(e: React.KeyboardEvent) => e.key === "Enter" && addManual()} />
-                  <button onClick={addManual} disabled={addingManual} style={{ ...toolbarBtn(theme, "primary"), padding: "8px 14px" }}>{addingManual ? "..." : "Add"}</button>
+              <div className="mt-3.5 p-[10px_12px] bg-tl-bg-alt rounded-[8px] border border-tl-border">
+                <div className="text-[11px] font-bold text-tl-heading mb-1">Add Manual Member</div>
+                <div className="text-[10px] text-tl-text-dim mb-1.5">For scouts without email accounts</div>
+                <div className="flex gap-1.5">
+                  <input value={manualName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setManualName(e.target.value)} placeholder="Scout name" className="tl-input flex-1 !mb-0" onKeyDown={(e: React.KeyboardEvent) => e.key === "Enter" && addManual()} />
+                  <button onClick={addManual} disabled={addingManual} className="tl-btn-primary px-3.5 py-2">{addingManual ? "..." : "Add"}</button>
                 </div>
               </div>
 
               {/* Invite by Email */}
-              <div style={{ marginTop: 10, padding: "10px 12px", background: theme.bgAlt, borderRadius: 8, border: `1px solid ${theme.border}` }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: theme.heading, marginBottom: 6 }}>Invite by Email</div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <input value={inviteEmail} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInviteEmail(e.target.value)} placeholder="email@example.com" type="email" style={{ ...inputStyle, flex: 1, marginBottom: 0 }} onKeyDown={(e: React.KeyboardEvent) => e.key === "Enter" && sendInvite()} />
-                  <button onClick={sendInvite} disabled={sendingInvite} style={{ ...toolbarBtn(theme, "primary"), padding: "8px 14px" }}>{sendingInvite ? "..." : "Send"}</button>
+              <div className="mt-2.5 p-[10px_12px] bg-tl-bg-alt rounded-[8px] border border-tl-border">
+                <div className="text-[11px] font-bold text-tl-heading mb-1.5">Invite by Email</div>
+                <div className="flex gap-1.5">
+                  <input value={inviteEmail} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInviteEmail(e.target.value)} placeholder="email@example.com" type="email" className="tl-input flex-1 !mb-0" onKeyDown={(e: React.KeyboardEvent) => e.key === "Enter" && sendInvite()} />
+                  <button onClick={sendInvite} disabled={sendingInvite} className="tl-btn-primary px-3.5 py-2">{sendingInvite ? "..." : "Send"}</button>
                 </div>
               </div>
 
               {invitations.filter(i => i.status === "pending").length > 0 && (
-                <div style={{ marginTop: 10 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, textTransform: "uppercase" as const, marginBottom: 6 }}>Pending Invitations</div>
+                <div className="mt-2.5">
+                  <div className="text-[10px] font-bold text-tl-text-dim uppercase mb-1.5">Pending Invitations</div>
                   {invitations.filter(i => i.status === "pending").map(inv => (
-                    <div key={inv.id} style={{ fontSize: 11, color: theme.textMuted, padding: "4px 0", borderBottom: `1px solid ${theme.border}` }}>
-                      {inv.email} <span style={{ fontSize: 10, color: theme.textDimmest }}>sent {new Date(inv.created_at).toLocaleDateString()}</span>
+                    <div key={inv.id} className="text-[11px] text-tl-text-muted py-1 border-b border-tl-border">
+                      {inv.email} <span className="text-[10px] text-tl-text-dimmest">sent {new Date(inv.created_at).toLocaleDateString()}</span>
                     </div>
                   ))}
                 </div>
@@ -876,15 +884,15 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
 
               {/* Pending Link Requests */}
               {linkRequests.filter(r => r.status === "pending").length > 0 && (
-                <div style={{ marginTop: 10, padding: "10px 12px", background: theme.name === "dark" ? "#2a2820" : "#faf5e8", border: `1px solid ${theme.gold}40`, borderRadius: 8 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: theme.gold, textTransform: "uppercase" as const, marginBottom: 6 }}>Pending Link Requests</div>
+                <div className="mt-2.5 p-[10px_12px] rounded-[8px]" style={{ background: isDark ? "#2a2820" : "#faf5e8", border: `1px solid ${isDark ? "#E8A84C40" : "#C4A03540"}` }}>
+                  <div className="text-[10px] font-bold text-tl-gold uppercase mb-1.5">Pending Link Requests</div>
                   {linkRequests.filter(r => r.status === "pending").map(req => (
-                    <div key={req.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 0", borderBottom: `1px solid ${theme.border}` }}>
-                      <span style={{ flex: 1, fontSize: 11, color: theme.text, fontFamily: fontBody }}>
+                    <div key={req.id} className="flex items-center gap-1.5 py-1.5 border-b border-tl-border">
+                      <span className="flex-1 text-[11px] text-tl-text font-body">
                         <strong>{req.requester_name}</strong> wants to link to <strong>{req.scout_name}</strong>
                       </span>
-                      <button onClick={() => approveLinkReq(req.id)} style={{ fontSize: 10, fontWeight: 600, color: theme.accent, background: theme.accentBg, border: `1px solid ${theme.borderAccent}`, padding: "3px 10px", borderRadius: 6, cursor: "pointer", fontFamily: fontBody }}>Approve</button>
-                      <button onClick={() => denyLinkReq(req.id)} style={{ fontSize: 10, fontWeight: 600, color: "#c08080", background: theme.name === "dark" ? "#3a2020" : "#fde8e8", border: "1px solid #5a3030", padding: "3px 10px", borderRadius: 6, cursor: "pointer", fontFamily: fontBody }}>Deny</button>
+                      <button onClick={() => approveLinkReq(req.id)} className="text-[10px] font-semibold text-tl-accent bg-tl-accent-bg border border-tl-border-accent px-2.5 py-[3px] rounded-[6px] cursor-pointer font-body">Approve</button>
+                      <button onClick={() => denyLinkReq(req.id)} className="text-[10px] font-semibold px-2.5 py-[3px] rounded-[6px] cursor-pointer font-body" style={{ color: "#c08080", background: isDark ? "#3a2020" : "#fde8e8", border: "1px solid #5a3030" }}>Deny</button>
                     </div>
                   ))}
                 </div>
@@ -894,72 +902,63 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
 
           {tab === "troop" && (
             <>
-              <label style={labelStyle}>Troop Name</label>
-              <input value={troopName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTroopName(e.target.value)} style={inputStyle} />
-              <label style={labelStyle}>Council</label>
+              <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Troop Name</label>
+              <input value={troopName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTroopName(e.target.value)} className="tl-input mb-2" />
+              <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Council</label>
               <CouncilPicker value={troopCouncilId} onChange={(id: number | string | null) => setTroopCouncilId(id)} />
-              <label style={labelStyle}>Location</label>
-              <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-                <input value={troopCity} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTroopCity(e.target.value)} style={{ ...inputStyle, flex: 1, marginBottom: 0 }} placeholder="City" />
-                <select value={troopState} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setTroopState(e.target.value)} style={{ ...inputStyle, width: 70, marginBottom: 0, cursor: "pointer" }}>
+              <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Location</label>
+              <div className="flex gap-1.5 mb-1.5">
+                <input value={troopCity} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTroopCity(e.target.value)} className="tl-input flex-1 !mb-0" placeholder="City" />
+                <select value={troopState} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setTroopState(e.target.value)} className="tl-input !w-[70px] !mb-0 cursor-pointer">
                   <option value="">State</option>
                   {US_STATES.map((s: string) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
-              <label style={labelStyle}>Description</label>
-              <input value={troopDesc} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTroopDesc(e.target.value)} style={inputStyle} />
+              <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Description</label>
+              <input value={troopDesc} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTroopDesc(e.target.value)} className="tl-input mb-2" />
 
-              <label style={labelStyle}>Troop Logo</label>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+              <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Troop Logo</label>
+              <div className="flex items-center gap-3 mb-2.5">
                 {logoUrl && !logoError ? (
                   <img
                     src={logoUrl}
                     alt="Troop logo"
-                    style={{ width: 80, height: 80, borderRadius: 8, objectFit: "contain" as const, background: theme.bgAlt, border: `1px solid ${theme.border}` }}
+                    className="w-[80px] h-[80px] rounded-[8px] object-contain bg-tl-bg-alt border border-tl-border"
                     onError={() => setLogoError(true)}
                   />
                 ) : (
-                  <div style={{
-                    width: 80, height: 80, borderRadius: 8, background: theme.accent + "30",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 24, fontWeight: 800, color: theme.accent, border: `1px dashed ${theme.border}`,
-                  }}>
+                  <div className="w-[80px] h-[80px] rounded-[8px] flex items-center justify-center text-[24px] font-extrabold text-tl-accent border border-dashed border-tl-border" style={{ background: isDark ? "#8BA86830" : "#5B7A3A30" }}>
                     {troop?.name?.[0]?.toUpperCase() || "?"}
                   </div>
                 )}
-                <div style={{ display: "flex", flexDirection: "column" as const, gap: 4 }}>
-                  <label style={{
-                    padding: "5px 12px", borderRadius: 6, border: `1px solid ${theme.borderAccent}`,
-                    background: theme.accentBg, color: theme.accentLight, fontSize: 11, fontWeight: 600,
-                    cursor: uploadingLogo ? "wait" : "pointer", fontFamily: fontBody, textAlign: "center" as const,
-                  }}>
+                <div className="flex flex-col gap-1">
+                  <label className={clsx(
+                    "px-3 py-[5px] rounded-[6px] border border-tl-border-accent bg-tl-accent-bg text-tl-accent-light text-[11px] font-semibold font-body text-center",
+                    uploadingLogo ? "cursor-wait" : "cursor-pointer"
+                  )}>
                     {uploadingLogo ? "..." : "Upload"}
                     <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleLogoUpload}
-                      style={{ display: "none" }} disabled={uploadingLogo} />
+                      className="hidden" disabled={uploadingLogo} />
                   </label>
                   {logoUrl && !logoError && (
-                    <button onClick={handleLogoDelete} disabled={uploadingLogo} style={{
-                      padding: "3px 8px", borderRadius: 4, border: "none", background: "transparent",
-                      color: theme.textDim, fontSize: 11, cursor: "pointer", fontFamily: fontBody,
-                    }}>Remove</button>
+                    <button onClick={handleLogoDelete} disabled={uploadingLogo} className="px-2 py-[3px] rounded-[4px] border-none bg-transparent text-tl-text-dim text-[11px] cursor-pointer font-body">Remove</button>
                   )}
                 </div>
-                <span style={{ fontSize: 11, color: theme.textDim }}>PNG, JPG, or WebP · Max 500KB</span>
+                <span className="text-[11px] text-tl-text-dim">PNG, JPG, or WebP · Max 500KB</span>
               </div>
 
-              <label style={labelStyle}>Visibility</label>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                <button type="button" onClick={() => setTroopPublic(!troopPublic)} style={{
-                  padding: "5px 14px", borderRadius: 6, border: "none", fontSize: 11, fontWeight: 600,
-                  cursor: "pointer", fontFamily: fontBody,
-                  background: troopPublic ? theme.accent : theme.textDimmer, color: "#fff",
-                }}>{troopPublic ? "Public" : "Private"}</button>
-                <span style={{ fontSize: 11, color: theme.textDim }}>
+              <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Visibility</label>
+              <div className="flex items-center gap-2.5 mb-2">
+                <button type="button" onClick={() => setTroopPublic(!troopPublic)} className={clsx(
+                  "px-3.5 py-[5px] rounded-[6px] border-none text-[11px] font-semibold cursor-pointer font-body text-white",
+                  troopPublic ? "bg-tl-accent" : "bg-tl-text-dimmer"
+                )}>{troopPublic ? "Public" : "Private"}</button>
+                <span className="text-[11px] text-tl-text-dim">
                   {troopPublic ? "Searchable by parents and scouts" : "Invite-only — members must be invited by email"}
                 </span>
               </div>
 
-              <button onClick={saveTroop} disabled={saving} style={{ width: "100%", padding: "10px 0", borderRadius: 7, border: "none", background: theme.accent, color: "#fff", fontSize: 12, fontWeight: 600, cursor: saving ? "wait" : "pointer", fontFamily: fontBody, marginTop: 4 }}>
+              <button onClick={saveTroop} disabled={saving} className={clsx("w-full py-2.5 rounded-[7px] border-none bg-tl-accent text-white text-[12px] font-semibold font-body mt-1", saving ? "cursor-wait" : "cursor-pointer")}>
                 {saving ? "Saving..." : "Save Troop"}
               </button>
             </>

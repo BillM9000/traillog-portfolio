@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from "react";
-import { useTheme } from "./ThemeContext";
-import { fontBody } from "../utils/theme";
+import clsx from "clsx";
 import type { Toast, ToastType } from "../types";
 
 interface ToastContextValue {
@@ -13,7 +12,6 @@ let toastId = 0;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const { theme } = useTheme();
   const timersRef = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
   const addToast = useCallback((message: string, type: ToastType = "success") => {
@@ -35,39 +33,31 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const colors: Record<string, { bg: string; border: string }> = {
-    success: { bg: "#2d5a3d", border: "#4a7a55" },
-    error: { bg: "#7a3030", border: "#a04040" },
-    info: { bg: "#2d4a5a", border: "#4a7a8a" },
-    celebration: { bg: "#5a4a2d", border: "#d4a843" },
+  const colorMap: Record<string, string> = {
+    success: "bg-[#2d5a3d] border-[#4a7a55]",
+    error: "bg-[#7a3030] border-[#a04040]",
+    info: "bg-[#2d4a5a] border-[#4a7a8a]",
+    celebration: "bg-[#5a4a2d] border-[#d4a843]",
   };
 
   return (
     <ToastContext.Provider value={{ addToast, removeToast }}>
       {children}
-      <div style={{
-        position: "fixed", bottom: 16, right: 16, zIndex: 9999,
-        display: "flex", flexDirection: "column-reverse", gap: 8,
-        pointerEvents: "none",
-      }}>
-        {toasts.map(t => {
-          const c = colors[t.type] || colors.success;
-          return (
-            <div key={t.id} style={{
-              pointerEvents: "auto",
-              background: c.bg, color: "#fff", padding: "10px 16px",
-              borderRadius: 8, fontSize: 13, fontFamily: fontBody, fontWeight: 500,
-              border: `2px solid ${c.border}`,
-              boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-              cursor: "pointer", maxWidth: 320,
-              animation: "toastSlideIn 0.3s ease",
-            }} onClick={() => removeToast(t.id)}>
-              {t.type === "celebration" && <span style={{ marginRight: 6 }}>🎉</span>}
-              {t.type === "error" && <span style={{ marginRight: 6 }}>⚠️</span>}
-              {t.message}
-            </div>
-          );
-        })}
+      <div className="fixed bottom-4 right-4 z-[9999] flex flex-col-reverse gap-2 pointer-events-none">
+        {toasts.map(t => (
+          <div
+            key={t.id}
+            className={clsx(
+              "pointer-events-auto text-white py-2.5 px-4 rounded-btn text-[13px] font-body font-medium border-2 shadow-lg cursor-pointer max-w-[320px] animate-[toastSlideIn_0.3s_ease]",
+              colorMap[t.type] || colorMap.success
+            )}
+            onClick={() => removeToast(t.id)}
+          >
+            {t.type === "celebration" && <span className="mr-1.5">{"\uD83C\uDF89"}</span>}
+            {t.type === "error" && <span className="mr-1.5">{"\u26A0\uFE0F"}</span>}
+            {t.message}
+          </div>
+        ))}
       </div>
       <style>{`@keyframes toastSlideIn { from { opacity:0; transform:translateX(40px); } to { opacity:1; transform:translateX(0); } }`}</style>
     </ToastContext.Provider>

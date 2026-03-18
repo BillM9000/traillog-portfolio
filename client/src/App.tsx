@@ -7,8 +7,8 @@ import { useToast } from "./contexts/ToastContext";
 import { api } from "./api";
 import { DAYS_FULL } from "./utils/constants";
 import { getMonthsRange, daysInMonth, dateKey, parseDateKey, dayOfWeek, isPast, normalizeDateEntry } from "./utils/dates";
-import { fontBody, fontDisplay } from "./utils/theme";
 import { useIsDesktop } from "./hooks/useIsDesktop";
+import clsx from "clsx";
 import type { User, Membership, Adventure, AdventureMember, Skill, Achievement, ThemeColors, MonthRange } from "./types";
 
 import { Calendar as CalendarIcon, ClipboardCheck, Map, Backpack, FileText, FolderOpen } from "lucide-react";
@@ -46,10 +46,9 @@ const GlobalAdmin = lazy(() => import("./components/GlobalAdmin"));
 const GearAIChat = lazy(() => import("./components/GearAIChat"));
 
 function LoadingFallback() {
-  const { theme } = useTheme();
   return (
-    <div style={{ padding: "40px 16px", textAlign: "center" }}>
-      <div style={{ color: theme.textDim, fontSize: 13, fontFamily: fontBody }}>Loading...</div>
+    <div className="py-10 px-4 text-center">
+      <div className="text-tl-text-dim text-[13px] font-body">Loading...</div>
     </div>
   );
 }
@@ -63,7 +62,10 @@ function AnnouncementBanner({ settings }: AnnouncementBannerProps) {
   const typeColors: Record<string, { bg: string; border: string; text: string }> = { info: { bg: "#e8f4fd", border: "#b8daff", text: "#0c5460" }, warning: { bg: "#fff3cd", border: "#ffc107", text: "#856404" }, success: { bg: "#d4edda", border: "#c3e6cb", text: "#155724" } };
   const c = typeColors[settings.announcement_type as string] || typeColors.info;
   return (
-    <div style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.text, padding: "8px 16px", fontSize: 13, fontFamily: fontBody, fontWeight: 600, textAlign: "center" }}>
+    <div
+      className="py-2 px-4 text-[13px] font-body font-semibold text-center"
+      style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.text }}
+    >
       {settings.announcement_banner as string}
     </div>
   );
@@ -117,8 +119,8 @@ export default function App() {
   // ── Auth gates ──
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: theme.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ color: theme.textDim, fontSize: 14, fontFamily: fontBody }}>Loading...</div>
+      <div className="min-h-screen bg-tl-bg flex items-center justify-center">
+        <div className="text-tl-text-dim text-sm font-body">Loading...</div>
       </div>
     );
   }
@@ -129,7 +131,7 @@ export default function App() {
   // Profile page — shown when user clicks "View Profile" from any context
   if (showProfilePage) return (
     <Suspense fallback={<LoadingFallback />}>
-      <div style={{ minHeight: "100vh", background: theme.bg }}>
+      <div className="min-h-screen bg-tl-bg">
         <ProfilePage
           memberships={memberships}
           onBack={() => setShowProfilePage(false)}
@@ -451,8 +453,8 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
 
   if (advLoading) {
     return (
-      <div style={{ minHeight: "100vh", background: theme.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ color: theme.textDim, fontSize: 14, fontFamily: fontBody }}>Loading adventure...</div>
+      <div className="min-h-screen bg-tl-bg flex items-center justify-center">
+        <div className="text-tl-text-dim text-sm font-body">Loading adventure...</div>
       </div>
     );
   }
@@ -474,25 +476,23 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
 
   // ── Shared content blocks (used in both mobile and desktop) ──
   const crewPicker = crews.length > 1 ? (
-    <div style={{ padding: isDesktop ? "12px 0 8px" : "36px 16px 8px" }}>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        <button onClick={() => setSelectedCrewId("all")} style={{
-          padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700,
-          fontFamily: fontBody, cursor: "pointer", transition: "all 0.15s ease",
-          border: selectedCrewId === "all" ? `2px solid ${theme.accent}` : `1.5px solid ${theme.borderLight}`,
-          background: selectedCrewId === "all" ? theme.accentBg : theme.bgAlt,
-          color: selectedCrewId === "all" ? theme.accent : theme.textDim,
-        }}>
+    <div className={isDesktop ? "py-3 pb-2" : "pt-9 px-4 pb-2"}>
+      <div className="flex gap-1.5 flex-wrap">
+        <button onClick={() => setSelectedCrewId("all")} className={clsx(
+          "py-1.5 px-3.5 rounded-pill text-xs font-bold font-body cursor-pointer transition-all duration-150",
+          selectedCrewId === "all"
+            ? "border-2 border-tl-accent bg-tl-accent-bg text-tl-accent"
+            : "border-[1.5px] border-tl-border-light bg-tl-bg-alt text-tl-text-dim"
+        )}>
           All Crews
         </button>
         {crews.map(c => (
-          <button key={c.id} onClick={() => setSelectedCrewId(c.id)} style={{
-            padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700,
-            fontFamily: fontBody, cursor: "pointer", transition: "all 0.15s ease",
-            border: c.id === selectedCrewId ? `2px solid ${theme.accent}` : `1.5px solid ${theme.borderLight}`,
-            background: c.id === selectedCrewId ? theme.accentBg : theme.bgAlt,
-            color: c.id === selectedCrewId ? theme.accent : theme.textDim,
-          }}>
+          <button key={c.id} onClick={() => setSelectedCrewId(c.id)} className={clsx(
+            "py-1.5 px-3.5 rounded-pill text-xs font-bold font-body cursor-pointer transition-all duration-150",
+            c.id === selectedCrewId
+              ? "border-2 border-tl-accent bg-tl-accent-bg text-tl-accent"
+              : "border-[1.5px] border-tl-border-light bg-tl-bg-alt text-tl-text-dim"
+          )}>
             {c.name}
           </button>
         ))}
@@ -532,13 +532,13 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
 
   const viewContent = (
     <Suspense fallback={<LoadingFallback />}>
-      <div style={{ padding: isDesktop ? "0 0 24px" : "0 16px 18px 16px", overflowX: "auto" }}>
+      <div className={clsx(isDesktop ? "pb-6" : "px-4 pb-[18px]", "overflow-x-auto")}>
         {view === "calendar" && (
           <>
             <Calendar members={members} active={selectedCrewId === "all" ? null : active} months={months} analysis={analysis}
               trekDates={trekDates} onToggleDate={toggleDate} onBulkSelect={bulkSelect} onClearAll={clearAll}
               allCrewsMode={selectedCrewId === "all"} />
-            <div style={{ marginTop: 16 }}>
+            <div className="mt-4">
               <TrainingEvents adventureId={adventureId} isAdmin={isAdmin} currentUserId={user.id} members={members} bestDates={analysis.bestDates} />
             </div>
           </>
@@ -554,18 +554,18 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
         {view === "gear" && (
           <div>
             {isAdmin && (
-              <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                <button onClick={() => setShowGearAdmin(true)} style={{
-                  padding: "6px 12px", borderRadius: 8, border: `1px solid ${theme.borderLight}`,
-                  background: theme.bgAlt, color: theme.textDim, fontSize: 11, fontWeight: 600,
-                  cursor: "pointer", fontFamily: fontBody,
-                }}>{isGlobalAdmin ? "🌐 Global Admin" : "⚙️ Gear Admin"}</button>
-                <button onClick={() => setShowAIChat(!showAIChat)} style={{
-                  padding: "6px 12px", borderRadius: 8, border: `1px solid ${theme.borderLight}`,
-                  background: showAIChat ? theme.accent : theme.bgAlt,
-                  color: showAIChat ? "#fff" : theme.textDim,
-                  fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-                }}>🤖 AI Advisor</button>
+              <div className="flex gap-1.5 mb-2">
+                <button onClick={() => setShowGearAdmin(true)}
+                  className="py-1.5 px-3 rounded-btn border border-tl-border-light bg-tl-bg-alt text-tl-text-dim text-[11px] font-semibold cursor-pointer font-body">
+                  {isGlobalAdmin ? "\uD83C\uDF10 Global Admin" : "\u2699\uFE0F Gear Admin"}
+                </button>
+                <button onClick={() => setShowAIChat(!showAIChat)}
+                  className={clsx(
+                    "py-1.5 px-3 rounded-btn border border-tl-border-light text-[11px] font-semibold cursor-pointer font-body",
+                    showAIChat ? "bg-tl-accent text-white" : "bg-tl-bg-alt text-tl-text-dim"
+                  )}>
+                  {"\uD83E\uDD16"} AI Advisor
+                </button>
               </div>
             )}
             <GearList troopId={troopId} adventureId={adventureId} members={members} active={active} setActive={setActive} updateMemberLocally={updateMemberLocally} />
@@ -630,7 +630,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
   // ── Desktop layout ──
   if (isDesktop) {
     return (
-      <div style={{ display: "flex", minHeight: "100vh", fontFamily: fontBody, background: theme.bg, color: theme.text }}>
+      <div className="flex min-h-screen font-body bg-tl-bg text-tl-text">
         <Sidebar
           user={user}
           view={view}
@@ -646,7 +646,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
           onLogout={onLogout}
           onGlobalAdminClick={() => setShowGearAdmin(true)}
         />
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <div className="flex-1 flex flex-col min-w-0">
           <AnnouncementBanner settings={publicSettings} />
           <TopBar
             user={user}
@@ -657,8 +657,8 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
             saving={saving}
             onViewProfile={onViewProfile}
           />
-          <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px" }}>
-            <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <div className="flex-1 overflow-y-auto py-4 px-6">
+            <div className="max-w-[900px] mx-auto">
               {(view === "calendar" || view === "skills") && (
                 <>
                   <DashboardOverview
@@ -695,7 +695,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
 
   // ── Mobile layout (unchanged) ──
   return (
-    <div style={{ fontFamily: fontBody, background: theme.bg, color: theme.text, minHeight: "100vh", userSelect: "none" }}>
+    <div className="font-body bg-tl-bg text-tl-text min-h-screen select-none">
       <AnnouncementBanner settings={publicSettings} />
       <Header
         user={user} troop={troop} adventure={adventure} members={members} analysis={analysis}
@@ -714,18 +714,18 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
       {parentDash}
       <CTABanner members={members} active={active} setView={setView} theme={theme} />
 
-      {/* Tabs — 3×2 Grid (mobile only) */}
-      <div style={{ padding: "0 16px", marginBottom: 16 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+      {/* Tabs — 3x2 Grid (mobile only) */}
+      <div className="px-4 mb-4">
+        <div className="grid grid-cols-3 gap-1.5">
           {tabs.map(([k, l, Icon]) => (
-            <button key={k} onClick={() => setView(k)} style={{
-              padding: "7px 4px", borderRadius: 10, border: view === k ? `1.5px solid ${theme.accent}` : `1px solid ${theme.borderLight}`,
-              cursor: "pointer", fontSize: 11, fontWeight: view === k ? 700 : 600, fontFamily: fontBody,
-              background: view === k ? theme.pillActiveBg : theme.pillInactiveBg,
-              color: view === k ? theme.pillActiveText : theme.pillInactiveText,
-              boxShadow: view === k ? "0 2px 8px rgba(58,77,42,0.18)" : "none",
-              transition: "all 0.2s ease", display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-            }}><Icon size={13} strokeWidth={2.5} />{l}</button>
+            <button key={k} onClick={() => setView(k)}
+              className={clsx(
+                "py-[7px] px-1 rounded-tab cursor-pointer text-[11px] font-body flex items-center justify-center gap-1 transition-all duration-200",
+                view === k
+                  ? "border-[1.5px] border-tl-accent font-bold bg-tl-pill-active-bg text-tl-pill-active-text shadow-[0_2px_8px_rgba(58,77,42,0.18)]"
+                  : "border border-tl-border-light font-semibold bg-tl-pill-inactive-bg text-tl-pill-inactive-text shadow-none"
+              )}
+            ><Icon size={13} strokeWidth={2.5} />{l}</button>
           ))}
         </div>
       </div>
@@ -770,27 +770,29 @@ function CTABanner({ members, active, setView, theme }: CTABannerProps) {
   return (
     <div
       onClick={() => setView(item.tab)}
+      className="mx-4 my-3 rounded-card py-3.5 px-4 flex items-center gap-3 cursor-pointer transition-transform duration-150"
       style={{
-        margin: "12px 16px 12px 16px",
         background: `linear-gradient(135deg, ${theme.urgencyBg} 0%, ${theme.urgencyBgEnd || theme.urgencyBg} 100%)`,
         border: `1.5px solid ${theme.borderAmber || theme.urgency}`,
-        borderRadius: 14, padding: "14px 16px",
-        display: "flex", alignItems: "center", gap: 12,
-        cursor: "pointer", transition: "transform 0.15s ease",
       }}
     >
-      <div style={{
-        width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-        background: theme.urgency, display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 18,
-      }}>
+      <div
+        className="w-[38px] h-[38px] rounded-badge shrink-0 flex items-center justify-center text-lg"
+        style={{ background: theme.urgency }}
+      >
         {item.emoji}
       </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: theme.name === "dark" ? theme.urgency : "#8B5E1A", fontFamily: fontDisplay }}>
+      <div className="flex-1">
+        <div
+          className="text-sm font-bold font-display"
+          style={{ color: theme.name === "dark" ? theme.urgency : "#8B5E1A" }}
+        >
           {item.title}
         </div>
-        <div style={{ fontSize: 12, color: theme.name === "dark" ? theme.textMuted : "#A67C3D", marginTop: 2, fontFamily: fontBody }}>
+        <div
+          className="text-xs mt-0.5 font-body"
+          style={{ color: theme.name === "dark" ? theme.textMuted : "#A67C3D" }}
+        >
           {item.desc}
         </div>
       </div>
