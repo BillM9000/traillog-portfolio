@@ -659,27 +659,31 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
           />
           <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px" }}>
             <div style={{ maxWidth: 900, margin: "0 auto" }}>
-              <DashboardOverview
-                members={members}
-                skills={skills}
-                gearCatalog={gearCatalog}
-                memberGearMap={memberGearMap}
-                adventure={adventure}
-                trekDates={trekDates}
-              />
-              {crewPicker}
-              <MembersTable
-                members={members}
-                skills={skills}
-                gearCatalog={gearCatalog}
-                memberGearMap={memberGearMap}
-                active={selectedCrewId === "all" ? null : active}
-                setActive={setActive}
-                isAdmin={isAdmin}
-                currentUserId={user.id}
-              />
-              {parentDash}
-              <CTABanner members={members} active={active} setView={setView} theme={theme} />
+              {(view === "calendar" || view === "skills") && (
+                <>
+                  <DashboardOverview
+                    members={members}
+                    skills={skills}
+                    gearCatalog={gearCatalog}
+                    memberGearMap={memberGearMap}
+                    adventure={adventure}
+                    trekDates={trekDates}
+                  />
+                  {crewPicker}
+                  <MembersTable
+                    members={members}
+                    skills={skills}
+                    gearCatalog={gearCatalog}
+                    memberGearMap={memberGearMap}
+                    active={selectedCrewId === "all" ? null : active}
+                    setActive={setActive}
+                    isAdmin={isAdmin}
+                    currentUserId={user.id}
+                  />
+                  {parentDash}
+                  <CTABanner members={members} active={active} setView={setView} theme={theme} />
+                </>
+              )}
               {viewContent}
             </div>
           </div>
