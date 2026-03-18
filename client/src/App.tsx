@@ -19,6 +19,8 @@ import MemberBar from "./components/MemberBar";
 import ConfirmModal from "./components/ConfirmModal";
 import Sidebar from "./components/desktop/Sidebar";
 import TopBar from "./components/desktop/TopBar";
+import DashboardOverview from "./components/desktop/DashboardOverview";
+import MembersTable from "./components/desktop/MembersTable";
 
 // Lazy-loaded: top-level views (mutually exclusive)
 const LandingPage = lazy(() => import("./components/LandingPage"));
@@ -251,7 +253,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
   const { theme } = useTheme();
   const isDesktop = useIsDesktop();
   const { addToast } = useToast();
-  const { adventure, members, skills, itinerary, trekDate, trekDates, achievements, loading: advLoading, refreshAll, refreshMembers, updateMemberLocally, crews, selectedCrewId, selectedCrew, setSelectedCrewId, refreshCrews } = useAdventure();
+  const { adventure, members, skills, itinerary, trekDate, trekDates, achievements, loading: advLoading, refreshAll, refreshMembers, updateMemberLocally, crews, selectedCrewId, selectedCrew, setSelectedCrewId, refreshCrews, gearCatalog, memberGearMap } = useAdventure();
 
   const [troopMembers, setTroopMembers] = useState<TroopMember[]>([]);
   const [troop, setTroop] = useState<Troop | null>(null);
@@ -657,8 +659,25 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
           />
           <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px" }}>
             <div style={{ maxWidth: 900, margin: "0 auto" }}>
+              <DashboardOverview
+                members={members}
+                skills={skills}
+                gearCatalog={gearCatalog}
+                memberGearMap={memberGearMap}
+                adventure={adventure}
+                trekDates={trekDates}
+              />
               {crewPicker}
-              {memberBar}
+              <MembersTable
+                members={members}
+                skills={skills}
+                gearCatalog={gearCatalog}
+                memberGearMap={memberGearMap}
+                active={selectedCrewId === "all" ? null : active}
+                setActive={setActive}
+                isAdmin={isAdmin}
+                currentUserId={user.id}
+              />
               {parentDash}
               <CTABanner members={members} active={active} setView={setView} theme={theme} />
               {viewContent}
