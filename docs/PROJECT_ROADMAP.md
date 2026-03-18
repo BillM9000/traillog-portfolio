@@ -53,7 +53,6 @@
 | # | Item | Effort | Notes |
 |---|------|--------|-------|
 | B1 | Public demo mode — explore with sample data, no account needed | Medium | Pre-launch marketing |
-| B2 | Subscription pricing — ~$39/year per troop, freemium model | Large | Business decision |
 
 ---
 
