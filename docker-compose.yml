@@ -10,12 +10,9 @@ services:
         max-file: "3"
     ports:
       - "127.0.0.1:3614:3614"
-    volumes:
-      - crew614_data:/app/data
     environment:
       - PORT=3614
       - NODE_ENV=production
-      - DATA_DIR=/app/data
       - SESSION_SECRET=${SESSION_SECRET}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
@@ -25,6 +22,7 @@ services:
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASS=${SMTP_PASS}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DATABASE_URL=postgresql://traillog:traillog2026@172.18.0.1:5432/traillog
     labels:
       - traefik.enable=true
       # HTTPS router
@@ -41,9 +39,6 @@ services:
       - traefik.http.services.crew614.loadbalancer.server.port=3614
     networks:
       - n8n_default
-
-volumes:
-  crew614_data:
 
 networks:
   n8n_default:

@@ -7,9 +7,9 @@ import { findUserByGoogleId, findUserByEmail, findUserById, createUser, bindGoog
 
 // ── Serialize / Deserialize ──
 passport.serializeUser((user, done) => done(null, user.id));
-passport.deserializeUser((id, done) => {
+passport.deserializeUser(async (id, done) => {
   try {
-    const user = findUserById(id);
+    const user = await findUserById(id);
     done(null, user || false);
   } catch (e) { done(e); }
 });
@@ -39,7 +39,7 @@ if (process.env.GOOGLE_CLIENT_ID) {
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: process.env.GOOGLE_CALLBACK_URL || "/auth/google/callback",
-  }, (accessToken, refreshToken, profile, done) => {
+  }, async (accessToken, refreshToken, profile, done) => {
     try {
       const googleId = profile.id;
       const email = profile.emails?.[0]?.value;
@@ -47,25 +47,25 @@ if (process.env.GOOGLE_CLIENT_ID) {
       const avatar = profile.photos?.[0]?.value || null;
 
       // Check if user exists by Google ID — refresh name/avatar on each login
-      let user = findUserByGoogleId(googleId);
+      let user = await findUserByGoogleId(googleId);
       if (user) {
-        updateUserNameAvatar(user.id, name, avatar);
+        await updateUserNameAvatar(user.id, name, avatar);
         return done(null, { ...user, name, avatar_url: avatar });
       }
 
       // Check if user exists by email (signed up with password, now linking Google)
-      user = findUserByEmail(email);
+      user = await findUserByEmail(email);
       if (user) {
-        bindGoogleProfile(user.id, googleId, avatar);
+        await bindGoogleProfile(user.id, googleId, avatar);
         return done(null, { ...user, google_id: googleId, avatar_url: avatar });
       }
 
       // Check if registration is open
-      if (getSetting("registration_enabled") === "false") {
+      if (await getSetting("registration_enabled") === "false") {
         return done(null, false, { message: "Registration is currently closed" });
       }
       // Create new user
-      user = createUser({ google_id: googleId, email, name, avatar_url: avatar, email_verified: 1 });
+      user = await createUser({ google_id: googleId, email, name, avatar_url: avatar, email_verified: 1 });
       done(null, user);
     } catch (e) { done(e); }
   }));
@@ -74,7 +74,7 @@ if (process.env.GOOGLE_CLIENT_ID) {
 // ── Local Strategy (email + password) ──
 passport.use(new LocalStrategy({ usernameField: "email" }, async (email, password, done) => {
   try {
-    const user = findUserByEmail(email);
+    const user = await findUserByEmail(email);
     if (!user || !user.password_hash) return done(null, false, { message: "Invalid email or password" });
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) return done(null, false, { message: "Invalid email or password" });

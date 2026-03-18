@@ -7,7 +7,7 @@ import {
   requireAdventureSelfOrAdmin, requireTroopMember, requireTroopAdmin,
   parseId, safeError, processInvitation,
 } from "../middleware.js";
-import db, {
+import {
   getAdventures, getAdventure, createAdventure, updateAdventure, deleteAdventure,
   getAdventureMembers, getAdventureMember, addAdventureMember, removeAdventureMember,
   updateAdventureMemberDates, updateAdventureMemberSkills,
@@ -24,6 +24,7 @@ import db, {
   getTroop, getTroopMember, findUserById, updateUserProfile,
   getAdventureMilestoneConfig, setAdventureMilestoneConfig, syncAttendanceSkills,
   getAdventureDocuments, addAdventureDocument, getAdventureDocument, deleteAdventureDocument,
+  pool,
 } from "../db.js";
 import {
   sendInvitationEmail, sendDateChangedEmail, sendItineraryChangedEmail,
@@ -49,16 +50,16 @@ const MAX_DOC_SIZE = 5 * 1024 * 1024; // 5MB
 // ITINERARY ROUTES
 // ═══════════════════════════════════════════
 
-router.get("/api/itineraries", requireAuth, (req, res) => {
-  try { res.json(getItineraries()); }
+router.get("/api/itineraries", requireAuth, async (req, res) => {
+  try { res.json(await getItineraries()); }
   catch (e) { safeError(res, e); }
 });
 
-router.get("/api/itineraries/:id", requireAuth, (req, res) => {
+router.get("/api/itineraries/:id", requireAuth, async (req, res) => {
   try {
     const id = req.params.id;
     if (!id || !/^[\d-]+$/.test(id)) return res.status(400).json({ error: "Invalid itinerary ID" });
-    const itin = getItinerary(id);
+    const itin = await getItinerary(id);
     if (!itin) return res.status(404).json({ error: "Itinerary not found" });
     res.json(itin);
   } catch (e) { safeError(res, e); }
@@ -69,13 +70,13 @@ router.get("/api/itineraries/:id", requireAuth, (req, res) => {
 // ═══════════════════════════════════════════
 
 // List adventures for a troop
-router.get("/api/troops/:troopId/adventures", requireAuth, requireTroopMember(), (req, res) => {
-  try { res.json(getAdventures(parseId(req.params.troopId))); }
+router.get("/api/troops/:troopId/adventures", requireAuth, requireTroopMember(), async (req, res) => {
+  try { res.json(await getAdventures(parseId(req.params.troopId))); }
   catch (e) { safeError(res, e); }
 });
 
 // Create adventure
-router.post("/api/troops/:troopId/adventures", requireAuth, requireTroopAdmin, (req, res) => {
+router.post("/api/troops/:troopId/adventures", requireAuth, requireTroopAdmin, async (req, res) => {
   try {
     const { name, description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id, adventure_type } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Adventure name required" });
@@ -89,7 +90,7 @@ router.post("/api/troops/:troopId/adventures", requireAuth, requireTroopAdmin, (
     }
     const validTypes = ["philmont", "northern_tier", "sea_base", "summit"];
     const type = validTypes.includes(adventure_type) ? adventure_type : "philmont";
-    const adventure = createAdventure({
+    const adventure = await createAdventure({
       troop_id: parseId(req.params.troopId),
       name: name.trim(), description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id, adventure_type: type,
       created_by: req.user.id,
@@ -99,24 +100,24 @@ router.post("/api/troops/:troopId/adventures", requireAuth, requireTroopAdmin, (
 });
 
 // Get adventure detail
-router.get("/api/adventures/:adventureId", requireAuth, requireAdventureMember, (req, res) => {
+router.get("/api/adventures/:adventureId", requireAuth, requireAdventureMember, async (req, res) => {
   try {
-    const adv = getAdventure(parseId(req.params.adventureId));
+    const adv = await getAdventure(parseId(req.params.adventureId));
     if (!adv) return res.status(404).json({ error: "Adventure not found" });
     res.json(adv);
   } catch (e) { safeError(res, e); }
 });
 
 // Update adventure
-router.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req, res) => {
+router.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, async (req, res) => {
   try {
     const adventureId = parseId(req.params.adventureId);
     const { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status, itinerary_id, adventure_type } = req.body;
     const validTypes = ["philmont", "northern_tier", "sea_base", "summit"];
     const safeType = adventure_type && validTypes.includes(adventure_type) ? adventure_type : undefined;
     // Validate date sequence: depart ≤ arrive ≤ return ≤ home
-    const oldAdv = getAdventure(adventureId);
-    const troop = getTroop(oldAdv.troop_id);
+    const oldAdv = await getAdventure(adventureId);
+    const troop = await getTroop(oldAdv.troop_id);
     const effDates = [
       depart_date !== undefined ? depart_date : oldAdv.depart_date,
       arrive_date !== undefined ? arrive_date : oldAdv.arrive_date,
@@ -129,7 +130,7 @@ router.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (
         return res.status(400).json({ error: `${effLabels[i + 1]} date cannot be before ${effLabels[i]} date` });
       }
     }
-    updateAdventure(adventureId, { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status, itinerary_id, adventure_type: safeType });
+    await updateAdventure(adventureId, { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status, itinerary_id, adventure_type: safeType });
 
     // Send date change emails if any date changed
     const dateFields = ["depart_date", "arrive_date", "return_date", "home_date"];
@@ -142,7 +143,7 @@ router.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (
       }
     }
     if (changes.length > 0) {
-      const members = getAdventureMembers(adventureId);
+      const members = await getAdventureMembers(adventureId);
       const changeSummary = changes.join("<br>");
       members.forEach(m => {
         if (m.email && !m.is_manual) {
@@ -154,12 +155,12 @@ router.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (
 
     // Send itinerary change emails if itinerary changed
     if (itinerary_id !== undefined && itinerary_id !== oldAdv.itinerary_id) {
-      const oldItin = oldAdv.itinerary_id ? getItinerary(oldAdv.itinerary_id) : null;
-      const newItin = itinerary_id ? getItinerary(itinerary_id) : null;
+      const oldItin = oldAdv.itinerary_id ? await getItinerary(oldAdv.itinerary_id) : null;
+      const newItin = itinerary_id ? await getItinerary(itinerary_id) : null;
       const oldName = oldItin ? `${oldItin.name} (${oldItin.days}-day)` : "None";
       const newName = newItin ? `${newItin.name} (${newItin.days}-day)` : "None";
       console.log(`[itinerary change] Adventure ${adventureId}: ${oldName} → ${newName}`);
-      const members = getAdventureMembers(adventureId);
+      const members = await getAdventureMembers(adventureId);
       members.forEach(m => {
         if (m.email && !m.is_manual) {
           sendItineraryChangedEmail(m.email, m.name, oldAdv.name, oldName, newName, { troopName: troop?.name, troopId: oldAdv.troop_id, adventureId })
@@ -168,9 +169,9 @@ router.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (
       });
 
       // Seed default skills if adventure has none (e.g. switched from no itinerary)
-      const adv = getAdventure(adventureId);
+      const adv = await getAdventure(adventureId);
       if ((adv.adventure_type || "philmont") === "philmont") {
-        seedAdventureSkills(adventureId, adv.troop_id);
+        await seedAdventureSkills(adventureId, adv.troop_id);
       }
     }
 
@@ -179,15 +180,15 @@ router.put("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (
 });
 
 // Get attendance milestones config
-router.get("/api/adventures/:adventureId/milestones-config", requireAuth, requireAdventureMember, (req, res) => {
+router.get("/api/adventures/:adventureId/milestones-config", requireAuth, requireAdventureMember, async (req, res) => {
   try {
-    const milestones = getAdventureMilestoneConfig(parseId(req.params.adventureId));
+    const milestones = await getAdventureMilestoneConfig(parseId(req.params.adventureId));
     res.json(milestones);
   } catch (e) { safeError(res, e); }
 });
 
 // Update attendance milestones config (admin only)
-router.put("/api/adventures/:adventureId/milestones-config", requireAuth, requireAdventureAdmin, (req, res) => {
+router.put("/api/adventures/:adventureId/milestones-config", requireAuth, requireAdventureAdmin, async (req, res) => {
   try {
     const adventureId = parseId(req.params.adventureId);
     const { milestones } = req.body;
@@ -202,17 +203,17 @@ router.put("/api/adventures/:adventureId/milestones-config", requireAuth, requir
     // Deduplicate by count
     const unique = [...new Map(milestones.map(m => [m.count, { count: m.count, icon: m.icon || "⭐" }])).values()];
     unique.sort((a, b) => a.count - b.count);
-    setAdventureMilestoneConfig(adventureId, unique);
+    await setAdventureMilestoneConfig(adventureId, unique);
     // Re-sync skills with new milestones
-    syncAttendanceSkills(adventureId);
+    await syncAttendanceSkills(adventureId);
     res.json({ ok: true, milestones: unique });
   } catch (e) { safeError(res, e); }
 });
 
 // Delete adventure
-router.delete("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req, res) => {
+router.delete("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, async (req, res) => {
   try {
-    deleteAdventure(parseId(req.params.adventureId));
+    await deleteAdventure(parseId(req.params.adventureId));
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
@@ -222,13 +223,13 @@ router.delete("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin
 // ═══════════════════════════════════════════
 
 // List documents for an adventure
-router.get("/api/adventures/:adventureId/documents", requireAuth, requireAdventureMember, (req, res) => {
-  try { res.json(getAdventureDocuments(parseId(req.params.adventureId))); }
+router.get("/api/adventures/:adventureId/documents", requireAuth, requireAdventureMember, async (req, res) => {
+  try { res.json(await getAdventureDocuments(parseId(req.params.adventureId))); }
   catch (e) { safeError(res, e); }
 });
 
 // Upload document (admin only, base64 in JSON body)
-router.post("/api/adventures/:adventureId/documents", requireAuth, requireAdventureAdmin, (req, res) => {
+router.post("/api/adventures/:adventureId/documents", requireAuth, requireAdventureAdmin, async (req, res) => {
   try {
     const adventureId = parseId(req.params.adventureId);
     const { file, originalName, description } = req.body;
@@ -253,16 +254,16 @@ router.post("/api/adventures/:adventureId/documents", requireAuth, requireAdvent
     const filePath = join(advDir, storedName);
     writeFileSync(filePath, buffer);
 
-    const result = addAdventureDocument(adventureId, storedName, originalName, filePath, mimeType, buffer.length, description || "", req.user.id);
+    const result = await addAdventureDocument(adventureId, storedName, originalName, filePath, mimeType, buffer.length, description || "", req.user.id);
     logger.info({ action: "document_upload", adventureId, docId: result.lastInsertRowid, originalName, size: buffer.length, userId: req.user.id }, "Document uploaded");
     res.json({ ok: true, id: result.lastInsertRowid });
   } catch (e) { safeError(res, e); }
 });
 
 // Download/view document
-router.get("/api/adventures/:adventureId/documents/:docId/download", requireAuth, requireAdventureMember, (req, res) => {
+router.get("/api/adventures/:adventureId/documents/:docId/download", requireAuth, requireAdventureMember, async (req, res) => {
   try {
-    const doc = getAdventureDocument(parseId(req.params.docId));
+    const doc = await getAdventureDocument(parseId(req.params.docId));
     if (!doc || doc.adventure_id !== parseId(req.params.adventureId)) return res.status(404).json({ error: "Document not found" });
     if (!existsSync(doc.file_path)) return res.status(404).json({ error: "File not found on disk" });
     res.setHeader("Content-Disposition", `inline; filename="${doc.original_name}"`);
@@ -272,12 +273,12 @@ router.get("/api/adventures/:adventureId/documents/:docId/download", requireAuth
 });
 
 // Delete document (admin only)
-router.delete("/api/adventures/:adventureId/documents/:docId", requireAuth, requireAdventureAdmin, (req, res) => {
+router.delete("/api/adventures/:adventureId/documents/:docId", requireAuth, requireAdventureAdmin, async (req, res) => {
   try {
-    const doc = getAdventureDocument(parseId(req.params.docId));
+    const doc = await getAdventureDocument(parseId(req.params.docId));
     if (!doc || doc.adventure_id !== parseId(req.params.adventureId)) return res.status(404).json({ error: "Document not found" });
     if (existsSync(doc.file_path)) { try { unlinkSync(doc.file_path); } catch {} }
-    deleteAdventureDocument(doc.id);
+    await deleteAdventureDocument(doc.id);
     logger.info({ action: "document_delete", adventureId: doc.adventure_id, docId: doc.id, originalName: doc.original_name, userId: req.user.id }, "Document deleted");
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
@@ -287,12 +288,12 @@ router.delete("/api/adventures/:adventureId/documents/:docId", requireAuth, requ
 // ADVENTURE MEMBER ROUTES
 // ═══════════════════════════════════════════
 
-router.get("/api/adventures/:adventureId/members", requireAuth, requireAdventureMember, (req, res) => {
-  try { res.json(getAdventureMembers(parseId(req.params.adventureId))); }
+router.get("/api/adventures/:adventureId/members", requireAuth, requireAdventureMember, async (req, res) => {
+  try { res.json(await getAdventureMembers(parseId(req.params.adventureId))); }
   catch (e) { safeError(res, e); }
 });
 
-router.post("/api/adventures/:adventureId/members", requireAuth, requireAdventureAdmin, (req, res) => {
+router.post("/api/adventures/:adventureId/members", requireAuth, requireAdventureAdmin, async (req, res) => {
   try {
     const { user_id, role } = req.body;
     if (!user_id) return res.status(400).json({ error: "user_id required" });
@@ -300,72 +301,72 @@ router.post("/api/adventures/:adventureId/members", requireAuth, requireAdventur
     // Auto-promote troop admins to adventure admin
     let memberRole = role || "member";
     if (memberRole === "member") {
-      const adventure = getAdventure(advId);
+      const adventure = await getAdventure(advId);
       if (adventure) {
-        const troopMember = getTroopMember(adventure.troop_id, user_id);
+        const troopMember = await getTroopMember(adventure.troop_id, user_id);
         if (troopMember?.role === "admin" && troopMember.status === "approved") {
           memberRole = "admin";
         }
       }
     }
-    addAdventureMember(advId, user_id, memberRole);
+    await addAdventureMember(advId, user_id, memberRole);
     // Auto-link parent-scout by email match
-    const addedUser = findUserById(user_id);
-    if (addedUser?.user_type === "adult") autoLinkAdult(advId, user_id);
-    else if (addedUser?.user_type === "scout") autoLinkScout(advId, user_id);
+    const addedUser = await findUserById(user_id);
+    if (addedUser?.user_type === "adult") await autoLinkAdult(advId, user_id);
+    else if (addedUser?.user_type === "scout") await autoLinkScout(advId, user_id);
     res.status(201).json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
-router.delete("/api/adventures/:adventureId/members/:userId", requireAuth, requireAdventureAdmin, (req, res) => {
+router.delete("/api/adventures/:adventureId/members/:userId", requireAuth, requireAdventureAdmin, async (req, res) => {
   try {
-    removeAdventureMember(parseId(req.params.adventureId), parseId(req.params.userId));
+    await removeAdventureMember(parseId(req.params.adventureId), parseId(req.params.userId));
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
 // Update adventure member data (dates, skills, gear, medical, admin)
-router.put("/api/adventures/:adventureId/members/:userId/dates", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, (req, res) => {
+router.put("/api/adventures/:adventureId/members/:userId/dates", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, async (req, res) => {
   try {
     const { dates } = req.body;
     if (!Array.isArray(dates)) return res.status(400).json({ error: "dates must be array" });
-    updateAdventureMemberDates(parseId(req.params.adventureId), parseId(req.params.userId), dates);
+    await updateAdventureMemberDates(parseId(req.params.adventureId), parseId(req.params.userId), dates);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
-router.put("/api/adventures/:adventureId/members/:userId/skills", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, (req, res) => {
+router.put("/api/adventures/:adventureId/members/:userId/skills", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, async (req, res) => {
   try {
     const { skills } = req.body;
     if (!Array.isArray(skills)) return res.status(400).json({ error: "skills must be array" });
-    updateAdventureMemberSkills(parseId(req.params.adventureId), parseId(req.params.userId), skills);
+    await updateAdventureMemberSkills(parseId(req.params.adventureId), parseId(req.params.userId), skills);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
-router.put("/api/adventures/:adventureId/members/:userId/gear", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, (req, res) => {
+router.put("/api/adventures/:adventureId/members/:userId/gear", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, async (req, res) => {
   try {
     const { gear } = req.body;
     if (!Array.isArray(gear)) return res.status(400).json({ error: "gear must be array" });
-    updateAdventureMemberGear(parseId(req.params.adventureId), parseId(req.params.userId), gear);
+    await updateAdventureMemberGear(parseId(req.params.adventureId), parseId(req.params.userId), gear);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
-router.put("/api/adventures/:adventureId/members/:userId/medical", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, (req, res) => {
+router.put("/api/adventures/:adventureId/members/:userId/medical", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, async (req, res) => {
   try {
     const { medical } = req.body;
     if (!Array.isArray(medical)) return res.status(400).json({ error: "medical must be array" });
-    updateAdventureMemberMedical(parseId(req.params.adventureId), parseId(req.params.userId), medical);
+    await updateAdventureMemberMedical(parseId(req.params.adventureId), parseId(req.params.userId), medical);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
-router.put("/api/adventures/:adventureId/members/:userId/admin", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, (req, res) => {
+router.put("/api/adventures/:adventureId/members/:userId/admin", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, async (req, res) => {
   try {
     const { admin_tasks } = req.body;
     if (!Array.isArray(admin_tasks)) return res.status(400).json({ error: "admin_tasks must be array" });
-    updateAdventureMemberAdmin(parseId(req.params.adventureId), parseId(req.params.userId), admin_tasks);
+    await updateAdventureMemberAdmin(parseId(req.params.adventureId), parseId(req.params.userId), admin_tasks);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
@@ -374,24 +375,24 @@ router.put("/api/adventures/:adventureId/members/:userId/admin", requireAuth, re
 // ADVENTURE SKILLS ROUTES
 // ═══════════════════════════════════════════
 
-router.get("/api/adventures/:adventureId/skills", requireAuth, requireAdventureMember, (req, res) => {
+router.get("/api/adventures/:adventureId/skills", requireAuth, requireAdventureMember, async (req, res) => {
   try {
     const category = req.query.category || null;
-    res.json(getAdventureSkills(parseId(req.params.adventureId), category));
+    res.json(await getAdventureSkills(parseId(req.params.adventureId), category));
   } catch (e) { safeError(res, e); }
 });
 
-router.post("/api/adventures/:adventureId/skills", requireAuth, requireAdventureAdmin, (req, res) => {
+router.post("/api/adventures/:adventureId/skills", requireAuth, requireAdventureAdmin, async (req, res) => {
   try {
     const { name, desc, category, icon } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Skill name required" });
-    res.status(201).json(addAdventureSkill(parseId(req.params.adventureId), name, desc, category, icon));
+    res.status(201).json(await addAdventureSkill(parseId(req.params.adventureId), name, desc, category, icon));
   } catch (e) { safeError(res, e); }
 });
 
-router.delete("/api/adventures/:adventureId/skills/:skillId", requireAuth, requireAdventureAdmin, (req, res) => {
+router.delete("/api/adventures/:adventureId/skills/:skillId", requireAuth, requireAdventureAdmin, async (req, res) => {
   try {
-    const result = removeAdventureSkill(parseId(req.params.adventureId), req.params.skillId);
+    const result = await removeAdventureSkill(parseId(req.params.adventureId), req.params.skillId);
     if (result.error) return res.status(400).json(result);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
@@ -402,16 +403,16 @@ router.delete("/api/adventures/:adventureId/skills/:skillId", requireAuth, requi
 // ═══════════════════════════════════════════
 
 // Send invitation email
-router.post("/api/adventures/:adventureId/invitations", requireAuth, requireAdventureAdmin, (req, res) => {
+router.post("/api/adventures/:adventureId/invitations", requireAuth, requireAdventureAdmin, async (req, res) => {
   try {
     const adventureId = parseId(req.params.adventureId);
     const { email } = req.body;
     if (!email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return res.status(400).json({ error: "Valid email required" });
-    const adv = getAdventure(adventureId);
+    const adv = await getAdventure(adventureId);
     if (!adv) return res.status(404).json({ error: "Adventure not found" });
-    const troop = getTroop(adv.troop_id);
+    const troop = await getTroop(adv.troop_id);
     const token = crypto.randomUUID();
-    createInvitation({ troop_id: adv.troop_id, adventure_id: adventureId, email: email.trim(), invited_by: req.user.id, token });
+    await createInvitation({ troop_id: adv.troop_id, adventure_id: adventureId, email: email.trim(), invited_by: req.user.id, token });
     const inviteUrl = `${process.env.APP_URL || "https://traillog.gracezero.ai"}/api/invitations/${token}`;
     sendInvitationEmail(email.trim(), req.user.name, troop.name, adv.name, inviteUrl, {
       council: troop.council, location: troop.location, adventureType: adv.adventure_type,
@@ -423,20 +424,20 @@ router.post("/api/adventures/:adventureId/invitations", requireAuth, requireAdve
 });
 
 // List invitations for an adventure
-router.get("/api/adventures/:adventureId/invitations", requireAuth, requireAdventureAdmin, (req, res) => {
-  try { res.json(getInvitations(parseId(req.params.adventureId))); }
+router.get("/api/adventures/:adventureId/invitations", requireAuth, requireAdventureAdmin, async (req, res) => {
+  try { res.json(await getInvitations(parseId(req.params.adventureId))); }
   catch (e) { safeError(res, e); }
 });
 
 // Accept invitation (browser visits this link from email)
-router.get("/api/invitations/:token", (req, res) => {
+router.get("/api/invitations/:token", async (req, res) => {
   try {
-    const invitation = getInvitationByToken(req.params.token);
+    const invitation = await getInvitationByToken(req.params.token);
     if (!invitation) return res.redirect("/?error=invalid-invite");
     if (invitation.status !== "pending") return res.redirect("/?error=invite-used");
     // If user is logged in, process immediately
     if (req.isAuthenticated()) {
-      processInvitation(req.user, invitation);
+      await processInvitation(req.user, invitation);
       return res.redirect("/");
     }
     // Store token in session, redirect to login page (supports Google + email/password)
@@ -450,44 +451,44 @@ router.get("/api/invitations/:token", (req, res) => {
 // ═══════════════════════════════════════════
 
 // Update member role (promote/demote)
-router.put("/api/adventures/:adventureId/members/:userId/role", requireAuth, requireAdventureAdmin, (req, res) => {
+router.put("/api/adventures/:adventureId/members/:userId/role", requireAuth, requireAdventureAdmin, async (req, res) => {
   try {
     const { role } = req.body;
     if (!["admin", "member"].includes(role)) return res.status(400).json({ error: "role must be 'admin' or 'member'" });
-    updateAdventureMemberRole(parseId(req.params.adventureId), parseId(req.params.userId), role);
+    await updateAdventureMemberRole(parseId(req.params.adventureId), parseId(req.params.userId), role);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
 // Update member user_type (admin can change adult <-> scout)
-router.put("/api/adventures/:adventureId/members/:userId/user-type", requireAuth, requireAdventureAdmin, (req, res) => {
+router.put("/api/adventures/:adventureId/members/:userId/user-type", requireAuth, requireAdventureAdmin, async (req, res) => {
   try {
     const { user_type } = req.body;
     if (!["adult", "scout"].includes(user_type)) return res.status(400).json({ error: "user_type must be 'adult' or 'scout'" });
-    updateUserProfile(parseId(req.params.userId), { user_type });
+    await updateUserProfile(parseId(req.params.userId), { user_type });
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
 // Update member participation type
-router.put("/api/adventures/:adventureId/members/:userId/participation", requireAuth, requireAdventureAdmin, (req, res) => {
+router.put("/api/adventures/:adventureId/members/:userId/participation", requireAuth, requireAdventureAdmin, async (req, res) => {
   try {
     const { participation } = req.body;
     if (!["trekking", "support"].includes(participation)) return res.status(400).json({ error: "participation must be 'trekking' or 'support'" });
-    updateAdventureMemberParticipation(parseId(req.params.adventureId), parseId(req.params.userId), participation);
+    await updateAdventureMemberParticipation(parseId(req.params.adventureId), parseId(req.params.userId), participation);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
 // Link adult to scouts (admin override — up to 3 scouts, registered or manual)
 // Convention: positive = user_id (registered scout), negative = -adventure_members.id (manual scout)
-router.put("/api/adventures/:adventureId/members/:userId/link", requireAuth, requireAdventureAdmin, (req, res) => {
+router.put("/api/adventures/:adventureId/members/:userId/link", requireAuth, requireAdventureAdmin, async (req, res) => {
   try {
     const adventureId = parseId(req.params.adventureId);
     const userId = parseId(req.params.userId);
     const { linked_scouts } = req.body;
     // Validate: member being linked must be an adult
-    const memberUser = findUserById(userId);
+    const memberUser = await findUserById(userId);
     if (memberUser?.user_type !== "adult") return res.status(400).json({ error: "Only adults can be linked to scouts" });
     // Accept array of scout IDs (max 3), or empty array to unlink all
     const scouts = Array.isArray(linked_scouts) ? linked_scouts.slice(0, 3) : [];
@@ -496,36 +497,37 @@ router.put("/api/adventures/:adventureId/members/:userId/link", requireAuth, req
       if (typeof scoutId !== "number" || scoutId === 0) return res.status(400).json({ error: "Invalid scout ID" });
       if (scoutId > 0) {
         // Registered scout: validate user_id is a scout in this adventure
-        const targetMember = getAdventureMember(adventureId, scoutId);
+        const targetMember = await getAdventureMember(adventureId, scoutId);
         if (!targetMember) return res.status(400).json({ error: "Target scout not in this adventure" });
-        const targetUser = findUserById(scoutId);
+        const targetUser = await findUserById(scoutId);
         if (targetUser?.user_type !== "scout") return res.status(400).json({ error: "Can only link to scouts" });
       } else {
         // Manual scout: validate adventure_members row exists and is manual
         const memberId = Math.abs(scoutId);
-        const row = db.prepare("SELECT * FROM adventure_members WHERE id = ? AND adventure_id = ? AND is_manual = 1").get(memberId, adventureId);
+        const { rows } = await pool.query("SELECT * FROM adventure_members WHERE id = $1 AND adventure_id = $2 AND is_manual = 1", [memberId, adventureId]);
+        const row = rows[0];
         if (!row) return res.status(400).json({ error: "Manual scout not found in this adventure" });
       }
     }
-    linkMember(adventureId, userId, scouts);
+    await linkMember(adventureId, userId, scouts);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
 // Add manual member (scout without account)
-router.post("/api/adventures/:adventureId/manual-members", requireAuth, requireAdventureAdmin, (req, res) => {
+router.post("/api/adventures/:adventureId/manual-members", requireAuth, requireAdventureAdmin, async (req, res) => {
   try {
     const { name } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Name required" });
-    const member = addManualMember(parseId(req.params.adventureId), name.trim());
+    const member = await addManualMember(parseId(req.params.adventureId), name.trim());
     res.status(201).json(member);
   } catch (e) { safeError(res, e); }
 });
 
 // Remove manual member
-router.delete("/api/adventures/:adventureId/manual-members/:memberId", requireAuth, requireAdventureAdmin, (req, res) => {
+router.delete("/api/adventures/:adventureId/manual-members/:memberId", requireAuth, requireAdventureAdmin, async (req, res) => {
   try {
-    removeManualMember(parseId(req.params.adventureId), parseId(req.params.memberId));
+    await removeManualMember(parseId(req.params.adventureId), parseId(req.params.memberId));
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
@@ -535,27 +537,27 @@ router.delete("/api/adventures/:adventureId/manual-members/:memberId", requireAu
 // ═══════════════════════════════════════════
 
 // Adult requests to link to a scout (admin approval required)
-router.post("/api/adventures/:adventureId/link-requests", requireAuth, requireAdventureMember, (req, res) => {
+router.post("/api/adventures/:adventureId/link-requests", requireAuth, requireAdventureMember, async (req, res) => {
   try {
     const adventureId = parseId(req.params.adventureId);
     const { scout_id } = req.body;
     // Must be an adult
-    const requester = findUserById(req.user.id);
+    const requester = await findUserById(req.user.id);
     if (requester?.user_type !== "adult") return res.status(400).json({ error: "Only adults can request to link to a scout" });
     if (!scout_id) return res.status(400).json({ error: "scout_id required" });
     // Target must be a scout in this adventure
-    const targetMember = getAdventureMember(adventureId, scout_id);
+    const targetMember = await getAdventureMember(adventureId, scout_id);
     if (!targetMember) return res.status(400).json({ error: "Scout not found in this adventure" });
-    const targetUser = findUserById(scout_id);
+    const targetUser = await findUserById(scout_id);
     if (targetUser?.user_type !== "scout") return res.status(400).json({ error: "Target must be a scout" });
 
-    const result = createLinkRequest(adventureId, req.user.id, scout_id);
+    const result = await createLinkRequest(adventureId, req.user.id, scout_id);
     if (!result) return res.status(409).json({ error: "Link request already exists" });
 
     // Notify adventure admins
-    const members = getAdventureMembers(adventureId);
+    const members = await getAdventureMembers(adventureId);
     const admins = members.filter(m => m.role === "admin" && !m.is_manual);
-    const adv = getAdventure(adventureId);
+    const adv = await getAdventure(adventureId);
     admins.forEach(admin => {
       if (admin.email) {
         sendLinkRequestEmail(admin.email, admin.name, requester.name, targetUser.name, adv.name)
@@ -567,31 +569,31 @@ router.post("/api/adventures/:adventureId/link-requests", requireAuth, requireAd
 });
 
 // Get link requests (admin: all, member: own only)
-router.get("/api/adventures/:adventureId/link-requests", requireAuth, requireAdventureMember, (req, res) => {
+router.get("/api/adventures/:adventureId/link-requests", requireAuth, requireAdventureMember, async (req, res) => {
   try {
     const adventureId = parseId(req.params.adventureId);
-    const member = getAdventureMember(adventureId, req.user.id);
+    const member = await getAdventureMember(adventureId, req.user.id);
     if (member?.role === "admin") {
-      res.json(getLinkRequests(adventureId));
+      res.json(await getLinkRequests(adventureId));
     } else {
-      res.json(getMyLinkRequests(adventureId, req.user.id));
+      res.json(await getMyLinkRequests(adventureId, req.user.id));
     }
   } catch (e) { safeError(res, e); }
 });
 
 // Approve link request
-router.put("/api/adventures/:adventureId/link-requests/:requestId/approve", requireAuth, requireAdventureAdmin, (req, res) => {
+router.put("/api/adventures/:adventureId/link-requests/:requestId/approve", requireAuth, requireAdventureAdmin, async (req, res) => {
   try {
-    const result = approveLinkRequest(parseId(req.params.requestId), req.user.id);
+    const result = await approveLinkRequest(parseId(req.params.requestId), req.user.id);
     if (!result) return res.status(404).json({ error: "Pending request not found" });
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
 // Deny link request
-router.put("/api/adventures/:adventureId/link-requests/:requestId/deny", requireAuth, requireAdventureAdmin, (req, res) => {
+router.put("/api/adventures/:adventureId/link-requests/:requestId/deny", requireAuth, requireAdventureAdmin, async (req, res) => {
   try {
-    denyLinkRequest(parseId(req.params.requestId), req.user.id);
+    await denyLinkRequest(parseId(req.params.requestId), req.user.id);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
@@ -601,23 +603,23 @@ router.put("/api/adventures/:adventureId/link-requests/:requestId/deny", require
 // ═══════════════════════════════════════════
 
 // Get badges + milestones for an adventure
-router.get("/api/adventures/:adventureId/achievements", requireAuth, requireAdventureMember, (req, res) => {
+router.get("/api/adventures/:adventureId/achievements", requireAuth, requireAdventureMember, async (req, res) => {
   try {
     const adventureId = parseId(req.params.adventureId);
-    const badges = getBadges(adventureId);
-    const milestones = getCrewMilestones(adventureId);
+    const badges = await getBadges(adventureId);
+    const milestones = await getCrewMilestones(adventureId);
     res.json({ badges, milestones });
   } catch (e) { safeError(res, e); }
 });
 
 // Check and award badges/milestones after readiness changes
-router.post("/api/adventures/:adventureId/check-milestones", requireAuth, requireAdventureMember, (req, res) => {
+router.post("/api/adventures/:adventureId/check-milestones", requireAuth, requireAdventureMember, async (req, res) => {
   try {
     const adventureId = parseId(req.params.adventureId);
-    const members = getAdventureMembers(adventureId);
-    const adv = getAdventure(adventureId);
-    const badgeTroop = adv ? getTroop(adv.troop_id) : null;
-    const skills = getAdventureSkills(adventureId);
+    const members = await getAdventureMembers(adventureId);
+    const adv = await getAdventure(adventureId);
+    const badgeTroop = adv ? await getTroop(adv.troop_id) : null;
+    const skills = await getAdventureSkills(adventureId);
     const newBadges = [];
     const newMilestones = [];
 
@@ -627,9 +629,9 @@ router.post("/api/adventures/:adventureId/check-milestones", requireAuth, requir
     const adminSkills = skills.filter(s => s.category === "admin");
 
     // Gear: use new gear_catalog (v5) with member_gear table
-    const gearCatalogItems = getGearCatalog();
+    const gearCatalogItems = await getGearCatalog();
     const essentialGearCount = gearCatalogItems.filter(g => g.priority === "essential").length || gearCatalogItems.length;
-    const allMemberGear = getAdventureMemberGearAll(adventureId);
+    const allMemberGear = await getAdventureMemberGearAll(adventureId);
     // Group member gear by user_id
     const memberGearByUser = {};
     for (const mg of allMemberGear) {
@@ -656,7 +658,7 @@ router.post("/api/adventures/:adventureId/check-milestones", requireAuth, requir
 
       for (const { badge, total, done } of checks) {
         if (total > 0 && done >= total) {
-          const earned = earnBadge(adventureId, m.user_id, badge);
+          const earned = await earnBadge(adventureId, m.user_id, badge);
           if (earned) {
             newBadges.push({ user_id: m.user_id, name: m.name, badge });
             if (m.email) {
@@ -670,7 +672,7 @@ router.post("/api/adventures/:adventureId/check-milestones", requireAuth, requir
       // Fully prepared = all 4 categories complete
       const allDone = checks.every(c => c.total === 0 || c.done >= c.total);
       if (allDone && checks.some(c => c.total > 0)) {
-        const earned = earnBadge(adventureId, m.user_id, "fully_prepared");
+        const earned = await earnBadge(adventureId, m.user_id, "fully_prepared");
         if (earned) {
           newBadges.push({ user_id: m.user_id, name: m.name, badge: "fully_prepared" });
           if (m.email) {
@@ -706,7 +708,7 @@ router.post("/api/adventures/:adventureId/check-milestones", requireAuth, requir
         ];
         for (const t of thresholds) {
           if (pct >= t.pct) {
-            const added = addCrewMilestone(adventureId, t.type);
+            const added = await addCrewMilestone(adventureId, t.type);
             if (added) newMilestones.push(t.type);
           }
         }
@@ -724,7 +726,7 @@ router.post("/api/adventures/:adventureId/check-milestones", requireAuth, requir
               return cc.items.every(i => arr.includes(i.id));
             });
             if (allComplete) {
-              const added = addCrewMilestone(adventureId, cc.type);
+              const added = await addCrewMilestone(adventureId, cc.type);
               if (added) newMilestones.push(cc.type);
             }
           }
@@ -736,7 +738,7 @@ router.post("/api/adventures/:adventureId/check-milestones", requireAuth, requir
             return mgItems.filter(g => g.status === "owned" || g.status === "packed").length >= essentialGearCount;
           });
           if (allGearComplete) {
-            const added = addCrewMilestone(adventureId, "all_gear");
+            const added = await addCrewMilestone(adventureId, "all_gear");
             if (added) newMilestones.push("all_gear");
           }
         }

@@ -1,975 +1,11 @@
-import Database from "better-sqlite3";
-import { existsSync, mkdirSync, readFileSync } from "fs";
+import pg from "pg";
+import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { BSA_COUNCILS } from "./councils.js";
 
-const DATA_DIR = process.env.DATA_DIR || "./data";
-if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
-
-const db = new Database(`${DATA_DIR}/crew614.db`);
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
-
-// ── Schema ──
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    google_id TEXT UNIQUE,
-    email TEXT NOT NULL UNIQUE,
-    password_hash TEXT,
-    name TEXT NOT NULL,
-    avatar_url TEXT,
-    user_type TEXT,
-    parent_email TEXT,
-    parent_email_2 TEXT,
-    email_verified INTEGER NOT NULL DEFAULT 0,
-    verification_token TEXT,
-    age_confirmed TEXT,
-    age_confirmed_at DATETIME,
-    reset_token TEXT,
-    reset_token_expires DATETIME,
-    tos_accepted_at DATETIME,
-    is_admin INTEGER NOT NULL DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS itineraries (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    days INTEGER NOT NULL,
-    miles REAL NOT NULL,
-    rating TEXT NOT NULL DEFAULT 'Strenuous',
-    highlights TEXT NOT NULL DEFAULT '[]',
-    route_data TEXT NOT NULL DEFAULT '[]',
-    training_priorities TEXT NOT NULL DEFAULT '[]',
-    default_skills TEXT NOT NULL DEFAULT '[]',
-    global_info TEXT NOT NULL DEFAULT '{}',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS councils (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
-    council_num INTEGER,
-    city TEXT,
-    state TEXT
-  );
-
-  CREATE TABLE IF NOT EXISTS troops (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    description TEXT NOT NULL DEFAULT '',
-    trek_date TEXT,
-    itinerary_id TEXT REFERENCES itineraries(id),
-    itinerary_overrides TEXT NOT NULL DEFAULT '{}',
-    tier TEXT NOT NULL DEFAULT 'free',
-    amazon_affiliate_tag TEXT,
-    council TEXT,
-    council_id INTEGER REFERENCES councils(id),
-    location TEXT NOT NULL DEFAULT '',
-    is_public INTEGER NOT NULL DEFAULT 1,
-    created_by INTEGER REFERENCES users(id),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS adventures (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    troop_id INTEGER NOT NULL REFERENCES troops(id),
-    name TEXT NOT NULL,
-    description TEXT NOT NULL DEFAULT '',
-    trek_date TEXT,
-    depart_date TEXT,
-    arrive_date TEXT,
-    return_date TEXT,
-    home_date TEXT,
-    itinerary_id TEXT REFERENCES itineraries(id),
-    adventure_type TEXT NOT NULL DEFAULT 'philmont',
-    status TEXT NOT NULL DEFAULT 'active',
-    attendance_milestones TEXT,
-    created_by INTEGER REFERENCES users(id),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS crews (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    adventure_id INTEGER NOT NULL REFERENCES adventures(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    itinerary_id TEXT REFERENCES itineraries(id),
-    depart_date TEXT,
-    arrive_date TEXT,
-    return_date TEXT,
-    home_date TEXT,
-    leader_id INTEGER REFERENCES users(id),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS crew_members (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    crew_id INTEGER NOT NULL REFERENCES crews(id) ON DELETE CASCADE,
-    user_id INTEGER REFERENCES users(id),
-    role TEXT NOT NULL DEFAULT 'member',
-    participation TEXT NOT NULL DEFAULT 'trekking',
-    linked_to INTEGER REFERENCES users(id),
-    linked_to_manual INTEGER,
-    linked_scouts TEXT NOT NULL DEFAULT '[]',
-    is_manual INTEGER NOT NULL DEFAULT 0,
-    manual_name TEXT,
-    color_bg TEXT NOT NULL,
-    dates TEXT NOT NULL DEFAULT '[]',
-    skills TEXT NOT NULL DEFAULT '[]',
-    gear TEXT NOT NULL DEFAULT '[]',
-    medical TEXT NOT NULL DEFAULT '[]',
-    admin_tasks TEXT NOT NULL DEFAULT '[]',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(crew_id, user_id)
-  );
-
-  CREATE TABLE IF NOT EXISTS troop_members (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    troop_id INTEGER NOT NULL REFERENCES troops(id),
-    role TEXT NOT NULL DEFAULT 'member',
-    status TEXT NOT NULL DEFAULT 'pending',
-    color_bg TEXT NOT NULL,
-    dates TEXT NOT NULL DEFAULT '[]',
-    skills TEXT NOT NULL DEFAULT '[]',
-    participation TEXT NOT NULL DEFAULT 'trekking',
-    requested_adventures TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, troop_id)
-  );
-
-  CREATE TABLE IF NOT EXISTS adventure_members (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    adventure_id INTEGER NOT NULL REFERENCES adventures(id),
-    user_id INTEGER REFERENCES users(id),
-    role TEXT NOT NULL DEFAULT 'member',
-    participation TEXT NOT NULL DEFAULT 'trekking',
-    linked_to INTEGER REFERENCES users(id),
-    linked_to_manual INTEGER,
-    linked_scouts TEXT NOT NULL DEFAULT '[]',
-    is_manual INTEGER NOT NULL DEFAULT 0,
-    manual_name TEXT,
-    color_bg TEXT NOT NULL,
-    dates TEXT NOT NULL DEFAULT '[]',
-    skills TEXT NOT NULL DEFAULT '[]',
-    gear TEXT NOT NULL DEFAULT '[]',
-    medical TEXT NOT NULL DEFAULT '[]',
-    admin_tasks TEXT NOT NULL DEFAULT '[]',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS skills (
-    id TEXT PRIMARY KEY,
-    troop_id INTEGER REFERENCES troops(id),
-    adventure_id INTEGER REFERENCES adventures(id),
-    name TEXT NOT NULL,
-    icon TEXT NOT NULL DEFAULT '📋',
-    description TEXT NOT NULL DEFAULT '',
-    category TEXT NOT NULL DEFAULT 'training',
-    is_default INTEGER NOT NULL DEFAULT 0,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    is_system INTEGER NOT NULL DEFAULT 0
-  );
-
-  CREATE TABLE IF NOT EXISTS gear_items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    description TEXT NOT NULL DEFAULT '',
-    category TEXT NOT NULL DEFAULT 'misc',
-    affiliate_url TEXT,
-    image_url TEXT,
-    itinerary_tags TEXT NOT NULL DEFAULT '[]',
-    priority TEXT NOT NULL DEFAULT 'recommended',
-    sort_order INTEGER NOT NULL DEFAULT 0
-  );
-
-  CREATE TABLE IF NOT EXISTS platform_settings (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS sessions (
-    sid TEXT PRIMARY KEY,
-    sess TEXT NOT NULL,
-    expired INTEGER NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_sessions_expired ON sessions(expired);
-
-  CREATE TABLE IF NOT EXISTS shirt_votes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    voter_name TEXT NOT NULL,
-    design_id TEXT NOT NULL,
-    vote_slot INTEGER NOT NULL DEFAULT 1,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(voter_name, vote_slot)
-  );
-
-  CREATE TABLE IF NOT EXISTS invitations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    troop_id INTEGER NOT NULL REFERENCES troops(id),
-    adventure_id INTEGER REFERENCES adventures(id),
-    email TEXT NOT NULL,
-    invited_by INTEGER NOT NULL REFERENCES users(id),
-    status TEXT NOT NULL DEFAULT 'pending',
-    token TEXT NOT NULL UNIQUE,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS achievements (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    adventure_id INTEGER NOT NULL REFERENCES adventures(id),
-    crew_id INTEGER REFERENCES crews(id),
-    user_id INTEGER REFERENCES users(id),
-    badge_type TEXT NOT NULL,
-    earned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(adventure_id, user_id, badge_type)
-  );
-
-  CREATE TABLE IF NOT EXISTS crew_milestones (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    adventure_id INTEGER NOT NULL REFERENCES adventures(id),
-    crew_id INTEGER REFERENCES crews(id),
-    milestone_type TEXT NOT NULL,
-    reached_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(adventure_id, milestone_type)
-  );
-
-  CREATE TABLE IF NOT EXISTS link_requests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    adventure_id INTEGER NOT NULL REFERENCES adventures(id),
-    requester_id INTEGER NOT NULL REFERENCES users(id),
-    scout_id INTEGER NOT NULL REFERENCES users(id),
-    status TEXT NOT NULL DEFAULT 'pending',
-    reviewed_by INTEGER REFERENCES users(id),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    resolved_at DATETIME,
-    UNIQUE(adventure_id, requester_id, scout_id)
-  );
-
-  -- ══ Gear System v5 Tables ══
-
-  CREATE TABLE IF NOT EXISTS gear_catalog (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    category TEXT NOT NULL,
-    subcategory TEXT,
-    description TEXT,
-    weight_oz REAL,
-    weight_class TEXT,
-    priority TEXT NOT NULL DEFAULT 'recommended',
-    price_tier TEXT,
-    msrp REAL,
-    rating_stars REAL,
-    rating_notes TEXT,
-    philmont_compliant INTEGER NOT NULL DEFAULT 1,
-    compliance_notes TEXT,
-    is_crew_shared INTEGER NOT NULL DEFAULT 0,
-    sharing_type TEXT NOT NULL DEFAULT 'personal',
-    affiliate_priority TEXT DEFAULT 'Medium',
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    active INTEGER NOT NULL DEFAULT 1,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS gear_product_options (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    gear_catalog_id INTEGER NOT NULL REFERENCES gear_catalog(id) ON DELETE CASCADE,
-    tier TEXT NOT NULL,
-    star_rating INTEGER DEFAULT 3,
-    product_name TEXT NOT NULL,
-    brand TEXT,
-    price REAL,
-    weight_oz REAL,
-    notes TEXT,
-    is_ultralight_pick INTEGER NOT NULL DEFAULT 0,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    affiliate_url TEXT
-  );
-
-  CREATE TABLE IF NOT EXISTS affiliate_clicks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    product_option_id INTEGER REFERENCES gear_product_options(id),
-    gear_catalog_id INTEGER REFERENCES gear_catalog(id),
-    url TEXT NOT NULL,
-    referrer TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-  CREATE INDEX IF NOT EXISTS idx_affiliate_clicks_created ON affiliate_clicks(created_at);
-
-  CREATE TABLE IF NOT EXISTS member_gear (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    adventure_id INTEGER NOT NULL,
-    crew_id INTEGER REFERENCES crews(id),
-    user_id INTEGER NOT NULL,
-    gear_catalog_id INTEGER NOT NULL REFERENCES gear_catalog(id),
-    status TEXT NOT NULL DEFAULT 'needed',
-    selected_option_id INTEGER REFERENCES gear_product_options(id),
-    custom_product_name TEXT,
-    custom_weight_oz REAL,
-    notes TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(adventure_id, user_id, gear_catalog_id)
-  );
-
-  CREATE TABLE IF NOT EXISTS gear_ai_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    adventure_id INTEGER,
-    query TEXT NOT NULL,
-    response TEXT NOT NULL,
-    tokens_used INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS troop_gear_overrides (
-    troop_id INTEGER NOT NULL REFERENCES troops(id),
-    gear_catalog_id INTEGER NOT NULL REFERENCES gear_catalog(id),
-    hidden INTEGER NOT NULL DEFAULT 0,
-    PRIMARY KEY (troop_id, gear_catalog_id)
-  );
-
-  CREATE TABLE IF NOT EXISTS troop_custom_gear (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    troop_id INTEGER NOT NULL REFERENCES troops(id),
-    name TEXT NOT NULL,
-    category TEXT NOT NULL,
-    subcategory TEXT,
-    description TEXT,
-    weight_oz REAL,
-    priority TEXT NOT NULL DEFAULT 'recommended',
-    is_crew_shared INTEGER NOT NULL DEFAULT 0,
-    sharing_type TEXT NOT NULL DEFAULT 'personal',
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    active INTEGER NOT NULL DEFAULT 1,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS training_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    adventure_id INTEGER NOT NULL REFERENCES adventures(id),
-    date TEXT NOT NULL,
-    period TEXT NOT NULL DEFAULT 'all',
-    time_label TEXT,
-    location TEXT,
-    notes TEXT,
-    type TEXT NOT NULL DEFAULT 'proposed',
-    status TEXT NOT NULL DEFAULT 'active',
-    created_by INTEGER NOT NULL REFERENCES users(id),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS training_attendance (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_id INTEGER NOT NULL REFERENCES training_events(id) ON DELETE CASCADE,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    attended INTEGER NOT NULL DEFAULT 0,
-    marked_by INTEGER REFERENCES users(id),
-    marked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(event_id, user_id)
-  );
-
-  CREATE TABLE IF NOT EXISTS training_rsvps (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_id INTEGER NOT NULL REFERENCES training_events(id) ON DELETE CASCADE,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    status TEXT NOT NULL DEFAULT 'going',
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(event_id, user_id)
-  );
-
-  -- ══ AI Readiness Engine Tables ══
-
-  CREATE TABLE IF NOT EXISTS member_assessments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    crew_id INTEGER NOT NULL REFERENCES crews(id) ON DELETE CASCADE,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    current_distance_miles REAL,
-    pack_experience TEXT CHECK(pack_experience IN ('none', 'day_pack', 'loaded')),
-    elevation_access TEXT CHECK(elevation_access IN ('flat_only', 'some_hills', 'real_elevation')),
-    activity_level TEXT CHECK(activity_level IN ('sedentary', 'lightly_active', 'regularly_active', 'very_active')),
-    assessed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(crew_id, user_id)
-  );
-
-  CREATE TABLE IF NOT EXISTS readiness_plans (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    crew_id INTEGER NOT NULL REFERENCES crews(id) ON DELETE CASCADE,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    plan_json TEXT NOT NULL DEFAULT '{}',
-    priorities_json TEXT NOT NULL DEFAULT '[]',
-    weeks_at_generation INTEGER,
-    generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(crew_id, user_id)
-  );
-
-  CREATE TABLE IF NOT EXISTS readiness_progress (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    crew_id INTEGER NOT NULL REFERENCES crews(id) ON DELETE CASCADE,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    phase_number INTEGER NOT NULL,
-    status TEXT NOT NULL DEFAULT 'not_started' CHECK(status IN ('not_started', 'working', 'complete')),
-    note TEXT,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(crew_id, user_id, phase_number)
-  );
-
-  -- ══ AI Gear Recommendations Cache ══
-
-  CREATE TABLE IF NOT EXISTS ai_gear_recommendations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    gear_catalog_id INTEGER NOT NULL,
-    adventure_type TEXT NOT NULL DEFAULT 'philmont',
-    recommendations TEXT NOT NULL,
-    generated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    expires_at TEXT NOT NULL,
-    tokens_used INTEGER DEFAULT 0,
-    UNIQUE(gear_catalog_id, adventure_type)
-  );
-`);
-
-// ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 25;
-
-function migrate() {
-  const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
-  const version = vRow ? parseInt(vRow.value) : 0;
-  if (version >= CURRENT_SCHEMA_VERSION) return;
-
-  const runMigration = db.transaction(() => {
-    // Add new columns to existing tables (safe — ALTER ADD COLUMN is a no-op if already exists via CREATE)
-    const tryAlter = (sql) => { try { db.exec(sql); } catch {} };
-    tryAlter("ALTER TABLE itineraries ADD COLUMN global_info TEXT NOT NULL DEFAULT '{}'");
-    tryAlter("ALTER TABLE skills ADD COLUMN adventure_id INTEGER REFERENCES adventures(id)");
-    tryAlter("ALTER TABLE skills ADD COLUMN category TEXT NOT NULL DEFAULT 'training'");
-
-    // Migrate existing troops with itineraries → create adventures + copy members
-    const troops = db.prepare("SELECT * FROM troops WHERE itinerary_id IS NOT NULL").all();
-    for (const troop of troops) {
-      const exists = db.prepare("SELECT id FROM adventures WHERE troop_id = ? AND itinerary_id = ?").get(troop.id, troop.itinerary_id);
-      if (exists) continue;
-
-      const r = db.prepare(
-        "INSERT INTO adventures (troop_id, name, description, trek_date, itinerary_id, status, created_by) VALUES (?, ?, '', ?, ?, 'active', ?)"
-      ).run(troop.id, `${troop.name} — Philmont`, troop.trek_date, troop.itinerary_id, troop.created_by);
-      const advId = r.lastInsertRowid;
-
-      // Copy approved troop members → adventure members
-      const members = db.prepare("SELECT * FROM troop_members WHERE troop_id = ? AND status = 'approved'").all(troop.id);
-      const ins = db.prepare("INSERT OR IGNORE INTO adventure_members (adventure_id, user_id, role, color_bg, dates, skills) VALUES (?, ?, ?, ?, ?, ?)");
-      for (const m of members) ins.run(advId, m.user_id, m.role, m.color_bg, m.dates, m.skills);
-
-      // Point existing skills at this adventure
-      db.prepare("UPDATE skills SET adventure_id = ? WHERE troop_id = ?").run(advId, troop.id);
-    }
-
-    // Update itinerary 12-20 with enriched data
-    const itin = db.prepare("SELECT id FROM itineraries WHERE id = '12-20'").get();
-    if (itin) {
-      db.prepare("UPDATE itineraries SET route_data = ?, global_info = ?, default_skills = ? WHERE id = '12-20'")
-        .run(JSON.stringify(ROUTE_DATA_12_20), JSON.stringify(GLOBAL_INFO_12_20), JSON.stringify(PHILMONT_DEFAULT_SKILLS));
-    }
-
-    // ── v2 migration: trek dates, participation, linking, manual members ──
-    if (version < 2) {
-      // Add 4 date columns to adventures
-      tryAlter("ALTER TABLE adventures ADD COLUMN depart_date TEXT");
-      tryAlter("ALTER TABLE adventures ADD COLUMN arrive_date TEXT");
-      tryAlter("ALTER TABLE adventures ADD COLUMN return_date TEXT");
-      tryAlter("ALTER TABLE adventures ADD COLUMN home_date TEXT");
-      // Migrate existing trek_date → arrive_date
-      db.prepare("UPDATE adventures SET arrive_date = trek_date WHERE trek_date IS NOT NULL AND arrive_date IS NULL").run();
-
-      // Add participation, linking, manual member columns to adventure_members
-      tryAlter("ALTER TABLE adventure_members ADD COLUMN participation TEXT NOT NULL DEFAULT 'trekking'");
-      tryAlter("ALTER TABLE adventure_members ADD COLUMN linked_to INTEGER REFERENCES users(id)");
-      tryAlter("ALTER TABLE adventure_members ADD COLUMN is_manual INTEGER NOT NULL DEFAULT 0");
-      tryAlter("ALTER TABLE adventure_members ADD COLUMN manual_name TEXT");
-    }
-
-    // ── v3 migration: make user_id nullable for manual members ──
-    if (version < 3) {
-      // SQLite doesn't support ALTER COLUMN, so recreate the table
-      const hasData = db.prepare("SELECT COUNT(*) as c FROM adventure_members").get().c > 0;
-      db.exec(`
-        CREATE TABLE adventure_members_new (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          adventure_id INTEGER NOT NULL REFERENCES adventures(id),
-          user_id INTEGER REFERENCES users(id),
-          role TEXT NOT NULL DEFAULT 'member',
-          participation TEXT NOT NULL DEFAULT 'trekking',
-          linked_to INTEGER REFERENCES users(id),
-          is_manual INTEGER NOT NULL DEFAULT 0,
-          manual_name TEXT,
-          color_bg TEXT NOT NULL,
-          dates TEXT NOT NULL DEFAULT '[]',
-          skills TEXT NOT NULL DEFAULT '[]',
-          gear TEXT NOT NULL DEFAULT '[]',
-          medical TEXT NOT NULL DEFAULT '[]',
-          admin_tasks TEXT NOT NULL DEFAULT '[]',
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-      if (hasData) {
-        db.exec(`INSERT INTO adventure_members_new (id, adventure_id, user_id, role, participation, linked_to, is_manual, manual_name, color_bg, dates, skills, gear, medical, admin_tasks, created_at)
-          SELECT id, adventure_id, user_id, role, participation, linked_to, is_manual, manual_name, color_bg, dates, skills, gear, medical, admin_tasks, created_at FROM adventure_members`);
-      }
-      db.exec("DROP TABLE adventure_members");
-      db.exec("ALTER TABLE adventure_members_new RENAME TO adventure_members");
-    }
-
-    // ── v4 migration: parent_email_2, link_requests table ──
-    if (version < 4) {
-      tryAlter("ALTER TABLE users ADD COLUMN parent_email_2 TEXT");
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS link_requests (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          adventure_id INTEGER NOT NULL REFERENCES adventures(id),
-          requester_id INTEGER NOT NULL REFERENCES users(id),
-          scout_id INTEGER NOT NULL REFERENCES users(id),
-          status TEXT NOT NULL DEFAULT 'pending',
-          reviewed_by INTEGER REFERENCES users(id),
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          resolved_at DATETIME,
-          UNIQUE(adventure_id, requester_id, scout_id)
-        )
-      `);
-    }
-
-    // ── v5 migration: gear system overhaul ──
-    if (version < 5) {
-      // Tables already created by initial schema DDL above.
-      // Seed gear catalog if empty (fresh DB or first v5 migration)
-      seedGearCatalog();
-
-      // Migrate old gear_items → member_gear: map old checkbox IDs to new gear_catalog
-      try {
-        const oldItems = db.prepare("SELECT * FROM gear_items ORDER BY sort_order").all();
-        if (oldItems.length > 0) {
-          const catalogItems = db.prepare("SELECT id, name FROM gear_catalog WHERE active = 1").all();
-          // Build name-match map: old gear_items.name → closest gear_catalog.id
-          const nameMap = {};
-          for (const old of oldItems) {
-            const oldLower = old.name.toLowerCase();
-            let best = null;
-            let bestScore = 0;
-            for (const cat of catalogItems) {
-              const catLower = cat.name.toLowerCase();
-              // Simple substring match scoring
-              if (catLower.includes(oldLower) || oldLower.includes(catLower)) {
-                const score = Math.min(oldLower.length, catLower.length);
-                if (score > bestScore) { bestScore = score; best = cat.id; }
-              } else {
-                // Word overlap scoring
-                const oldWords = oldLower.split(/\s+/);
-                const catWords = catLower.split(/\s+/);
-                const overlap = oldWords.filter(w => catWords.some(cw => cw.includes(w) || w.includes(cw))).length;
-                if (overlap > bestScore) { bestScore = overlap; best = cat.id; }
-              }
-            }
-            if (best) nameMap[old.id] = best;
-          }
-
-          // Migrate member gear selections
-          const membersWithGear = db.prepare("SELECT adventure_id, user_id, gear FROM adventure_members WHERE gear != '[]' AND gear IS NOT NULL").all();
-          const insertMemberGear = db.prepare(
-            "INSERT OR IGNORE INTO member_gear (adventure_id, user_id, gear_catalog_id, status) VALUES (?, ?, ?, 'owned')"
-          );
-          for (const m of membersWithGear) {
-            try {
-              const gearIds = JSON.parse(m.gear);
-              for (const oldId of gearIds) {
-                const newId = nameMap[oldId];
-                if (newId) insertMemberGear.run(m.adventure_id, m.user_id, newId);
-              }
-            } catch { /* skip malformed JSON */ }
-          }
-        }
-      } catch (e) {
-        console.log("v5 gear migration (old data mapping):", e.message);
-      }
-    }
-
-    // ── v6 migration: simplified gear + global admin ──
-    if (version < 6) {
-      tryAlter("ALTER TABLE gear_product_options ADD COLUMN affiliate_url TEXT");
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS affiliate_clicks (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL REFERENCES users(id),
-          product_option_id INTEGER REFERENCES gear_product_options(id),
-          gear_catalog_id INTEGER REFERENCES gear_catalog(id),
-          url TEXT NOT NULL,
-          referrer TEXT,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE INDEX IF NOT EXISTS idx_affiliate_clicks_created ON affiliate_clicks(created_at);
-      `);
-      seedGearCatalog();
-    }
-
-    // ── v7 migration: troop council, location, visibility ──
-    if (version < 7) {
-      tryAlter("ALTER TABLE troops ADD COLUMN council TEXT");
-      tryAlter("ALTER TABLE troops ADD COLUMN location TEXT NOT NULL DEFAULT ''");
-      tryAlter("ALTER TABLE troops ADD COLUMN is_public INTEGER NOT NULL DEFAULT 1");
-    }
-
-    // ── v8 migration: adventure type ──
-    if (version < 8) {
-      tryAlter("ALTER TABLE adventures ADD COLUMN adventure_type TEXT NOT NULL DEFAULT 'philmont'");
-    }
-
-    // ── v9 migration: manual member linking ──
-    if (version < 9) {
-      tryAlter("ALTER TABLE adventure_members ADD COLUMN linked_to_manual INTEGER");
-    }
-
-    // ── v10 migration: multi-scout linking (up to 3 scouts per adult) ──
-    if (version < 10) {
-      tryAlter("ALTER TABLE adventure_members ADD COLUMN linked_scouts TEXT NOT NULL DEFAULT '[]'");
-      // Migrate existing single links into the new array
-      const rows = db.prepare("SELECT id, linked_to, linked_to_manual FROM adventure_members WHERE linked_to IS NOT NULL OR linked_to_manual IS NOT NULL").all();
-      for (const r of rows) {
-        const scouts = [];
-        if (r.linked_to) scouts.push(r.linked_to);
-        if (r.linked_to_manual) scouts.push(-r.linked_to_manual);
-        if (scouts.length > 0) {
-          db.prepare("UPDATE adventure_members SET linked_scouts = ? WHERE id = ?").run(JSON.stringify(scouts), r.id);
-        }
-      }
-    }
-
-    // ── v11 migration: training events + time slot availability ──
-    if (version < 11) {
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS training_events (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          adventure_id INTEGER NOT NULL REFERENCES adventures(id),
-          date TEXT NOT NULL,
-          period TEXT NOT NULL DEFAULT 'all',
-          time_label TEXT,
-          location TEXT,
-          notes TEXT,
-          created_by INTEGER NOT NULL REFERENCES users(id),
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS training_rsvps (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          event_id INTEGER NOT NULL REFERENCES training_events(id) ON DELETE CASCADE,
-          user_id INTEGER NOT NULL REFERENCES users(id),
-          status TEXT NOT NULL DEFAULT 'going',
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          UNIQUE(event_id, user_id)
-        );
-      `);
-    }
-
-    // ── v12 migration: age gate (COPPA compliance) ──
-    if (version < 12) {
-      tryAlter("ALTER TABLE users ADD COLUMN age_confirmed TEXT");
-      tryAlter("ALTER TABLE users ADD COLUMN age_confirmed_at DATETIME");
-    }
-
-    // ── v13 migration: password reset tokens ──
-    if (version < 13) {
-      tryAlter("ALTER TABLE users ADD COLUMN reset_token TEXT");
-      tryAlter("ALTER TABLE users ADD COLUMN reset_token_expires DATETIME");
-    }
-
-    // ── v14 migration: TOS acceptance tracking ──
-    if (version < 14) {
-      tryAlter("ALTER TABLE users ADD COLUMN tos_accepted_at DATETIME");
-    }
-
-    // ── v15 migration: sharing_type replaces is_crew_shared boolean ──
-    if (version < 15) {
-      tryAlter("ALTER TABLE gear_catalog ADD COLUMN sharing_type TEXT NOT NULL DEFAULT 'personal'");
-      tryAlter("ALTER TABLE troop_custom_gear ADD COLUMN sharing_type TEXT NOT NULL DEFAULT 'personal'");
-      // Migrate existing is_crew_shared=1 items to 'crew' as baseline
-      try {
-        db.prepare("UPDATE gear_catalog SET sharing_type = 'crew' WHERE is_crew_shared = 1").run();
-        db.prepare("UPDATE troop_custom_gear SET sharing_type = 'crew' WHERE is_crew_shared = 1").run();
-        // Set buddy items (tents split between tent partners)
-        db.prepare("UPDATE gear_catalog SET sharing_type = 'buddy' WHERE name LIKE '%Tent%' AND name NOT LIKE '%Pole Repair%'").run();
-        // Set provided items (Philmont provides these on-site)
-        const provided = ["Cook Pot / Pot Set", "Bear Bag / Ursack", "Fuel Canisters (isobutane, 100g x4)", "Topographic Map (Philmont)"];
-        const setProvided = db.prepare("UPDATE gear_catalog SET sharing_type = 'provided' WHERE name = ?");
-        provided.forEach(n => setProvided.run(n));
-      } catch (e) { console.log("v15 sharing_type migration note:", e.message); }
-    }
-
-    // ── v16 migration: multi-admin support ──
-    if (version < 16) {
-      tryAlter("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0");
-    }
-
-    // ── v17 migration: councils lookup table ──
-    if (version < 17) {
-      tryAlter("ALTER TABLE troops ADD COLUMN council_id INTEGER REFERENCES councils(id)");
-      seedCouncils();
-      // Migrate existing freeform council text → council_id
-      const troopsWithCouncil = db.prepare("SELECT id, council FROM troops WHERE council IS NOT NULL AND council != '' AND council_id IS NULL").all();
-      for (const t of troopsWithCouncil) {
-        const match = db.prepare("SELECT id FROM councils WHERE name = ? COLLATE NOCASE").get(t.council.trim());
-        if (match) {
-          db.prepare("UPDATE troops SET council_id = ? WHERE id = ?").run(match.id, t.id);
-        }
-      }
-    }
-
-    // ── v18 migration: crew layer (Troop → Adventure → Crew → Members) ──
-    if (version < 18) {
-      // Tables created by base schema DDL above; safe for existing DBs:
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS crews (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          adventure_id INTEGER NOT NULL REFERENCES adventures(id) ON DELETE CASCADE,
-          name TEXT NOT NULL,
-          itinerary_id TEXT REFERENCES itineraries(id),
-          depart_date TEXT, arrive_date TEXT, return_date TEXT, home_date TEXT,
-          leader_id INTEGER REFERENCES users(id),
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS crew_members (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          crew_id INTEGER NOT NULL REFERENCES crews(id) ON DELETE CASCADE,
-          user_id INTEGER REFERENCES users(id),
-          role TEXT NOT NULL DEFAULT 'member',
-          participation TEXT NOT NULL DEFAULT 'trekking',
-          linked_to INTEGER REFERENCES users(id),
-          linked_to_manual INTEGER,
-          linked_scouts TEXT NOT NULL DEFAULT '[]',
-          is_manual INTEGER NOT NULL DEFAULT 0,
-          manual_name TEXT,
-          color_bg TEXT NOT NULL,
-          dates TEXT NOT NULL DEFAULT '[]',
-          skills TEXT NOT NULL DEFAULT '[]',
-          gear TEXT NOT NULL DEFAULT '[]',
-          medical TEXT NOT NULL DEFAULT '[]',
-          admin_tasks TEXT NOT NULL DEFAULT '[]',
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          UNIQUE(crew_id, user_id)
-        );
-      `);
-      tryAlter("ALTER TABLE member_gear ADD COLUMN crew_id INTEGER REFERENCES crews(id)");
-      tryAlter("ALTER TABLE achievements ADD COLUMN crew_id INTEGER REFERENCES crews(id)");
-      tryAlter("ALTER TABLE crew_milestones ADD COLUMN crew_id INTEGER REFERENCES crews(id)");
-
-      // Migrate: each adventure → one crew, each adventure_member → crew_member
-      const allAdventures = db.prepare("SELECT * FROM adventures").all();
-      for (const adv of allAdventures) {
-        // Check if crew already exists for this adventure (idempotent)
-        const existing = db.prepare("SELECT id FROM crews WHERE adventure_id = ?").get(adv.id);
-        if (existing) continue;
-
-        const crewName = adv.name || "Crew 1";
-        const leaderId = adv.created_by || null;
-        const cr = db.prepare(
-          "INSERT INTO crews (adventure_id, name, itinerary_id, depart_date, arrive_date, return_date, home_date, leader_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-        ).run(adv.id, crewName, adv.itinerary_id, adv.depart_date, adv.arrive_date, adv.return_date, adv.home_date, leaderId);
-        const crewId = cr.lastInsertRowid;
-
-        // Copy adventure_members → crew_members
-        const advMembers = db.prepare("SELECT * FROM adventure_members WHERE adventure_id = ?").all(adv.id);
-        const insCM = db.prepare(
-          `INSERT OR IGNORE INTO crew_members (crew_id, user_id, role, participation, linked_to, linked_to_manual, linked_scouts, is_manual, manual_name, color_bg, dates, skills, gear, medical, admin_tasks, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        );
-        for (const m of advMembers) {
-          insCM.run(crewId, m.user_id, m.role, m.participation || "trekking", m.linked_to, m.linked_to_manual,
-            m.linked_scouts || "[]", m.is_manual || 0, m.manual_name, m.color_bg,
-            m.dates || "[]", m.skills || "[]", m.gear || "[]", m.medical || "[]", m.admin_tasks || "[]", m.created_at);
-        }
-
-        // Update member_gear to point to crew
-        db.prepare("UPDATE member_gear SET crew_id = ? WHERE adventure_id = ?").run(crewId, adv.id);
-        // Update achievements + crew_milestones
-        db.prepare("UPDATE achievements SET crew_id = ? WHERE adventure_id = ?").run(crewId, adv.id);
-        db.prepare("UPDATE crew_milestones SET crew_id = ? WHERE adventure_id = ?").run(crewId, adv.id);
-      }
-      console.log(`[v18] Migrated ${allAdventures.length} adventures to crew layer`);
-    }
-
-    // ── v19 migration: AI Readiness Engine tables ──
-    if (version < 19) {
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS member_assessments (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          crew_id INTEGER NOT NULL REFERENCES crews(id) ON DELETE CASCADE,
-          user_id INTEGER NOT NULL REFERENCES users(id),
-          current_distance_miles REAL,
-          pack_experience TEXT CHECK(pack_experience IN ('none', 'day_pack', 'loaded')),
-          elevation_access TEXT CHECK(elevation_access IN ('flat_only', 'some_hills', 'real_elevation')),
-          activity_level TEXT CHECK(activity_level IN ('sedentary', 'lightly_active', 'regularly_active', 'very_active')),
-          assessed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          UNIQUE(crew_id, user_id)
-        );
-        CREATE TABLE IF NOT EXISTS readiness_plans (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          crew_id INTEGER NOT NULL REFERENCES crews(id) ON DELETE CASCADE,
-          user_id INTEGER NOT NULL REFERENCES users(id),
-          plan_json TEXT NOT NULL DEFAULT '{}',
-          priorities_json TEXT NOT NULL DEFAULT '[]',
-          weeks_at_generation INTEGER,
-          generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          UNIQUE(crew_id, user_id)
-        );
-        CREATE TABLE IF NOT EXISTS readiness_progress (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          crew_id INTEGER NOT NULL REFERENCES crews(id) ON DELETE CASCADE,
-          user_id INTEGER NOT NULL REFERENCES users(id),
-          phase_number INTEGER NOT NULL,
-          status TEXT NOT NULL DEFAULT 'not_started' CHECK(status IN ('not_started', 'working', 'complete')),
-          note TEXT,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          UNIQUE(crew_id, user_id, phase_number)
-        );
-        CREATE INDEX IF NOT EXISTS idx_member_assessments_crew ON member_assessments(crew_id);
-        CREATE INDEX IF NOT EXISTS idx_readiness_plans_crew ON readiness_plans(crew_id);
-        CREATE INDEX IF NOT EXISTS idx_readiness_progress_crew ON readiness_progress(crew_id, user_id);
-      `);
-      console.log("[v19] AI Readiness Engine tables created");
-    }
-
-    if (version < 20) {
-      tryAlter("ALTER TABLE councils ADD COLUMN council_num INTEGER");
-      console.log("[v20] Added council_num to councils table");
-    }
-
-    if (version < 21) {
-      tryAlter("ALTER TABLE troop_members ADD COLUMN participation TEXT NOT NULL DEFAULT 'trekking'");
-      tryAlter("ALTER TABLE troop_members ADD COLUMN requested_adventures TEXT");
-      console.log("[v21] Added participation + requested_adventures to troop_members");
-    }
-
-    // ── v22 migration: AI gear recommendations cache ──
-    if (version < 22) {
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS ai_gear_recommendations (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          gear_catalog_id INTEGER NOT NULL,
-          adventure_type TEXT NOT NULL DEFAULT 'philmont',
-          recommendations TEXT NOT NULL,
-          generated_at TEXT NOT NULL DEFAULT (datetime('now')),
-          expires_at TEXT NOT NULL,
-          tokens_used INTEGER DEFAULT 0,
-          UNIQUE(gear_catalog_id, adventure_type)
-        );
-      `);
-      console.log("[v22] AI gear recommendations cache table created");
-    }
-
-    // ── v23 migration: Calendar redesign — event lifecycle + attendance tracking ──
-    if (version < 23) {
-      tryAlter("ALTER TABLE training_events ADD COLUMN type TEXT NOT NULL DEFAULT 'proposed'");
-      tryAlter("ALTER TABLE training_events ADD COLUMN status TEXT NOT NULL DEFAULT 'active'");
-      tryAlter("ALTER TABLE skills ADD COLUMN is_system INTEGER NOT NULL DEFAULT 0");
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS training_attendance (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          event_id INTEGER NOT NULL REFERENCES training_events(id) ON DELETE CASCADE,
-          user_id INTEGER NOT NULL REFERENCES users(id),
-          attended INTEGER NOT NULL DEFAULT 0,
-          marked_by INTEGER REFERENCES users(id),
-          marked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          UNIQUE(event_id, user_id)
-        );
-      `);
-      // Upgrade existing training events to 'scheduled' status (they were all confirmed before this migration)
-      try { db.exec("UPDATE training_events SET type = 'scheduled' WHERE type = 'proposed'"); } catch {}
-      console.log("[v23] Calendar redesign: training_attendance table, event type/status, skills.is_system");
-    }
-
-    // ── v24 migration: configurable attendance milestones ──
-    if (version < 24) {
-      tryAlter("ALTER TABLE adventures ADD COLUMN attendance_milestones TEXT");
-      console.log("[v24] Added attendance_milestones column to adventures");
-    }
-
-    // ── v25 migration: adventure documents ──
-    if (version < 25) {
-      db.exec(`CREATE TABLE IF NOT EXISTS adventure_documents (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        adventure_id INTEGER NOT NULL,
-        name TEXT NOT NULL,
-        original_name TEXT NOT NULL,
-        file_path TEXT NOT NULL,
-        mime_type TEXT,
-        size INTEGER DEFAULT 0,
-        description TEXT DEFAULT '',
-        uploaded_by INTEGER NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (adventure_id) REFERENCES adventures(id),
-        FOREIGN KEY (uploaded_by) REFERENCES users(id)
-      )`);
-      console.log("[v25] Created adventure_documents table");
-    }
-
-    db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
-  });
-
-  runMigration();
-  console.log(`Migrated schema to version ${CURRENT_SCHEMA_VERSION}`);
-
-  // Seed councils on every startup (idempotent — INSERT OR IGNORE)
-  seedCouncils();
-
-  // Seed ADMIN_EMAIL user as system admin (idempotent, runs every startup)
-  const adminEmail = process.env.ADMIN_EMAIL;
-  if (adminEmail) {
-    db.prepare("UPDATE users SET is_admin = 1 WHERE email = ? AND is_admin = 0").run(adminEmail);
-  }
-}
-
-function seedCouncils() {
-  // Check if councils need updating (new data has council_num field)
-  const sample = db.prepare("SELECT council_num FROM councils LIMIT 1").get();
-  const needsRefresh = !sample || sample.council_num === null;
-  const count = db.prepare("SELECT COUNT(*) as c FROM councils").get().c;
-
-  if (!needsRefresh && count >= BSA_COUNCILS.length) return;
-
-  // Preserve any troops referencing old council IDs by updating in-place where possible
-  const upsert = db.prepare(`
-    INSERT INTO councils (name, council_num, city, state) VALUES (?, ?, ?, ?)
-    ON CONFLICT(name) DO UPDATE SET council_num = excluded.council_num, city = excluded.city, state = excluded.state
-  `);
-  const runAll = db.transaction(() => {
-    for (const c of BSA_COUNCILS) upsert.run(c.name, c.num, c.city, c.state);
-  });
-  runAll();
-  console.log(`Seeded/updated ${BSA_COUNCILS.length} BSA councils (with council numbers)`);
-}
-
-// Ensure performance indexes exist (idempotent, runs every startup regardless of schema version)
-function ensureIndexes() {
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_adventure_members_adventure ON adventure_members(adventure_id);
-    CREATE INDEX IF NOT EXISTS idx_adventure_members_user ON adventure_members(user_id);
-    CREATE INDEX IF NOT EXISTS idx_troop_members_troop ON troop_members(troop_id);
-    CREATE INDEX IF NOT EXISTS idx_troop_members_user ON troop_members(user_id);
-    CREATE INDEX IF NOT EXISTS idx_member_gear_adventure_user ON member_gear(adventure_id, user_id);
-    CREATE INDEX IF NOT EXISTS idx_skills_adventure ON skills(adventure_id);
-    CREATE INDEX IF NOT EXISTS idx_invitations_adventure ON invitations(adventure_id);
-    CREATE INDEX IF NOT EXISTS idx_invitations_token ON invitations(token);
-    CREATE INDEX IF NOT EXISTS idx_achievements_adventure ON achievements(adventure_id);
-    CREATE INDEX IF NOT EXISTS idx_link_requests_adventure ON link_requests(adventure_id);
-    CREATE INDEX IF NOT EXISTS idx_crews_adventure ON crews(adventure_id);
-    CREATE INDEX IF NOT EXISTS idx_crew_members_crew ON crew_members(crew_id);
-    CREATE INDEX IF NOT EXISTS idx_crew_members_user ON crew_members(user_id);
-    CREATE INDEX IF NOT EXISTS idx_member_gear_crew ON member_gear(crew_id, user_id);
-    CREATE INDEX IF NOT EXISTS idx_member_assessments_crew ON member_assessments(crew_id);
-    CREATE INDEX IF NOT EXISTS idx_readiness_plans_crew ON readiness_plans(crew_id);
-    CREATE INDEX IF NOT EXISTS idx_readiness_progress_crew ON readiness_progress(crew_id, user_id);
-  `);
-  console.log("Performance indexes ensured");
-}
+const { Pool } = pg;
+export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 // ── Colors ──
 const COLORS = [
@@ -977,256 +13,11 @@ const COLORS = [
   "#C26B5A", "#4A8F8F", "#7A7040", "#B55A8D", "#5A7F5A",
 ];
 
-// ══════════════════════════════════════════
-// ENRICHED ITINERARY 12-20 DATA
-// ══════════════════════════════════════════
+// Round to 1 decimal to fix floating-point display bugs
+const roundMiles = (v) => v != null ? Math.round(v * 10) / 10 : v;
 
-const ROUTE_DATA_12_20 = [
-  {
-    day: 1, camp: "Camping HQ", elevation: 6700, miles: 0, gain: 0, loss: 0,
-    type: "Base Camp", notes: "Arrival, gear issue, shakedown",
-    showers: true, food_pickup: null,
-    programs: [
-      { name: "Check-in & Registration", type: "required", description: "Check in at Camping HQ, submit medical forms and crew paperwork" },
-      { name: "Crew Gear Issue", type: "required", description: "Pick up crew gear: stoves, bear bags, water purification, first aid" },
-      { name: "Pack Shakedown", type: "required", description: "Ranger reviews and weighs packs — target under 35lbs base weight" },
-      { name: "Opening Campfire", type: "required", description: "Welcome ceremony at the Camping HQ amphitheater" },
-    ],
-    water: null, warnings: [], optional_hikes: [],
-  },
-  {
-    day: 2, camp: "Aguila", elevation: 8420, miles: 5.9, gain: 2920, loss: 1510,
-    type: "Trail", notes: "Bus to Zastrow, Ranger Training, steep climb",
-    showers: false, food_pickup: null,
-    programs: [
-      { name: "Ranger Training", type: "required", description: "Meet your Ranger guide. Crew safety review, Leave No Trace, navigation basics" },
-    ],
-    water: null,
-    warnings: [
-      "Steep 2,920' elevation gain — pace yourself as you acclimate",
-      "Stay hydrated — altitude increases water needs significantly",
-    ],
-    optional_hikes: [],
-  },
-  {
-    day: 3, camp: "Miners Park", elevation: 7570, miles: 4.6, gain: 2000, loss: 2310,
-    type: "Staffed", notes: "Rock Climbing, Continental Tie passthrough, Advisor Coffee",
-    showers: true, food_pickup: null,
-    programs: [
-      { name: "Rock Climbing", type: "program", description: "Staffed rock climbing program at Miners Park — helmets and harnesses provided" },
-      { name: "Continental Tie", type: "passthrough", description: "Pass through Continental Tie trail junction near Crater Lake" },
-      { name: "Advisor Coffee", type: "optional", description: "Coffee and fellowship for adult advisors at the staff camp" },
-    ],
-    water: null, warnings: [], optional_hikes: [],
-  },
-  {
-    day: 4, camp: "Clarks Fork", elevation: 7520, miles: 6.8, gain: 3800, loss: 4290,
-    type: "Staffed", notes: "Western Lore, Branding/Roping, Campfire Show",
-    showers: true, food_pickup: null,
-    programs: [
-      { name: "Western Lore", type: "program", description: "Branding, roping, and Western heritage activities" },
-      { name: "Campfire Show", type: "program", description: "Staff-led campfire program with songs and skits" },
-    ],
-    water: null, warnings: [],
-    optional_hikes: [
-      { name: "Tooth of Time", description: "Iconic Philmont landmark — moderate scramble to summit with panoramic views" },
-      { name: "Shaefers Peak", description: "Ridge hike with views of the Sangre de Cristo range" },
-    ],
-  },
-  {
-    day: 5, camp: "Minnette Meadows", elevation: 8200, miles: 8.2, gain: 3290, loss: 2960,
-    type: "Dry Camp", notes: "Food pickup Ute Gulch, carry 4-6L water, burn zone",
-    showers: false, food_pickup: "Ute Gulch — pick up resupply food",
-    programs: [],
-    water: {
-      strategy: "Fill all water containers at last reliable source before Ute Gulch. This is a DRY CAMP — no water at campsite.",
-      fill_location: "Last creek crossing before Ute Gulch",
-      next_source: "Day 6 — Cimarron River area",
-      carry_liters: 5,
-    },
-    warnings: [
-      "DRY CAMP — carry minimum 4-6 liters per person",
-      "Burn zone — minimal shade, full sun exposure",
-      "Longest day so far (8.2 miles) — start early",
-      "Hot conditions likely — monitor for heat exhaustion",
-    ],
-    optional_hikes: [],
-  },
-  {
-    day: 6, camp: "Mistletoe", elevation: 8500, miles: 6.9, gain: 3290, loss: 2730,
-    type: "Dry Camp", notes: "Conservation project 10:30am (mandatory), Fire Ecology passthrough",
-    showers: false, food_pickup: null,
-    programs: [
-      { name: "Conservation Project", type: "required", description: "Trail restoration and revegetation in the burn zone. All crew members must participate. ~3 hours of service." },
-      { name: "Fire Ecology", type: "passthrough", description: "Interpretive program on wildfire ecology and forest recovery in the burn zone" },
-    ],
-    water: {
-      strategy: "Second consecutive DRY CAMP. Fill from Cimarron River drainage. Purify all water carefully.",
-      fill_location: "Cimarron River crossing",
-      next_source: "Head of Dean (Day 7) — staffed camp with water",
-      carry_liters: 5,
-    },
-    warnings: [
-      "DRY CAMP — second consecutive dry night",
-      "Conservation project is MANDATORY at 10:30 AM — plan hiking schedule around it",
-      "Still in burn zone — limited shade",
-    ],
-    optional_hikes: [],
-  },
-  {
-    day: 7, camp: "Head of Dean", elevation: 8000, miles: 5.5, gain: 1820, loss: 1480,
-    type: "Staffed", notes: "COPE Challenge Course (Low + High elements), Advisor Coffee",
-    showers: true, food_pickup: null,
-    programs: [
-      { name: "COPE Challenge Course", type: "program", description: "Low and High elements team-building challenge course. Harnesses provided for high elements." },
-      { name: "Advisor Coffee", type: "optional", description: "Coffee and fellowship for adult advisors" },
-    ],
-    water: null,
-    warnings: ["Welcome relief after 2 consecutive dry camps — rehydrate well"],
-    optional_hikes: [],
-  },
-  {
-    day: 8, camp: "Ewells Park", elevation: 9400, miles: 4.7, gain: 2320, loss: 1670,
-    type: "Trail", notes: "Baldy prep day — early bedtime, prep daypacks, filter extra water",
-    showers: false, food_pickup: null,
-    programs: [],
-    water: null,
-    warnings: [
-      "BALDY PREP — go to bed early tonight (4 AM departure tomorrow)",
-      "Prep daypacks tonight: rain gear, warm layer, headlamp, 2L water, snacks",
-      "Filter extra water for tomorrow's Baldy summit attempt",
-      "Leave full packs at camp — daypacks only for Baldy",
-    ],
-    optional_hikes: [],
-  },
-  {
-    day: 9, camp: "Ewells Park", elevation: 9400, miles: 11.9, gain: 6650, loss: 6650,
-    type: "Layover", notes: "BALDY 12,441' summit — daypacks only, 4 AM start",
-    showers: false, food_pickup: null,
-    programs: [
-      { name: "Baldy Mountain Summit", type: "required", description: "Summit the highest point in Scouting at 12,441'. Round trip from Ewells Park." },
-      { name: "French Henry Mine", type: "optional", description: "Historic gold mine tour on the return from Baldy — ask your Ranger" },
-    ],
-    water: null,
-    warnings: [
-      "4:00 AM departure — headlamps required",
-      "LIGHTNING — be below treeline by noon. No exceptions.",
-      "AMS (Acute Mountain Sickness) possible above 11,000' — headache, nausea, dizziness = descend immediately",
-      "Total elevation change: 6,650' gain + 6,650' loss — hardest day of the trek",
-      "Carry 2+ liters of water and high-energy snacks in daypack",
-      "Weather changes rapidly above treeline — bring rain gear and warm layer",
-    ],
-    optional_hikes: [
-      { name: "French Henry Mine", description: "Historic gold mining site — optional detour on Baldy return route" },
-    ],
-  },
-  {
-    day: 10, camp: "Pueblano", elevation: 8000, miles: 4.0, gain: 970, loss: 2300,
-    type: "Staffed", notes: "Continental Tie & Lumber programs, Campfire Show — celebration camp",
-    showers: true, food_pickup: null,
-    programs: [
-      { name: "Continental Tie & Lumber", type: "program", description: "Crosscut sawing and tie hewing — old-school logging skills" },
-      { name: "Campfire Show", type: "program", description: "Celebration campfire program — you conquered Baldy!" },
-    ],
-    water: null,
-    warnings: ["Easy downhill day — enjoy the recovery after Baldy"],
-    optional_hikes: [],
-  },
-  {
-    day: 11, camp: "Dean Skyline", elevation: 9200, miles: 6.4, gain: 3290, loss: 2950,
-    type: "Dry Camp", notes: "3rd dry camp — fill water from S. Ponil Creek, scenic ridge",
-    showers: false, food_pickup: null,
-    programs: [],
-    water: {
-      strategy: "Last DRY CAMP of the trek. Fill all containers at South Ponil Creek before climbing to ridgeline camp.",
-      fill_location: "South Ponil Creek",
-      next_source: "Ponil Trailhead area (Day 12)",
-      carry_liters: 4,
-    },
-    warnings: [
-      "DRY CAMP — 3rd and final dry night",
-      "Fill water at South Ponil Creek before the climb",
-      "Pack out all remaining food — last night on trail",
-      "Scenic ridgeline — enjoy the views on your final full day",
-    ],
-    optional_hikes: [],
-  },
-  {
-    day: 12, camp: "Camping HQ", elevation: 6700, miles: 3.7, gain: 1470, loss: 2810,
-    type: "Base Camp", notes: "Hike to Ponil Trailhead, bus to HQ, gear return, closing campfire",
-    showers: true, food_pickup: null,
-    programs: [
-      { name: "Gear Return", type: "required", description: "Return all crew gear, stoves, and bear bags to Camping HQ" },
-      { name: "Closing Campfire", type: "required", description: "Final campfire ceremony — Arrowhead patches awarded" },
-    ],
-    water: null,
-    warnings: ["Pack up camp thoroughly — leave no trace", "Bus pickup at Ponil Trailhead"],
-    optional_hikes: [],
-  },
-];
-
-const GLOBAL_INFO_12_20 = {
-  conservation_project: {
-    day: 6,
-    time: "10:30 AM",
-    description: "Trail restoration and revegetation work in the burn zone area. Approximately 3 hours of conservation service. All crew members must participate — this is a core part of the Philmont experience.",
-    what_to_bring: "Work gloves, sun protection, full water bottles",
-  },
-  baldy_guide: {
-    summit_elevation: 12441,
-    start_time: "4:00 AM",
-    round_trip_miles: 11.9,
-    total_elevation_change: 6650,
-    daypack_essentials: [
-      "Rain jacket or poncho",
-      "Warm layer (fleece or puffy jacket)",
-      "Headlamp with fresh batteries",
-      "2+ liters of water",
-      "High-energy snacks (bars, trail mix, jerky)",
-      "Sun protection (hat, sunscreen, sunglasses)",
-      "Map and compass",
-      "First aid basics (moleskin, tape, ibuprofen)",
-    ],
-    ams_warning: "Acute Mountain Sickness can occur above 11,000'. Symptoms include headache, nausea, dizziness, and shortness of breath. If symptoms appear, descend immediately. Do not push through AMS symptoms — they can escalate to life-threatening conditions.",
-    lightning_protocol: "Be below treeline by noon. If caught above treeline during lightning: spread crew out 50+ feet apart, crouch on sleeping pad with feet together, remove metal-frame packs. Never shelter under isolated trees or on ridgelines.",
-  },
-  prohibited_items: [
-    "Aerosol cans of any kind",
-    "Fireworks or explosives",
-    "Firearms or ammunition",
-    "Alcohol or illegal drugs",
-    "Glass containers on trail",
-    "Drones or remote-controlled aircraft",
-    "Hatchets or saws (Philmont provides where needed)",
-    "Electronic devices discouraged on trail (leave at base camp)",
-  ],
-  trailhead_info: {
-    departure: "Bus to Zastrow Turnaround (Day 2 morning)",
-    return_route: "Hike out to Ponil Trailhead, bus to Camping HQ (Day 12)",
-    parking: "Vehicles parked at Camping HQ lot for the duration of the trek",
-  },
-  readiness_reminders: [
-    { item: "Medical Forms", details: "BSA Annual Health & Medical Record Parts A, B, and C required — due 30 days before departure" },
-    { item: "BMI Requirements", details: "BSA height/weight requirements must be met. Consult your physician early if there are concerns." },
-    { item: "Boot Break-in", details: "Log 50+ miles in your trek boots before arrival. Never bring new boots to Philmont." },
-    { item: "Physical Conditioning", details: "Train 3-5x per week for 4+ months. Include loaded hikes, stair climbing, and sustained cardio." },
-    { item: "Wilderness First Aid", details: "WFA or WAFA certification strongly recommended for at least one adult leader." },
-    { item: "Shakedown Hikes", details: "Complete minimum 2 full overnight hikes with loaded packs before departure." },
-    { item: "Water Purification", details: "Every crew member must be proficient with the water filter system before arrival." },
-    { item: "Bear Bag Protocol", details: "Practice bear bag hanging — required every night on trail. Learn the PCT hang method." },
-    { item: "Stove Operation", details: "All crew members should be able to operate and clean the crew stove." },
-  ],
-  maps_required: ["Philmont North Country Map", "Philmont South Country Map"],
-  total_miles: 69,
-  total_gain: 31820,
-  total_loss: 31470,
-  dry_camp_days: [5, 6, 11],
-  staffed_camps: ["Miners Park", "Clarks Fork", "Head of Dean", "Pueblano"],
-};
-
-// Universal Philmont skills — applies to ALL Philmont itineraries (training/medical/admin prep is the same)
+// Universal Philmont skills
 export const PHILMONT_DEFAULT_SKILLS = [
-  // Training skills
   { id: "loaded", name: "Loaded Pack Hike (8+ mi)", icon: "🎒", desc: "Full weight, terrain with elevation changes", category: "training" },
   { id: "elevation", name: "Elevation / Hill Training", icon: "⛰️", desc: "Stair repeats, hill sprints, incline hikes", category: "training" },
   { id: "water", name: "Water Carry & Purification", icon: "💧", desc: "Practice dry camp water protocol (4-6L carry)", category: "training" },
@@ -1235,13 +26,11 @@ export const PHILMONT_DEFAULT_SKILLS = [
   { id: "navigation", name: "Map & Compass Nav", icon: "🧭", desc: "Both North + South sectional maps proficiency", category: "training" },
   { id: "overnight", name: "Full Overnight Shakedown", icon: "🏕️", desc: "Minimum 2 required before trek — full loaded packs", category: "training" },
   { id: "conditioning", name: "Conditioning Program", icon: "🥾", desc: "3-5x/week — ramp up intensity over 4+ months", category: "training" },
-  // Medical checklist
   { id: "med-forma", name: "Health Form Part A", icon: "📋", desc: "Annual health history, signed by parent/guardian", category: "medical" },
   { id: "med-formb", name: "Health Form Part B", icon: "📋", desc: "Physical exam signed by physician (within 12 months)", category: "medical" },
   { id: "med-formc", name: "Health Form Part C", icon: "📋", desc: "Pre-participation physical clearance required for Philmont", category: "medical" },
   { id: "med-bmi", name: "BMI Check", icon: "⚖️", desc: "Meets BSA height/weight requirements", category: "medical" },
   { id: "med-meds", name: "Medications Reviewed", icon: "💊", desc: "All medications reviewed with crew advisor and documented", category: "medical" },
-  // Admin checklist
   { id: "adm-agreement", name: "Participant Agreement", icon: "✍️", desc: "Philmont participant agreement signed", category: "admin" },
   { id: "adm-emergency", name: "Emergency Contact Card", icon: "🆘", desc: "Emergency contact info submitted to crew leader", category: "admin" },
   { id: "adm-travel", name: "Travel Confirmed", icon: "✈️", desc: "Travel arrangements to/from Philmont confirmed", category: "admin" },
@@ -1249,130 +38,101 @@ export const PHILMONT_DEFAULT_SKILLS = [
   { id: "adm-insurance", name: "Insurance Info", icon: "🏥", desc: "Health insurance card copy submitted to crew leader", category: "admin" },
 ];
 
-const TRAINING_PRIORITIES_12_20 = [
-  { icon: "💧", label: "Water carry", detail: "3 dry camps (Days 5, 6, 11) — practice hauling 4-6L/person" },
-  { icon: "🥾", label: "Big days", detail: "Day 5 (8.2mi) + Day 9 (11.9mi Baldy) — build to loaded 10+ mi" },
-  { icon: "⛰️", label: "Elevation", detail: "Day 9 = 6,650' gain+loss — stair/hill training essential" },
-  { icon: "☀️", label: "Heat", detail: "Days 5-6 burn zone, full sun — train in heat when possible" },
-  { icon: "⏰", label: "Early starts", detail: "Multiple pre-dawn departures required" },
-  { icon: "🏕️", label: "Shakedowns", detail: "Min 2 full overnights with loaded packs before arrival" },
+// Attendance milestone defaults
+const DEFAULT_MILESTONES = [
+  { count: 1, icon: "🥾" },
+  { count: 3, icon: "🏔️" },
+  { count: 5, icon: "⭐" },
 ];
 
-/**
- * Seed default Philmont skills into an adventure.
- * Safe to call multiple times — skips skills that already exist.
- */
-export function seedAdventureSkills(adventureId, troopId) {
-  const existing = db.prepare("SELECT id FROM skills WHERE adventure_id = ?").all(adventureId);
-  const existingIds = new Set(existing.map(s => s.id));
-  const insertSkill = db.prepare(
-    "INSERT INTO skills (id, troop_id, adventure_id, name, icon, description, category, is_default, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)"
-  );
-  let seeded = 0;
-  PHILMONT_DEFAULT_SKILLS.forEach((s, i) => {
-    const skillId = `${adventureId}-${s.id}`;
-    if (!existingIds.has(skillId)) {
-      insertSkill.run(skillId, troopId, adventureId, s.name, s.icon || "📋", s.desc, s.category || "training", i);
-      seeded++;
-    }
-  });
-  if (seeded > 0) console.log(`[skills] Seeded ${seeded} default skills for adventure ${adventureId}`);
-  return seeded;
-}
-
-// ── Seed 2026 Philmont Itineraries (48 itineraries from official guidebook) ──
-const itinCount = db.prepare("SELECT COUNT(*) as c FROM itineraries").get();
-if (itinCount.c < 48) {
-  try {
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = dirname(__filename);
-    const seedData = JSON.parse(readFileSync(join(__dirname, "itinerary_seed.json"), "utf-8"));
-    const upsert = db.prepare(`INSERT OR REPLACE INTO itineraries (id, name, days, miles, rating, highlights, route_data, training_priorities, default_skills, global_info)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-    const seedAll = db.transaction(() => {
-      for (const it of seedData) {
-        upsert.run(
-          it.id, it.name, it.days, it.miles, it.rating,
-          JSON.stringify(it.highlights || []),
-          JSON.stringify(it.route_data || []),
-          JSON.stringify([]),
-          JSON.stringify([]),
-          JSON.stringify({ description: it.description || "", elevations: it.elevations || {}, camps_info: it.camps_info || "", conservation: it.conservation || "" }),
+// ── Initialize Database (seed data) ──
+export async function initializeDatabase() {
+  // Seed councils
+  const sample = (await pool.query("SELECT council_num FROM councils LIMIT 1")).rows[0];
+  const needsRefresh = !sample || sample.council_num === null;
+  const countRes = (await pool.query("SELECT COUNT(*) as c FROM councils")).rows[0];
+  if (needsRefresh || countRes.c < BSA_COUNCILS.length) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      for (const c of BSA_COUNCILS) {
+        await client.query(
+          `INSERT INTO councils (name, council_num, city, state) VALUES ($1, $2, $3, $4)
+           ON CONFLICT(name) DO UPDATE SET council_num = EXCLUDED.council_num, city = EXCLUDED.city, state = EXCLUDED.state`,
+          [c.name, c.num, c.city, c.state]
         );
       }
-    });
-    seedAll();
-    console.log(`Seeded ${seedData.length} Philmont itineraries`);
-  } catch (e) {
-    console.error("Failed to seed itineraries:", e.message);
+      await client.query("COMMIT");
+      console.log(`Seeded/updated ${BSA_COUNCILS.length} BSA councils`);
+    } catch (e) { await client.query("ROLLBACK"); throw e; }
+    finally { client.release(); }
   }
-}
 
-// ── Backfill: seed default skills for existing Philmont adventures that have none ──
-try {
-  const adventures = db.prepare("SELECT id, troop_id, adventure_type FROM adventures WHERE status = 'active'").all();
-  for (const adv of adventures) {
-    if ((adv.adventure_type || "philmont") === "philmont") {
-      const skillCount = db.prepare("SELECT COUNT(*) as c FROM skills WHERE adventure_id = ?").get(adv.id);
-      if (skillCount.c === 0) {
-        seedAdventureSkills(adv.id, adv.troop_id);
+  // Seed itineraries
+  const itinCount = (await pool.query("SELECT COUNT(*) as c FROM itineraries")).rows[0];
+  if (Number(itinCount.c) < 48) {
+    try {
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = dirname(__filename);
+      const seedData = JSON.parse(readFileSync(join(__dirname, "itinerary_seed.json"), "utf-8"));
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        for (const it of seedData) {
+          await client.query(
+            `INSERT INTO itineraries (id, name, days, miles, rating, highlights, route_data, training_priorities, default_skills, global_info)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name, days=EXCLUDED.days, miles=EXCLUDED.miles, rating=EXCLUDED.rating, highlights=EXCLUDED.highlights, route_data=EXCLUDED.route_data, training_priorities=EXCLUDED.training_priorities, default_skills=EXCLUDED.default_skills, global_info=EXCLUDED.global_info`,
+            [it.id, it.name, it.days, it.miles, it.rating,
+             JSON.stringify(it.highlights || []), JSON.stringify(it.route_data || []),
+             JSON.stringify([]), JSON.stringify([]),
+             JSON.stringify({ description: it.description || "", elevations: it.elevations || {}, camps_info: it.camps_info || "", conservation: it.conservation || "" })]
+          );
+        }
+        await client.query("COMMIT");
+        console.log(`Seeded ${seedData.length} Philmont itineraries`);
+      } catch (e2) { await client.query("ROLLBACK"); throw e2; }
+      finally { client.release(); }
+    } catch (e) { console.error("Failed to seed itineraries:", e.message); }
+  }
+
+  // Backfill default skills for existing Philmont adventures
+  try {
+    const adventures = (await pool.query("SELECT id, troop_id, adventure_type FROM adventures WHERE status = 'active'")).rows;
+    for (const adv of adventures) {
+      if ((adv.adventure_type || "philmont") === "philmont") {
+        const skillCount = (await pool.query("SELECT COUNT(*) as c FROM skills WHERE adventure_id = $1", [adv.id])).rows[0];
+        if (Number(skillCount.c) === 0) {
+          await seedAdventureSkills(adv.id, adv.troop_id);
+        }
       }
     }
-  }
-} catch (e) {
-  // Fresh DB may not have adventures table or adventure_type column yet — safe to skip
+  } catch (e) { /* Fresh DB — safe to skip */ }
+
+  // Seed gear catalog
+  await seedGearCatalog();
+  console.log("Database initialization complete");
 }
 
-// ── Seed default gear items ──
-const gearCount = db.prepare("SELECT COUNT(*) as c FROM gear_items").get();
-if (gearCount.c === 0) {
-  const insertGear = db.prepare("INSERT INTO gear_items (name, description, category, itinerary_tags, priority, sort_order) VALUES (?, ?, ?, ?, ?, ?)");
-  [
-    ["Sawyer Squeeze Water Filter", "Essential for dry camps — filter water at every source", "water", '["dry_camp"]', "essential", 1],
-    ["Nalgene 32oz Bottles (x2)", "Wide mouth, durable, freeze-proof for mountain water", "water", '["all"]', "essential", 2],
-    ["Hydration Bladder 3L", "Hands-free drinking on long hiking days", "water", '["big_day"]', "recommended", 3],
-    ["Backpack 60-75L", "Internal frame, rain cover included, hip belt essential", "pack", '["all"]', "essential", 4],
-    ["Rain Cover for Pack", "Afternoon thunderstorms are common in the mountains", "pack", '["all"]', "essential", 5],
-    ["Hiking Boots (broken in)", "Ankle support critical — break in BEFORE trek", "footwear", '["all"]', "essential", 6],
-    ["Merino Wool Socks (3-4 pairs)", "Moisture-wicking, blister prevention", "footwear", '["all"]', "essential", 7],
-    ["Camp Shoes / Sandals", "Give feet a break at camp", "footwear", '["all"]', "recommended", 8],
-    ["Trekking Poles", "Reduce knee impact on big descent days", "footwear", '["high_elevation","big_day"]', "recommended", 9],
-    ["50ft Paracord (Bear Bag)", "Required for bear bag hanging every night", "shelter", '["all"]', "essential", 10],
-    ["Sleeping Bag (30F rated)", "Temps drop at 10,000'+ elevation", "shelter", '["high_elevation"]', "essential", 11],
-    ["Sleeping Pad (R-value 3+)", "Insulation from ground, comfort for recovery", "shelter", '["all"]', "essential", 12],
-    ["Backpacking Stove", "Crew cooking required — practice before trek", "cooking", '["all"]', "essential", 13],
-    ["Compass (baseplate)", "Required for navigation training", "navigation", '["all"]', "essential", 14],
-    ["Sun Hat / Buff", "Full sun in burn zones Days 5-6", "clothing", '["heat","burn_zone"]', "essential", 15],
-    ["Rain Jacket (packable)", "Afternoon thunderstorms are common at high altitude", "clothing", '["all"]', "essential", 16],
-    ["Headlamp + Extra Batteries", "Pre-dawn starts require reliable light", "misc", '["early_start"]', "essential", 17],
-    ["Moleskin / Blister Kit", "Prevention and treatment for long days", "misc", '["big_day"]', "essential", 18],
-  ].forEach(g => insertGear.run(...g));
-}
-
-// ── Seed Gear Catalog (inline — no external file) ──
-function seedGearCatalog() {
-  const count = db.prepare("SELECT COUNT(*) as c FROM gear_catalog").get();
-  if (count.c > 0) return;
+async function seedGearCatalog() {
+  const count = (await pool.query("SELECT COUNT(*) as c FROM gear_catalog")).rows[0];
+  if (Number(count.c) > 0) return;
 
   console.log("Seeding gear catalog...");
   const S = [
-    // Pack & Carry
     ["Backpacking Pack (65-75L)", "Pack & Carry", "Backpack", 52, "essential", 0, "Torso-fit suspension; adjustable hip belt mandatory"],
     ["Pack Rain Cover", "Pack & Carry", "Pack Protection", 4, "essential", 0, "Essential for NM afternoon thunderstorms"],
     ["Stuff Sacks / Compression Sacks", "Pack & Carry", "Organization", 6, "recommended", 0, "Keeps gear organized and compressible"],
     ["Dry Bags (2-pack)", "Pack & Carry", "Waterproof Storage", 5, "essential", 0, "Electronics, maps, sleep systems must stay dry"],
     ["Trekking Poles (pair)", "Pack & Carry", "Poles", 18, "recommended", 0, "Reduce knee impact on descent days"],
-    // Shelter
     ["Backpacking Tent (2-3 person)", "Shelter", "Tent", 56, "essential", 1, "Crew-shared; freestanding preferred for rocky sites"],
     ["Tent Footprint / Ground Cloth", "Shelter", "Tent Protection", 8, "recommended", 1, "Protects tent floor from rocks"],
     ["Tent Stakes (set of 10)", "Shelter", "Hardware", 5, "essential", 1, "Y-beam aluminum recommended for rocky soil"],
     ["Emergency Tarp", "Shelter", "Emergency", 12, "recommended", 1, "Rain shelter during meal breaks or tent failure"],
-    // Sleep System
     ["Sleeping Bag (20°F rated)", "Sleep System", "Sleeping Bag", 40, "essential", 0, "NM altitude nights drop to 20-30°F"],
     ["Sleeping Bag Liner", "Sleep System", "Liner", 8, "optional", 0, "Adds 5-15°F warmth; keeps bag clean"],
     ["Sleeping Pad", "Sleep System", "Pad", 16, "essential", 0, "R-value 3+ for ground insulation at altitude"],
     ["Backpacking Pillow", "Sleep System", "Pillow", 3, "optional", 0, "Worth every gram for 12-night trek"],
-    // Clothing
     ["Base Layer Top (long sleeve)", "Clothing", "Base Layer", 6, "essential", 0, "Merino wool or synthetic; NO cotton"],
     ["Base Layer Bottom (leggings)", "Clothing", "Base Layer", 5, "essential", 0, "Thermal base for cold mornings; doubles as sleep layer"],
     ["Fleece Mid Layer / Jacket", "Clothing", "Insulation", 14, "essential", 0, "Versatile for 40-70°F daily swings"],
@@ -1387,41 +147,34 @@ function seedGearCatalog() {
     ["Warm Beanie Hat", "Clothing", "Headwear", 2, "recommended", 0, "Summit mornings can be below freezing"],
     ["Lightweight Gloves", "Clothing", "Handwear", 2, "recommended", 0, "Liner gloves for cold summit crossings"],
     ["Gaiters (trail or low)", "Clothing", "Gaiters", 4, "optional", 0, "Debris protection on dusty trails"],
-    // Footwear
     ["Hiking Boots (mid-cut, waterproof)", "Footwear", "Boots", 40, "essential", 0, "Break in 50+ miles before arrival; ankle support required"],
     ["Camp Shoes / Sandals", "Footwear", "Camp Footwear", 12, "recommended", 0, "Feet recovery critical on 12-day trek"],
     ["Boot/Sock Liners", "Footwear", "Liners", 1, "optional", 0, "Thin liner under hiking sock reduces blisters"],
-    // Navigation
     ["Topographic Map (Philmont)", "Navigation", "Maps", 3, "essential", 1, "Official topo provided at check-in; carry at all times"],
     ["Baseplate Compass", "Navigation", "Compass", 2, "essential", 0, "BSA requirement; set NM declination before trek"],
     ["Altimeter Watch", "Navigation", "Electronics", 2, "optional", 0, "Elevation tracking and weather prediction"],
     ["Handheld GPS", "Navigation", "Electronics", 8, "optional", 1, "Backup navigation; inReach for emergency comms"],
-    // Hydration & Water Treatment
     ["Water Bottles (1L x2)", "Hydration & Water", "Bottles", 10, "essential", 0, "2L minimum carry; wide-mouth for filter compatibility"],
     ["Hydration Reservoir (2-3L)", "Hydration & Water", "Bladder", 6, "recommended", 0, "Hands-free hydration on trail"],
     ["Water Filter / Purifier", "Hydration & Water", "Filtration", 3, "essential", 1, "ALL water must be treated; Sawyer Squeeze standard"],
     ["Chemical Water Treatment (backup)", "Hydration & Water", "Treatment", 1, "recommended", 1, "Backup if filter fails or freezes"],
-    // Food & Cooking
     ["Camp Stove (canister)", "Food & Cooking", "Stove", 3, "essential", 1, "Canister ONLY; white gas prohibited at Philmont"],
     ["Fuel Canisters (isobutane, 100g x4)", "Food & Cooking", "Fuel", 28, "essential", 1, "Plan ~100g per 2 people per day at altitude"],
     ["Cook Pot / Pot Set", "Food & Cooking", "Cookware", 8, "essential", 1, "2L minimum for crew; titanium or aluminum"],
     ["Long-Handle Spork", "Food & Cooking", "Utensils", 1, "essential", 0, "Reaches bottom of freeze-dried pouches"],
     ["Bear Bag / Ursack", "Food & Cooking", "Food Storage", 5, "essential", 1, "ALL scented items in bear storage nightly"],
     ["Trash Compactor Bags (2-pack)", "Food & Cooking", "Waste", 2, "essential", 1, "Pack out ALL trash; LNT mandate"],
-    // Fire & Light
     ["Headlamp (primary)", "Fire & Light", "Headlamp", 3, "essential", 0, "200+ lumens; red mode for night vision"],
     ["Backup Headlamp", "Fire & Light", "Headlamp", 2, "recommended", 0, "12 days is long; headlamps fail"],
     ["Extra Batteries (AA/AAA)", "Fire & Light", "Batteries", 8, "essential", 0, "Cold altitude drains batteries faster"],
     ["Lighter / Waterproof Matches", "Fire & Light", "Fire Starting", 1, "essential", 0, "Stove ignition only; open fires prohibited most zones"],
     ["Camp Lantern", "Fire & Light", "Lantern", 3, "optional", 1, "Solar inflatable or LED; crew-shared"],
-    // First Aid & Safety
     ["Personal First Aid Kit", "First Aid & Safety", "First Aid", 16, "essential", 0, "Crew + personal kits; WFA training recommended"],
     ["Blister Kit (dedicated)", "First Aid & Safety", "Blister Care", 3, "essential", 0, "#1 cause of Scout evacuation; Leukotape + moleskin"],
     ["SAM Splint", "First Aid & Safety", "Emergency", 2, "recommended", 1, "Ankle/wrist sprains common on terrain"],
     ["Emergency Whistle", "First Aid & Safety", "Safety", 1, "essential", 0, "3 blasts = distress; attach to shoulder strap"],
     ["Emergency Bivy / Space Blanket", "First Aid & Safety", "Emergency", 3, "recommended", 0, "Hypothermia treatment; weighs almost nothing"],
     ["PLB / Satellite Communicator", "First Aid & Safety", "Communication", 3, "optional", 1, "inReach Mini 2 recommended; zero cell service"],
-    // Hygiene & Leave No Trace
     ["Trowel (LNT cat hole)", "Hygiene & LNT", "Sanitation", 1, "essential", 1, "6-inch cat holes, 200ft from water"],
     ["WAG Bags", "Hygiene & LNT", "Sanitation", 2, "recommended", 0, "Required in some high-use Philmont zones"],
     ["Biodegradable Soap", "Hygiene & LNT", "Hygiene", 2, "recommended", 1, "Use 200+ feet from water sources"],
@@ -1432,262 +185,230 @@ function seedGearCatalog() {
     ["Lip Balm (SPF 30+)", "Hygiene & LNT", "Sun Protection", 0.5, "essential", 0, "Scented — bear bag; pack 2-3"],
     ["Insect Repellent (DEET/Picaridin)", "Hygiene & LNT", "Bug Protection", 2, "recommended", 0, "Scented — bear bag; DEET degrades nylon"],
     ["Toilet Paper (compressed)", "Hygiene & LNT", "Sanitation", 2, "essential", 0, "Pack out in ziplock; biodegradable preferred"],
-    // Sun & Weather Protection
     ["Sunglasses (polarized, UV400)", "Sun & Weather", "Eye Protection", 1, "essential", 0, "UV400 mandatory; cheap glasses cause MORE damage"],
     ["Buff / Neck Gaiter", "Sun & Weather", "Multi-Use", 1.5, "recommended", 0, "12 uses in one item; dust, sun, warmth"],
     ["Trekking Umbrella", "Sun & Weather", "Sun/Rain", 10, "optional", 0, "Stow immediately during lightning"],
-    // Repair & Multi-tool
     ["Knife / Multi-Tool", "Repair & Tools", "Tools", 4, "essential", 0, "BSA Totin' Chip required; folding blade"],
     ["Duct Tape (compact roll)", "Repair & Tools", "Repair", 2, "essential", 0, "Wrap around trekking pole to save space"],
     ["Tent Pole Repair Sleeve", "Repair & Tools", "Repair", 0.5, "recommended", 1, "Can save a $400 tent from abandonment"],
     ["Paracord (50ft)", "Repair & Tools", "Cordage", 5, "essential", 1, "Bear bag hanging, guyline, emergency lashing"],
-    // Communication & Documentation
     ["Waterproof Phone Case", "Communication", "Protection", 1, "recommended", 0, "Phone = emergency camera + offline maps"],
     ["Portable Battery Bank", "Communication", "Power", 16, "recommended", 1, "10,000mAh = ~3 phone charges; rotating schedule"],
     ["Trail Journal / Notebook", "Communication", "Documentation", 3, "optional", 0, "Rite in the Rain recommended; document your trek"],
     ["Pencils (waterproof, 3-pack)", "Communication", "Documentation", 0.5, "optional", 0, "Pencils write in rain; pens fail in cold"],
   ];
 
-  // sharing_type overrides — items that are buddy, crew, or provided by Philmont
   const sharingOverrides = {
-    "Backpacking Tent (2-3 person)": "buddy",
-    "Tent Footprint / Ground Cloth": "buddy",
-    "Tent Stakes (set of 10)": "buddy",
-    "Emergency Tarp": "crew",
-    "Topographic Map (Philmont)": "provided",
-    "Handheld GPS": "crew",
-    "Water Filter / Purifier": "crew",
-    "Chemical Water Treatment (backup)": "crew",
-    "Camp Stove (canister)": "crew",
-    "Fuel Canisters (isobutane, 100g x4)": "provided",
-    "Cook Pot / Pot Set": "provided",
-    "Bear Bag / Ursack": "provided",
-    "Trash Compactor Bags (2-pack)": "crew",
-    "Camp Lantern": "crew",
-    "SAM Splint": "crew",
-    "PLB / Satellite Communicator": "crew",
-    "Trowel (LNT cat hole)": "crew",
-    "Tent Pole Repair Sleeve": "crew",
-    "Paracord (50ft)": "crew",
-    "Portable Battery Bank": "crew",
+    "Backpacking Tent (2-3 person)": "buddy", "Tent Footprint / Ground Cloth": "buddy",
+    "Tent Stakes (set of 10)": "buddy", "Emergency Tarp": "crew",
+    "Topographic Map (Philmont)": "provided", "Handheld GPS": "crew",
+    "Water Filter / Purifier": "crew", "Chemical Water Treatment (backup)": "crew",
+    "Camp Stove (canister)": "crew", "Fuel Canisters (isobutane, 100g x4)": "provided",
+    "Cook Pot / Pot Set": "provided", "Bear Bag / Ursack": "provided",
+    "Trash Compactor Bags (2-pack)": "crew", "Camp Lantern": "crew",
+    "SAM Splint": "crew", "PLB / Satellite Communicator": "crew",
+    "Trowel (LNT cat hole)": "crew", "Tent Pole Repair Sleeve": "crew",
+    "Paracord (50ft)": "crew", "Portable Battery Bank": "crew",
   };
 
-  const insertItem = db.prepare(`
-    INSERT INTO gear_catalog (name, category, subcategory, description, weight_oz, priority, is_crew_shared, sharing_type, philmont_compliant, sort_order)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
-  `);
-  const seedAll = db.transaction(() => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
     for (let i = 0; i < S.length; i++) {
       const [name, cat, sub, wt, pri, crew, desc] = S[i];
       const sType = sharingOverrides[name] || (crew ? "crew" : "personal");
-      insertItem.run(name, cat, sub, desc, wt, pri, crew, sType, i + 1);
+      await client.query(
+        `INSERT INTO gear_catalog (name, category, subcategory, description, weight_oz, priority, is_crew_shared, sharing_type, philmont_compliant, sort_order)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, $9)`,
+        [name, cat, sub, desc, wt, pri, crew, sType, i + 1]
+      );
     }
-  });
-  seedAll();
-  console.log(`Seeded ${S.length} gear catalog items`);
+    await client.query("COMMIT");
+    console.log(`Seeded ${S.length} gear catalog items`);
+  } catch (e) { await client.query("ROLLBACK"); throw e; }
+  finally { client.release(); }
 }
-
-// ── Run migration after seed data constants are defined ──
-migrate();
-
-// Recreate shirt_votes with vote_slot support (2 votes per person)
-// Runs outside migrate() since schema version may already be current
-const hasSlot = db.prepare("PRAGMA table_info(shirt_votes)").all().some(c => c.name === 'vote_slot');
-if (!hasSlot) {
-  db.exec("DROP TABLE IF EXISTS shirt_votes");
-  db.exec(`CREATE TABLE IF NOT EXISTS shirt_votes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    voter_name TEXT NOT NULL,
-    design_id TEXT NOT NULL,
-    vote_slot INTEGER NOT NULL DEFAULT 1,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(voter_name, vote_slot)
-  )`);
-  console.log("[vote] Recreated shirt_votes with vote_slot column");
-}
-
-ensureIndexes();
-
-// ══════════════════════════════════════════
-// QUERY FUNCTIONS
-// ══════════════════════════════════════════
 
 // ── User Queries ──
 
-export function findUserByGoogleId(googleId) {
-  return db.prepare("SELECT * FROM users WHERE google_id = ?").get(googleId) || null;
+export async function findUserByGoogleId(googleId) {
+  const { rows } = await pool.query("SELECT * FROM users WHERE google_id = $1", [googleId]);
+  return rows[0] ?? null;
 }
 
-export function findUserByEmail(email) {
-  return db.prepare("SELECT * FROM users WHERE email = ?").get(email?.toLowerCase()) || null;
+export async function findUserByEmail(email) {
+  const { rows } = await pool.query("SELECT * FROM users WHERE email = $1", [email?.toLowerCase()]);
+  return rows[0] ?? null;
 }
 
-export function findUserById(id) {
-  return db.prepare("SELECT * FROM users WHERE id = ?").get(id) || null;
+export async function findUserById(id) {
+  const { rows } = await pool.query("SELECT * FROM users WHERE id = $1", [id]);
+  return rows[0] ?? null;
 }
 
-export function createUser({ google_id, email, password_hash, name, avatar_url, email_verified, verification_token, tos_accepted_at }) {
-  const result = db.prepare(
-    "INSERT INTO users (google_id, email, password_hash, name, avatar_url, email_verified, verification_token, tos_accepted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-  ).run(google_id || null, email.toLowerCase(), password_hash || null, name, avatar_url || null, email_verified || 0, verification_token || null, tos_accepted_at || null);
-  return { id: result.lastInsertRowid, google_id, email: email.toLowerCase(), name, avatar_url, email_verified: email_verified || 0, user_type: null, parent_email: null };
+export async function createUser({ google_id, email, password_hash, name, avatar_url, email_verified, verification_token, tos_accepted_at }) {
+  const { rows } = await pool.query(
+    "INSERT INTO users (google_id, email, password_hash, name, avatar_url, email_verified, verification_token, tos_accepted_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+    [google_id || null, email.toLowerCase(), password_hash || null, name, avatar_url || null, email_verified || 0, verification_token || null, tos_accepted_at || null]
+  );
+  return { id: rows[0].id, google_id, email: email.toLowerCase(), name, avatar_url, email_verified: email_verified || 0, user_type: null, parent_email: null };
 }
 
-export function updateUserProfile(id, { name, user_type, parent_email, parent_email_2, age_confirmed, tos_accepted_at }) {
-  const sets = [];
-  const vals = [];
-  if (name !== undefined) { sets.push("name = ?"); vals.push(name); }
-  if (user_type !== undefined) { sets.push("user_type = ?"); vals.push(user_type); }
-  if (parent_email !== undefined) { sets.push("parent_email = ?"); vals.push(parent_email || null); }
-  if (parent_email_2 !== undefined) { sets.push("parent_email_2 = ?"); vals.push(parent_email_2 || null); }
-  if (age_confirmed !== undefined) { sets.push("age_confirmed = ?"); vals.push(age_confirmed); sets.push("age_confirmed_at = CURRENT_TIMESTAMP"); }
-  if (tos_accepted_at !== undefined) { sets.push("tos_accepted_at = ?"); vals.push(tos_accepted_at); }
+export async function updateUserProfile(id, { name, user_type, parent_email, parent_email_2, age_confirmed, tos_accepted_at }) {
+  const sets = []; const vals = []; let n = 1;
+  if (name !== undefined) { sets.push(`name = $${n++}`); vals.push(name); }
+  if (user_type !== undefined) { sets.push(`user_type = $${n++}`); vals.push(user_type); }
+  if (parent_email !== undefined) { sets.push(`parent_email = $${n++}`); vals.push(parent_email || null); }
+  if (parent_email_2 !== undefined) { sets.push(`parent_email_2 = $${n++}`); vals.push(parent_email_2 || null); }
+  if (age_confirmed !== undefined) { sets.push(`age_confirmed = $${n++}`); vals.push(age_confirmed); sets.push("age_confirmed_at = CURRENT_TIMESTAMP"); }
+  if (tos_accepted_at !== undefined) { sets.push(`tos_accepted_at = $${n++}`); vals.push(tos_accepted_at); }
   if (sets.length === 0) return;
   vals.push(id);
-  db.prepare(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
+  await pool.query(`UPDATE users SET ${sets.join(", ")} WHERE id = $${n}`, vals);
 }
 
-export function verifyUserEmail(token) {
-  const user = db.prepare("SELECT id, email_verified FROM users WHERE verification_token = ?").get(token);
+export async function verifyUserEmail(token) {
+  const { rows } = await pool.query("SELECT id, email_verified FROM users WHERE verification_token = $1", [token]);
+  const user = rows[0];
   if (!user) return null;
   if (!user.email_verified) {
-    db.prepare("UPDATE users SET email_verified = 1 WHERE id = ?").run(user.id);
+    await pool.query("UPDATE users SET email_verified = 1 WHERE id = $1", [user.id]);
   }
   return user;
 }
 
-export function setResetToken(email, token, expiresAt) {
-  db.prepare("UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE email = ?").run(token, expiresAt, email.toLowerCase());
+export async function setResetToken(email, token, expiresAt) {
+  await pool.query("UPDATE users SET reset_token = $1, reset_token_expires = $2 WHERE email = $3", [token, expiresAt, email.toLowerCase()]);
 }
 
-export function findUserByResetToken(token) {
-  return db.prepare("SELECT * FROM users WHERE reset_token = ? AND reset_token_expires > datetime('now')").get(token) || null;
+export async function findUserByResetToken(token) {
+  const { rows } = await pool.query("SELECT * FROM users WHERE reset_token = $1 AND reset_token_expires > NOW()", [token]);
+  return rows[0] ?? null;
 }
 
-export function clearResetToken(userId) {
-  db.prepare("UPDATE users SET reset_token = NULL, reset_token_expires = NULL WHERE id = ?").run(userId);
+export async function clearResetToken(userId) {
+  await pool.query("UPDATE users SET reset_token = NULL, reset_token_expires = NULL WHERE id = $1", [userId]);
 }
 
-export function updatePassword(userId, passwordHash) {
-  db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(passwordHash, userId);
+export async function updatePassword(userId, passwordHash) {
+  await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [passwordHash, userId]);
 }
 
-export function bindGoogleProfile(userId, googleId, avatarUrl) {
-  db.prepare("UPDATE users SET google_id = ?, avatar_url = ? WHERE id = ?").run(googleId, avatarUrl, userId);
+export async function bindGoogleProfile(userId, googleId, avatarUrl) {
+  await pool.query("UPDATE users SET google_id = $1, avatar_url = $2 WHERE id = $3", [googleId, avatarUrl, userId]);
+}
+
+export async function updateUserNameAvatar(userId, name, avatarUrl) {
+  await pool.query("UPDATE users SET name = $1, avatar_url = $2 WHERE id = $3", [name, avatarUrl, userId]);
 }
 
 // ── System Admin Management ──
-export function promoteToAdmin(userId) {
-  db.prepare("UPDATE users SET is_admin = 1 WHERE id = ?").run(userId);
+
+export async function promoteToAdmin(userId) {
+  await pool.query("UPDATE users SET is_admin = 1 WHERE id = $1", [userId]);
 }
 
-export function demoteFromAdmin(userId) {
-  db.prepare("UPDATE users SET is_admin = 0 WHERE id = ?").run(userId);
+export async function demoteFromAdmin(userId) {
+  await pool.query("UPDATE users SET is_admin = 0 WHERE id = $1", [userId]);
 }
 
-export function getSystemAdmins() {
-  return db.prepare("SELECT id, email, name, is_admin, created_at FROM users WHERE is_admin = 1").all();
+export async function getSystemAdmins() {
+  const { rows } = await pool.query("SELECT id, email, name, is_admin, created_at FROM users WHERE is_admin = 1");
+  return rows;
 }
 
-export function getAllUsers() {
-  return db.prepare("SELECT id, email, name, user_type, is_admin, created_at FROM users ORDER BY name").all();
+export async function getAllUsers() {
+  const { rows } = await pool.query("SELECT id, email, name, user_type, is_admin, created_at FROM users ORDER BY name");
+  return rows;
 }
 
 // ── Dashboard Data ──
 
-export function getDashboardData(userId, isAdmin) {
-  // Get user's approved troop memberships
-  const memberships = db.prepare(`
+export async function getDashboardData(userId, isAdmin) {
+  const { rows: memberships } = await pool.query(`
     SELECT tm.troop_id, tm.role, t.name, t.council, t.council_id, c.name as council_name, t.location, t.is_public
     FROM troop_members tm JOIN troops t ON tm.troop_id = t.id
     LEFT JOIN councils c ON t.council_id = c.id
-    WHERE tm.user_id = ? AND tm.status = 'approved'
-  `).all(userId);
+    WHERE tm.user_id = $1 AND tm.status = 'approved'
+  `, [userId]);
 
-  const troops = memberships.map(m => {
-    const adventures = db.prepare("SELECT * FROM adventures WHERE troop_id = ? AND status = 'active' ORDER BY created_at DESC").all(m.troop_id);
-    return {
+  const troops = [];
+  for (const m of memberships) {
+    const { rows: adventures } = await pool.query("SELECT * FROM adventures WHERE troop_id = $1 AND status = 'active' ORDER BY created_at DESC", [m.troop_id]);
+    const advList = [];
+    for (const a of adventures) {
+      const defaultCrew = await getDefaultCrew(a.id);
+      let memberCount, trekkingCount;
+      if (defaultCrew) {
+        memberCount = Number((await pool.query("SELECT COUNT(*) as c FROM crew_members WHERE crew_id = $1", [defaultCrew.id])).rows[0].c);
+        trekkingCount = Number((await pool.query("SELECT COUNT(*) as c FROM crew_members WHERE crew_id = $1 AND participation = 'trekking'", [defaultCrew.id])).rows[0].c);
+      } else {
+        memberCount = Number((await pool.query("SELECT COUNT(*) as c FROM adventure_members WHERE adventure_id = $1", [a.id])).rows[0].c);
+        trekkingCount = Number((await pool.query("SELECT COUNT(*) as c FROM adventure_members WHERE adventure_id = $1 AND participation = 'trekking'", [a.id])).rows[0].c);
+      }
+      const crewCount = Number((await pool.query("SELECT COUNT(*) as c FROM crews WHERE adventure_id = $1", [a.id])).rows[0].c);
+      advList.push({
+        id: a.id, name: a.name, adventure_type: a.adventure_type,
+        depart_date: defaultCrew?.depart_date || a.depart_date,
+        arrive_date: defaultCrew?.arrive_date || a.arrive_date,
+        return_date: defaultCrew?.return_date || a.return_date,
+        home_date: defaultCrew?.home_date || a.home_date,
+        itinerary_id: defaultCrew?.itinerary_id || a.itinerary_id,
+        crew_count: crewCount, member_count: memberCount, trekking_count: trekkingCount,
+        crew_readiness: await computeServerReadiness(a.id),
+        next_training: await getNextTrainingEvent(a.id),
+      });
+    }
+    troops.push({
       id: m.troop_id, name: m.name, council: m.council_name || m.council, council_id: m.council_id, location: m.location,
-      role: m.role, is_public: m.is_public,
-      adventures: adventures.map(a => {
-        // Use crew_members as source of truth, fallback to adventure_members
-        const defaultCrew = getDefaultCrew(a.id);
-        const memberCount = defaultCrew
-          ? db.prepare("SELECT COUNT(*) as c FROM crew_members WHERE crew_id = ?").get(defaultCrew.id).c
-          : db.prepare("SELECT COUNT(*) as c FROM adventure_members WHERE adventure_id = ?").get(a.id).c;
-        const trekkingCount = defaultCrew
-          ? db.prepare("SELECT COUNT(*) as c FROM crew_members WHERE crew_id = ? AND participation = 'trekking'").get(defaultCrew.id).c
-          : db.prepare("SELECT COUNT(*) as c FROM adventure_members WHERE adventure_id = ? AND participation = 'trekking'").get(a.id).c;
-        const crewCount = db.prepare("SELECT COUNT(*) as c FROM crews WHERE adventure_id = ?").get(a.id).c;
-        return {
-          id: a.id, name: a.name, adventure_type: a.adventure_type,
-          depart_date: defaultCrew?.depart_date || a.depart_date,
-          arrive_date: defaultCrew?.arrive_date || a.arrive_date,
-          return_date: defaultCrew?.return_date || a.return_date,
-          home_date: defaultCrew?.home_date || a.home_date,
-          itinerary_id: defaultCrew?.itinerary_id || a.itinerary_id,
-          crew_count: crewCount,
-          member_count: memberCount, trekking_count: trekkingCount,
-          crew_readiness: computeServerReadiness(a.id),
-          next_training: getNextTrainingEvent(a.id),
-        };
-      }),
-    };
-  });
+      role: m.role, is_public: m.is_public, adventures: advList,
+    });
+  }
 
-  // Pending join requests
-  const pending = db.prepare(`
+  const { rows: pendingRows } = await pool.query(`
     SELECT tm.troop_id, t.name as troop_name, COALESCE(c.name, t.council) as council,
            tm.participation, tm.requested_adventures
     FROM troop_members tm JOIN troops t ON tm.troop_id = t.id
     LEFT JOIN councils c ON t.council_id = c.id
-    WHERE tm.user_id = ? AND tm.status = 'pending'
-  `).all(userId).map(p => ({
-    ...p,
-    requested_adventures: p.requested_adventures ? JSON.parse(p.requested_adventures) : null,
+    WHERE tm.user_id = $1 AND tm.status = 'pending'
+  `, [userId]);
+  const pending = pendingRows.map(p => ({
+    ...p, requested_adventures: p.requested_adventures ? JSON.parse(p.requested_adventures) : null,
   }));
 
-  // Public troops the user is NOT a member of
-  const publicTroops = db.prepare(`
+  const { rows: publicTroops } = await pool.query(`
     SELECT t.id, t.name, COALESCE(c.name, t.council) as council, t.location
     FROM troops t LEFT JOIN councils c ON t.council_id = c.id
-    WHERE t.is_public = 1
-    AND t.id NOT IN (SELECT troop_id FROM troop_members WHERE user_id = ?)
+    WHERE t.is_public = 1 AND t.id NOT IN (SELECT troop_id FROM troop_members WHERE user_id = $1)
     ORDER BY t.name
-  `).all(userId);
+  `, [userId]);
 
   const result = { troops, pending, public_troops: publicTroops };
 
-  // Platform stats for system admins
   if (isAdmin) {
-    const totalUsers = db.prepare("SELECT COUNT(*) as c FROM users").get().c;
-    const totalTroops = db.prepare("SELECT COUNT(*) as c FROM troops").get().c;
-    const activeAdventures = db.prepare("SELECT COUNT(*) as c FROM adventures WHERE status = 'active'").get().c;
+    const totalUsers = Number((await pool.query("SELECT COUNT(*) as c FROM users")).rows[0].c);
+    const totalTroops = Number((await pool.query("SELECT COUNT(*) as c FROM troops")).rows[0].c);
+    const activeAdventures = Number((await pool.query("SELECT COUNT(*) as c FROM adventures WHERE status = 'active'")).rows[0].c);
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const newThisWeek = db.prepare("SELECT COUNT(*) as c FROM users WHERE created_at >= ?").get(weekAgo).c;
+    const newThisWeek = Number((await pool.query("SELECT COUNT(*) as c FROM users WHERE created_at >= $1", [weekAgo])).rows[0].c);
     result.platform_stats = { total_users: totalUsers, total_troops: totalTroops, active_adventures: activeAdventures, new_this_week: newThisWeek };
   }
 
   return result;
 }
 
-export function computeServerReadiness(adventureId) {
-  // Read from crew_members via default crew, fallback to adventure_members
-  const crew = getDefaultCrew(adventureId);
-  const members = crew
-    ? db.prepare(`
-        SELECT cm.user_id, cm.skills, cm.medical, cm.admin_tasks, cm.participation
-        FROM crew_members cm WHERE cm.crew_id = ? AND cm.participation = 'trekking'
-      `).all(crew.id)
-    : db.prepare(`
-        SELECT am.user_id, am.skills, am.medical, am.admin_tasks, am.participation
-        FROM adventure_members am WHERE am.adventure_id = ? AND am.participation = 'trekking'
-      `).all(adventureId);
-
+export async function computeServerReadiness(adventureId) {
+  const crew = await getDefaultCrew(adventureId);
+  let members;
+  if (crew) {
+    members = (await pool.query(`SELECT cm.user_id, cm.skills, cm.medical, cm.admin_tasks, cm.participation
+      FROM crew_members cm WHERE cm.crew_id = $1 AND cm.participation = 'trekking'`, [crew.id])).rows;
+  } else {
+    members = (await pool.query(`SELECT am.user_id, am.skills, am.medical, am.admin_tasks, am.participation
+      FROM adventure_members am WHERE am.adventure_id = $1 AND am.participation = 'trekking'`, [adventureId])).rows;
+  }
   if (members.length === 0) return 0;
 
-  // Parse JSON fields
   const parsed = members.map(m => ({
     user_id: m.user_id,
     skills: JSON.parse(m.skills || "[]"),
@@ -1695,8 +416,7 @@ export function computeServerReadiness(adventureId) {
     admin_tasks: JSON.parse(m.admin_tasks || "[]"),
   }));
 
-  // Get skill definitions for this adventure
-  const skills = db.prepare("SELECT id, category FROM skills WHERE adventure_id = ?").all(adventureId);
+  const skills = (await pool.query("SELECT id, category FROM skills WHERE adventure_id = $1", [adventureId])).rows;
   const trainingSkills = skills.filter(s => s.category === "training");
   const medicalSkills = skills.filter(s => s.category === "medical");
   const adminSkills = skills.filter(s => s.category === "admin");
@@ -1713,15 +433,15 @@ export function computeServerReadiness(adventureId) {
   const medical = pct(medicalSkills, "medical");
   const admin = pct(adminSkills, "admin_tasks");
 
-  // Gear readiness
-  const gearCount = db.prepare("SELECT COUNT(*) as c FROM gear_catalog WHERE active = 1").get().c;
+  const gearCount = Number((await pool.query("SELECT COUNT(*) as c FROM gear_catalog WHERE active = 1")).rows[0].c);
   let gear = 0;
   if (gearCount > 0) {
     const gearTotal = gearCount * parsed.length;
-    const gearDone = parsed.reduce((sum, m) => {
-      const done = db.prepare("SELECT COUNT(*) as c FROM member_gear WHERE adventure_id = ? AND user_id = ? AND (status = 'owned' OR status = 'packed')").get(adventureId, m.user_id).c;
-      return sum + done;
-    }, 0);
+    let gearDone = 0;
+    for (const m of parsed) {
+      const done = Number((await pool.query("SELECT COUNT(*) as c FROM member_gear WHERE adventure_id = $1 AND user_id = $2 AND (status = 'owned' OR status = 'packed')", [adventureId, m.user_id])).rows[0].c);
+      gearDone += done;
+    }
     gear = Math.round((gearDone / gearTotal) * 100);
   }
 
@@ -1729,38 +449,29 @@ export function computeServerReadiness(adventureId) {
   return activeCats.length > 0 ? Math.round(activeCats.reduce((s, v) => s + v, 0) / activeCats.length) : 0;
 }
 
-export function getNextTrainingEvent(adventureId) {
+export async function getNextTrainingEvent(adventureId) {
   const now = new Date().toISOString().split("T")[0];
-  const event = db.prepare(`
-    SELECT date, time_label, location FROM training_events
-    WHERE adventure_id = ? AND date >= ? ORDER BY date ASC LIMIT 1
-  `).get(adventureId, now);
-  return event || null;
-}
-
-export function updateUserNameAvatar(userId, name, avatarUrl) {
-  db.prepare("UPDATE users SET name = ?, avatar_url = ? WHERE id = ?").run(name, avatarUrl, userId);
+  const { rows } = await pool.query(
+    "SELECT date, time_label, location FROM training_events WHERE adventure_id = $1 AND date >= $2 ORDER BY date ASC LIMIT 1",
+    [adventureId, now]
+  );
+  return rows[0] ?? null;
 }
 
 // ── Itinerary Queries ──
 
-// Round to 1 decimal to fix floating-point display bugs (e.g. 68.60000000000001 → 68.6)
-const roundMiles = (v) => v != null ? Math.round(v * 10) / 10 : v;
-
-export function getItineraries() {
-  return db.prepare("SELECT id, name, days, miles, rating, highlights FROM itineraries ORDER BY days, id").all()
-    .map(r => ({ ...r, miles: roundMiles(r.miles), highlights: JSON.parse(r.highlights) }));
+export async function getItineraries() {
+  const { rows } = await pool.query("SELECT id, name, days, miles, rating, highlights FROM itineraries ORDER BY days, id");
+  return rows.map(r => ({ ...r, miles: roundMiles(r.miles), highlights: JSON.parse(r.highlights) }));
 }
 
-export function getItinerary(id) {
-  const r = db.prepare("SELECT * FROM itineraries WHERE id = ?").get(id);
+export async function getItinerary(id) {
+  const { rows } = await pool.query("SELECT * FROM itineraries WHERE id = $1", [id]);
+  const r = rows[0];
   if (!r) return null;
   const route_data = JSON.parse(r.route_data).map(d => ({ ...d, miles: roundMiles(d.miles) }));
   return {
-    ...r,
-    miles: roundMiles(r.miles),
-    highlights: JSON.parse(r.highlights),
-    route_data,
+    ...r, miles: roundMiles(r.miles), highlights: JSON.parse(r.highlights), route_data,
     training_priorities: JSON.parse(r.training_priorities),
     default_skills: JSON.parse(r.default_skills),
     global_info: JSON.parse(r.global_info || "{}"),
@@ -1769,79 +480,85 @@ export function getItinerary(id) {
 
 // ── Council Queries ──
 
-export function getCouncils() {
-  return db.prepare("SELECT id, name, council_num, city, state FROM councils ORDER BY name").all();
+export async function getCouncils() {
+  const { rows } = await pool.query("SELECT id, name, council_num, city, state FROM councils ORDER BY name");
+  return rows;
 }
 
 // ── Troop Queries ──
 
-export function getTroops(userId) {
-  return db.prepare(`
+export async function getTroops(userId) {
+  const { rows } = await pool.query(`
     SELECT DISTINCT t.id, t.name, t.description, t.council, t.council_id, c.name as council_name, t.location, t.is_public, t.tier
     FROM troops t
     LEFT JOIN councils c ON t.council_id = c.id
-    LEFT JOIN troop_members tm ON t.id = tm.troop_id AND tm.user_id = ? AND tm.status != 'denied'
+    LEFT JOIN troop_members tm ON t.id = tm.troop_id AND tm.user_id = $1 AND tm.status != 'denied'
     WHERE t.is_public = 1 OR tm.user_id IS NOT NULL
     ORDER BY t.id
-  `).all(userId);
+  `, [userId]);
+  return rows;
 }
 
-export function getTroop(id) {
-  const r = db.prepare("SELECT * FROM troops WHERE id = ?").get(id);
-  if (!r) return null;
-  return { ...r, itinerary_overrides: JSON.parse(r.itinerary_overrides) };
+export async function getTroop(id) {
+  const { rows } = await pool.query("SELECT * FROM troops WHERE id = $1", [id]);
+  if (!rows[0]) return null;
+  return { ...rows[0], itinerary_overrides: JSON.parse(rows[0].itinerary_overrides) };
 }
 
-export function createTroop({ name, description, council, council_id, location, is_public, created_by }) {
-  // Resolve council name from council_id if provided
+export async function createTroop({ name, description, council, council_id, location, is_public, created_by }) {
   let councilName = council || "";
   if (council_id) {
-    const c = db.prepare("SELECT name FROM councils WHERE id = ?").get(council_id);
+    const c = (await pool.query("SELECT name FROM councils WHERE id = $1", [council_id])).rows[0];
     if (c) councilName = c.name;
   }
-  const result = db.prepare(
-    "INSERT INTO troops (name, description, council, council_id, location, is_public, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)"
-  ).run(name, description || "", councilName, council_id || null, location || "", is_public !== undefined ? (is_public ? 1 : 0) : 1, created_by);
-  const troopId = result.lastInsertRowid;
-
-  const memberCount = db.prepare("SELECT COUNT(*) as c FROM troop_members WHERE troop_id = ?").get(troopId).c;
-  db.prepare("INSERT INTO troop_members (user_id, troop_id, role, status, color_bg) VALUES (?, ?, 'admin', 'approved', ?)")
-    .run(created_by, troopId, COLORS[memberCount % COLORS.length]);
-
+  const { rows } = await pool.query(
+    "INSERT INTO troops (name, description, council, council_id, location, is_public, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+    [name, description || "", councilName, council_id || null, location || "", is_public !== undefined ? (is_public ? 1 : 0) : 1, created_by]
+  );
+  const troopId = rows[0].id;
+  const memberCount = Number((await pool.query("SELECT COUNT(*) as c FROM troop_members WHERE troop_id = $1", [troopId])).rows[0].c);
+  await pool.query("INSERT INTO troop_members (user_id, troop_id, role, status, color_bg) VALUES ($1, $2, 'admin', 'approved', $3)",
+    [created_by, troopId, COLORS[memberCount % COLORS.length]]);
   return { id: troopId, name, description: description || "", council: councilName, council_id: council_id || null, location: location || "", is_public: is_public !== undefined ? (is_public ? 1 : 0) : 1 };
 }
 
-export function updateTroop(troopId, { name, description, council, council_id, location, is_public }) {
-  const sets = [];
-  const vals = [];
-  if (name !== undefined) { sets.push("name = ?"); vals.push(name); }
-  if (description !== undefined) { sets.push("description = ?"); vals.push(description); }
+export async function updateTroop(troopId, { name, description, council, council_id, location, is_public }) {
+  const sets = []; const vals = []; let n = 1;
+  if (name !== undefined) { sets.push(`name = $${n++}`); vals.push(name); }
+  if (description !== undefined) { sets.push(`description = $${n++}`); vals.push(description); }
   if (council_id !== undefined) {
-    sets.push("council_id = ?"); vals.push(council_id);
-    // Also update the text council field for backwards compatibility
-    const c = db.prepare("SELECT name FROM councils WHERE id = ?").get(council_id);
-    if (c) { sets.push("council = ?"); vals.push(c.name); }
+    sets.push(`council_id = $${n++}`); vals.push(council_id);
+    const c = (await pool.query("SELECT name FROM councils WHERE id = $1", [council_id])).rows[0];
+    if (c) { sets.push(`council = $${n++}`); vals.push(c.name); }
   } else if (council !== undefined) {
-    sets.push("council = ?"); vals.push(council);
+    sets.push(`council = $${n++}`); vals.push(council);
   }
-  if (location !== undefined) { sets.push("location = ?"); vals.push(location); }
-  if (is_public !== undefined) { sets.push("is_public = ?"); vals.push(is_public ? 1 : 0); }
+  if (location !== undefined) { sets.push(`location = $${n++}`); vals.push(location); }
+  if (is_public !== undefined) { sets.push(`is_public = $${n++}`); vals.push(is_public ? 1 : 0); }
   if (sets.length === 0) return;
   vals.push(troopId);
-  db.prepare(`UPDATE troops SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
+  await pool.query(`UPDATE troops SET ${sets.join(", ")} WHERE id = $${n}`, vals);
 }
 
-export function updateTroopAffiliateTag(troopId, tag) {
-  db.prepare("UPDATE troops SET amazon_affiliate_tag = ? WHERE id = ?").run(tag, troopId);
+export async function updateTroopAffiliateTag(troopId, tag) {
+  await pool.query("UPDATE troops SET amazon_affiliate_tag = $1 WHERE id = $2", [tag, troopId]);
 }
 
 // ── Troop Member Queries ──
 
-export function getTroopMembers(troopId, statusFilter) {
-  const q = statusFilter
-    ? "SELECT tm.*, u.name, u.email, u.avatar_url, u.user_type FROM troop_members tm JOIN users u ON tm.user_id = u.id WHERE tm.troop_id = ? AND tm.status = ? ORDER BY tm.id"
-    : "SELECT tm.*, u.name, u.email, u.avatar_url, u.user_type FROM troop_members tm JOIN users u ON tm.user_id = u.id WHERE tm.troop_id = ? ORDER BY tm.id";
-  const rows = statusFilter ? db.prepare(q).all(troopId, statusFilter) : db.prepare(q).all(troopId);
+export async function getTroopMembers(troopId, statusFilter) {
+  let rows;
+  if (statusFilter) {
+    rows = (await pool.query(
+      "SELECT tm.*, u.name, u.email, u.avatar_url, u.user_type FROM troop_members tm JOIN users u ON tm.user_id = u.id WHERE tm.troop_id = $1 AND tm.status = $2 ORDER BY tm.id",
+      [troopId, statusFilter]
+    )).rows;
+  } else {
+    rows = (await pool.query(
+      "SELECT tm.*, u.name, u.email, u.avatar_url, u.user_type FROM troop_members tm JOIN users u ON tm.user_id = u.id WHERE tm.troop_id = $1 ORDER BY tm.id",
+      [troopId]
+    )).rows;
+  }
   return rows.map(r => ({
     id: r.id, user_id: r.user_id, troop_id: r.troop_id,
     name: r.name, email: r.email, avatar_url: r.avatar_url, user_type: r.user_type,
@@ -1852,8 +569,9 @@ export function getTroopMembers(troopId, statusFilter) {
   }));
 }
 
-export function getTroopMember(troopId, userId) {
-  const r = db.prepare("SELECT * FROM troop_members WHERE troop_id = ? AND user_id = ?").get(troopId, userId);
+export async function getTroopMember(troopId, userId) {
+  const { rows } = await pool.query("SELECT * FROM troop_members WHERE troop_id = $1 AND user_id = $2", [troopId, userId]);
+  const r = rows[0];
   if (!r) return null;
   return {
     ...r, dates: JSON.parse(r.dates), skills: JSON.parse(r.skills), color: { bg: r.color_bg },
@@ -1862,121 +580,122 @@ export function getTroopMember(troopId, userId) {
   };
 }
 
-export function getUserMemberships(userId) {
-  return db.prepare(`
+export async function getUserMemberships(userId) {
+  const { rows } = await pool.query(`
     SELECT tm.troop_id, tm.role, tm.status, t.name as troop_name, t.trek_date, t.itinerary_id,
            COALESCE(c.name, t.council) as troop_council, t.council_id as troop_council_id, t.location as troop_location
     FROM troop_members tm JOIN troops t ON tm.troop_id = t.id
     LEFT JOIN councils c ON t.council_id = c.id
-    WHERE tm.user_id = ?
-  `).all(userId);
+    WHERE tm.user_id = $1
+  `, [userId]);
+  return rows;
 }
 
-export function getUserAdventureMemberships(userId) {
-  return db.prepare(`
+export async function getUserAdventureMemberships(userId) {
+  const { rows } = await pool.query(`
     SELECT am.adventure_id, am.role, a.name as adventure_name, a.trek_date, a.itinerary_id, a.troop_id, a.status,
            t.name as troop_name
     FROM adventure_members am
     JOIN adventures a ON am.adventure_id = a.id
     JOIN troops t ON a.troop_id = t.id
-    WHERE am.user_id = ?
-  `).all(userId);
+    WHERE am.user_id = $1
+  `, [userId]);
+  return rows;
 }
 
-export function requestJoinTroop(userId, troopId, { participation, requestedAdventures } = {}) {
-  const memberCount = db.prepare("SELECT COUNT(*) as c FROM troop_members WHERE troop_id = ?").get(troopId).c;
+export async function requestJoinTroop(userId, troopId, { participation, requestedAdventures } = {}) {
+  const memberCount = Number((await pool.query("SELECT COUNT(*) as c FROM troop_members WHERE troop_id = $1", [troopId])).rows[0].c);
   const part = participation === "support" ? "support" : "trekking";
   const reqAdvJson = Array.isArray(requestedAdventures) && requestedAdventures.length > 0 ? JSON.stringify(requestedAdventures) : null;
-  db.prepare("INSERT INTO troop_members (user_id, troop_id, role, status, color_bg, participation, requested_adventures) VALUES (?, ?, 'member', 'pending', ?, ?, ?)")
-    .run(userId, troopId, COLORS[memberCount % COLORS.length], part, reqAdvJson);
+  await pool.query(
+    "INSERT INTO troop_members (user_id, troop_id, role, status, color_bg, participation, requested_adventures) VALUES ($1, $2, 'member', 'pending', $3, $4, $5)",
+    [userId, troopId, COLORS[memberCount % COLORS.length], part, reqAdvJson]
+  );
 }
 
-export function approveTroopMember(troopId, userId) {
-  db.prepare("UPDATE troop_members SET status = 'approved' WHERE troop_id = ? AND user_id = ?").run(troopId, userId);
+export async function approveTroopMember(troopId, userId) {
+  await pool.query("UPDATE troop_members SET status = 'approved' WHERE troop_id = $1 AND user_id = $2", [troopId, userId]);
 }
 
-export function denyTroopMember(troopId, userId) {
-  db.prepare("DELETE FROM troop_members WHERE troop_id = ? AND user_id = ? AND status = 'pending'").run(troopId, userId);
+export async function denyTroopMember(troopId, userId) {
+  await pool.query("DELETE FROM troop_members WHERE troop_id = $1 AND user_id = $2 AND status = 'pending'", [troopId, userId]);
 }
 
-export function removeTroopMember(troopId, userId) {
-  db.prepare("DELETE FROM troop_members WHERE troop_id = ? AND user_id = ?").run(troopId, userId);
+export async function removeTroopMember(troopId, userId) {
+  await pool.query("DELETE FROM troop_members WHERE troop_id = $1 AND user_id = $2", [troopId, userId]);
 }
 
-export function updateMemberDates(troopId, userId, dates) {
-  db.prepare("UPDATE troop_members SET dates = ? WHERE troop_id = ? AND user_id = ?").run(JSON.stringify(dates), troopId, userId);
+export async function updateMemberDates(troopId, userId, dates) {
+  await pool.query("UPDATE troop_members SET dates = $1 WHERE troop_id = $2 AND user_id = $3", [JSON.stringify(dates), troopId, userId]);
 }
 
-export function updateMemberSkills(troopId, userId, skills) {
-  db.prepare("UPDATE troop_members SET skills = ? WHERE troop_id = ? AND user_id = ?").run(JSON.stringify(skills), troopId, userId);
+export async function updateMemberSkills(troopId, userId, skills) {
+  await pool.query("UPDATE troop_members SET skills = $1 WHERE troop_id = $2 AND user_id = $3", [JSON.stringify(skills), troopId, userId]);
 }
 
-export function getTroopAdmins(troopId) {
-  return db.prepare(`
+export async function getTroopAdmins(troopId) {
+  const { rows } = await pool.query(`
     SELECT u.email, u.name FROM troop_members tm
     JOIN users u ON tm.user_id = u.id
-    WHERE tm.troop_id = ? AND tm.role = 'admin' AND tm.status = 'approved'
-  `).all(troopId);
+    WHERE tm.troop_id = $1 AND tm.role = 'admin' AND tm.status = 'approved'
+  `, [troopId]);
+  return rows;
 }
 
 // ── Adventure Queries ──
 
-export function getAdventures(troopId) {
-  return db.prepare("SELECT * FROM adventures WHERE troop_id = ? ORDER BY created_at DESC").all(troopId);
+export async function getAdventures(troopId) {
+  const { rows } = await pool.query("SELECT * FROM adventures WHERE troop_id = $1 ORDER BY created_at DESC", [troopId]);
+  return rows;
 }
 
-export function getAdventure(id) {
-  const r = db.prepare("SELECT * FROM adventures WHERE id = ?").get(id);
-  return r || null;
+export async function getAdventure(id) {
+  const { rows } = await pool.query("SELECT * FROM adventures WHERE id = $1", [id]);
+  return rows[0] ?? null;
 }
 
-export function createAdventure({ troop_id, name, description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id, adventure_type, created_by }) {
-  const result = db.prepare(
-    "INSERT INTO adventures (troop_id, name, description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id, adventure_type, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)"
-  ).run(troop_id, name, description || "", trek_date || arrive_date || null, depart_date || null, arrive_date || null, return_date || null, home_date || null, itinerary_id || null, adventure_type || "philmont", created_by);
-  const advId = result.lastInsertRowid;
+export async function createAdventure({ troop_id, name, description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id, adventure_type, created_by }) {
+  const { rows: advRows } = await pool.query(
+    "INSERT INTO adventures (troop_id, name, description, trek_date, depart_date, arrive_date, return_date, home_date, itinerary_id, adventure_type, status, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active', $11) RETURNING id",
+    [troop_id, name, description || "", trek_date || arrive_date || null, depart_date || null, arrive_date || null, return_date || null, home_date || null, itinerary_id || null, adventure_type || "philmont", created_by]
+  );
+  const advId = advRows[0].id;
 
-  // Auto-create one crew with the adventure's dates and itinerary
-  const crewResult = db.prepare(
-    "INSERT INTO crews (adventure_id, name, itinerary_id, depart_date, arrive_date, return_date, home_date, leader_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-  ).run(advId, name, itinerary_id || null, depart_date || null, arrive_date || null, return_date || null, home_date || null, created_by);
-  const crewId = crewResult.lastInsertRowid;
+  const { rows: crewRows } = await pool.query(
+    "INSERT INTO crews (adventure_id, name, itinerary_id, depart_date, arrive_date, return_date, home_date, leader_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+    [advId, name, itinerary_id || null, depart_date || null, arrive_date || null, return_date || null, home_date || null, created_by]
+  );
+  const crewId = crewRows[0].id;
 
-  // Add creator as admin member (both tables)
-  const creatorMember = db.prepare("SELECT color_bg FROM troop_members WHERE troop_id = ? AND user_id = ?").get(troop_id, created_by);
+  const creatorMember = (await pool.query("SELECT color_bg FROM troop_members WHERE troop_id = $1 AND user_id = $2", [troop_id, created_by])).rows[0];
   const color = creatorMember?.color_bg || COLORS[0];
-  db.prepare("INSERT OR IGNORE INTO adventure_members (adventure_id, user_id, role, color_bg) VALUES (?, ?, 'admin', ?)")
-    .run(advId, created_by, color);
-  db.prepare("INSERT OR IGNORE INTO crew_members (crew_id, user_id, role, color_bg) VALUES (?, ?, 'admin', ?)")
-    .run(crewId, created_by, color);
+  await pool.query("INSERT INTO adventure_members (adventure_id, user_id, role, color_bg) VALUES ($1, $2, 'admin', $3) ON CONFLICT DO NOTHING", [advId, created_by, color]);
+  await pool.query("INSERT INTO crew_members (crew_id, user_id, role, color_bg) VALUES ($1, $2, 'admin', $3) ON CONFLICT DO NOTHING", [crewId, created_by, color]);
 
-  // Seed universal Philmont skills for all Philmont adventures
   if ((adventure_type || "philmont") === "philmont") {
-    seedAdventureSkills(advId, troop_id);
+    await seedAdventureSkills(advId, troop_id);
   }
 
   return { id: advId, troop_id, name, description: description || "", trek_date: trek_date || arrive_date, depart_date, arrive_date, return_date, home_date, itinerary_id, adventure_type: adventure_type || "philmont", status: "active", crew_id: crewId };
 }
 
-export function updateAdventure(id, { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status, itinerary_id, adventure_type }) {
-  const sets = [];
-  const vals = [];
-  if (name !== undefined) { sets.push("name = ?"); vals.push(name); }
-  if (description !== undefined) { sets.push("description = ?"); vals.push(description); }
-  if (trek_date !== undefined) { sets.push("trek_date = ?"); vals.push(trek_date); }
-  if (depart_date !== undefined) { sets.push("depart_date = ?"); vals.push(depart_date); }
-  if (arrive_date !== undefined) { sets.push("arrive_date = ?"); vals.push(arrive_date); }
-  if (return_date !== undefined) { sets.push("return_date = ?"); vals.push(return_date); }
-  if (home_date !== undefined) { sets.push("home_date = ?"); vals.push(home_date); }
-  if (status !== undefined) { sets.push("status = ?"); vals.push(status); }
-  if (itinerary_id !== undefined) { sets.push("itinerary_id = ?"); vals.push(itinerary_id); }
-  if (adventure_type !== undefined) { sets.push("adventure_type = ?"); vals.push(adventure_type); }
+export async function updateAdventure(id, { name, description, trek_date, depart_date, arrive_date, return_date, home_date, status, itinerary_id, adventure_type }) {
+  const sets = []; const vals = []; let n = 1;
+  if (name !== undefined) { sets.push(`name = $${n++}`); vals.push(name); }
+  if (description !== undefined) { sets.push(`description = $${n++}`); vals.push(description); }
+  if (trek_date !== undefined) { sets.push(`trek_date = $${n++}`); vals.push(trek_date); }
+  if (depart_date !== undefined) { sets.push(`depart_date = $${n++}`); vals.push(depart_date); }
+  if (arrive_date !== undefined) { sets.push(`arrive_date = $${n++}`); vals.push(arrive_date); }
+  if (return_date !== undefined) { sets.push(`return_date = $${n++}`); vals.push(return_date); }
+  if (home_date !== undefined) { sets.push(`home_date = $${n++}`); vals.push(home_date); }
+  if (status !== undefined) { sets.push(`status = $${n++}`); vals.push(status); }
+  if (itinerary_id !== undefined) { sets.push(`itinerary_id = $${n++}`); vals.push(itinerary_id); }
+  if (adventure_type !== undefined) { sets.push(`adventure_type = $${n++}`); vals.push(adventure_type); }
   if (sets.length === 0) return;
   vals.push(id);
-  db.prepare(`UPDATE adventures SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
+  await pool.query(`UPDATE adventures SET ${sets.join(", ")} WHERE id = $${n}`, vals);
 
-  // Sync dates/itinerary/name to the default crew
-  const crew = getDefaultCrew(id);
+  const crew = await getDefaultCrew(id);
   if (crew) {
     const crewUpdates = {};
     if (name !== undefined) crewUpdates.name = name;
@@ -1985,112 +704,117 @@ export function updateAdventure(id, { name, description, trek_date, depart_date,
     if (return_date !== undefined) crewUpdates.return_date = return_date;
     if (home_date !== undefined) crewUpdates.home_date = home_date;
     if (itinerary_id !== undefined) crewUpdates.itinerary_id = itinerary_id;
-    if (Object.keys(crewUpdates).length > 0) updateCrew(crew.id, crewUpdates);
+    if (Object.keys(crewUpdates).length > 0) await updateCrew(crew.id, crewUpdates);
   }
 }
 
-export function deleteAdventure(id) {
-  const run = db.transaction(() => {
-    // Delete crew layer first
-    const crews = db.prepare("SELECT id FROM crews WHERE adventure_id = ?").all(id);
+export async function deleteAdventure(id) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const crews = (await client.query("SELECT id FROM crews WHERE adventure_id = $1", [id])).rows;
     for (const c of crews) {
-      db.prepare("DELETE FROM crew_members WHERE crew_id = ?").run(c.id);
+      await client.query("DELETE FROM crew_members WHERE crew_id = $1", [c.id]);
     }
-    db.prepare("DELETE FROM crews WHERE adventure_id = ?").run(id);
-    // Then existing cascade
-    db.prepare("DELETE FROM member_gear WHERE adventure_id = ?").run(id);
-    db.prepare("DELETE FROM link_requests WHERE adventure_id = ?").run(id);
-    db.prepare("DELETE FROM achievements WHERE adventure_id = ?").run(id);
-    db.prepare("DELETE FROM crew_milestones WHERE adventure_id = ?").run(id);
-    db.prepare("DELETE FROM invitations WHERE adventure_id = ?").run(id);
-    db.prepare("DELETE FROM adventure_members WHERE adventure_id = ?").run(id);
-    db.prepare("DELETE FROM skills WHERE adventure_id = ?").run(id);
-    db.prepare("DELETE FROM adventures WHERE id = ?").run(id);
-  });
-  run();
+    await client.query("DELETE FROM crews WHERE adventure_id = $1", [id]);
+    await client.query("DELETE FROM member_gear WHERE adventure_id = $1", [id]);
+    await client.query("DELETE FROM link_requests WHERE adventure_id = $1", [id]);
+    await client.query("DELETE FROM achievements WHERE adventure_id = $1", [id]);
+    await client.query("DELETE FROM crew_milestones WHERE adventure_id = $1", [id]);
+    await client.query("DELETE FROM invitations WHERE adventure_id = $1", [id]);
+    await client.query("DELETE FROM adventure_members WHERE adventure_id = $1", [id]);
+    await client.query("DELETE FROM skills WHERE adventure_id = $1", [id]);
+    await client.query("DELETE FROM adventures WHERE id = $1", [id]);
+    await client.query("COMMIT");
+  } catch (e) { await client.query("ROLLBACK"); throw e; }
+  finally { client.release(); }
 }
 
-export function deleteTroop(troopId) {
-  const run = db.transaction(() => {
-    // Get all adventure IDs for this troop
-    const adventures = db.prepare("SELECT id FROM adventures WHERE troop_id = ?").all(troopId);
-    // Cascade-delete each adventure's child data (including crew layer)
+export async function deleteTroop(troopId) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const adventures = (await client.query("SELECT id FROM adventures WHERE troop_id = $1", [troopId])).rows;
     for (const adv of adventures) {
-      const crews = db.prepare("SELECT id FROM crews WHERE adventure_id = ?").all(adv.id);
+      const crews = (await client.query("SELECT id FROM crews WHERE adventure_id = $1", [adv.id])).rows;
       for (const c of crews) {
-        db.prepare("DELETE FROM crew_members WHERE crew_id = ?").run(c.id);
+        await client.query("DELETE FROM crew_members WHERE crew_id = $1", [c.id]);
       }
-      db.prepare("DELETE FROM crews WHERE adventure_id = ?").run(adv.id);
-      db.prepare("DELETE FROM member_gear WHERE adventure_id = ?").run(adv.id);
-      db.prepare("DELETE FROM link_requests WHERE adventure_id = ?").run(adv.id);
-      db.prepare("DELETE FROM achievements WHERE adventure_id = ?").run(adv.id);
-      db.prepare("DELETE FROM crew_milestones WHERE adventure_id = ?").run(adv.id);
-      db.prepare("DELETE FROM adventure_members WHERE adventure_id = ?").run(adv.id);
-      db.prepare("DELETE FROM skills WHERE adventure_id = ?").run(adv.id);
+      await client.query("DELETE FROM crews WHERE adventure_id = $1", [adv.id]);
+      await client.query("DELETE FROM member_gear WHERE adventure_id = $1", [adv.id]);
+      await client.query("DELETE FROM link_requests WHERE adventure_id = $1", [adv.id]);
+      await client.query("DELETE FROM achievements WHERE adventure_id = $1", [adv.id]);
+      await client.query("DELETE FROM crew_milestones WHERE adventure_id = $1", [adv.id]);
+      await client.query("DELETE FROM adventure_members WHERE adventure_id = $1", [adv.id]);
+      await client.query("DELETE FROM skills WHERE adventure_id = $1", [adv.id]);
     }
-    // Delete troop-level child data
-    db.prepare("DELETE FROM invitations WHERE troop_id = ?").run(troopId);
-    db.prepare("DELETE FROM skills WHERE troop_id = ?").run(troopId);
-    db.prepare("DELETE FROM troop_gear_overrides WHERE troop_id = ?").run(troopId);
-    db.prepare("DELETE FROM troop_custom_gear WHERE troop_id = ?").run(troopId);
-    db.prepare("DELETE FROM adventures WHERE troop_id = ?").run(troopId);
-    db.prepare("DELETE FROM troop_members WHERE troop_id = ?").run(troopId);
-    db.prepare("DELETE FROM troops WHERE id = ?").run(troopId);
-  });
-  run();
+    await client.query("DELETE FROM invitations WHERE troop_id = $1", [troopId]);
+    await client.query("DELETE FROM skills WHERE troop_id = $1", [troopId]);
+    await client.query("DELETE FROM troop_gear_overrides WHERE troop_id = $1", [troopId]);
+    await client.query("DELETE FROM troop_custom_gear WHERE troop_id = $1", [troopId]);
+    await client.query("DELETE FROM adventures WHERE troop_id = $1", [troopId]);
+    await client.query("DELETE FROM troop_members WHERE troop_id = $1", [troopId]);
+    await client.query("DELETE FROM troops WHERE id = $1", [troopId]);
+    await client.query("COMMIT");
+  } catch (e) { await client.query("ROLLBACK"); throw e; }
+  finally { client.release(); }
 }
 
 // ── Crew Queries ──
 
-export function getDefaultCrew(adventureId) {
-  return db.prepare("SELECT * FROM crews WHERE adventure_id = ? ORDER BY id LIMIT 1").get(adventureId) || null;
+export async function getDefaultCrew(adventureId) {
+  const { rows } = await pool.query("SELECT * FROM crews WHERE adventure_id = $1 ORDER BY id LIMIT 1", [adventureId]);
+  return rows[0] ?? null;
 }
 
-export function getCrews(adventureId) {
-  return db.prepare("SELECT * FROM crews WHERE adventure_id = ? ORDER BY id").all(adventureId);
+export async function getCrews(adventureId) {
+  const { rows } = await pool.query("SELECT * FROM crews WHERE adventure_id = $1 ORDER BY id", [adventureId]);
+  return rows;
 }
 
-export function getCrew(crewId) {
-  return db.prepare("SELECT * FROM crews WHERE id = ?").get(crewId) || null;
+export async function getCrew(crewId) {
+  const { rows } = await pool.query("SELECT * FROM crews WHERE id = $1", [crewId]);
+  return rows[0] ?? null;
 }
 
-export function createCrew({ adventure_id, name, itinerary_id, depart_date, arrive_date, return_date, home_date, leader_id }) {
-  const r = db.prepare(
-    "INSERT INTO crews (adventure_id, name, itinerary_id, depart_date, arrive_date, return_date, home_date, leader_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-  ).run(adventure_id, name, itinerary_id || null, depart_date || null, arrive_date || null, return_date || null, home_date || null, leader_id || null);
-  return { id: r.lastInsertRowid, adventure_id, name, itinerary_id, depart_date, arrive_date, return_date, home_date, leader_id };
+export async function createCrew({ adventure_id, name, itinerary_id, depart_date, arrive_date, return_date, home_date, leader_id }) {
+  const { rows } = await pool.query(
+    "INSERT INTO crews (adventure_id, name, itinerary_id, depart_date, arrive_date, return_date, home_date, leader_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+    [adventure_id, name, itinerary_id || null, depart_date || null, arrive_date || null, return_date || null, home_date || null, leader_id || null]
+  );
+  return { id: rows[0].id, adventure_id, name, itinerary_id, depart_date, arrive_date, return_date, home_date, leader_id };
 }
 
-export function updateCrew(crewId, data) {
-  const sets = [];
-  const vals = [];
+export async function updateCrew(crewId, data) {
+  const sets = []; const vals = []; let n = 1;
   const fields = ["name", "itinerary_id", "depart_date", "arrive_date", "return_date", "home_date", "leader_id"];
   for (const f of fields) {
-    if (data[f] !== undefined) { sets.push(`${f} = ?`); vals.push(data[f]); }
+    if (data[f] !== undefined) { sets.push(`${f} = $${n++}`); vals.push(data[f]); }
   }
   if (sets.length === 0) return;
   vals.push(crewId);
-  db.prepare(`UPDATE crews SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
+  await pool.query(`UPDATE crews SET ${sets.join(", ")} WHERE id = $${n}`, vals);
 }
 
-export function deleteCrew(crewId) {
-  const run = db.transaction(() => {
-    // Get crew to find adventure_id for member_gear cleanup
-    const crew = db.prepare("SELECT adventure_id FROM crews WHERE id = ?").get(crewId);
-    if (!crew) return;
-    // Delete crew_members, then crew-scoped data
-    const members = db.prepare("SELECT user_id FROM crew_members WHERE crew_id = ?").all(crewId);
+export async function deleteCrew(crewId) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const crew = (await client.query("SELECT adventure_id FROM crews WHERE id = $1", [crewId])).rows[0];
+    if (!crew) { await client.query("COMMIT"); return; }
+    const members = (await client.query("SELECT user_id FROM crew_members WHERE crew_id = $1", [crewId])).rows;
     for (const m of members) {
       if (m.user_id) {
-        db.prepare("DELETE FROM member_gear WHERE crew_id = ? AND user_id = ?").run(crewId, m.user_id);
+        await client.query("DELETE FROM member_gear WHERE crew_id = $1 AND user_id = $2", [crewId, m.user_id]);
       }
     }
-    db.prepare("DELETE FROM achievements WHERE crew_id = ?").run(crewId);
-    db.prepare("DELETE FROM crew_milestones WHERE crew_id = ?").run(crewId);
-    db.prepare("DELETE FROM crew_members WHERE crew_id = ?").run(crewId);
-    db.prepare("DELETE FROM crews WHERE id = ?").run(crewId);
-  });
-  run();
+    await client.query("DELETE FROM achievements WHERE crew_id = $1", [crewId]);
+    await client.query("DELETE FROM crew_milestones WHERE crew_id = $1", [crewId]);
+    await client.query("DELETE FROM crew_members WHERE crew_id = $1", [crewId]);
+    await client.query("DELETE FROM crews WHERE id = $1", [crewId]);
+    await client.query("COMMIT");
+  } catch (e) { await client.query("ROLLBACK"); throw e; }
+  finally { client.release(); }
 }
 
 // ── Crew Member Queries ──
@@ -2108,8 +832,7 @@ function mapCrewMemberRow(r) {
     email: r.email || null, avatar_url: r.avatar_url || null,
     user_type: r.is_manual ? "scout" : r.user_type,
     role: r.role, participation: r.participation || "trekking",
-    linked_to: linkedScouts[0] || null,
-    linked_scouts: linkedScouts,
+    linked_to: linkedScouts[0] || null, linked_scouts: linkedScouts,
     is_manual: !!r.is_manual,
     color: { bg: r.color_bg },
     dates: JSON.parse(r.dates || "[]"), skills: JSON.parse(r.skills || "[]"),
@@ -2118,32 +841,26 @@ function mapCrewMemberRow(r) {
   };
 }
 
-export function getCrewMembers(crewId) {
-  const crew = db.prepare("SELECT adventure_id FROM crews WHERE id = ?").get(crewId);
+export async function getCrewMembers(crewId) {
+  const crew = (await pool.query("SELECT adventure_id FROM crews WHERE id = $1", [crewId])).rows[0];
   const adventureId = crew?.adventure_id || null;
-  const accountRows = db.prepare(`
+  const accountRows = (await pool.query(`
     SELECT cm.*, u.name, u.email, u.avatar_url, u.user_type
     FROM crew_members cm JOIN users u ON cm.user_id = u.id
-    WHERE cm.crew_id = ? AND cm.is_manual = 0 ORDER BY cm.id
-  `).all(crewId);
-  const manualRows = db.prepare(`
-    SELECT cm.* FROM crew_members cm
-    WHERE cm.crew_id = ? AND cm.is_manual = 1 ORDER BY cm.id
-  `).all(crewId);
-  // Inject adventure_id for backward compat
+    WHERE cm.crew_id = $1 AND cm.is_manual = 0 ORDER BY cm.id
+  `, [crewId])).rows;
+  const manualRows = (await pool.query(
+    "SELECT cm.* FROM crew_members cm WHERE cm.crew_id = $1 AND cm.is_manual = 1 ORDER BY cm.id", [crewId]
+  )).rows;
   const addAdvId = r => ({ ...r, adventure_id: adventureId });
   return [...accountRows.map(r => mapCrewMemberRow(addAdvId(r))), ...manualRows.map(r => mapCrewMemberRow(addAdvId(r)))];
 }
 
-/**
- * Get all members across all crews for an adventure, with crew_name attached.
- * Used for multi-crew "All Crews" calendar view.
- */
-export function getAllCrewMembers(adventureId) {
-  const crews = getCrews(adventureId);
+export async function getAllCrewMembers(adventureId) {
+  const crews = await getCrews(adventureId);
   const allMembers = [];
   for (const crew of crews) {
-    const members = getCrewMembers(crew.id);
+    const members = await getCrewMembers(crew.id);
     for (const m of members) {
       allMembers.push({ ...m, crew_name: crew.name });
     }
@@ -2151,8 +868,9 @@ export function getAllCrewMembers(adventureId) {
   return allMembers;
 }
 
-export function getCrewMember(crewId, userId) {
-  const r = db.prepare("SELECT * FROM crew_members WHERE crew_id = ? AND user_id = ?").get(crewId, userId);
+export async function getCrewMember(crewId, userId) {
+  const { rows } = await pool.query("SELECT * FROM crew_members WHERE crew_id = $1 AND user_id = $2", [crewId, userId]);
+  const r = rows[0];
   if (!r) return null;
   let linkedScouts = [];
   try { linkedScouts = JSON.parse(r.linked_scouts || "[]"); } catch { linkedScouts = []; }
@@ -2162,159 +880,156 @@ export function getCrewMember(crewId, userId) {
   }
   return {
     ...r, color: { bg: r.color_bg }, participation: r.participation || "trekking",
-    linked_to: linkedScouts[0] || null,
-    linked_scouts: linkedScouts,
-    is_manual: !!r.is_manual,
+    linked_to: linkedScouts[0] || null, linked_scouts: linkedScouts, is_manual: !!r.is_manual,
     dates: JSON.parse(r.dates || "[]"), skills: JSON.parse(r.skills || "[]"),
     gear: JSON.parse(r.gear || "[]"), medical: JSON.parse(r.medical || "[]"),
     admin_tasks: JSON.parse(r.admin_tasks || "[]"),
   };
 }
 
-export function addCrewMember(crewId, userId, role = "member", participation = "trekking") {
-  const crew = db.prepare("SELECT adventure_id FROM crews WHERE id = ?").get(crewId);
+export async function addCrewMember(crewId, userId, role = "member", participation = "trekking") {
+  const crew = (await pool.query("SELECT adventure_id FROM crews WHERE id = $1", [crewId])).rows[0];
   if (!crew) return null;
-  const adv = db.prepare("SELECT troop_id FROM adventures WHERE id = ?").get(crew.adventure_id);
+  const adv = (await pool.query("SELECT troop_id FROM adventures WHERE id = $1", [crew.adventure_id])).rows[0];
   if (!adv) return null;
-  const troopMember = db.prepare("SELECT color_bg, participation as tp FROM troop_members WHERE troop_id = ? AND user_id = ?").get(adv.troop_id, userId);
-  const existingCount = db.prepare("SELECT COUNT(*) as c FROM crew_members WHERE crew_id = ?").get(crewId).c;
+  const troopMember = (await pool.query("SELECT color_bg, participation as tp FROM troop_members WHERE troop_id = $1 AND user_id = $2", [adv.troop_id, userId])).rows[0];
+  const existingCount = Number((await pool.query("SELECT COUNT(*) as c FROM crew_members WHERE crew_id = $1", [crewId])).rows[0].c);
   const color = troopMember?.color_bg || COLORS[existingCount % COLORS.length];
   const part = participation || troopMember?.tp || "trekking";
-  db.prepare("INSERT OR IGNORE INTO crew_members (crew_id, user_id, role, color_bg, participation) VALUES (?, ?, ?, ?, ?)").run(crewId, userId, role, color, part);
-  // Dual-write to adventure_members for backward compat
-  db.prepare("INSERT OR IGNORE INTO adventure_members (adventure_id, user_id, role, color_bg, participation) VALUES (?, ?, ?, ?, ?)").run(crew.adventure_id, userId, role, color, part);
+  await pool.query("INSERT INTO crew_members (crew_id, user_id, role, color_bg, participation) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING", [crewId, userId, role, color, part]);
+  await pool.query("INSERT INTO adventure_members (adventure_id, user_id, role, color_bg, participation) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING", [crew.adventure_id, userId, role, color, part]);
 }
 
-export function removeCrewMember(crewId, userId) {
-  const crew = db.prepare("SELECT adventure_id FROM crews WHERE id = ?").get(crewId);
-  const run = db.transaction(() => {
+export async function removeCrewMember(crewId, userId) {
+  const crew = (await pool.query("SELECT adventure_id FROM crews WHERE id = $1", [crewId])).rows[0];
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
     if (crew) {
-      db.prepare("DELETE FROM member_gear WHERE crew_id = ? AND user_id = ?").run(crewId, userId);
-      db.prepare("DELETE FROM achievements WHERE crew_id = ? AND user_id = ?").run(crewId, userId);
+      await client.query("DELETE FROM member_gear WHERE crew_id = $1 AND user_id = $2", [crewId, userId]);
+      await client.query("DELETE FROM achievements WHERE crew_id = $1 AND user_id = $2", [crewId, userId]);
     }
-    // Clean up linked_scouts references
-    const adults = db.prepare("SELECT id, linked_scouts FROM crew_members WHERE crew_id = ? AND linked_scouts != '[]'").all(crewId);
+    const adults = (await client.query("SELECT id, linked_scouts FROM crew_members WHERE crew_id = $1 AND linked_scouts != '[]'", [crewId])).rows;
     for (const a of adults) {
       try {
         const scouts = JSON.parse(a.linked_scouts || "[]");
         const filtered = scouts.filter(sid => sid !== userId);
         if (filtered.length !== scouts.length) {
-          db.prepare("UPDATE crew_members SET linked_scouts = ? WHERE id = ?").run(JSON.stringify(filtered), a.id);
+          await client.query("UPDATE crew_members SET linked_scouts = $1 WHERE id = $2", [JSON.stringify(filtered), a.id]);
         }
       } catch {}
     }
-    db.prepare("DELETE FROM crew_members WHERE crew_id = ? AND user_id = ?").run(crewId, userId);
-    // Dual-write: also remove from adventure_members
+    await client.query("DELETE FROM crew_members WHERE crew_id = $1 AND user_id = $2", [crewId, userId]);
     if (crew) {
-      db.prepare("DELETE FROM adventure_members WHERE adventure_id = ? AND user_id = ?").run(crew.adventure_id, userId);
+      await client.query("DELETE FROM adventure_members WHERE adventure_id = $1 AND user_id = $2", [crew.adventure_id, userId]);
     }
-  });
-  run();
+    await client.query("COMMIT");
+  } catch (e) { await client.query("ROLLBACK"); throw e; }
+  finally { client.release(); }
 }
 
-export function updateCrewMemberDates(crewId, userId, dates) {
-  db.prepare("UPDATE crew_members SET dates = ? WHERE crew_id = ? AND user_id = ?").run(JSON.stringify(dates), crewId, userId);
-  // Dual-write
-  const crew = db.prepare("SELECT adventure_id FROM crews WHERE id = ?").get(crewId);
-  if (crew) db.prepare("UPDATE adventure_members SET dates = ? WHERE adventure_id = ? AND user_id = ?").run(JSON.stringify(dates), crew.adventure_id, userId);
+export async function updateCrewMemberDates(crewId, userId, dates) {
+  await pool.query("UPDATE crew_members SET dates = $1 WHERE crew_id = $2 AND user_id = $3", [JSON.stringify(dates), crewId, userId]);
+  const crew = (await pool.query("SELECT adventure_id FROM crews WHERE id = $1", [crewId])).rows[0];
+  if (crew) await pool.query("UPDATE adventure_members SET dates = $1 WHERE adventure_id = $2 AND user_id = $3", [JSON.stringify(dates), crew.adventure_id, userId]);
 }
 
-export function updateCrewMemberSkills(crewId, userId, skills) {
-  db.prepare("UPDATE crew_members SET skills = ? WHERE crew_id = ? AND user_id = ?").run(JSON.stringify(skills), crewId, userId);
-  const crew = db.prepare("SELECT adventure_id FROM crews WHERE id = ?").get(crewId);
-  if (crew) db.prepare("UPDATE adventure_members SET skills = ? WHERE adventure_id = ? AND user_id = ?").run(JSON.stringify(skills), crew.adventure_id, userId);
+export async function updateCrewMemberSkills(crewId, userId, skills) {
+  await pool.query("UPDATE crew_members SET skills = $1 WHERE crew_id = $2 AND user_id = $3", [JSON.stringify(skills), crewId, userId]);
+  const crew = (await pool.query("SELECT adventure_id FROM crews WHERE id = $1", [crewId])).rows[0];
+  if (crew) await pool.query("UPDATE adventure_members SET skills = $1 WHERE adventure_id = $2 AND user_id = $3", [JSON.stringify(skills), crew.adventure_id, userId]);
 }
 
-export function updateCrewMemberGear(crewId, userId, gear) {
-  db.prepare("UPDATE crew_members SET gear = ? WHERE crew_id = ? AND user_id = ?").run(JSON.stringify(gear), crewId, userId);
-  const crew = db.prepare("SELECT adventure_id FROM crews WHERE id = ?").get(crewId);
-  if (crew) db.prepare("UPDATE adventure_members SET gear = ? WHERE adventure_id = ? AND user_id = ?").run(JSON.stringify(gear), crew.adventure_id, userId);
+export async function updateCrewMemberGear(crewId, userId, gear) {
+  await pool.query("UPDATE crew_members SET gear = $1 WHERE crew_id = $2 AND user_id = $3", [JSON.stringify(gear), crewId, userId]);
+  const crew = (await pool.query("SELECT adventure_id FROM crews WHERE id = $1", [crewId])).rows[0];
+  if (crew) await pool.query("UPDATE adventure_members SET gear = $1 WHERE adventure_id = $2 AND user_id = $3", [JSON.stringify(gear), crew.adventure_id, userId]);
 }
 
-export function updateCrewMemberMedical(crewId, userId, medical) {
-  db.prepare("UPDATE crew_members SET medical = ? WHERE crew_id = ? AND user_id = ?").run(JSON.stringify(medical), crewId, userId);
-  const crew = db.prepare("SELECT adventure_id FROM crews WHERE id = ?").get(crewId);
-  if (crew) db.prepare("UPDATE adventure_members SET medical = ? WHERE adventure_id = ? AND user_id = ?").run(JSON.stringify(medical), crew.adventure_id, userId);
+export async function updateCrewMemberMedical(crewId, userId, medical) {
+  await pool.query("UPDATE crew_members SET medical = $1 WHERE crew_id = $2 AND user_id = $3", [JSON.stringify(medical), crewId, userId]);
+  const crew = (await pool.query("SELECT adventure_id FROM crews WHERE id = $1", [crewId])).rows[0];
+  if (crew) await pool.query("UPDATE adventure_members SET medical = $1 WHERE adventure_id = $2 AND user_id = $3", [JSON.stringify(medical), crew.adventure_id, userId]);
 }
 
-export function updateCrewMemberAdmin(crewId, userId, adminTasks) {
-  db.prepare("UPDATE crew_members SET admin_tasks = ? WHERE crew_id = ? AND user_id = ?").run(JSON.stringify(adminTasks), crewId, userId);
-  const crew = db.prepare("SELECT adventure_id FROM crews WHERE id = ?").get(crewId);
-  if (crew) db.prepare("UPDATE adventure_members SET admin_tasks = ? WHERE adventure_id = ? AND user_id = ?").run(JSON.stringify(adminTasks), crew.adventure_id, userId);
+export async function updateCrewMemberAdmin(crewId, userId, adminTasks) {
+  await pool.query("UPDATE crew_members SET admin_tasks = $1 WHERE crew_id = $2 AND user_id = $3", [JSON.stringify(adminTasks), crewId, userId]);
+  const crew = (await pool.query("SELECT adventure_id FROM crews WHERE id = $1", [crewId])).rows[0];
+  if (crew) await pool.query("UPDATE adventure_members SET admin_tasks = $1 WHERE adventure_id = $2 AND user_id = $3", [JSON.stringify(adminTasks), crew.adventure_id, userId]);
 }
 
-export function updateCrewMemberRole(crewId, userId, role) {
-  db.prepare("UPDATE crew_members SET role = ? WHERE crew_id = ? AND user_id = ?").run(role, crewId, userId);
-  const crew = db.prepare("SELECT adventure_id FROM crews WHERE id = ?").get(crewId);
-  if (crew) db.prepare("UPDATE adventure_members SET role = ? WHERE adventure_id = ? AND user_id = ?").run(role, crew.adventure_id, userId);
+export async function updateCrewMemberRole(crewId, userId, role) {
+  await pool.query("UPDATE crew_members SET role = $1 WHERE crew_id = $2 AND user_id = $3", [role, crewId, userId]);
+  const crew = (await pool.query("SELECT adventure_id FROM crews WHERE id = $1", [crewId])).rows[0];
+  if (crew) await pool.query("UPDATE adventure_members SET role = $1 WHERE adventure_id = $2 AND user_id = $3", [role, crew.adventure_id, userId]);
 }
 
-export function updateCrewMemberParticipation(crewId, userId, participation) {
-  db.prepare("UPDATE crew_members SET participation = ? WHERE crew_id = ? AND user_id = ?").run(participation, crewId, userId);
-  const crew = db.prepare("SELECT adventure_id FROM crews WHERE id = ?").get(crewId);
-  if (crew) db.prepare("UPDATE adventure_members SET participation = ? WHERE adventure_id = ? AND user_id = ?").run(participation, crew.adventure_id, userId);
+export async function updateCrewMemberParticipation(crewId, userId, participation) {
+  await pool.query("UPDATE crew_members SET participation = $1 WHERE crew_id = $2 AND user_id = $3", [participation, crewId, userId]);
+  const crew = (await pool.query("SELECT adventure_id FROM crews WHERE id = $1", [crewId])).rows[0];
+  if (crew) await pool.query("UPDATE adventure_members SET participation = $1 WHERE adventure_id = $2 AND user_id = $3", [participation, crew.adventure_id, userId]);
 }
 
-export function linkCrewMember(crewId, supportUserId, linkedScouts) {
+export async function linkCrewMember(crewId, supportUserId, linkedScouts) {
   const scouts = Array.isArray(linkedScouts) ? linkedScouts.slice(0, 3) : [];
-  db.prepare("UPDATE crew_members SET linked_scouts = ? WHERE crew_id = ? AND user_id = ?").run(JSON.stringify(scouts), crewId, supportUserId);
-  const crew = db.prepare("SELECT adventure_id FROM crews WHERE id = ?").get(crewId);
-  if (crew) db.prepare("UPDATE adventure_members SET linked_scouts = ? WHERE adventure_id = ? AND user_id = ?").run(JSON.stringify(scouts), crew.adventure_id, supportUserId);
+  await pool.query("UPDATE crew_members SET linked_scouts = $1 WHERE crew_id = $2 AND user_id = $3", [JSON.stringify(scouts), crewId, supportUserId]);
+  const crew = (await pool.query("SELECT adventure_id FROM crews WHERE id = $1", [crewId])).rows[0];
+  if (crew) await pool.query("UPDATE adventure_members SET linked_scouts = $1 WHERE adventure_id = $2 AND user_id = $3", [JSON.stringify(scouts), crew.adventure_id, supportUserId]);
 }
 
-export function addCrewManualMember(crewId, name) {
-  const existingCount = db.prepare("SELECT COUNT(*) as c FROM crew_members WHERE crew_id = ?").get(crewId).c;
+export async function addCrewManualMember(crewId, name) {
+  const existingCount = Number((await pool.query("SELECT COUNT(*) as c FROM crew_members WHERE crew_id = $1", [crewId])).rows[0].c);
   const color = COLORS[existingCount % COLORS.length];
-  const result = db.prepare(
-    "INSERT INTO crew_members (crew_id, user_id, role, is_manual, manual_name, color_bg, participation) VALUES (?, NULL, 'member', 1, ?, ?, 'trekking')"
-  ).run(crewId, name, color);
-  // Dual-write to adventure_members
-  const crew = db.prepare("SELECT adventure_id FROM crews WHERE id = ?").get(crewId);
+  const { rows } = await pool.query(
+    "INSERT INTO crew_members (crew_id, user_id, role, is_manual, manual_name, color_bg, participation) VALUES ($1, NULL, 'member', 1, $2, $3, 'trekking') RETURNING id",
+    [crewId, name, color]
+  );
+  const crew = (await pool.query("SELECT adventure_id FROM crews WHERE id = $1", [crewId])).rows[0];
   if (crew) {
-    db.prepare(
-      "INSERT INTO adventure_members (adventure_id, user_id, role, is_manual, manual_name, color_bg, participation) VALUES (?, NULL, 'member', 1, ?, ?, 'trekking')"
-    ).run(crew.adventure_id, name, color);
+    await pool.query(
+      "INSERT INTO adventure_members (adventure_id, user_id, role, is_manual, manual_name, color_bg, participation) VALUES ($1, NULL, 'member', 1, $2, $3, 'trekking')",
+      [crew.adventure_id, name, color]
+    );
   }
-  return { id: result.lastInsertRowid, name, color: { bg: color }, is_manual: true };
+  return { id: rows[0].id, name, color: { bg: color }, is_manual: true };
 }
 
-export function removeCrewManualMember(crewId, memberId) {
+export async function removeCrewManualMember(crewId, memberId) {
   const negId = -memberId;
-  const adults = db.prepare("SELECT id, linked_scouts FROM crew_members WHERE crew_id = ? AND linked_scouts != '[]'").all(crewId);
+  const adults = (await pool.query("SELECT id, linked_scouts FROM crew_members WHERE crew_id = $1 AND linked_scouts != '[]'", [crewId])).rows;
   for (const a of adults) {
     try {
       const scouts = JSON.parse(a.linked_scouts || "[]");
       const filtered = scouts.filter(sid => sid !== negId);
       if (filtered.length !== scouts.length) {
-        db.prepare("UPDATE crew_members SET linked_scouts = ? WHERE id = ?").run(JSON.stringify(filtered), a.id);
+        await pool.query("UPDATE crew_members SET linked_scouts = $1 WHERE id = $2", [JSON.stringify(filtered), a.id]);
       }
     } catch {}
   }
-  db.prepare("DELETE FROM crew_members WHERE crew_id = ? AND id = ? AND is_manual = 1").run(crewId, memberId);
+  await pool.query("DELETE FROM crew_members WHERE crew_id = $1 AND id = $2 AND is_manual = 1", [crewId, memberId]);
 }
 
 // ── Adventure Member Queries (shimmed through crews) ──
 
-export function getAdventureMembers(adventureId) {
-  const crew = getDefaultCrew(adventureId);
+export async function getAdventureMembers(adventureId) {
+  const crew = await getDefaultCrew(adventureId);
   if (crew) return getCrewMembers(crew.id);
-  // Fallback: read from adventure_members directly (pre-migration data)
-  const accountRows = db.prepare(`
+  const accountRows = (await pool.query(`
     SELECT am.*, u.name, u.email, u.avatar_url, u.user_type
     FROM adventure_members am JOIN users u ON am.user_id = u.id
-    WHERE am.adventure_id = ? AND am.is_manual = 0 ORDER BY am.id
-  `).all(adventureId);
-  const manualRows = db.prepare(`
-    SELECT am.* FROM adventure_members am
-    WHERE am.adventure_id = ? AND am.is_manual = 1 ORDER BY am.id
-  `).all(adventureId);
+    WHERE am.adventure_id = $1 AND am.is_manual = 0 ORDER BY am.id
+  `, [adventureId])).rows;
+  const manualRows = (await pool.query(
+    "SELECT am.* FROM adventure_members am WHERE am.adventure_id = $1 AND am.is_manual = 1 ORDER BY am.id", [adventureId]
+  )).rows;
   return [...accountRows.map(r => mapCrewMemberRow({ ...r, crew_id: null })), ...manualRows.map(r => mapCrewMemberRow({ ...r, crew_id: null }))];
 }
 
-export function getAdventureMember(adventureId, userId) {
-  const crew = getDefaultCrew(adventureId);
+export async function getAdventureMember(adventureId, userId) {
+  const crew = await getDefaultCrew(adventureId);
   if (crew) return getCrewMember(crew.id, userId);
-  const r = db.prepare("SELECT * FROM adventure_members WHERE adventure_id = ? AND user_id = ?").get(adventureId, userId);
+  const { rows } = await pool.query("SELECT * FROM adventure_members WHERE adventure_id = $1 AND user_id = $2", [adventureId, userId]);
+  const r = rows[0];
   if (!r) return null;
   let linkedScouts = [];
   try { linkedScouts = JSON.parse(r.linked_scouts || "[]"); } catch { linkedScouts = []; }
@@ -2330,290 +1045,325 @@ export function getAdventureMember(adventureId, userId) {
   };
 }
 
-export function addAdventureMember(adventureId, userId, role = "member", participation = "trekking") {
-  const crew = getDefaultCrew(adventureId);
+export async function addAdventureMember(adventureId, userId, role = "member", participation = "trekking") {
+  const crew = await getDefaultCrew(adventureId);
   if (crew) return addCrewMember(crew.id, userId, role, participation);
-  // Fallback: write directly (shouldn't happen after migration)
-  const adv = db.prepare("SELECT troop_id FROM adventures WHERE id = ?").get(adventureId);
+  const adv = (await pool.query("SELECT troop_id FROM adventures WHERE id = $1", [adventureId])).rows[0];
   if (!adv) return null;
-  const troopMember = db.prepare("SELECT color_bg, participation as tp FROM troop_members WHERE troop_id = ? AND user_id = ?").get(adv.troop_id, userId);
-  const existingCount = db.prepare("SELECT COUNT(*) as c FROM adventure_members WHERE adventure_id = ?").get(adventureId).c;
+  const troopMember = (await pool.query("SELECT color_bg, participation as tp FROM troop_members WHERE troop_id = $1 AND user_id = $2", [adv.troop_id, userId])).rows[0];
+  const existingCount = Number((await pool.query("SELECT COUNT(*) as c FROM adventure_members WHERE adventure_id = $1", [adventureId])).rows[0].c);
   const color = troopMember?.color_bg || COLORS[existingCount % COLORS.length];
   const part = participation || troopMember?.tp || "trekking";
-  db.prepare("INSERT OR IGNORE INTO adventure_members (adventure_id, user_id, role, color_bg, participation) VALUES (?, ?, ?, ?, ?)").run(adventureId, userId, role, color, part);
+  await pool.query("INSERT INTO adventure_members (adventure_id, user_id, role, color_bg, participation) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING", [adventureId, userId, role, color, part]);
 }
 
-export function removeAdventureMember(adventureId, userId) {
-  const crew = getDefaultCrew(adventureId);
+export async function removeAdventureMember(adventureId, userId) {
+  const crew = await getDefaultCrew(adventureId);
   if (crew) return removeCrewMember(crew.id, userId);
-  // Fallback: direct delete
-  const run = db.transaction(() => {
-    db.prepare("DELETE FROM member_gear WHERE adventure_id = ? AND user_id = ?").run(adventureId, userId);
-    db.prepare("DELETE FROM achievements WHERE adventure_id = ? AND user_id = ?").run(adventureId, userId);
-    db.prepare("DELETE FROM link_requests WHERE adventure_id = ? AND (requester_id = ? OR scout_id = ?)").run(adventureId, userId, userId);
-    db.prepare("DELETE FROM adventure_members WHERE adventure_id = ? AND user_id = ?").run(adventureId, userId);
-  });
-  run();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("DELETE FROM member_gear WHERE adventure_id = $1 AND user_id = $2", [adventureId, userId]);
+    await client.query("DELETE FROM achievements WHERE adventure_id = $1 AND user_id = $2", [adventureId, userId]);
+    await client.query("DELETE FROM link_requests WHERE adventure_id = $1 AND (requester_id = $2 OR scout_id = $2)", [adventureId, userId]);
+    await client.query("DELETE FROM adventure_members WHERE adventure_id = $1 AND user_id = $2", [adventureId, userId]);
+    await client.query("COMMIT");
+  } catch (e) { await client.query("ROLLBACK"); throw e; }
+  finally { client.release(); }
 }
 
-export function updateAdventureMemberDates(adventureId, userId, dates) {
-  const crew = getDefaultCrew(adventureId);
+export async function updateAdventureMemberDates(adventureId, userId, dates) {
+  const crew = await getDefaultCrew(adventureId);
   if (crew) return updateCrewMemberDates(crew.id, userId, dates);
-  db.prepare("UPDATE adventure_members SET dates = ? WHERE adventure_id = ? AND user_id = ?").run(JSON.stringify(dates), adventureId, userId);
+  await pool.query("UPDATE adventure_members SET dates = $1 WHERE adventure_id = $2 AND user_id = $3", [JSON.stringify(dates), adventureId, userId]);
 }
 
-export function updateAdventureMemberSkills(adventureId, userId, skills) {
-  const crew = getDefaultCrew(adventureId);
+export async function updateAdventureMemberSkills(adventureId, userId, skills) {
+  const crew = await getDefaultCrew(adventureId);
   if (crew) return updateCrewMemberSkills(crew.id, userId, skills);
-  db.prepare("UPDATE adventure_members SET skills = ? WHERE adventure_id = ? AND user_id = ?").run(JSON.stringify(skills), adventureId, userId);
+  await pool.query("UPDATE adventure_members SET skills = $1 WHERE adventure_id = $2 AND user_id = $3", [JSON.stringify(skills), adventureId, userId]);
 }
 
-export function updateAdventureMemberGear(adventureId, userId, gear) {
-  const crew = getDefaultCrew(adventureId);
+export async function updateAdventureMemberGear(adventureId, userId, gear) {
+  const crew = await getDefaultCrew(adventureId);
   if (crew) return updateCrewMemberGear(crew.id, userId, gear);
-  db.prepare("UPDATE adventure_members SET gear = ? WHERE adventure_id = ? AND user_id = ?").run(JSON.stringify(gear), adventureId, userId);
+  await pool.query("UPDATE adventure_members SET gear = $1 WHERE adventure_id = $2 AND user_id = $3", [JSON.stringify(gear), adventureId, userId]);
 }
 
-export function updateAdventureMemberMedical(adventureId, userId, medical) {
-  const crew = getDefaultCrew(adventureId);
+export async function updateAdventureMemberMedical(adventureId, userId, medical) {
+  const crew = await getDefaultCrew(adventureId);
   if (crew) return updateCrewMemberMedical(crew.id, userId, medical);
-  db.prepare("UPDATE adventure_members SET medical = ? WHERE adventure_id = ? AND user_id = ?").run(JSON.stringify(medical), adventureId, userId);
+  await pool.query("UPDATE adventure_members SET medical = $1 WHERE adventure_id = $2 AND user_id = $3", [JSON.stringify(medical), adventureId, userId]);
 }
 
-export function updateAdventureMemberAdmin(adventureId, userId, adminTasks) {
-  const crew = getDefaultCrew(adventureId);
+export async function updateAdventureMemberAdmin(adventureId, userId, adminTasks) {
+  const crew = await getDefaultCrew(adventureId);
   if (crew) return updateCrewMemberAdmin(crew.id, userId, adminTasks);
-  db.prepare("UPDATE adventure_members SET admin_tasks = ? WHERE adventure_id = ? AND user_id = ?").run(JSON.stringify(adminTasks), adventureId, userId);
+  await pool.query("UPDATE adventure_members SET admin_tasks = $1 WHERE adventure_id = $2 AND user_id = $3", [JSON.stringify(adminTasks), adventureId, userId]);
 }
 
-// ── Skills Queries (now adventure-scoped) ──
+export async function updateAdventureMemberRole(adventureId, userId, role) {
+  const crew = await getDefaultCrew(adventureId);
+  if (crew) return updateCrewMemberRole(crew.id, userId, role);
+  await pool.query("UPDATE adventure_members SET role = $1 WHERE adventure_id = $2 AND user_id = $3", [role, adventureId, userId]);
+}
 
-export function getAdventureSkills(adventureId, category) {
-  const q = category
-    ? "SELECT * FROM skills WHERE adventure_id = ? AND category = ? ORDER BY sort_order, id"
-    : "SELECT * FROM skills WHERE adventure_id = ? ORDER BY category, sort_order, id";
-  const rows = category ? db.prepare(q).all(adventureId, category) : db.prepare(q).all(adventureId);
+export async function updateAdventureMemberParticipation(adventureId, userId, participation) {
+  const crew = await getDefaultCrew(adventureId);
+  if (crew) return updateCrewMemberParticipation(crew.id, userId, participation);
+  await pool.query("UPDATE adventure_members SET participation = $1 WHERE adventure_id = $2 AND user_id = $3", [participation, adventureId, userId]);
+}
+
+export async function linkMember(adventureId, supportUserId, linkedScouts) {
+  const crew = await getDefaultCrew(adventureId);
+  if (crew) return linkCrewMember(crew.id, supportUserId, linkedScouts);
+  const scouts = Array.isArray(linkedScouts) ? linkedScouts.slice(0, 3) : [];
+  await pool.query("UPDATE adventure_members SET linked_scouts = $1 WHERE adventure_id = $2 AND user_id = $3", [JSON.stringify(scouts), adventureId, supportUserId]);
+}
+
+// ── Manual Members (shimmed through crews) ──
+
+export async function addManualMember(adventureId, name) {
+  const crew = await getDefaultCrew(adventureId);
+  if (crew) return addCrewManualMember(crew.id, name);
+  const existingCount = Number((await pool.query("SELECT COUNT(*) as c FROM adventure_members WHERE adventure_id = $1", [adventureId])).rows[0].c);
+  const color = COLORS[existingCount % COLORS.length];
+  const { rows } = await pool.query(
+    "INSERT INTO adventure_members (adventure_id, user_id, role, is_manual, manual_name, color_bg, participation) VALUES ($1, NULL, 'member', 1, $2, $3, 'trekking') RETURNING id",
+    [adventureId, name, color]
+  );
+  return { id: rows[0].id, name, color: { bg: color }, is_manual: true };
+}
+
+export async function removeManualMember(adventureId, memberId) {
+  const crew = await getDefaultCrew(adventureId);
+  if (crew) return removeCrewManualMember(crew.id, memberId);
+  const negId = -memberId;
+  const adults = (await pool.query("SELECT id, linked_scouts FROM adventure_members WHERE adventure_id = $1 AND linked_scouts != '[]'", [adventureId])).rows;
+  for (const a of adults) {
+    try {
+      const scouts = JSON.parse(a.linked_scouts || "[]");
+      const filtered = scouts.filter(sid => sid !== negId);
+      if (filtered.length !== scouts.length) {
+        await pool.query("UPDATE adventure_members SET linked_scouts = $1 WHERE id = $2", [JSON.stringify(filtered), a.id]);
+      }
+    } catch {}
+  }
+  await pool.query("DELETE FROM adventure_members WHERE adventure_id = $1 AND id = $2 AND is_manual = 1", [adventureId, memberId]);
+}
+
+// ── Skills Queries ──
+
+export async function getAdventureSkills(adventureId, category) {
+  let rows;
+  if (category) {
+    rows = (await pool.query("SELECT * FROM skills WHERE adventure_id = $1 AND category = $2 ORDER BY sort_order, id", [adventureId, category])).rows;
+  } else {
+    rows = (await pool.query("SELECT * FROM skills WHERE adventure_id = $1 ORDER BY category, sort_order, id", [adventureId])).rows;
+  }
   return rows.map(s => ({
     id: s.id, name: s.name, icon: s.icon, desc: s.description, description: s.description,
     category: s.category, isDefault: !!s.is_default, is_system: s.is_system || 0,
   }));
 }
 
-export function addAdventureSkill(adventureId, name, desc, category = "training", icon = "📋") {
-  const adv = db.prepare("SELECT troop_id FROM adventures WHERE id = ?").get(adventureId);
+export async function addAdventureSkill(adventureId, name, desc, category = "training", icon = "📋") {
+  const adv = (await pool.query("SELECT troop_id FROM adventures WHERE id = $1", [adventureId])).rows[0];
   if (!adv) return null;
   const id = `${adventureId}-custom-${Date.now()}`;
-  const maxOrder = db.prepare("SELECT MAX(sort_order) as m FROM skills WHERE adventure_id = ?").get(adventureId).m || 0;
-  db.prepare("INSERT INTO skills (id, troop_id, adventure_id, name, icon, description, category, is_default, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)")
-    .run(id, adv.troop_id, adventureId, name.trim(), icon, desc?.trim() || "", category, maxOrder + 1);
+  const maxOrder = (await pool.query("SELECT MAX(sort_order) as m FROM skills WHERE adventure_id = $1", [adventureId])).rows[0].m || 0;
+  await pool.query(
+    "INSERT INTO skills (id, troop_id, adventure_id, name, icon, description, category, is_default, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7, 0, $8)",
+    [id, adv.troop_id, adventureId, name.trim(), icon, desc?.trim() || "", category, maxOrder + 1]
+  );
   return { id, name: name.trim(), icon, desc: desc?.trim() || "", category, isDefault: false };
 }
 
-export function removeAdventureSkill(adventureId, skillId) {
-  const skill = db.prepare("SELECT is_default FROM skills WHERE id = ? AND adventure_id = ?").get(skillId, adventureId);
+export async function removeAdventureSkill(adventureId, skillId) {
+  const skill = (await pool.query("SELECT is_default FROM skills WHERE id = $1 AND adventure_id = $2", [skillId, adventureId])).rows[0];
   if (skill?.is_default) return { error: "Cannot remove default skills" };
-  db.prepare("DELETE FROM skills WHERE id = ? AND adventure_id = ?").run(skillId, adventureId);
+  await pool.query("DELETE FROM skills WHERE id = $1 AND adventure_id = $2", [skillId, adventureId]);
   return { ok: true };
 }
 
-// Legacy troop-scoped skill queries (kept for backward compat during transition)
-export function getTroopSkills(troopId) {
-  return db.prepare("SELECT * FROM skills WHERE troop_id = ? ORDER BY sort_order, id").all(troopId).map(s => ({
+export async function getTroopSkills(troopId) {
+  const { rows } = await pool.query("SELECT * FROM skills WHERE troop_id = $1 ORDER BY sort_order, id", [troopId]);
+  return rows.map(s => ({
     id: s.id, name: s.name, icon: s.icon, desc: s.description, category: s.category || "training", isDefault: !!s.is_default,
   }));
 }
 
-export function addTroopSkill(troopId, name, desc) {
+export async function addTroopSkill(troopId, name, desc) {
   const id = `${troopId}-custom-${Date.now()}`;
-  const maxOrder = db.prepare("SELECT MAX(sort_order) as m FROM skills WHERE troop_id = ?").get(troopId).m || 0;
-  db.prepare("INSERT INTO skills (id, troop_id, name, icon, description, is_default, sort_order) VALUES (?, ?, ?, '📋', ?, 0, ?)")
-    .run(id, troopId, name.trim(), desc?.trim() || "Custom skill", maxOrder + 1);
+  const maxOrder = (await pool.query("SELECT MAX(sort_order) as m FROM skills WHERE troop_id = $1", [troopId])).rows[0].m || 0;
+  await pool.query(
+    "INSERT INTO skills (id, troop_id, name, icon, description, is_default, sort_order) VALUES ($1, $2, $3, '📋', $4, 0, $5)",
+    [id, troopId, name.trim(), desc?.trim() || "Custom skill", maxOrder + 1]
+  );
   return { id, name: name.trim(), icon: "📋", desc: desc?.trim() || "Custom skill", isDefault: false };
 }
 
-export function removeTroopSkill(troopId, skillId) {
-  const skill = db.prepare("SELECT is_default FROM skills WHERE id = ? AND troop_id = ?").get(skillId, troopId);
+export async function removeTroopSkill(troopId, skillId) {
+  const skill = (await pool.query("SELECT is_default FROM skills WHERE id = $1 AND troop_id = $2", [skillId, troopId])).rows[0];
   if (skill?.is_default) return { error: "Cannot remove default skills" };
-  db.prepare("DELETE FROM skills WHERE id = ? AND troop_id = ?").run(skillId, troopId);
+  await pool.query("DELETE FROM skills WHERE id = $1 AND troop_id = $2", [skillId, troopId]);
   return { ok: true };
+}
+
+export async function seedAdventureSkills(adventureId, troopId) {
+  const existing = (await pool.query("SELECT id FROM skills WHERE adventure_id = $1", [adventureId])).rows;
+  const existingIds = new Set(existing.map(s => s.id));
+  let seeded = 0;
+  for (let i = 0; i < PHILMONT_DEFAULT_SKILLS.length; i++) {
+    const s = PHILMONT_DEFAULT_SKILLS[i];
+    const skillId = `${adventureId}-${s.id}`;
+    if (!existingIds.has(skillId)) {
+      await pool.query(
+        "INSERT INTO skills (id, troop_id, adventure_id, name, icon, description, category, is_default, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7, 1, $8)",
+        [skillId, troopId, adventureId, s.name, s.icon || "📋", s.desc, s.category || "training", i]
+      );
+      seeded++;
+    }
+  }
+  if (seeded > 0) console.log(`[skills] Seeded ${seeded} default skills for adventure ${adventureId}`);
+  return seeded;
 }
 
 // ── Gear Queries ──
 
-export function getGearItems(tags) {
-  const items = db.prepare("SELECT * FROM gear_items ORDER BY sort_order").all();
-  return items.map(g => ({ ...g, itinerary_tags: JSON.parse(g.itinerary_tags) }))
+export async function getGearItems(tags) {
+  const { rows } = await pool.query("SELECT * FROM gear_items ORDER BY sort_order");
+  return rows.map(g => ({ ...g, itinerary_tags: JSON.parse(g.itinerary_tags) }))
     .filter(g => !tags || tags.length === 0 || g.itinerary_tags.some(t => t === "all" || tags.includes(t)));
 }
 
 // ── Platform Settings ──
 
-export function getSetting(key) {
-  const r = db.prepare("SELECT value FROM platform_settings WHERE key = ?").get(key);
-  return r?.value || null;
+export async function getSetting(key) {
+  const { rows } = await pool.query("SELECT value FROM platform_settings WHERE key = $1", [key]);
+  return rows[0]?.value || null;
 }
 
-export function setSetting(key, value) {
-  db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)").run(key, value);
+export async function setSetting(key, value) {
+  await pool.query(
+    "INSERT INTO platform_settings (key, value) VALUES ($1, $2) ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value",
+    [key, value]
+  );
 }
 
 // ── Invitation Queries ──
 
-export function createInvitation({ troop_id, adventure_id, email, invited_by, token }) {
-  const result = db.prepare(
-    "INSERT INTO invitations (troop_id, adventure_id, email, invited_by, token) VALUES (?, ?, ?, ?, ?)"
-  ).run(troop_id, adventure_id || null, email.toLowerCase(), invited_by, token);
-  return { id: result.lastInsertRowid, troop_id, adventure_id, email: email.toLowerCase(), status: "pending", token };
+export async function createInvitation({ troop_id, adventure_id, email, invited_by, token }) {
+  const { rows } = await pool.query(
+    "INSERT INTO invitations (troop_id, adventure_id, email, invited_by, token) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+    [troop_id, adventure_id || null, email.toLowerCase(), invited_by, token]
+  );
+  return { id: rows[0].id, troop_id, adventure_id, email: email.toLowerCase(), status: "pending", token };
 }
 
-export function getInvitationByToken(token) {
-  return db.prepare("SELECT * FROM invitations WHERE token = ?").get(token) || null;
+export async function getInvitationByToken(token) {
+  const { rows } = await pool.query("SELECT * FROM invitations WHERE token = $1", [token]);
+  return rows[0] ?? null;
 }
 
-export function getInvitations(adventureId) {
-  return db.prepare(`
+export async function getInvitations(adventureId) {
+  const { rows } = await pool.query(`
     SELECT i.*, u.name as invited_by_name
     FROM invitations i JOIN users u ON i.invited_by = u.id
-    WHERE i.adventure_id = ? ORDER BY i.created_at DESC
-  `).all(adventureId);
+    WHERE i.adventure_id = $1 ORDER BY i.created_at DESC
+  `, [adventureId]);
+  return rows;
 }
 
-export function updateInvitationStatus(id, status) {
-  db.prepare("UPDATE invitations SET status = ? WHERE id = ?").run(status, id);
+export async function updateInvitationStatus(id, status) {
+  await pool.query("UPDATE invitations SET status = $1 WHERE id = $2", [status, id]);
 }
 
-export function getInvitationsByEmail(email) {
-  return db.prepare("SELECT * FROM invitations WHERE email = ? AND status = 'pending'").all(email.toLowerCase());
-}
-
-// ── Member Role & Participation ──
-
-export function updateAdventureMemberRole(adventureId, userId, role) {
-  const crew = getDefaultCrew(adventureId);
-  if (crew) return updateCrewMemberRole(crew.id, userId, role);
-  db.prepare("UPDATE adventure_members SET role = ? WHERE adventure_id = ? AND user_id = ?").run(role, adventureId, userId);
-}
-
-export function updateAdventureMemberParticipation(adventureId, userId, participation) {
-  const crew = getDefaultCrew(adventureId);
-  if (crew) return updateCrewMemberParticipation(crew.id, userId, participation);
-  db.prepare("UPDATE adventure_members SET participation = ? WHERE adventure_id = ? AND user_id = ?").run(participation, adventureId, userId);
-}
-
-export function linkMember(adventureId, supportUserId, linkedScouts) {
-  const crew = getDefaultCrew(adventureId);
-  if (crew) return linkCrewMember(crew.id, supportUserId, linkedScouts);
-  const scouts = Array.isArray(linkedScouts) ? linkedScouts.slice(0, 3) : [];
-  db.prepare("UPDATE adventure_members SET linked_scouts = ? WHERE adventure_id = ? AND user_id = ?").run(JSON.stringify(scouts), adventureId, supportUserId);
-}
-
-// ── Manual Members (shimmed through crews) ──
-
-export function addManualMember(adventureId, name) {
-  const crew = getDefaultCrew(adventureId);
-  if (crew) return addCrewManualMember(crew.id, name);
-  const existingCount = db.prepare("SELECT COUNT(*) as c FROM adventure_members WHERE adventure_id = ?").get(adventureId).c;
-  const color = COLORS[existingCount % COLORS.length];
-  const result = db.prepare(
-    "INSERT INTO adventure_members (adventure_id, user_id, role, is_manual, manual_name, color_bg, participation) VALUES (?, NULL, 'member', 1, ?, ?, 'trekking')"
-  ).run(adventureId, name, color);
-  return { id: result.lastInsertRowid, name, color: { bg: color }, is_manual: true };
-}
-
-export function removeManualMember(adventureId, memberId) {
-  const crew = getDefaultCrew(adventureId);
-  if (crew) return removeCrewManualMember(crew.id, memberId);
-  const negId = -memberId;
-  const adults = db.prepare("SELECT id, linked_scouts FROM adventure_members WHERE adventure_id = ? AND linked_scouts != '[]'").all(adventureId);
-  for (const a of adults) {
-    try {
-      const scouts = JSON.parse(a.linked_scouts || "[]");
-      const filtered = scouts.filter(sid => sid !== negId);
-      if (filtered.length !== scouts.length) {
-        db.prepare("UPDATE adventure_members SET linked_scouts = ? WHERE id = ?").run(JSON.stringify(filtered), a.id);
-      }
-    } catch {}
-  }
-  db.prepare("DELETE FROM adventure_members WHERE adventure_id = ? AND id = ? AND is_manual = 1").run(adventureId, memberId);
+export async function getInvitationsByEmail(email) {
+  const { rows } = await pool.query("SELECT * FROM invitations WHERE email = $1 AND status = 'pending'", [email.toLowerCase()]);
+  return rows;
 }
 
 // ── Achievement & Milestone Queries ──
 
-export function earnBadge(adventureId, userId, badgeType) {
+export async function earnBadge(adventureId, userId, badgeType) {
   try {
-    const crew = getDefaultCrew(adventureId);
-    db.prepare("INSERT OR IGNORE INTO achievements (adventure_id, crew_id, user_id, badge_type) VALUES (?, ?, ?, ?)")
-      .run(adventureId, crew?.id || null, userId, badgeType);
+    const crew = await getDefaultCrew(adventureId);
+    await pool.query(
+      "INSERT INTO achievements (adventure_id, crew_id, user_id, badge_type) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
+      [adventureId, crew?.id || null, userId, badgeType]
+    );
     return true;
   } catch { return false; }
 }
 
-export function getBadges(adventureId, userId) {
+export async function getBadges(adventureId, userId) {
   if (userId) {
-    return db.prepare("SELECT * FROM achievements WHERE adventure_id = ? AND user_id = ?").all(adventureId, userId);
+    return (await pool.query("SELECT * FROM achievements WHERE adventure_id = $1 AND user_id = $2", [adventureId, userId])).rows;
   }
-  return db.prepare("SELECT * FROM achievements WHERE adventure_id = ?").all(adventureId);
+  return (await pool.query("SELECT * FROM achievements WHERE adventure_id = $1", [adventureId])).rows;
 }
 
-export function getCrewMilestones(adventureId) {
-  return db.prepare("SELECT * FROM crew_milestones WHERE adventure_id = ? ORDER BY reached_at").all(adventureId);
+export async function getCrewMilestones(adventureId) {
+  return (await pool.query("SELECT * FROM crew_milestones WHERE adventure_id = $1 ORDER BY reached_at", [adventureId])).rows;
 }
 
-export function addCrewMilestone(adventureId, milestoneType) {
+export async function addCrewMilestone(adventureId, milestoneType) {
   try {
-    const crew = getDefaultCrew(adventureId);
-    db.prepare("INSERT OR IGNORE INTO crew_milestones (adventure_id, crew_id, milestone_type) VALUES (?, ?, ?)")
-      .run(adventureId, crew?.id || null, milestoneType);
+    const crew = await getDefaultCrew(adventureId);
+    await pool.query(
+      "INSERT INTO crew_milestones (adventure_id, crew_id, milestone_type) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+      [adventureId, crew?.id || null, milestoneType]
+    );
     return true;
   } catch { return false; }
 }
 
 // ── Parent-Scout Auto-Linking ──
 
-export function autoLinkAdult(adventureId, adultUserId) {
-  const adultUser = findUserById(adultUserId);
+export async function autoLinkAdult(adventureId, adultUserId) {
+  const adultUser = await findUserById(adultUserId);
   if (!adultUser || adultUser.user_type !== "adult") return null;
-  const crew = getDefaultCrew(adventureId);
+  const crew = await getDefaultCrew(adventureId);
   const table = crew ? "crew_members" : "adventure_members";
   const keyCol = crew ? "crew_id" : "adventure_id";
   const keyVal = crew ? crew.id : adventureId;
-  const match = db.prepare(`
+  const match = (await pool.query(`
     SELECT cm.user_id FROM ${table} cm
     JOIN users u ON cm.user_id = u.id
-    WHERE cm.${keyCol} = ? AND u.user_type = 'scout' AND cm.is_manual = 0
-    AND (LOWER(u.parent_email) = ? OR LOWER(u.parent_email_2) = ?)
+    WHERE cm.${keyCol} = $1 AND u.user_type = 'scout' AND cm.is_manual = 0
+    AND (LOWER(u.parent_email) = $2 OR LOWER(u.parent_email_2) = $2)
     LIMIT 1
-  `).get(keyVal, adultUser.email.toLowerCase(), adultUser.email.toLowerCase());
+  `, [keyVal, adultUser.email.toLowerCase()])).rows[0];
   if (match) {
-    db.prepare(`UPDATE ${table} SET linked_to = ? WHERE ${keyCol} = ? AND user_id = ?`).run(match.user_id, keyVal, adultUserId);
-    // Dual-write
-    if (crew) db.prepare("UPDATE adventure_members SET linked_to = ? WHERE adventure_id = ? AND user_id = ?").run(match.user_id, adventureId, adultUserId);
+    await pool.query(`UPDATE ${table} SET linked_to = $1 WHERE ${keyCol} = $2 AND user_id = $3`, [match.user_id, keyVal, adultUserId]);
+    if (crew) await pool.query("UPDATE adventure_members SET linked_to = $1 WHERE adventure_id = $2 AND user_id = $3", [match.user_id, adventureId, adultUserId]);
     return match.user_id;
   }
   return null;
 }
 
-export function autoLinkScout(adventureId, scoutUserId) {
-  const scoutUser = findUserById(scoutUserId);
+export async function autoLinkScout(adventureId, scoutUserId) {
+  const scoutUser = await findUserById(scoutUserId);
   if (!scoutUser || scoutUser.user_type !== "scout") return null;
   const parentEmails = [scoutUser.parent_email, scoutUser.parent_email_2]
     .filter(Boolean).map(e => e.toLowerCase());
   if (parentEmails.length === 0) return null;
-  const crew = getDefaultCrew(adventureId);
+  const crew = await getDefaultCrew(adventureId);
   const table = crew ? "crew_members" : "adventure_members";
   const keyCol = crew ? "crew_id" : "adventure_id";
   const keyVal = crew ? crew.id : adventureId;
-  const placeholders = parentEmails.map(() => "?").join(", ");
-  const match = db.prepare(`
+  const placeholders = parentEmails.map((_, i) => `$${i + 2}`).join(", ");
+  const match = (await pool.query(`
     SELECT cm.user_id FROM ${table} cm
     JOIN users u ON cm.user_id = u.id
-    WHERE cm.${keyCol} = ? AND u.user_type = 'adult' AND cm.is_manual = 0
+    WHERE cm.${keyCol} = $1 AND u.user_type = 'adult' AND cm.is_manual = 0
     AND cm.linked_to IS NULL AND LOWER(u.email) IN (${placeholders})
     LIMIT 1
-  `).get(keyVal, ...parentEmails);
+  `, [keyVal, ...parentEmails])).rows[0];
   if (match) {
-    db.prepare(`UPDATE ${table} SET linked_to = ? WHERE ${keyCol} = ? AND user_id = ?`).run(scoutUserId, keyVal, match.user_id);
-    if (crew) db.prepare("UPDATE adventure_members SET linked_to = ? WHERE adventure_id = ? AND user_id = ?").run(scoutUserId, adventureId, match.user_id);
+    await pool.query(`UPDATE ${table} SET linked_to = $1 WHERE ${keyCol} = $2 AND user_id = $3`, [scoutUserId, keyVal, match.user_id]);
+    if (crew) await pool.query("UPDATE adventure_members SET linked_to = $1 WHERE adventure_id = $2 AND user_id = $3", [scoutUserId, adventureId, match.user_id]);
     return match.user_id;
   }
   return null;
@@ -2621,105 +1371,92 @@ export function autoLinkScout(adventureId, scoutUserId) {
 
 // ── Link Requests ──
 
-export function createLinkRequest(adventureId, requesterId, scoutId) {
-  const result = db.prepare(
-    "INSERT OR IGNORE INTO link_requests (adventure_id, requester_id, scout_id) VALUES (?, ?, ?)"
-  ).run(adventureId, requesterId, scoutId);
-  return result.changes > 0 ? { id: result.lastInsertRowid } : null;
+export async function createLinkRequest(adventureId, requesterId, scoutId) {
+  const result = await pool.query(
+    "INSERT INTO link_requests (adventure_id, requester_id, scout_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING RETURNING id",
+    [adventureId, requesterId, scoutId]
+  );
+  return result.rows[0] ? { id: result.rows[0].id } : null;
 }
 
-export function getLinkRequests(adventureId, status) {
+export async function getLinkRequests(adventureId, status) {
   const base = `
     SELECT lr.*, u_req.name as requester_name, u_req.email as requester_email,
            u_scout.name as scout_name
     FROM link_requests lr
     JOIN users u_req ON lr.requester_id = u_req.id
     JOIN users u_scout ON lr.scout_id = u_scout.id
-    WHERE lr.adventure_id = ?`;
+    WHERE lr.adventure_id = $1`;
   if (status) {
-    return db.prepare(base + " AND lr.status = ? ORDER BY lr.created_at DESC").all(adventureId, status);
+    return (await pool.query(base + " AND lr.status = $2 ORDER BY lr.created_at DESC", [adventureId, status])).rows;
   }
-  return db.prepare(base + " ORDER BY lr.created_at DESC").all(adventureId);
+  return (await pool.query(base + " ORDER BY lr.created_at DESC", [adventureId])).rows;
 }
 
-export function getMyLinkRequests(adventureId, userId) {
-  return db.prepare(
-    "SELECT * FROM link_requests WHERE adventure_id = ? AND requester_id = ? ORDER BY created_at DESC"
-  ).all(adventureId, userId);
+export async function getMyLinkRequests(adventureId, userId) {
+  return (await pool.query(
+    "SELECT * FROM link_requests WHERE adventure_id = $1 AND requester_id = $2 ORDER BY created_at DESC",
+    [adventureId, userId]
+  )).rows;
 }
 
-export function approveLinkRequest(requestId, reviewedBy) {
-  const req = db.prepare("SELECT * FROM link_requests WHERE id = ? AND status = 'pending'").get(requestId);
+export async function approveLinkRequest(requestId, reviewedBy) {
+  const req = (await pool.query("SELECT * FROM link_requests WHERE id = $1 AND status = 'pending'", [requestId])).rows[0];
   if (!req) return null;
-  db.prepare("UPDATE link_requests SET status = 'approved', reviewed_by = ?, resolved_at = CURRENT_TIMESTAMP WHERE id = ?")
-    .run(reviewedBy, requestId);
-  db.prepare("UPDATE adventure_members SET linked_to = ? WHERE adventure_id = ? AND user_id = ?")
-    .run(req.scout_id, req.adventure_id, req.requester_id);
-  // Also update crew_members
-  const crew = getDefaultCrew(req.adventure_id);
+  await pool.query("UPDATE link_requests SET status = 'approved', reviewed_by = $1, resolved_at = CURRENT_TIMESTAMP WHERE id = $2", [reviewedBy, requestId]);
+  await pool.query("UPDATE adventure_members SET linked_to = $1 WHERE adventure_id = $2 AND user_id = $3", [req.scout_id, req.adventure_id, req.requester_id]);
+  const crew = await getDefaultCrew(req.adventure_id);
   if (crew) {
-    db.prepare("UPDATE crew_members SET linked_to = ? WHERE crew_id = ? AND user_id = ?")
-      .run(req.scout_id, crew.id, req.requester_id);
+    await pool.query("UPDATE crew_members SET linked_to = $1 WHERE crew_id = $2 AND user_id = $3", [req.scout_id, crew.id, req.requester_id]);
   }
   return req;
 }
 
-export function denyLinkRequest(requestId, reviewedBy) {
-  db.prepare("UPDATE link_requests SET status = 'denied', reviewed_by = ?, resolved_at = CURRENT_TIMESTAMP WHERE id = ?")
-    .run(reviewedBy, requestId);
+export async function denyLinkRequest(requestId, reviewedBy) {
+  await pool.query("UPDATE link_requests SET status = 'denied', reviewed_by = $1, resolved_at = CURRENT_TIMESTAMP WHERE id = $2", [reviewedBy, requestId]);
 }
-
-// ══════════════════════════════════════════
-// GEAR CATALOG QUERIES
-// ══════════════════════════════════════════
 
 // ── Gear Catalog (read) ──
 
-export function getGearCatalog(troopId) {
-  const items = db.prepare("SELECT * FROM gear_catalog WHERE active = 1 ORDER BY sort_order").all();
-
-  const allOptions = db.prepare(`
+export async function getGearCatalog(troopId) {
+  const items = (await pool.query("SELECT * FROM gear_catalog WHERE active = 1 ORDER BY sort_order")).rows;
+  const allOptions = (await pool.query(`
     SELECT gpo.* FROM gear_product_options gpo
     JOIN gear_catalog gc ON gpo.gear_catalog_id = gc.id
     WHERE gc.active = 1 ORDER BY gpo.sort_order
-  `).all();
-
+  `)).rows;
   const optionsByItem = {};
   for (const opt of allOptions) {
     if (!optionsByItem[opt.gear_catalog_id]) optionsByItem[opt.gear_catalog_id] = [];
     optionsByItem[opt.gear_catalog_id].push(opt);
   }
-
   let hiddenIds = new Set();
   if (troopId) {
-    const overrides = db.prepare("SELECT gear_catalog_id FROM troop_gear_overrides WHERE troop_id = ? AND hidden = 1").all(troopId);
+    const overrides = (await pool.query("SELECT gear_catalog_id FROM troop_gear_overrides WHERE troop_id = $1 AND hidden = 1", [troopId])).rows;
     hiddenIds = new Set(overrides.map(o => o.gear_catalog_id));
   }
-
-  return items
-    .filter(item => !hiddenIds.has(item.id))
-    .map(item => ({ ...item, options: optionsByItem[item.id] || [] }));
+  return items.filter(item => !hiddenIds.has(item.id)).map(item => ({ ...item, options: optionsByItem[item.id] || [] }));
 }
 
-export function getGearCatalogItem(id) {
-  const item = db.prepare("SELECT * FROM gear_catalog WHERE id = ?").get(id);
+export async function getGearCatalogItem(id) {
+  const item = (await pool.query("SELECT * FROM gear_catalog WHERE id = $1", [id])).rows[0];
   if (!item) return null;
-  const options = db.prepare("SELECT * FROM gear_product_options WHERE gear_catalog_id = ? ORDER BY sort_order").all(id);
+  const options = (await pool.query("SELECT * FROM gear_product_options WHERE gear_catalog_id = $1 ORDER BY sort_order", [id])).rows;
   return { ...item, options };
 }
 
-export function getGearCategories() {
-  return db.prepare(`
+export async function getGearCategories() {
+  return (await pool.query(`
     SELECT category, COUNT(*) as item_count
     FROM gear_catalog WHERE active = 1
     GROUP BY category ORDER BY MIN(sort_order)
-  `).all();
+  `)).rows;
 }
 
-// ── Member Gear (adventure-scoped) ──
+// ── Member Gear ──
 
-export function getMemberGear(adventureId, userId) {
-  return db.prepare(`
+export async function getMemberGear(adventureId, userId) {
+  return (await pool.query(`
     SELECT mg.*, gc.name as gear_name, gc.category, gc.weight_oz as default_weight_oz,
            gc.priority, gc.is_crew_shared, gc.sharing_type, gc.philmont_compliant, gc.compliance_notes,
            gpo.product_name as selected_product_name, gpo.weight_oz as selected_weight_oz,
@@ -2727,69 +1464,72 @@ export function getMemberGear(adventureId, userId) {
     FROM member_gear mg
     JOIN gear_catalog gc ON mg.gear_catalog_id = gc.id
     LEFT JOIN gear_product_options gpo ON mg.selected_option_id = gpo.id
-    WHERE mg.adventure_id = ? AND mg.user_id = ?
+    WHERE mg.adventure_id = $1 AND mg.user_id = $2
     ORDER BY gc.sort_order
-  `).all(adventureId, userId);
+  `, [adventureId, userId])).rows;
 }
 
-export function getAdventureMemberGearAll(adventureId) {
-  return db.prepare(`
+export async function getAdventureMemberGearAll(adventureId) {
+  return (await pool.query(`
     SELECT mg.*, gc.name as gear_name, gc.category, gc.weight_oz as default_weight_oz,
            gc.priority, gc.is_crew_shared, gc.sharing_type
     FROM member_gear mg
     JOIN gear_catalog gc ON mg.gear_catalog_id = gc.id
-    WHERE mg.adventure_id = ?
+    WHERE mg.adventure_id = $1
     ORDER BY mg.user_id, gc.sort_order
-  `).all(adventureId);
+  `, [adventureId])).rows;
 }
 
-export function upsertMemberGear(adventureId, userId, gearCatalogId, data) {
-  const existing = db.prepare(
-    "SELECT id FROM member_gear WHERE adventure_id = ? AND user_id = ? AND gear_catalog_id = ?"
-  ).get(adventureId, userId, gearCatalogId);
+export async function upsertMemberGear(adventureId, userId, gearCatalogId, data) {
+  const existing = (await pool.query(
+    "SELECT id FROM member_gear WHERE adventure_id = $1 AND user_id = $2 AND gear_catalog_id = $3",
+    [adventureId, userId, gearCatalogId]
+  )).rows[0];
 
   if (existing) {
-    const sets = [];
-    const vals = [];
-    if (data.status !== undefined) { sets.push("status = ?"); vals.push(data.status); }
-    if (data.selected_option_id !== undefined) { sets.push("selected_option_id = ?"); vals.push(data.selected_option_id); }
-    if (data.custom_product_name !== undefined) { sets.push("custom_product_name = ?"); vals.push(data.custom_product_name); }
-    if (data.custom_weight_oz !== undefined) { sets.push("custom_weight_oz = ?"); vals.push(data.custom_weight_oz); }
-    if (data.notes !== undefined) { sets.push("notes = ?"); vals.push(data.notes); }
+    const sets = []; const vals = []; let n = 1;
+    if (data.status !== undefined) { sets.push(`status = $${n++}`); vals.push(data.status); }
+    if (data.selected_option_id !== undefined) { sets.push(`selected_option_id = $${n++}`); vals.push(data.selected_option_id); }
+    if (data.custom_product_name !== undefined) { sets.push(`custom_product_name = $${n++}`); vals.push(data.custom_product_name); }
+    if (data.custom_weight_oz !== undefined) { sets.push(`custom_weight_oz = $${n++}`); vals.push(data.custom_weight_oz); }
+    if (data.notes !== undefined) { sets.push(`notes = $${n++}`); vals.push(data.notes); }
     if (sets.length > 0) {
       sets.push("updated_at = CURRENT_TIMESTAMP");
       vals.push(existing.id);
-      db.prepare(`UPDATE member_gear SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
+      await pool.query(`UPDATE member_gear SET ${sets.join(", ")} WHERE id = $${n}`, vals);
     }
     return existing.id;
   } else {
-    const crew = getDefaultCrew(adventureId);
+    const crew = await getDefaultCrew(adventureId);
     const crewId = crew?.id || null;
-    const result = db.prepare(
-      "INSERT INTO member_gear (adventure_id, crew_id, user_id, gear_catalog_id, status, selected_option_id, custom_product_name, custom_weight_oz, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    ).run(adventureId, crewId, userId, gearCatalogId, data.status || "needed", data.selected_option_id || null, data.custom_product_name || null, data.custom_weight_oz || null, data.notes || null);
-    return result.lastInsertRowid;
+    const { rows } = await pool.query(
+      "INSERT INTO member_gear (adventure_id, crew_id, user_id, gear_catalog_id, status, selected_option_id, custom_product_name, custom_weight_oz, notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id",
+      [adventureId, crewId, userId, gearCatalogId, data.status || "needed", data.selected_option_id || null, data.custom_product_name || null, data.custom_weight_oz || null, data.notes || null]
+    );
+    return rows[0].id;
   }
 }
 
-export function bulkSetMemberGear(adventureId, userId, gearSelections) {
-  const upsert = db.transaction(() => {
+export async function bulkSetMemberGear(adventureId, userId, gearSelections) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
     for (const sel of gearSelections) {
-      upsertMemberGear(adventureId, userId, sel.gear_catalog_id, sel);
+      await upsertMemberGear(adventureId, userId, sel.gear_catalog_id, sel);
     }
-  });
-  upsert();
+    await client.query("COMMIT");
+  } catch (e) { await client.query("ROLLBACK"); throw e; }
+  finally { client.release(); }
 }
 
-export function removeMemberGearItem(adventureId, userId, gearCatalogId) {
-  db.prepare("DELETE FROM member_gear WHERE adventure_id = ? AND user_id = ? AND gear_catalog_id = ?")
-    .run(adventureId, userId, gearCatalogId);
+export async function removeMemberGearItem(adventureId, userId, gearCatalogId) {
+  await pool.query("DELETE FROM member_gear WHERE adventure_id = $1 AND user_id = $2 AND gear_catalog_id = $3", [adventureId, userId, gearCatalogId]);
 }
 
 // ── Pack Weight Calculator ──
 
-export function getMemberPackWeight(adventureId, userId) {
-  const gear = db.prepare(`
+export async function getMemberPackWeight(adventureId, userId) {
+  const gear = (await pool.query(`
     SELECT mg.status, mg.custom_weight_oz,
            gc.category, gc.weight_oz as default_weight_oz, gc.is_crew_shared,
            gc.sharing_type,
@@ -2797,8 +1537,8 @@ export function getMemberPackWeight(adventureId, userId) {
     FROM member_gear mg
     JOIN gear_catalog gc ON mg.gear_catalog_id = gc.id
     LEFT JOIN gear_product_options gpo ON mg.selected_option_id = gpo.id
-    WHERE mg.adventure_id = ? AND mg.user_id = ? AND mg.status = 'packed'
-  `).all(adventureId, userId);
+    WHERE mg.adventure_id = $1 AND mg.user_id = $2 AND mg.status = 'packed'
+  `, [adventureId, userId])).rows;
 
   const byCategory = {};
   let totalOz = 0;
@@ -2807,15 +1547,11 @@ export function getMemberPackWeight(adventureId, userId) {
 
   for (const g of gear) {
     const sType = g.sharing_type || "personal";
-    // Only count personal items toward pack weight
-    // Crew/buddy gear weight is split and hard to estimate per-person; deferred
-    // Provided gear is on-site, no weight impact on travel
     if (sType !== "personal") {
       if (sType === "provided") providedCount++;
       else crewBuddyCount++;
       continue;
     }
-    // Use custom weight > selected option weight > default catalog weight
     const weight = g.custom_weight_oz || g.option_weight_oz || g.default_weight_oz || 0;
     if (!byCategory[g.category]) byCategory[g.category] = { weight_oz: 0, count: 0 };
     byCategory[g.category].weight_oz += weight;
@@ -2824,14 +1560,11 @@ export function getMemberPackWeight(adventureId, userId) {
   }
 
   const totalLbs = totalOz / 16;
-  // Estimates: food ~1.75 lbs/day × trek days, water ~6.6 lbs (3L typical hiking carry)
-  // Only add food/water when there are packed items
-  // Use crew's itinerary (source of truth), fallback to adventure
-  const crew = getDefaultCrew(adventureId);
-  const itinId = crew?.itinerary_id || getAdventure(adventureId)?.itinerary_id;
-  let trekDays = 12; // default fallback
+  const crew = await getDefaultCrew(adventureId);
+  const itinId = crew?.itinerary_id || (await getAdventure(adventureId))?.itinerary_id;
+  let trekDays = 12;
   if (itinId) {
-    const itin = getItinerary(itinId);
+    const itin = await getItinerary(itinId);
     if (itin?.days) trekDays = itin.days;
   }
   const personalCount = gear.length - crewBuddyCount - providedCount;
@@ -2841,98 +1574,93 @@ export function getMemberPackWeight(adventureId, userId) {
   const grandTotalLbs = totalLbs + foodLbs + waterLbs;
 
   return {
-    base_weight_oz: totalOz,
-    base_weight_lbs: Math.round(totalLbs * 10) / 10,
-    food_estimate_lbs: foodLbs,
-    trek_days: trekDays,
-    water_lbs: waterLbs,
+    base_weight_oz: totalOz, base_weight_lbs: Math.round(totalLbs * 10) / 10,
+    food_estimate_lbs: foodLbs, trek_days: trekDays, water_lbs: waterLbs,
     grand_total_lbs: Math.round(grandTotalLbs * 10) / 10,
-    by_category: byCategory,
-    item_count: personalCount,
-    crew_buddy_count: crewBuddyCount,
-    provided_count: providedCount,
-    total_packed: gear.length,
-    philmont_limit_lbs: 50,
-    over_limit: grandTotalLbs > 50,
+    by_category: byCategory, item_count: personalCount,
+    crew_buddy_count: crewBuddyCount, provided_count: providedCount,
+    total_packed: gear.length, philmont_limit_lbs: 50, over_limit: grandTotalLbs > 50,
   };
 }
 
-// ── Gear Admin (global admin CRUD) ──
+// ── Gear Admin ──
 
-export function createGearCatalogItem(data) {
-  const maxOrder = db.prepare("SELECT MAX(sort_order) as m FROM gear_catalog").get().m || 0;
-  const result = db.prepare(`
+export async function createGearCatalogItem(data) {
+  const maxOrder = (await pool.query("SELECT MAX(sort_order) as m FROM gear_catalog")).rows[0].m || 0;
+  const { rows } = await pool.query(`
     INSERT INTO gear_catalog (name, category, subcategory, description, weight_oz, weight_class, priority, price_tier, msrp, rating_stars, rating_notes, philmont_compliant, compliance_notes, is_crew_shared, sharing_type, affiliate_priority, sort_order)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    data.name, data.category, data.subcategory || null, data.description || null,
-    data.weight_oz || null, data.weight_class || null, data.priority || "recommended",
-    data.price_tier || null, data.msrp || null, data.rating_stars || null, data.rating_notes || null,
-    data.philmont_compliant ?? 1, data.compliance_notes || null,
-    data.is_crew_shared || 0, data.sharing_type || "personal", data.affiliate_priority || "Medium", maxOrder + 1
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id`,
+    [data.name, data.category, data.subcategory || null, data.description || null,
+     data.weight_oz || null, data.weight_class || null, data.priority || "recommended",
+     data.price_tier || null, data.msrp || null, data.rating_stars || null, data.rating_notes || null,
+     data.philmont_compliant ?? 1, data.compliance_notes || null,
+     data.is_crew_shared || 0, data.sharing_type || "personal", data.affiliate_priority || "Medium", maxOrder + 1]
   );
-  return { id: result.lastInsertRowid, ...data };
+  return { id: rows[0].id, ...data };
 }
 
-export function updateGearCatalogItem(id, data) {
-  const sets = [];
-  const vals = [];
+export async function updateGearCatalogItem(id, data) {
+  const sets = []; const vals = []; let n = 1;
   const fields = ["name", "category", "subcategory", "description", "weight_oz", "weight_class", "priority",
     "price_tier", "msrp", "rating_stars", "rating_notes", "philmont_compliant", "compliance_notes",
     "is_crew_shared", "sharing_type", "affiliate_priority", "sort_order", "active"];
   for (const f of fields) {
-    if (data[f] !== undefined) { sets.push(`${f} = ?`); vals.push(data[f]); }
+    if (data[f] !== undefined) { sets.push(`${f} = $${n++}`); vals.push(data[f]); }
   }
   if (sets.length === 0) return;
   sets.push("updated_at = CURRENT_TIMESTAMP");
   vals.push(id);
-  db.prepare(`UPDATE gear_catalog SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
+  await pool.query(`UPDATE gear_catalog SET ${sets.join(", ")} WHERE id = $${n}`, vals);
 }
 
-export function softDeleteGearCatalogItem(id) {
-  db.prepare("UPDATE gear_catalog SET active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(id);
+export async function softDeleteGearCatalogItem(id) {
+  await pool.query("UPDATE gear_catalog SET active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = $1", [id]);
 }
 
-export function reorderGearCatalog(orderedIds) {
-  const stmt = db.prepare("UPDATE gear_catalog SET sort_order = ? WHERE id = ?");
-  const reorder = db.transaction(() => {
-    orderedIds.forEach((id, i) => stmt.run(i + 1, id));
-  });
-  reorder();
+export async function reorderGearCatalog(orderedIds) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    for (let i = 0; i < orderedIds.length; i++) {
+      await client.query("UPDATE gear_catalog SET sort_order = $1 WHERE id = $2", [i + 1, orderedIds[i]]);
+    }
+    await client.query("COMMIT");
+  } catch (e) { await client.query("ROLLBACK"); throw e; }
+  finally { client.release(); }
 }
 
 // ── Product Options Admin ──
 
-export function addProductOption(gearCatalogId, data) {
-  const maxOrder = db.prepare("SELECT MAX(sort_order) as m FROM gear_product_options WHERE gear_catalog_id = ?").get(gearCatalogId).m || 0;
-  const result = db.prepare(`
+export async function addProductOption(gearCatalogId, data) {
+  const maxOrder = (await pool.query("SELECT MAX(sort_order) as m FROM gear_product_options WHERE gear_catalog_id = $1", [gearCatalogId])).rows[0].m || 0;
+  const { rows } = await pool.query(`
     INSERT INTO gear_product_options (gear_catalog_id, tier, star_rating, product_name, brand, price, weight_oz, notes, is_ultralight_pick, sort_order, affiliate_url)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(gearCatalogId, data.tier, data.star_rating || 3, data.product_name, data.brand || null, data.price || null, data.weight_oz || null, data.notes || null, data.is_ultralight_pick || 0, maxOrder + 1, data.affiliate_url || null);
-  return { id: result.lastInsertRowid, ...data };
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+    [gearCatalogId, data.tier, data.star_rating || 3, data.product_name, data.brand || null, data.price || null, data.weight_oz || null, data.notes || null, data.is_ultralight_pick || 0, maxOrder + 1, data.affiliate_url || null]
+  );
+  return { id: rows[0].id, ...data };
 }
 
-export function updateProductOption(optionId, data) {
-  const sets = [];
-  const vals = [];
+export async function updateProductOption(optionId, data) {
+  const sets = []; const vals = []; let n = 1;
   const fields = ["tier", "star_rating", "product_name", "brand", "price", "weight_oz", "notes", "is_ultralight_pick", "sort_order", "affiliate_url"];
   for (const f of fields) {
-    if (data[f] !== undefined) { sets.push(`${f} = ?`); vals.push(data[f]); }
+    if (data[f] !== undefined) { sets.push(`${f} = $${n++}`); vals.push(data[f]); }
   }
   if (sets.length === 0) return;
   vals.push(optionId);
-  db.prepare(`UPDATE gear_product_options SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
+  await pool.query(`UPDATE gear_product_options SET ${sets.join(", ")} WHERE id = $${n}`, vals);
 }
 
-export function deleteProductOption(optionId) {
-  db.prepare("UPDATE member_gear SET selected_option_id = NULL WHERE selected_option_id = ?").run(optionId);
-  db.prepare("DELETE FROM gear_product_options WHERE id = ?").run(optionId);
+export async function deleteProductOption(optionId) {
+  await pool.query("UPDATE member_gear SET selected_option_id = NULL WHERE selected_option_id = $1", [optionId]);
+  await pool.query("DELETE FROM gear_product_options WHERE id = $1", [optionId]);
 }
 
 // ── Global Admin Queries ──
 
-export function getAllTroopsAdmin() {
-  return db.prepare(`
+export async function getAllTroopsAdmin() {
+  return (await pool.query(`
     SELECT t.*,
       (SELECT COUNT(*) FROM troop_members WHERE troop_id = t.id AND status = 'approved') as member_count,
       (SELECT COUNT(*) FROM troop_members WHERE troop_id = t.id AND status = 'pending') as pending_count,
@@ -2941,311 +1669,272 @@ export function getAllTroopsAdmin() {
     FROM troops t
     LEFT JOIN users u ON t.created_by = u.id
     ORDER BY t.created_at DESC
-  `).all();
+  `)).rows;
 }
 
-export function getTroopMembersAdmin(troopId) {
-  return db.prepare(`
+export async function getTroopMembersAdmin(troopId) {
+  return (await pool.query(`
     SELECT tm.id, tm.user_id, tm.troop_id, tm.role, tm.status, tm.created_at,
            u.name, u.email, u.avatar_url, u.user_type
     FROM troop_members tm JOIN users u ON tm.user_id = u.id
-    WHERE tm.troop_id = ? ORDER BY tm.status DESC, tm.role DESC, tm.id
-  `).all(troopId);
+    WHERE tm.troop_id = $1 ORDER BY tm.status DESC, tm.role DESC, tm.id
+  `, [troopId])).rows;
 }
 
-export function getAllUsersAdmin() {
-  return db.prepare(`
+export async function getAllUsersAdmin() {
+  return (await pool.query(`
     SELECT u.id, u.email, u.name, u.user_type, u.created_at, u.email_verified,
       (SELECT COUNT(*) FROM troop_members WHERE user_id = u.id AND status = 'approved') as troop_count
     FROM users u ORDER BY u.created_at DESC
-  `).all();
+  `)).rows;
 }
 
-export function getAllSettings() {
-  return db.prepare("SELECT * FROM platform_settings ORDER BY key").all();
+export async function getAllSettings() {
+  return (await pool.query("SELECT * FROM platform_settings ORDER BY key")).rows;
 }
 
-export function trackAffiliateClick(userId, productOptionId, gearCatalogId, url, referrer) {
-  db.prepare(
-    "INSERT INTO affiliate_clicks (user_id, product_option_id, gear_catalog_id, url, referrer) VALUES (?, ?, ?, ?, ?)"
-  ).run(userId, productOptionId || null, gearCatalogId || null, url, referrer || null);
+export async function trackAffiliateClick(userId, productOptionId, gearCatalogId, url, referrer) {
+  await pool.query(
+    "INSERT INTO affiliate_clicks (user_id, product_option_id, gear_catalog_id, url, referrer) VALUES ($1, $2, $3, $4, $5)",
+    [userId, productOptionId || null, gearCatalogId || null, url, referrer || null]
+  );
 }
 
-export function getAffiliateStats() {
-  const totalClicks = db.prepare("SELECT COUNT(*) as total FROM affiliate_clicks").get().total;
-  const clicksByProduct = db.prepare(`
+export async function getAffiliateStats() {
+  const totalClicks = Number((await pool.query("SELECT COUNT(*) as total FROM affiliate_clicks")).rows[0].total);
+  const clicksByProduct = (await pool.query(`
     SELECT gc.name as gear_name, gpo.product_name, COUNT(*) as clicks, MAX(ac.created_at) as last_click
     FROM affiliate_clicks ac
     LEFT JOIN gear_product_options gpo ON ac.product_option_id = gpo.id
     LEFT JOIN gear_catalog gc ON ac.gear_catalog_id = gc.id
-    GROUP BY ac.product_option_id, ac.gear_catalog_id
+    GROUP BY ac.product_option_id, ac.gear_catalog_id, gc.name, gpo.product_name
     ORDER BY clicks DESC LIMIT 50
-  `).all();
-  const clicksByDay = db.prepare(`
+  `)).rows;
+  const clicksByDay = (await pool.query(`
     SELECT DATE(created_at) as day, COUNT(*) as clicks
-    FROM affiliate_clicks WHERE created_at >= DATE('now', '-30 days')
+    FROM affiliate_clicks WHERE created_at >= NOW() - INTERVAL '30 days'
     GROUP BY DATE(created_at) ORDER BY day
-  `).all();
+  `)).rows;
   return { totalClicks, clicksByProduct, clicksByDay };
 }
 
 // ── Troop Gear Overrides ──
 
-export function setTroopGearOverride(troopId, gearCatalogId, hidden) {
-  db.prepare(
-    "INSERT OR REPLACE INTO troop_gear_overrides (troop_id, gear_catalog_id, hidden) VALUES (?, ?, ?)"
-  ).run(troopId, gearCatalogId, hidden ? 1 : 0);
+export async function setTroopGearOverride(troopId, gearCatalogId, hidden) {
+  await pool.query(
+    "INSERT INTO troop_gear_overrides (troop_id, gear_catalog_id, hidden) VALUES ($1, $2, $3) ON CONFLICT(troop_id, gear_catalog_id) DO UPDATE SET hidden = EXCLUDED.hidden",
+    [troopId, gearCatalogId, hidden ? 1 : 0]
+  );
 }
 
-export function getTroopGearOverrides(troopId) {
-  return db.prepare("SELECT * FROM troop_gear_overrides WHERE troop_id = ?").all(troopId);
+export async function getTroopGearOverrides(troopId) {
+  return (await pool.query("SELECT * FROM troop_gear_overrides WHERE troop_id = $1", [troopId])).rows;
 }
 
 // ── Troop Custom Gear ──
 
-export function getTroopCustomGear(troopId) {
-  return db.prepare("SELECT * FROM troop_custom_gear WHERE troop_id = ? AND active = 1 ORDER BY sort_order").all(troopId);
+export async function getTroopCustomGear(troopId) {
+  return (await pool.query("SELECT * FROM troop_custom_gear WHERE troop_id = $1 AND active = 1 ORDER BY sort_order", [troopId])).rows;
 }
 
-export function addTroopCustomGear(troopId, data) {
-  const maxOrder = db.prepare("SELECT MAX(sort_order) as m FROM troop_custom_gear WHERE troop_id = ?").get(troopId).m || 0;
-  const result = db.prepare(`
+export async function addTroopCustomGear(troopId, data) {
+  const maxOrder = (await pool.query("SELECT MAX(sort_order) as m FROM troop_custom_gear WHERE troop_id = $1", [troopId])).rows[0].m || 0;
+  const { rows } = await pool.query(`
     INSERT INTO troop_custom_gear (troop_id, name, category, subcategory, description, weight_oz, priority, is_crew_shared, sharing_type, sort_order)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(troopId, data.name, data.category, data.subcategory || null, data.description || null, data.weight_oz || null, data.priority || "recommended", data.is_crew_shared || 0, data.sharing_type || "personal", maxOrder + 1);
-  return { id: result.lastInsertRowid, troop_id: troopId, ...data };
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+    [troopId, data.name, data.category, data.subcategory || null, data.description || null, data.weight_oz || null, data.priority || "recommended", data.is_crew_shared || 0, data.sharing_type || "personal", maxOrder + 1]
+  );
+  return { id: rows[0].id, troop_id: troopId, ...data };
 }
 
-export function updateTroopCustomGearItem(troopId, id, data) {
-  const sets = [];
-  const vals = [];
+export async function updateTroopCustomGearItem(troopId, id, data) {
+  const sets = []; const vals = []; let n = 1;
   const fields = ["name", "category", "subcategory", "description", "weight_oz", "priority", "is_crew_shared", "sharing_type", "sort_order", "active"];
   for (const f of fields) {
-    if (data[f] !== undefined) { sets.push(`${f} = ?`); vals.push(data[f]); }
+    if (data[f] !== undefined) { sets.push(`${f} = $${n++}`); vals.push(data[f]); }
   }
   if (sets.length === 0) return;
   vals.push(id, troopId);
-  db.prepare(`UPDATE troop_custom_gear SET ${sets.join(", ")} WHERE id = ? AND troop_id = ?`).run(...vals);
+  await pool.query(`UPDATE troop_custom_gear SET ${sets.join(", ")} WHERE id = $${n} AND troop_id = $${n + 1}`, vals);
 }
 
-export function deleteTroopCustomGear(troopId, id) {
-  db.prepare("UPDATE troop_custom_gear SET active = 0 WHERE id = ? AND troop_id = ?").run(id, troopId);
+export async function deleteTroopCustomGear(troopId, id) {
+  await pool.query("UPDATE troop_custom_gear SET active = 0 WHERE id = $1 AND troop_id = $2", [id, troopId]);
 }
 
 // ── AI Logs ──
 
-export function logAIQuery(userId, adventureId, query, response, tokensUsed) {
-  db.prepare("INSERT INTO gear_ai_logs (user_id, adventure_id, query, response, tokens_used) VALUES (?, ?, ?, ?, ?)")
-    .run(userId, adventureId || null, query, response, tokensUsed || 0);
+export async function logAIQuery(userId, adventureId, query, response, tokensUsed) {
+  await pool.query("INSERT INTO gear_ai_logs (user_id, adventure_id, query, response, tokens_used) VALUES ($1, $2, $3, $4, $5)",
+    [userId, adventureId || null, query, response, tokensUsed || 0]);
 }
 
-export function getAIUsage(userId) {
-  return db.prepare(`
-    SELECT COUNT(*) as query_count, SUM(tokens_used) as total_tokens
-    FROM gear_ai_logs WHERE user_id = ?
-  `).get(userId);
-}
-
-// ── Session Store ──
-
-export function createSessionStore(session) {
-  const Store = session.Store;
-  class SqliteStore extends Store {
-    get(sid, cb) {
-      try {
-        const row = db.prepare("SELECT sess FROM sessions WHERE sid = ? AND expired > ?").get(sid, Date.now());
-        cb(null, row ? JSON.parse(row.sess) : null);
-      } catch (e) { cb(e); }
-    }
-    set(sid, sess, cb) {
-      try {
-        const maxAge = sess.cookie?.maxAge || 86400000;
-        db.prepare("INSERT OR REPLACE INTO sessions (sid, sess, expired) VALUES (?, ?, ?)").run(sid, JSON.stringify(sess), Date.now() + maxAge);
-        cb?.(null);
-      } catch (e) { cb?.(e); }
-    }
-    destroy(sid, cb) {
-      try { db.prepare("DELETE FROM sessions WHERE sid = ?").run(sid); cb?.(null); } catch (e) { cb?.(e); }
-    }
-    touch(sid, sess, cb) {
-      try {
-        const maxAge = sess.cookie?.maxAge || 86400000;
-        db.prepare("UPDATE sessions SET expired = ? WHERE sid = ?").run(Date.now() + maxAge, sid);
-        cb?.(null);
-      } catch (e) { cb?.(e); }
-    }
-  }
-  const store = new SqliteStore();
-  // GC: clean expired sessions every hour
-  setInterval(() => {
-    try { db.prepare("DELETE FROM sessions WHERE expired <= ?").run(Date.now()); }
-    catch (e) { console.error("Session GC error:", e.message); }
-  }, 60 * 60 * 1000);
-  return store;
+export async function getAIUsage(userId) {
+  const { rows } = await pool.query("SELECT COUNT(*) as query_count, SUM(tokens_used) as total_tokens FROM gear_ai_logs WHERE user_id = $1", [userId]);
+  return rows[0];
 }
 
 // ── Training Events ──
 
-export function createTrainingEvent(adventureId, data, createdBy) {
-  const r = db.prepare(
-    "INSERT INTO training_events (adventure_id, date, period, time_label, location, notes, type, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-  ).run(adventureId, data.date, data.period || "all", data.time_label || null, data.location || null, data.notes || null, data.type || "proposed", createdBy);
-  return { id: Number(r.lastInsertRowid), ...data, type: data.type || "proposed", status: "active" };
+export async function createTrainingEvent(adventureId, data, createdBy) {
+  const { rows } = await pool.query(
+    "INSERT INTO training_events (adventure_id, date, period, time_label, location, notes, type, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+    [adventureId, data.date, data.period || "all", data.time_label || null, data.location || null, data.notes || null, data.type || "proposed", createdBy]
+  );
+  return { id: Number(rows[0].id), ...data, type: data.type || "proposed", status: "active" };
 }
 
-export function getTrainingEvents(adventureId) {
-  const events = db.prepare("SELECT * FROM training_events WHERE adventure_id = ? ORDER BY date, period").all(adventureId);
+export async function getTrainingEvents(adventureId) {
+  const events = (await pool.query("SELECT * FROM training_events WHERE adventure_id = $1 ORDER BY date, period", [adventureId])).rows;
   for (const e of events) {
-    e.rsvps = db.prepare(`
+    e.rsvps = (await pool.query(`
       SELECT tr.user_id, tr.status, u.name FROM training_rsvps tr
-      JOIN users u ON tr.user_id = u.id
-      WHERE tr.event_id = ?
-    `).all(e.id);
-    e.attendance = db.prepare(`
+      JOIN users u ON tr.user_id = u.id WHERE tr.event_id = $1
+    `, [e.id])).rows;
+    e.attendance = (await pool.query(`
       SELECT ta.user_id, ta.attended, ta.marked_at, u.name FROM training_attendance ta
-      JOIN users u ON ta.user_id = u.id
-      WHERE ta.event_id = ?
-    `).all(e.id);
+      JOIN users u ON ta.user_id = u.id WHERE ta.event_id = $1
+    `, [e.id])).rows;
   }
   return events;
 }
 
-export function getTrainingEvent(eventId) {
-  const e = db.prepare("SELECT * FROM training_events WHERE id = ?").get(eventId);
+export async function getTrainingEvent(eventId) {
+  const e = (await pool.query("SELECT * FROM training_events WHERE id = $1", [eventId])).rows[0];
   if (!e) return null;
-  e.rsvps = db.prepare(`
+  e.rsvps = (await pool.query(`
     SELECT tr.user_id, tr.status, u.name FROM training_rsvps tr
-    JOIN users u ON tr.user_id = u.id
-    WHERE tr.event_id = ?
-  `).all(e.id);
+    JOIN users u ON tr.user_id = u.id WHERE tr.event_id = $1
+  `, [e.id])).rows;
   return e;
 }
 
-export function deleteTrainingEvent(eventId) {
-  db.prepare("DELETE FROM training_events WHERE id = ?").run(eventId);
+export async function deleteTrainingEvent(eventId) {
+  await pool.query("DELETE FROM training_events WHERE id = $1", [eventId]);
 }
 
-export function upsertTrainingRsvp(eventId, userId, status) {
-  db.prepare(
-    "INSERT INTO training_rsvps (event_id, user_id, status, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(event_id, user_id) DO UPDATE SET status = ?, updated_at = CURRENT_TIMESTAMP"
-  ).run(eventId, userId, status, status);
-}
-
-export function updateTrainingEventStatus(eventId, type, status) {
-  db.prepare("UPDATE training_events SET type = ?, status = ? WHERE id = ?").run(type, status, eventId);
-}
-
-export function updateTrainingEvent(eventId, data) {
-  db.prepare(
-    "UPDATE training_events SET date = ?, period = ?, time_label = ?, location = ?, notes = ? WHERE id = ?"
-  ).run(data.date, data.period || "all", data.time_label || null, data.location || null, data.notes || null, eventId);
-}
-
-export function markAttendance(eventId, userId, attended, markedBy) {
-  db.prepare(
-    "INSERT INTO training_attendance (event_id, user_id, attended, marked_by, marked_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(event_id, user_id) DO UPDATE SET attended = ?, marked_by = ?, marked_at = CURRENT_TIMESTAMP"
-  ).run(eventId, userId, attended, markedBy, attended, markedBy);
-}
-
-export function bulkMarkAttendance(eventId, attendeeUserIds, markedBy) {
-  const stmt = db.prepare(
-    "INSERT INTO training_attendance (event_id, user_id, attended, marked_by, marked_at) VALUES (?, ?, 1, ?, CURRENT_TIMESTAMP) ON CONFLICT(event_id, user_id) DO UPDATE SET attended = 1, marked_by = ?, marked_at = CURRENT_TIMESTAMP"
+export async function upsertTrainingRsvp(eventId, userId, status) {
+  await pool.query(
+    `INSERT INTO training_rsvps (event_id, user_id, status, updated_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+     ON CONFLICT(event_id, user_id) DO UPDATE SET status = $3, updated_at = CURRENT_TIMESTAMP`,
+    [eventId, userId, status]
   );
-  const tx = db.transaction(() => {
-    for (const uid of attendeeUserIds) stmt.run(eventId, uid, markedBy, markedBy);
-  });
-  tx();
 }
 
-export function getEventAttendance(eventId) {
-  return db.prepare(`
+export async function updateTrainingEventStatus(eventId, type, status) {
+  await pool.query("UPDATE training_events SET type = $1, status = $2 WHERE id = $3", [type, status, eventId]);
+}
+
+export async function updateTrainingEvent(eventId, data) {
+  await pool.query(
+    "UPDATE training_events SET date = $1, period = $2, time_label = $3, location = $4, notes = $5 WHERE id = $6",
+    [data.date, data.period || "all", data.time_label || null, data.location || null, data.notes || null, eventId]
+  );
+}
+
+export async function markAttendance(eventId, userId, attended, markedBy) {
+  await pool.query(
+    `INSERT INTO training_attendance (event_id, user_id, attended, marked_by, marked_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+     ON CONFLICT(event_id, user_id) DO UPDATE SET attended = $3, marked_by = $4, marked_at = CURRENT_TIMESTAMP`,
+    [eventId, userId, attended, markedBy]
+  );
+}
+
+export async function bulkMarkAttendance(eventId, attendeeUserIds, markedBy) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    for (const uid of attendeeUserIds) {
+      await client.query(
+        `INSERT INTO training_attendance (event_id, user_id, attended, marked_by, marked_at) VALUES ($1, $2, 1, $3, CURRENT_TIMESTAMP)
+         ON CONFLICT(event_id, user_id) DO UPDATE SET attended = 1, marked_by = $3, marked_at = CURRENT_TIMESTAMP`,
+        [eventId, uid, markedBy]
+      );
+    }
+    await client.query("COMMIT");
+  } catch (e) { await client.query("ROLLBACK"); throw e; }
+  finally { client.release(); }
+}
+
+export async function getEventAttendance(eventId) {
+  return (await pool.query(`
     SELECT ta.user_id, ta.attended, ta.marked_at, u.name
     FROM training_attendance ta JOIN users u ON ta.user_id = u.id
-    WHERE ta.event_id = ?
-  `).all(eventId);
+    WHERE ta.event_id = $1
+  `, [eventId])).rows;
 }
 
-export function getMemberAttendanceCount(adventureId, userId) {
-  const row = db.prepare(`
+export async function getMemberAttendanceCount(adventureId, userId) {
+  const row = (await pool.query(`
     SELECT COUNT(*) as count FROM training_attendance ta
     JOIN training_events te ON ta.event_id = te.id
-    WHERE te.adventure_id = ? AND ta.user_id = ? AND ta.attended = 1 AND te.status = 'completed'
-  `).get(adventureId, userId);
-  return row?.count || 0;
+    WHERE te.adventure_id = $1 AND ta.user_id = $2 AND ta.attended = 1 AND te.status = 'completed'
+  `, [adventureId, userId])).rows[0];
+  return Number(row?.count || 0);
 }
 
-// Attendance milestone skills — auto-created and auto-awarded
-const DEFAULT_MILESTONES = [
-  { count: 1, icon: "🥾" },
-  { count: 3, icon: "🏔️" },
-  { count: 5, icon: "⭐" },
-];
+// ── Attendance Milestone Config ──
 
-function getAttendanceMilestones(adventureId) {
-  const adv = db.prepare("SELECT attendance_milestones FROM adventures WHERE id = ?").get(adventureId);
+function getAttendanceMilestones(adventureId, advRow) {
   let milestones = DEFAULT_MILESTONES;
-  if (adv?.attendance_milestones) {
-    try { milestones = JSON.parse(adv.attendance_milestones); } catch { /* use defaults */ }
+  if (advRow?.attendance_milestones) {
+    try { milestones = JSON.parse(advRow.attendance_milestones); } catch { /* use defaults */ }
   }
   return milestones.map(ms => ({
-    count: ms.count,
-    id_suffix: `attend-${ms.count}`,
+    count: ms.count, id_suffix: `attend-${ms.count}`,
     name: ms.count === 1 ? "Attended 1 Training" : `Attended ${ms.count} Trainings`,
     icon: ms.icon || "⭐",
     desc: ms.count === 1 ? "Attended your first training session" : `Attended ${ms.count} training sessions`,
   }));
 }
 
-export function getAdventureMilestoneConfig(adventureId) {
-  const adv = db.prepare("SELECT attendance_milestones FROM adventures WHERE id = ?").get(adventureId);
+export async function getAdventureMilestoneConfig(adventureId) {
+  const adv = (await pool.query("SELECT attendance_milestones FROM adventures WHERE id = $1", [adventureId])).rows[0];
   if (adv?.attendance_milestones) {
     try { return JSON.parse(adv.attendance_milestones); } catch { /* fall through */ }
   }
   return DEFAULT_MILESTONES;
 }
 
-export function setAdventureMilestoneConfig(adventureId, milestones) {
-  db.prepare("UPDATE adventures SET attendance_milestones = ? WHERE id = ?").run(JSON.stringify(milestones), adventureId);
+export async function setAdventureMilestoneConfig(adventureId, milestones) {
+  await pool.query("UPDATE adventures SET attendance_milestones = $1 WHERE id = $2", [JSON.stringify(milestones), adventureId]);
 }
 
-export function syncAttendanceSkills(adventureId) {
-  const adv = db.prepare("SELECT troop_id FROM adventures WHERE id = ?").get(adventureId);
+export async function syncAttendanceSkills(adventureId) {
+  const adv = (await pool.query("SELECT troop_id, attendance_milestones FROM adventures WHERE id = $1", [adventureId])).rows[0];
   if (!adv) return;
 
-  const ATTENDANCE_MILESTONES = getAttendanceMilestones(adventureId);
+  const ATTENDANCE_MILESTONES = getAttendanceMilestones(adventureId, adv);
 
-  // Ensure system skills exist for this adventure
   for (const ms of ATTENDANCE_MILESTONES) {
     const skillId = `${adventureId}-sys-${ms.id_suffix}`;
-    const existing = db.prepare("SELECT id FROM skills WHERE id = ?").get(skillId);
+    const existing = (await pool.query("SELECT id FROM skills WHERE id = $1", [skillId])).rows[0];
     if (!existing) {
-      db.prepare(
-        "INSERT INTO skills (id, troop_id, adventure_id, name, icon, description, category, is_default, is_system, sort_order) VALUES (?, ?, ?, ?, ?, ?, 'training', 1, 1, ?)"
-      ).run(skillId, adv.troop_id, adventureId, ms.name, ms.icon, ms.desc, 1000 + ms.count);
+      await pool.query(
+        "INSERT INTO skills (id, troop_id, adventure_id, name, icon, description, category, is_default, is_system, sort_order) VALUES ($1, $2, $3, $4, $5, $6, 'training', 1, 1, $7)",
+        [skillId, adv.troop_id, adventureId, ms.name, ms.icon, ms.desc, 1000 + ms.count]
+      );
     }
   }
 
-  // Get all members of this adventure and their attendance counts
-  const members = db.prepare(`
+  const members = (await pool.query(`
     SELECT DISTINCT ta.user_id, COUNT(*) as count
     FROM training_attendance ta
     JOIN training_events te ON ta.event_id = te.id
-    WHERE te.adventure_id = ? AND ta.attended = 1 AND te.status = 'completed'
+    WHERE te.adventure_id = $1 AND ta.attended = 1 AND te.status = 'completed'
     GROUP BY ta.user_id
-  `).all(adventureId);
+  `, [adventureId])).rows;
 
-  // Get all crew members for this adventure
-  const crewMembers = db.prepare(`
+  const crewMembers = (await pool.query(`
     SELECT cm.user_id, cm.skills, cm.id as crew_member_id
     FROM crew_members cm
     JOIN crews c ON cm.crew_id = c.id
-    WHERE c.adventure_id = ?
-  `).all(adventureId);
+    WHERE c.adventure_id = $1
+  `, [adventureId])).rows;
 
-  // Award/revoke skills based on attendance count
   for (const cm of crewMembers) {
     const memberAttendance = members.find(m => m.user_id === cm.user_id);
-    const attendCount = memberAttendance?.count || 0;
+    const attendCount = Number(memberAttendance?.count || 0);
     let currentSkills = [];
     try { currentSkills = JSON.parse(cm.skills || "[]"); } catch { currentSkills = []; }
 
@@ -3262,76 +1951,74 @@ export function syncAttendanceSkills(adventureId) {
       }
     }
     if (changed) {
-      db.prepare("UPDATE crew_members SET skills = ? WHERE id = ?").run(JSON.stringify(currentSkills), cm.crew_member_id);
+      await pool.query("UPDATE crew_members SET skills = $1 WHERE id = $2", [JSON.stringify(currentSkills), cm.crew_member_id]);
     }
   }
 }
 
-// ══════════════════════════════════════════
-// AI READINESS ENGINE
-// ══════════════════════════════════════════
+// ── AI Readiness Engine ──
 
-export function getAssessment(crewId, userId) {
-  return db.prepare("SELECT * FROM member_assessments WHERE crew_id = ? AND user_id = ?").get(crewId, userId) || null;
+export async function getAssessment(crewId, userId) {
+  return (await pool.query("SELECT * FROM member_assessments WHERE crew_id = $1 AND user_id = $2", [crewId, userId])).rows[0] ?? null;
 }
 
-export function upsertAssessment(crewId, userId, data) {
-  db.prepare(`
+export async function upsertAssessment(crewId, userId, data) {
+  await pool.query(`
     INSERT INTO member_assessments (crew_id, user_id, current_distance_miles, pack_experience, elevation_access, activity_level, assessed_at)
-    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
     ON CONFLICT(crew_id, user_id) DO UPDATE SET
-      current_distance_miles = ?, pack_experience = ?, elevation_access = ?, activity_level = ?, assessed_at = CURRENT_TIMESTAMP
-  `).run(crewId, userId, data.current_distance_miles, data.pack_experience, data.elevation_access, data.activity_level,
-    data.current_distance_miles, data.pack_experience, data.elevation_access, data.activity_level);
+      current_distance_miles = $3, pack_experience = $4, elevation_access = $5, activity_level = $6, assessed_at = CURRENT_TIMESTAMP`,
+    [crewId, userId, data.current_distance_miles, data.pack_experience, data.elevation_access, data.activity_level]
+  );
 }
 
-export function getCrewAssessments(crewId) {
-  return db.prepare(`
+export async function getCrewAssessments(crewId) {
+  return (await pool.query(`
     SELECT ma.*, u.name, u.avatar_url FROM member_assessments ma
-    JOIN users u ON ma.user_id = u.id
-    WHERE ma.crew_id = ?
-  `).all(crewId);
+    JOIN users u ON ma.user_id = u.id WHERE ma.crew_id = $1
+  `, [crewId])).rows;
 }
 
-export function getReadinessPlan(crewId, userId) {
-  const row = db.prepare("SELECT * FROM readiness_plans WHERE crew_id = ? AND user_id = ?").get(crewId, userId);
+export async function getReadinessPlan(crewId, userId) {
+  const row = (await pool.query("SELECT * FROM readiness_plans WHERE crew_id = $1 AND user_id = $2", [crewId, userId])).rows[0];
   if (!row) return null;
   return { ...row, plan: JSON.parse(row.plan_json), priorities: JSON.parse(row.priorities_json) };
 }
 
-export function upsertReadinessPlan(crewId, userId, planObj, prioritiesArr, weeksAtGen) {
-  db.prepare(`
+export async function upsertReadinessPlan(crewId, userId, planObj, prioritiesArr, weeksAtGen) {
+  await pool.query(`
     INSERT INTO readiness_plans (crew_id, user_id, plan_json, priorities_json, weeks_at_generation, generated_at)
-    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
     ON CONFLICT(crew_id, user_id) DO UPDATE SET
-      plan_json = ?, priorities_json = ?, weeks_at_generation = ?, generated_at = CURRENT_TIMESTAMP
-  `).run(crewId, userId, JSON.stringify(planObj), JSON.stringify(prioritiesArr), weeksAtGen,
-    JSON.stringify(planObj), JSON.stringify(prioritiesArr), weeksAtGen);
+      plan_json = $3, priorities_json = $4, weeks_at_generation = $5, generated_at = CURRENT_TIMESTAMP`,
+    [crewId, userId, JSON.stringify(planObj), JSON.stringify(prioritiesArr), weeksAtGen]
+  );
 }
 
-export function getReadinessProgress(crewId, userId) {
-  return db.prepare("SELECT * FROM readiness_progress WHERE crew_id = ? AND user_id = ? ORDER BY phase_number").all(crewId, userId);
+export async function getReadinessProgress(crewId, userId) {
+  return (await pool.query("SELECT * FROM readiness_progress WHERE crew_id = $1 AND user_id = $2 ORDER BY phase_number", [crewId, userId])).rows;
 }
 
-export function upsertReadinessProgress(crewId, userId, phaseNumber, status, note) {
-  db.prepare(`
+export async function upsertReadinessProgress(crewId, userId, phaseNumber, status, note) {
+  await pool.query(`
     INSERT INTO readiness_progress (crew_id, user_id, phase_number, status, note, updated_at)
-    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
     ON CONFLICT(crew_id, user_id, phase_number) DO UPDATE SET
-      status = ?, note = ?, updated_at = CURRENT_TIMESTAMP
-  `).run(crewId, userId, phaseNumber, status, note, status, note);
+      status = $4, note = $5, updated_at = CURRENT_TIMESTAMP`,
+    [crewId, userId, phaseNumber, status, note]
+  );
 }
 
-export function getCrewReadinessDashboard(crewId) {
-  const members = db.prepare(`
+export async function getCrewReadinessDashboard(crewId) {
+  const members = (await pool.query(`
     SELECT cm.user_id, cm.participation, u.name, u.avatar_url
     FROM crew_members cm JOIN users u ON cm.user_id = u.id
-    WHERE cm.crew_id = ? AND cm.is_manual = 0
-  `).all(crewId);
+    WHERE cm.crew_id = $1 AND cm.is_manual = 0
+  `, [crewId])).rows;
 
-  const assessments = db.prepare("SELECT * FROM member_assessments WHERE crew_id = ?").all(crewId);
-  const plans = db.prepare("SELECT user_id, plan_json, priorities_json, weeks_at_generation, generated_at FROM readiness_plans WHERE crew_id = ?").all(crewId);
-  const progress = db.prepare("SELECT * FROM readiness_progress WHERE crew_id = ? ORDER BY phase_number").all(crewId);
+  const assessments = (await pool.query("SELECT * FROM member_assessments WHERE crew_id = $1", [crewId])).rows;
+  const plans = (await pool.query("SELECT user_id, plan_json, priorities_json, weeks_at_generation, generated_at FROM readiness_plans WHERE crew_id = $1", [crewId])).rows;
+  const progress = (await pool.query("SELECT * FROM readiness_progress WHERE crew_id = $1 ORDER BY phase_number", [crewId])).rows;
 
   const assessmentMap = {};
   for (const a of assessments) assessmentMap[a.user_id] = a;
@@ -3344,37 +2031,33 @@ export function getCrewReadinessDashboard(crewId) {
   }
 
   return members.map(m => ({
-    user_id: m.user_id,
-    name: m.name,
-    avatar_url: m.avatar_url,
-    participation: m.participation,
+    user_id: m.user_id, name: m.name, avatar_url: m.avatar_url, participation: m.participation,
     assessment: assessmentMap[m.user_id] || null,
     plan: planMap[m.user_id] || null,
     progress: progressMap[m.user_id] || [],
   }));
 }
 
-export function deleteReadinessPlan(crewId, userId) {
-  db.prepare("DELETE FROM readiness_plans WHERE crew_id = ? AND user_id = ?").run(crewId, userId);
-  db.prepare("DELETE FROM readiness_progress WHERE crew_id = ? AND user_id = ?").run(crewId, userId);
+export async function deleteReadinessPlan(crewId, userId) {
+  await pool.query("DELETE FROM readiness_plans WHERE crew_id = $1 AND user_id = $2", [crewId, userId]);
+  await pool.query("DELETE FROM readiness_progress WHERE crew_id = $1 AND user_id = $2", [crewId, userId]);
 }
 
-export function getGearStatusSummary(crewId, userId) {
-  const crew = db.prepare("SELECT adventure_id FROM crews WHERE id = ?").get(crewId);
+export async function getGearStatusSummary(crewId, userId) {
+  const crew = (await pool.query("SELECT adventure_id FROM crews WHERE id = $1", [crewId])).rows[0];
   if (!crew) return { total: 0, needed: 0, owned: 0, packed: 0 };
-  const rows = db.prepare(`
+  const statusRows = (await pool.query(`
     SELECT mg.status, COUNT(*) as c FROM member_gear mg
     JOIN gear_catalog gc ON mg.gear_catalog_id = gc.id
-    WHERE mg.adventure_id = ? AND mg.user_id = ? AND gc.active = 1
+    WHERE mg.adventure_id = $1 AND mg.user_id = $2 AND gc.active = 1
     GROUP BY mg.status
-  `).all(crew.adventure_id, userId);
+  `, [crew.adventure_id, userId])).rows;
   const result = { total: 0, needed: 0, owned: 0, packed: 0 };
-  for (const r of rows) {
-    result[r.status] = r.c;
-    result.total += r.c;
+  for (const r of statusRows) {
+    result[r.status] = Number(r.c);
+    result.total += Number(r.c);
   }
-  // Count items not yet in member_gear as "needed"
-  const catalogCount = db.prepare("SELECT COUNT(*) as c FROM gear_catalog WHERE active = 1").get().c;
+  const catalogCount = Number((await pool.query("SELECT COUNT(*) as c FROM gear_catalog WHERE active = 1")).rows[0].c);
   result.needed += (catalogCount - result.total);
   result.total = catalogCount;
   return result;
@@ -3382,72 +2065,69 @@ export function getGearStatusSummary(crewId, userId) {
 
 // ── AI Gear Recommendations Cache ──
 
-export function getCachedGearRec(gearCatalogId, adventureType = "philmont") {
-  const row = db.prepare(
-    "SELECT * FROM ai_gear_recommendations WHERE gear_catalog_id = ? AND adventure_type = ? AND expires_at > datetime('now')"
-  ).get(gearCatalogId, adventureType);
+export async function getCachedGearRec(gearCatalogId, adventureType = "philmont") {
+  const row = (await pool.query(
+    "SELECT * FROM ai_gear_recommendations WHERE gear_catalog_id = $1 AND adventure_type = $2 AND expires_at > NOW()",
+    [gearCatalogId, adventureType]
+  )).rows[0];
   if (!row) return null;
   return { ...row, recommendations: JSON.parse(row.recommendations) };
 }
 
-export function upsertGearRec(gearCatalogId, adventureType, recommendations, tokensUsed, expiresAt) {
-  db.prepare(`
+export async function upsertGearRec(gearCatalogId, adventureType, recommendations, tokensUsed, expiresAt) {
+  await pool.query(`
     INSERT INTO ai_gear_recommendations (gear_catalog_id, adventure_type, recommendations, tokens_used, generated_at, expires_at)
-    VALUES (?, ?, ?, ?, datetime('now'), ?)
+    VALUES ($1, $2, $3, $4, NOW(), $5)
     ON CONFLICT(gear_catalog_id, adventure_type) DO UPDATE SET
-      recommendations = excluded.recommendations,
-      tokens_used = excluded.tokens_used,
-      generated_at = datetime('now'),
-      expires_at = excluded.expires_at
-  `).run(gearCatalogId, adventureType, JSON.stringify(recommendations), tokensUsed, expiresAt);
+      recommendations = EXCLUDED.recommendations, tokens_used = EXCLUDED.tokens_used,
+      generated_at = NOW(), expires_at = EXCLUDED.expires_at`,
+    [gearCatalogId, adventureType, JSON.stringify(recommendations), tokensUsed, expiresAt]
+  );
 }
 
-export function getExpiredGearRecs() {
-  return db.prepare(
-    "SELECT * FROM ai_gear_recommendations WHERE expires_at <= datetime('now')"
-  ).all();
+export async function getExpiredGearRecs() {
+  return (await pool.query("SELECT * FROM ai_gear_recommendations WHERE expires_at <= NOW()")).rows;
 }
 
-export function getAllGearCatalogItems() {
-  return db.prepare("SELECT * FROM gear_catalog WHERE active = 1 ORDER BY sort_order").all();
+export async function getAllGearCatalogItems() {
+  return (await pool.query("SELECT * FROM gear_catalog WHERE active = 1 ORDER BY sort_order")).rows;
 }
 
-export function expireAllGearRecs() {
-  return db.prepare("UPDATE ai_gear_recommendations SET expires_at = datetime('now', '-1 hour')").run();
+export async function expireAllGearRecs() {
+  const result = await pool.query("UPDATE ai_gear_recommendations SET expires_at = NOW() - INTERVAL '1 hour'");
+  return result;
 }
 
-export function getLastGearRefreshTime() {
-  const row = db.prepare(
-    "SELECT MAX(generated_at) as last_refresh FROM ai_gear_recommendations"
-  ).get();
+export async function getLastGearRefreshTime() {
+  const row = (await pool.query("SELECT MAX(generated_at) as last_refresh FROM ai_gear_recommendations")).rows[0];
   return row?.last_refresh || null;
 }
 
 // ── Adventure Documents ──
 
-export function getAdventureDocuments(adventureId) {
-  return db.prepare(`
+export async function getAdventureDocuments(adventureId) {
+  return (await pool.query(`
     SELECT d.*, u.name as uploader_name
     FROM adventure_documents d
     LEFT JOIN users u ON d.uploaded_by = u.id
-    WHERE d.adventure_id = ?
+    WHERE d.adventure_id = $1
     ORDER BY d.created_at DESC
-  `).all(adventureId);
+  `, [adventureId])).rows;
 }
 
-export function addAdventureDocument(adventureId, name, originalName, filePath, mimeType, size, description, uploadedBy) {
-  return db.prepare(`
+export async function addAdventureDocument(adventureId, name, originalName, filePath, mimeType, size, description, uploadedBy) {
+  const result = await pool.query(`
     INSERT INTO adventure_documents (adventure_id, name, original_name, file_path, mime_type, size, description, uploaded_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(adventureId, name, originalName, filePath, mimeType, size, description, uploadedBy);
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+    [adventureId, name, originalName, filePath, mimeType, size, description, uploadedBy]
+  );
+  return result;
 }
 
-export function getAdventureDocument(docId) {
-  return db.prepare("SELECT * FROM adventure_documents WHERE id = ?").get(docId);
+export async function getAdventureDocument(docId) {
+  return (await pool.query("SELECT * FROM adventure_documents WHERE id = $1", [docId])).rows[0];
 }
 
-export function deleteAdventureDocument(docId) {
-  return db.prepare("DELETE FROM adventure_documents WHERE id = ?").run(docId);
+export async function deleteAdventureDocument(docId) {
+  return await pool.query("DELETE FROM adventure_documents WHERE id = $1", [docId]);
 }
-
-export default db;

@@ -23,15 +23,15 @@ const router = Router();
 // GEAR ROUTES (legacy — kept for backward compat)
 // ═══════════════════════════════════════════
 
-router.get("/api/gear", requireAuth, (req, res) => {
+router.get("/api/gear", requireAuth, async (req, res) => {
   try {
     const tags = req.query.tags ? req.query.tags.split(",") : null;
-    const items = getGearItems(tags);
+    const items = await getGearItems(tags);
 
     const troopId = req.query.troop ? parseId(req.query.troop) : null;
     if (troopId) {
-      const troop = getTroop(troopId);
-      const tag = troop?.amazon_affiliate_tag || getSetting("amazon_affiliate_tag");
+      const troop = await getTroop(troopId);
+      const tag = troop?.amazon_affiliate_tag || await getSetting("amazon_affiliate_tag");
       if (tag) {
         items.forEach(item => {
           if (item.affiliate_url && !item.affiliate_url.includes("tag=")) {
@@ -49,23 +49,23 @@ router.get("/api/gear", requireAuth, (req, res) => {
 // ═══════════════════════════════════════════
 
 // Get full gear catalog (with product options and retailers)
-router.get("/api/gear-catalog", requireAuth, (req, res) => {
+router.get("/api/gear-catalog", requireAuth, async (req, res) => {
   try {
     const troopId = req.query.troop ? parseId(req.query.troop) : null;
-    res.json(getGearCatalog(troopId));
+    res.json(await getGearCatalog(troopId));
   } catch (e) { safeError(res, e); }
 });
 
 // Get gear categories with counts
-router.get("/api/gear-catalog/categories", requireAuth, (req, res) => {
-  try { res.json(getGearCategories()); }
+router.get("/api/gear-catalog/categories", requireAuth, async (req, res) => {
+  try { res.json(await getGearCategories()); }
   catch (e) { safeError(res, e); }
 });
 
 // Get single gear item with all details
-router.get("/api/gear-catalog/:id", requireAuth, (req, res) => {
+router.get("/api/gear-catalog/:id", requireAuth, async (req, res) => {
   try {
-    const item = getGearCatalogItem(parseId(req.params.id));
+    const item = await getGearCatalogItem(parseId(req.params.id));
     if (!item) return res.status(404).json({ error: "Gear item not found" });
     res.json(item);
   } catch (e) { safeError(res, e); }
@@ -77,16 +77,16 @@ router.post("/api/gear-catalog/:id/ai-recommend", requireAuth, async (req, res) 
     const gearId = parseId(req.params.id);
     if (!gearId) return res.status(400).json({ error: "Invalid gear item ID" });
 
-    const item = getGearCatalogItem(gearId);
+    const item = await getGearCatalogItem(gearId);
     if (!item) return res.status(404).json({ error: "Gear item not found" });
 
     const adventureType = req.body.adventureType || "philmont";
 
     // Check cache first
-    const cached = getCachedGearRec(gearId, adventureType);
+    const cached = await getCachedGearRec(gearId, adventureType);
     if (cached) {
       // Build buy URLs with current affiliate tag for cached recs
-      const tag = getSetting("amazon_affiliate_tag") || "traillog-20";
+      const tag = await getSetting("amazon_affiliate_tag") || "traillog-20";
       const recommendations = cached.recommendations.map(r => ({
         ...r,
         ...buildBuyUrls(r, tag),
@@ -96,12 +96,12 @@ router.post("/api/gear-catalog/:id/ai-recommend", requireAuth, async (req, res) 
       let badge_earned = null;
       const adventureId = parseId(req.body.adventureId);
       if (adventureId) {
-        const earned = earnBadge(adventureId, req.user.id, "ai_gear");
+        const earned = await earnBadge(adventureId, req.user.id, "ai_gear");
         if (earned) {
           badge_earned = "ai_gear";
-          const badgeUser = findUserById(req.user.id);
-          const adventure = getAdventure(adventureId);
-          const badgeTroop = adventure ? getTroop(adventure.troop_id) : null;
+          const badgeUser = await findUserById(req.user.id);
+          const adventure = await getAdventure(adventureId);
+          const badgeTroop = adventure ? await getTroop(adventure.troop_id) : null;
           if (badgeUser?.email) {
             sendBadgeEarnedEmail(badgeUser.email, badgeUser.name, "ai_gear", adventure?.name || "your adventure", {
               troopName: badgeTroop?.name, troopId: badgeTroop?.id, adventureId,
@@ -122,7 +122,7 @@ router.post("/api/gear-catalog/:id/ai-recommend", requireAuth, async (req, res) 
     }
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-    const tag = getSetting("amazon_affiliate_tag") || "traillog-20";
+    const tag = await getSetting("amazon_affiliate_tag") || "traillog-20";
     const prompt = `You are an expert gear advisor for high-adventure Scouting treks like Philmont. For the gear item "${item.name}" (category: ${item.category}), recommend the top 3 products that are highly rated, popular with Philmont/high-adventure trekkers, and currently available. For each product include: product_name (the EXACT full product name as sold on Amazon), brand, model_number (specific model or SKU if known, or null), price_range (as a string like "$45"), weight_oz (number, if applicable, otherwise null), why_recommended (1-2 sentences). Do NOT include URLs. Focus on durability, weight, and trail-proven performance. Respond ONLY with valid JSON: { "recommendations": [ { "product_name": "...", "brand": "...", "model_number": "...", "price_range": "...", "weight_oz": ..., "why_recommended": "..." } ] }`;
 
     const response = await anthropic.messages.create({
@@ -146,18 +146,18 @@ router.post("/api/gear-catalog/:id/ai-recommend", requireAuth, async (req, res) 
 
     // Cache the result (expires in 7 days)
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().replace("T", " ").slice(0, 19);
-    upsertGearRec(gearId, adventureType, parsed.recommendations || [], tokensUsed, expiresAt);
+    await upsertGearRec(gearId, adventureType, parsed.recommendations || [], tokensUsed, expiresAt);
 
     // Award ai_gear badge if adventureId provided
     let badge_earned = null;
     const adventureId = parseId(req.body.adventureId);
     if (adventureId) {
-      const earned = earnBadge(adventureId, req.user.id, "ai_gear");
+      const earned = await earnBadge(adventureId, req.user.id, "ai_gear");
       if (earned) {
         badge_earned = "ai_gear";
-        const badgeUser = findUserById(req.user.id);
-        const adventure = getAdventure(adventureId);
-        const badgeTroop = adventure ? getTroop(adventure.troop_id) : null;
+        const badgeUser = await findUserById(req.user.id);
+        const adventure = await getAdventure(adventureId);
+        const badgeTroop = adventure ? await getTroop(adventure.troop_id) : null;
         if (badgeUser?.email) {
           sendBadgeEarnedEmail(badgeUser.email, badgeUser.name, "ai_gear", adventure?.name || "your adventure", {
             troopName: badgeTroop?.name, troopId: badgeTroop?.id, adventureId,
@@ -174,61 +174,61 @@ router.post("/api/gear-catalog/:id/ai-recommend", requireAuth, async (req, res) 
 });
 
 // Admin: Create gear item
-router.post("/api/gear-catalog", requireAuth, requireGlobalAdmin, (req, res) => {
+router.post("/api/gear-catalog", requireAuth, requireGlobalAdmin, async (req, res) => {
   try {
     if (!req.body.name?.trim()) return res.status(400).json({ error: "Gear item name is required" });
     if (!req.body.category?.trim()) return res.status(400).json({ error: "Category is required" });
-    const item = createGearCatalogItem(req.body);
+    const item = await createGearCatalogItem(req.body);
     res.status(201).json(item);
   } catch (e) { safeError(res, e); }
 });
 
 // Admin: Update gear item
-router.put("/api/gear-catalog/:id", requireAuth, requireGlobalAdmin, (req, res) => {
+router.put("/api/gear-catalog/:id", requireAuth, requireGlobalAdmin, async (req, res) => {
   try {
-    updateGearCatalogItem(parseId(req.params.id), req.body);
+    await updateGearCatalogItem(parseId(req.params.id), req.body);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
 // Admin: Soft-delete gear item
-router.delete("/api/gear-catalog/:id", requireAuth, requireGlobalAdmin, (req, res) => {
+router.delete("/api/gear-catalog/:id", requireAuth, requireGlobalAdmin, async (req, res) => {
   try {
-    softDeleteGearCatalogItem(parseId(req.params.id));
+    await softDeleteGearCatalogItem(parseId(req.params.id));
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
 // Admin: Reorder gear items
-router.put("/api/gear-catalog-reorder", requireAuth, requireGlobalAdmin, (req, res) => {
+router.put("/api/gear-catalog-reorder", requireAuth, requireGlobalAdmin, async (req, res) => {
   try {
     const { orderedIds } = req.body;
     if (!Array.isArray(orderedIds)) return res.status(400).json({ error: "orderedIds must be array" });
-    reorderGearCatalog(orderedIds);
+    await reorderGearCatalog(orderedIds);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
 // Admin: Add product option to gear item
-router.post("/api/gear-catalog/:id/options", requireAuth, requireGlobalAdmin, (req, res) => {
+router.post("/api/gear-catalog/:id/options", requireAuth, requireGlobalAdmin, async (req, res) => {
   try {
-    const option = addProductOption(parseId(req.params.id), req.body);
+    const option = await addProductOption(parseId(req.params.id), req.body);
     res.status(201).json(option);
   } catch (e) { safeError(res, e); }
 });
 
 // Admin: Update product option
-router.put("/api/gear-catalog/options/:optId", requireAuth, requireGlobalAdmin, (req, res) => {
+router.put("/api/gear-catalog/options/:optId", requireAuth, requireGlobalAdmin, async (req, res) => {
   try {
-    updateProductOption(parseId(req.params.optId), req.body);
+    await updateProductOption(parseId(req.params.optId), req.body);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
 // Admin: Delete product option
-router.delete("/api/gear-catalog/options/:optId", requireAuth, requireGlobalAdmin, (req, res) => {
+router.delete("/api/gear-catalog/options/:optId", requireAuth, requireGlobalAdmin, async (req, res) => {
   try {
-    deleteProductOption(parseId(req.params.optId));
+    await deleteProductOption(parseId(req.params.optId));
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
@@ -237,11 +237,11 @@ router.delete("/api/gear-catalog/options/:optId", requireAuth, requireGlobalAdmi
 // AFFILIATE CLICK TRACKING
 // ═══════════════════════════════════════════
 
-router.post("/api/affiliate/click", requireAuth, (req, res) => {
+router.post("/api/affiliate/click", requireAuth, async (req, res) => {
   try {
     const { product_option_id, gear_catalog_id, url } = req.body;
     if (!url) return res.status(400).json({ error: "url required" });
-    trackAffiliateClick(req.user.id, product_option_id, gear_catalog_id, url, req.headers.referer);
+    await trackAffiliateClick(req.user.id, product_option_id, gear_catalog_id, url, req.headers.referer);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
@@ -251,23 +251,23 @@ router.post("/api/affiliate/click", requireAuth, (req, res) => {
 // ═══════════════════════════════════════════
 
 // Get all member gear for an adventure
-router.get("/api/adventures/:adventureId/gear", requireAuth, requireAdventureMember, (req, res) => {
+router.get("/api/adventures/:adventureId/gear", requireAuth, requireAdventureMember, async (req, res) => {
   try {
-    res.json(getAdventureMemberGearAll(parseId(req.params.adventureId)));
+    res.json(await getAdventureMemberGearAll(parseId(req.params.adventureId)));
   } catch (e) { safeError(res, e); }
 });
 
 // Get single member's gear selections
-router.get("/api/adventures/:adventureId/members/:userId/gear", requireAuth, requireAdventureMember, (req, res) => {
+router.get("/api/adventures/:adventureId/members/:userId/gear", requireAuth, requireAdventureMember, async (req, res) => {
   try {
-    res.json(getMemberGear(parseId(req.params.adventureId), parseId(req.params.userId)));
+    res.json(await getMemberGear(parseId(req.params.adventureId), parseId(req.params.userId)));
   } catch (e) { safeError(res, e); }
 });
 
 // Update a single gear item selection for a member
-router.put("/api/adventures/:adventureId/members/:userId/gear-item/:gearId", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, (req, res) => {
+router.put("/api/adventures/:adventureId/members/:userId/gear-item/:gearId", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, async (req, res) => {
   try {
-    const id = upsertMemberGear(
+    const id = await upsertMemberGear(
       parseId(req.params.adventureId),
       parseId(req.params.userId),
       parseId(req.params.gearId),
@@ -278,27 +278,27 @@ router.put("/api/adventures/:adventureId/members/:userId/gear-item/:gearId", req
 });
 
 // Bulk set member gear (initial setup / quick-add)
-router.post("/api/adventures/:adventureId/members/:userId/gear-bulk", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, (req, res) => {
+router.post("/api/adventures/:adventureId/members/:userId/gear-bulk", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, async (req, res) => {
   try {
     const { selections } = req.body;
     if (!Array.isArray(selections)) return res.status(400).json({ error: "selections must be array" });
-    bulkSetMemberGear(parseId(req.params.adventureId), parseId(req.params.userId), selections);
+    await bulkSetMemberGear(parseId(req.params.adventureId), parseId(req.params.userId), selections);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
 // Remove a gear selection from a member
-router.delete("/api/adventures/:adventureId/members/:userId/gear-item/:gearId", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, (req, res) => {
+router.delete("/api/adventures/:adventureId/members/:userId/gear-item/:gearId", requireAuth, requireAdventureMember, requireAdventureSelfOrAdmin, async (req, res) => {
   try {
-    removeMemberGearItem(parseId(req.params.adventureId), parseId(req.params.userId), parseId(req.params.gearId));
+    await removeMemberGearItem(parseId(req.params.adventureId), parseId(req.params.userId), parseId(req.params.gearId));
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
 // Get pack weight breakdown for a member
-router.get("/api/adventures/:adventureId/members/:userId/pack-weight", requireAuth, requireAdventureMember, (req, res) => {
+router.get("/api/adventures/:adventureId/members/:userId/pack-weight", requireAuth, requireAdventureMember, async (req, res) => {
   try {
-    res.json(getMemberPackWeight(parseId(req.params.adventureId), parseId(req.params.userId)));
+    res.json(await getMemberPackWeight(parseId(req.params.adventureId), parseId(req.params.userId)));
   } catch (e) { safeError(res, e); }
 });
 
@@ -306,14 +306,17 @@ router.get("/api/adventures/:adventureId/members/:userId/pack-weight", requireAu
 // AI GEAR ROUTES (premium features)
 // ═══════════════════════════════════════════
 
-router.post("/api/gear/ai/weight-lookup", requireAuth, (req, res) => {
+router.post("/api/gear/ai/weight-lookup", requireAuth, async (req, res) => {
   try {
     // Premium check
-    const userMemberships = getUserMemberships(req.user.id);
-    const hasPremium = userMemberships.some(m => {
-      const troop = getTroop(m.troop_id);
-      return troop?.tier === "premium";
-    });
+    const userMemberships = await getUserMemberships(req.user.id);
+    const hasPremium = await (async () => {
+      for (const m of userMemberships) {
+        const troop = await getTroop(m.troop_id);
+        if (troop?.tier === "premium") return true;
+      }
+      return false;
+    })();
     if (!hasPremium) return res.status(403).json({ error: "Premium feature", upgrade: true });
     if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: "AI weight lookup not configured" });
 
@@ -324,13 +327,16 @@ router.post("/api/gear/ai/weight-lookup", requireAuth, (req, res) => {
   } catch (e) { safeError(res, e); }
 });
 
-router.post("/api/gear/ai/chat", requireAuth, (req, res) => {
+router.post("/api/gear/ai/chat", requireAuth, async (req, res) => {
   try {
-    const userMemberships = getUserMemberships(req.user.id);
-    const hasPremium = userMemberships.some(m => {
-      const troop = getTroop(m.troop_id);
-      return troop?.tier === "premium";
-    });
+    const userMemberships = await getUserMemberships(req.user.id);
+    const hasPremium = await (async () => {
+      for (const m of userMemberships) {
+        const troop = await getTroop(m.troop_id);
+        if (troop?.tier === "premium") return true;
+      }
+      return false;
+    })();
     if (!hasPremium) return res.status(403).json({ error: "Premium feature", upgrade: true });
     if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: "AI chatbot not configured" });
 
@@ -339,13 +345,13 @@ router.post("/api/gear/ai/chat", requireAuth, (req, res) => {
 
     // Stub: AI chatbot will be implemented with Anthropic API
     const response = "AI gear chatbot is being set up. Check back soon for personalized gear advice!";
-    logAIQuery(req.user.id, adventure_id, message, response, 0);
+    await logAIQuery(req.user.id, adventure_id, message, response, 0);
     res.json({ response, tokens_used: 0 });
   } catch (e) { safeError(res, e); }
 });
 
-router.get("/api/gear/ai/usage", requireAuth, (req, res) => {
-  try { res.json(getAIUsage(req.user.id)); }
+router.get("/api/gear/ai/usage", requireAuth, async (req, res) => {
+  try { res.json(await getAIUsage(req.user.id)); }
   catch (e) { safeError(res, e); }
 });
 

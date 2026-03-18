@@ -3,13 +3,14 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { logger, httpLogger, auditLog } from "./logger.js";
 import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import passport from "./auth.js";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import db, {
-  createSessionStore, getSetting, getCouncils, getDashboardData,
+import {
+  pool, initializeDatabase, getSetting, getCouncils, getDashboardData,
 } from "./db.js";
 import { validate, voteSchema, deleteVoteSchema } from "./validation.js";
 import { startGearRefreshSchedule } from "./gear-ai.js";
@@ -54,29 +55,34 @@ app.use(morgan("short"));
 app.use(httpLogger);
 
 // ── Public settings (before rate limiter — must always be available) ──
-app.get("/api/public-settings", (req, res) => {
+app.get("/api/public-settings", async (req, res) => {
   res.json({
-    maintenance_mode: getSetting("maintenance_mode") === "true",
-    maintenance_message: getSetting("maintenance_message") || "",
-    registration_enabled: getSetting("registration_enabled") !== "false",
-    announcement_enabled: getSetting("announcement_enabled") === "true",
-    announcement_banner: getSetting("announcement_banner") || "",
-    announcement_type: getSetting("announcement_type") || "info",
+    maintenance_mode: await getSetting("maintenance_mode") === "true",
+    maintenance_message: await getSetting("maintenance_message") || "",
+    registration_enabled: await getSetting("registration_enabled") !== "false",
+    announcement_enabled: await getSetting("announcement_enabled") === "true",
+    announcement_banner: await getSetting("announcement_banner") || "",
+    announcement_type: await getSetting("announcement_type") || "info",
   });
 });
 
 // ── Councils list (public, no auth — needed for troop creation forms) ──
-app.get("/api/councils", (req, res) => {
-  res.json(getCouncils());
+app.get("/api/councils", async (req, res) => {
+  res.json(await getCouncils());
 });
 
 // ── Rate Limiting ──
 const apiLimiter = rateLimit({ windowMs: 60 * 1000, max: 100, message: { error: "Too many requests" }, standardHeaders: true, legacyHeaders: false });
 app.use("/api/", apiLimiter);
 
-// ── Sessions ──
+// ── Sessions (PostgreSQL via connect-pg-simple) ──
+const PgSession = connectPgSimple(session);
 app.use(session({
-  store: createSessionStore(session),
+  store: new PgSession({
+    pool,
+    tableName: "sessions",
+    createTableIfMissing: true,
+  }),
   secret: process.env.SESSION_SECRET || (() => { if (process.env.NODE_ENV === "production") throw new Error("SESSION_SECRET required in production"); return "dev-secret-local-only"; })(),
   resave: false,
   saveUninitialized: false,
@@ -121,11 +127,11 @@ app.use((req, res, next) => {
 });
 
 // ── Maintenance mode ──
-app.use("/api", (req, res, next) => {
+app.use("/api", async (req, res, next) => {
   if (req.path === "/health" || req.path === "/public-settings" || req.path === "/councils") return next();
-  if (getSetting("maintenance_mode") === "true") {
+  if (await getSetting("maintenance_mode") === "true") {
     if (req.isAuthenticated() && req.user?.is_admin) return next();
-    const msg = getSetting("maintenance_message") || "TrailLog is temporarily down for maintenance. Please check back soon.";
+    const msg = await getSetting("maintenance_message") || "TrailLog is temporarily down for maintenance. Please check back soon.";
     return res.status(503).json({ error: msg, maintenance: true });
   }
   next();
@@ -148,9 +154,9 @@ app.use(adminRoutes);
 // ═══════════════════════════════════════════
 
 // Dashboard
-app.get("/api/dashboard", requireAuth, (req, res) => {
+app.get("/api/dashboard", requireAuth, async (req, res) => {
   try {
-    const data = getDashboardData(req.user.id, !!req.user.is_admin);
+    const data = await getDashboardData(req.user.id, !!req.user.is_admin);
     res.json(data);
   } catch (e) { safeError(res, e); }
 });
@@ -326,26 +332,27 @@ app.get("/vote", (req, res) => {
   res.sendFile(join(__dirname, "../vote-page/philmont-vote-portal/vote.html"));
 });
 
-app.get("/api/vote/counts", (req, res) => {
+app.get("/api/vote/counts", async (req, res) => {
   try {
-    const rows = db.prepare("SELECT design_id, COUNT(*) as count FROM shirt_votes GROUP BY design_id").all();
+    const { rows } = await pool.query("SELECT design_id, COUNT(*) as count FROM shirt_votes GROUP BY design_id");
     const counts = {};
-    rows.forEach(r => { counts[r.design_id] = r.count; });
-    const voterCount = db.prepare("SELECT COUNT(DISTINCT voter_name) as c FROM shirt_votes").get().c;
-    res.json({ counts, total: rows.reduce((s, r) => s + r.count, 0), voters: voterCount });
+    rows.forEach(r => { counts[r.design_id] = parseInt(r.count); });
+    const { rows: voterRows } = await pool.query("SELECT COUNT(DISTINCT voter_name) as c FROM shirt_votes");
+    const voterCount = parseInt(voterRows[0].c);
+    res.json({ counts, total: rows.reduce((s, r) => s + parseInt(r.count), 0), voters: voterCount });
   } catch (e) { res.status(500).json({ error: "Failed to load votes" }); }
 });
 
-app.get("/api/vote/my-votes", (req, res) => {
+app.get("/api/vote/my-votes", async (req, res) => {
   const name = req.query.name;
   if (!name) return res.json({ votes: [] });
   try {
-    const rows = db.prepare("SELECT design_id, vote_slot FROM shirt_votes WHERE voter_name = ? ORDER BY vote_slot").all(name.trim());
+    const { rows } = await pool.query("SELECT design_id, vote_slot FROM shirt_votes WHERE voter_name = $1 ORDER BY vote_slot", [name.trim()]);
     res.json({ votes: rows.map(r => ({ design_id: r.design_id, slot: r.vote_slot })) });
   } catch (e) { res.status(500).json({ error: "Failed to load votes" }); }
 });
 
-app.post("/api/vote", validate(voteSchema), (req, res) => {
+app.post("/api/vote", validate(voteSchema), async (req, res) => {
   const { voter_name, design_id, vote_slot } = req.body;
   if (!voter_name || !design_id) return res.status(400).json({ error: "Name and design required" });
   const name = voter_name.trim();
@@ -354,24 +361,24 @@ app.post("/api/vote", validate(voteSchema), (req, res) => {
   try {
     // Can't vote for the same design in both slots
     const otherSlot = slot === 1 ? 2 : 1;
-    const dup = db.prepare("SELECT id FROM shirt_votes WHERE voter_name = ? AND vote_slot = ? AND design_id = ?").get(name, otherSlot, design_id);
-    if (dup) return res.status(400).json({ error: "You already voted for this design in your other slot" });
+    const { rows: dupRows } = await pool.query("SELECT id FROM shirt_votes WHERE voter_name = $1 AND vote_slot = $2 AND design_id = $3", [name, otherSlot, design_id]);
+    if (dupRows.length > 0) return res.status(400).json({ error: "You already voted for this design in your other slot" });
 
-    const existing = db.prepare("SELECT id, design_id FROM shirt_votes WHERE voter_name = ? AND vote_slot = ?").get(name, slot);
-    if (existing) {
-      db.prepare("UPDATE shirt_votes SET design_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(design_id, existing.id);
-      return res.json({ status: "changed", slot, previous: existing.design_id });
+    const { rows: existingRows } = await pool.query("SELECT id, design_id FROM shirt_votes WHERE voter_name = $1 AND vote_slot = $2", [name, slot]);
+    if (existingRows.length > 0) {
+      await pool.query("UPDATE shirt_votes SET design_id = $1, updated_at = NOW() WHERE id = $2", [design_id, existingRows[0].id]);
+      return res.json({ status: "changed", slot, previous: existingRows[0].design_id });
     }
-    db.prepare("INSERT INTO shirt_votes (voter_name, design_id, vote_slot) VALUES (?, ?, ?)").run(name, design_id, slot);
+    await pool.query("INSERT INTO shirt_votes (voter_name, design_id, vote_slot) VALUES ($1, $2, $3)", [name, design_id, slot]);
     res.json({ status: "created", slot });
   } catch (e) { res.status(500).json({ error: "Failed to record vote" }); }
 });
 
-app.delete("/api/vote", validate(deleteVoteSchema), (req, res) => {
+app.delete("/api/vote", validate(deleteVoteSchema), async (req, res) => {
   const { voter_name, vote_slot } = req.body;
   if (!voter_name || !vote_slot) return res.status(400).json({ error: "Name and slot required" });
   try {
-    db.prepare("DELETE FROM shirt_votes WHERE voter_name = ? AND vote_slot = ?").run(voter_name.trim(), vote_slot);
+    await pool.query("DELETE FROM shirt_votes WHERE voter_name = $1 AND vote_slot = $2", [voter_name.trim(), vote_slot]);
     res.json({ status: "removed" });
   } catch (e) { res.status(500).json({ error: "Failed to remove vote" }); }
 });
@@ -383,10 +390,16 @@ app.get("*", (req, res) => {
 
 // Start server (skip when imported for testing)
 if (process.env.NODE_ENV !== "test") {
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`TrailLog running on port ${PORT}`);
-    startGearRefreshSchedule();
-    startReminderScheduler();
+  // Initialize database (seed data) before starting server
+  initializeDatabase().then(() => {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`TrailLog running on port ${PORT}`);
+      startGearRefreshSchedule();
+      startReminderScheduler();
+    });
+  }).catch(err => {
+    console.error("Database initialization failed:", err);
+    process.exit(1);
   });
 }
 

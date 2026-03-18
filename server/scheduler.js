@@ -1,4 +1,4 @@
-import db from "./db.js";
+import { pool } from "./db.js";
 import { sendTrainingReminderEmail } from "./email.js";
 import { logger } from "./logger.js";
 
@@ -18,37 +18,38 @@ function getTomorrow() {
  * Only sends for active, scheduled events. Tracks sent reminders
  * in platform_settings to avoid duplicates.
  */
-function sendTrainingReminders() {
+async function sendTrainingReminders() {
   const tomorrow = getTomorrow();
 
   // Find scheduled (confirmed) events happening tomorrow that are still active
-  const events = db.prepare(`
+  const { rows: events } = await pool.query(`
     SELECT te.id, te.date, te.time_label, te.location, te.notes,
            te.adventure_id, a.name as adventure_name, a.troop_id,
            t.name as troop_name
     FROM training_events te
     JOIN adventures a ON te.adventure_id = a.id
     JOIN troops t ON a.troop_id = t.id
-    WHERE te.date = ? AND te.type = 'scheduled' AND te.status = 'active'
-  `).all(tomorrow);
+    WHERE te.date = $1 AND te.type = 'scheduled' AND te.status = 'active'
+  `, [tomorrow]);
 
   if (events.length === 0) return;
 
   // Check which reminders we've already sent (stored as JSON array of event IDs)
   const sentKey = `reminders_sent_${tomorrow}`;
-  const sentRaw = db.prepare("SELECT value FROM platform_settings WHERE key = ?").get(sentKey);
+  const { rows: sentRows } = await pool.query("SELECT value FROM platform_settings WHERE key = $1", [sentKey]);
+  const sentRaw = sentRows[0];
   const sentIds = new Set(sentRaw ? JSON.parse(sentRaw.value) : []);
 
   for (const event of events) {
     if (sentIds.has(event.id)) continue;
 
     // Get all non-manual members of this adventure
-    const members = db.prepare(`
+    const { rows: members } = await pool.query(`
       SELECT u.id, u.email, u.name
       FROM adventure_members am
       JOIN users u ON am.user_id = u.id
-      WHERE am.adventure_id = ? AND am.is_manual = 0 AND u.email IS NOT NULL
-    `).all(event.adventure_id);
+      WHERE am.adventure_id = $1 AND am.is_manual = 0 AND u.email IS NOT NULL
+    `, [event.adventure_id]);
 
     for (const m of members) {
       sendTrainingReminderEmail(
@@ -64,13 +65,13 @@ function sendTrainingReminders() {
   }
 
   // Persist sent IDs to avoid re-sending
-  db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)").run(sentKey, JSON.stringify([...sentIds]));
+  await pool.query("INSERT INTO platform_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [sentKey, JSON.stringify([...sentIds])]);
 
   // Clean up old reminder keys (older than 7 days)
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 7);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
-  db.prepare("DELETE FROM platform_settings WHERE key LIKE 'reminders_sent_%' AND key < ?").run(`reminders_sent_${cutoffStr}`);
+  await pool.query("DELETE FROM platform_settings WHERE key LIKE 'reminders_sent_%' AND key < $1", [`reminders_sent_${cutoffStr}`]);
 }
 
 /**
@@ -78,13 +79,13 @@ function sendTrainingReminders() {
  */
 export function startReminderScheduler() {
   // Run once on startup (after 60s delay to let the server settle)
-  setTimeout(() => {
-    try { sendTrainingReminders(); } catch (e) { logger.error({ err: e }, "Reminder scheduler startup run failed"); }
+  setTimeout(async () => {
+    try { await sendTrainingReminders(); } catch (e) { logger.error({ err: e }, "Reminder scheduler startup run failed"); }
   }, 60 * 1000);
 
   // Then run every hour
-  setInterval(() => {
-    try { sendTrainingReminders(); } catch (e) { logger.error({ err: e }, "Reminder scheduler failed"); }
+  setInterval(async () => {
+    try { await sendTrainingReminders(); } catch (e) { logger.error({ err: e }, "Reminder scheduler failed"); }
   }, ONE_HOUR);
 
   logger.info("Training reminder scheduler started (hourly check)");

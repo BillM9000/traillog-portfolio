@@ -82,10 +82,10 @@ export async function refreshAllGearRecommendations() {
 
   refreshInProgress = true;
   const adventureType = "philmont";
-  const affiliateTag = getSetting("amazon_affiliate_tag") || "traillog-20";
+  const affiliateTag = await getSetting("amazon_affiliate_tag") || "traillog-20";
 
   try {
-    const items = getAllGearCatalogItems();
+    const items = await getAllGearCatalogItems();
     let refreshed = 0;
     let skipped = 0;
     let failed = 0;
@@ -96,7 +96,7 @@ export async function refreshAllGearRecommendations() {
       const item = items[i];
 
       // Check if we already have a valid cached rec
-      const cached = getCachedGearRec(item.id, adventureType);
+      const cached = await getCachedGearRec(item.id, adventureType);
       if (cached) {
         skipped++;
         continue;
@@ -107,7 +107,7 @@ export async function refreshAllGearRecommendations() {
       if (result && result.recommendations.length > 0) {
         // Set expiry to 7 days from now
         const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().replace("T", " ").slice(0, 19);
-        upsertGearRec(item.id, adventureType, result.recommendations, result.tokensUsed, expiresAt);
+        await upsertGearRec(item.id, adventureType, result.recommendations, result.tokensUsed, expiresAt);
         refreshed++;
         console.log(`[gear-ai] Refreshed ${refreshed}/${items.length - skipped} items (${item.name})`);
       } else {

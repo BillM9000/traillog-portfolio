@@ -3,11 +3,11 @@ import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
 import passport, { hashPassword, generateVerificationToken } from "../auth.js";
 import { requireAuth, safeError, processInvitation } from "../middleware.js";
-import db, {
+import {
   findUserByEmail, findUserById, createUser, updateUserProfile, verifyUserEmail,
   setResetToken, findUserByResetToken, clearResetToken, updatePassword,
   getUserMemberships, getUserAdventureMemberships,
-  getInvitationByToken, getSetting,
+  getInvitationByToken, getSetting, pool,
 } from "../db.js";
 import { sendVerificationEmail, sendPasswordResetEmail } from "../email.js";
 import {
@@ -34,22 +34,22 @@ router.get("/auth/google/callback",
     // Regenerate session ID to prevent session fixation attacks
     const pendingToken = req.session.pendingInviteToken;
     const authenticatedUser = req.user;
-    req.session.regenerate((regenErr) => {
+    req.session.regenerate(async (regenErr) => {
       if (regenErr) {
         console.error("Session regeneration failed:", regenErr);
         return res.redirect("/?error=session");
       }
       // Re-attach user to new session (Passport requires this)
-      req.logIn(authenticatedUser, (loginErr) => {
+      req.logIn(authenticatedUser, async (loginErr) => {
         if (loginErr) {
           console.error("Re-login after session regen failed:", loginErr);
           return res.redirect("/?error=session");
         }
         // Process pending invitation if present
         if (pendingToken) {
-          const invitation = getInvitationByToken(pendingToken);
+          const invitation = await getInvitationByToken(pendingToken);
           if (invitation && invitation.status === "pending") {
-            processInvitation(authenticatedUser, invitation);
+            await processInvitation(authenticatedUser, invitation);
           }
         }
         auditLog.login(authenticatedUser.id, authenticatedUser.email, "google");
@@ -61,7 +61,7 @@ router.get("/auth/google/callback",
 
 router.post("/api/auth/signup", authLimiter, validate(signupSchema), async (req, res) => {
   try {
-    if (getSetting("registration_enabled") === "false") {
+    if ((await getSetting("registration_enabled")) === "false") {
       return res.status(403).json({ error: "Registration is currently closed. Please check back later." });
     }
     const { name, email, password, tos_accepted } = req.body;
@@ -71,18 +71,18 @@ router.post("/api/auth/signup", authLimiter, validate(signupSchema), async (req,
     if (!tos_accepted) {
       return res.status(400).json({ error: "You must agree to the Terms of Service and Privacy Policy" });
     }
-    const existing = findUserByEmail(email);
+    const existing = await findUserByEmail(email);
     if (existing) return res.status(409).json({ error: "Email already registered" });
 
     const token = generateVerificationToken();
     const hash = await hashPassword(password);
-    createUser({
+    await createUser({
       email, name: name.trim(), password_hash: hash,
       email_verified: 0, verification_token: token,
       tos_accepted_at: new Date().toISOString(),
     });
     sendVerificationEmail(email, token).catch(e => console.error("Verification email failed:", e));
-    const newUser = findUserByEmail(email);
+    const newUser = await findUserByEmail(email);
     auditLog.signup(newUser?.id, email);
     res.status(201).json({ ok: true, message: "Check your email to verify your account" });
   } catch (e) { safeError(res, e); }
@@ -97,16 +97,16 @@ router.post("/api/auth/login", authLimiter, validate(loginSchema), (req, res, ne
       if (err) return safeError(res, err);
       // Regenerate session ID to prevent session fixation attacks
       const pendingToken = req.session.pendingInviteToken;
-      req.session.regenerate((regenErr) => {
+      req.session.regenerate(async (regenErr) => {
         if (regenErr) return safeError(res, regenErr);
         // Re-attach user to new session (Passport requires this)
-        req.logIn(user, (loginErr) => {
+        req.logIn(user, async (loginErr) => {
           if (loginErr) return safeError(res, loginErr);
           // Process pending invitation if present
           if (pendingToken) {
-            const invitation = getInvitationByToken(pendingToken);
+            const invitation = await getInvitationByToken(pendingToken);
             if (invitation && invitation.status === "pending") {
-              processInvitation(user, invitation);
+              await processInvitation(user, invitation);
             }
           }
           auditLog.login(user.id, user.email, "email");
@@ -118,24 +118,24 @@ router.post("/api/auth/login", authLimiter, validate(loginSchema), (req, res, ne
   })(req, res, next);
 });
 
-router.get("/api/auth/verify/:token", (req, res) => {
-  const result = verifyUserEmail(req.params.token);
+router.get("/api/auth/verify/:token", async (req, res) => {
+  const result = await verifyUserEmail(req.params.token);
   if (!result) return res.redirect("/?error=invalid-token");
   res.redirect("/?verified=1");
 });
 
 // ── Password Reset ──
-router.post("/api/auth/forgot-password", authLimiter, validate(forgotPasswordSchema), (req, res) => {
+router.post("/api/auth/forgot-password", authLimiter, validate(forgotPasswordSchema), async (req, res) => {
   try {
     const { email } = req.body;
     if (!email?.trim()) return res.status(400).json({ error: "Email is required" });
 
     // Always respond success to prevent email enumeration
-    const user = findUserByEmail(email);
+    const user = await findUserByEmail(email);
     if (user && user.password_hash) {
       const token = generateVerificationToken();
       const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
-      setResetToken(email, token, expires);
+      await setResetToken(email, token, expires);
       sendPasswordResetEmail(email, token).catch(e => console.error("Reset email failed:", e));
     }
     res.json({ ok: true, message: "If that email exists, a reset link has been sent" });
@@ -148,12 +148,12 @@ router.post("/api/auth/reset-password", authLimiter, validate(resetPasswordSchem
     if (!token || !password || password.length < 8) {
       return res.status(400).json({ error: "Valid token and password (8+ chars) required" });
     }
-    const user = findUserByResetToken(token);
+    const user = await findUserByResetToken(token);
     if (!user) return res.status(400).json({ error: "Invalid or expired reset link. Please request a new one." });
 
     const hash = await hashPassword(password);
-    updatePassword(user.id, hash);
-    clearResetToken(user.id);
+    await updatePassword(user.id, hash);
+    await clearResetToken(user.id);
     auditLog.passwordReset(user.id, user.email);
     res.json({ ok: true, message: "Password updated. You can now sign in." });
   } catch (e) { safeError(res, e); }
@@ -165,18 +165,18 @@ router.put("/api/auth/change-password", requireAuth, validate(changePasswordSche
     if (!currentPassword || !newPassword || newPassword.length < 8) {
       return res.status(400).json({ error: "Current password and new password (8+ chars) required" });
     }
-    const user = findUserById(req.user.id);
+    const user = await findUserById(req.user.id);
     if (!user.password_hash) {
       return res.status(400).json({ error: "Your account uses Google sign-in. Password change is not available." });
     }
     const match = await bcrypt.compare(currentPassword, user.password_hash);
     if (!match) return res.status(400).json({ error: "Current password is incorrect" });
     const hash = await hashPassword(newPassword);
-    updatePassword(user.id, hash);
+    await updatePassword(user.id, hash);
     // Invalidate all other sessions for this user
     try {
       const pattern = `%"passport":{"user":${user.id}}%`;
-      db.prepare("DELETE FROM sessions WHERE sid != ? AND sess LIKE ?").run(req.sessionID, pattern);
+      await pool.query("DELETE FROM sessions WHERE sid != $1 AND sess LIKE $2", [req.sessionID, pattern]);
     } catch (sessionErr) {
       console.error("[change-password] Failed to invalidate other sessions:", sessionErr.message);
     }
@@ -185,17 +185,17 @@ router.put("/api/auth/change-password", requireAuth, validate(changePasswordSche
   } catch (e) { safeError(res, e); }
 });
 
-router.get("/api/auth/me", (req, res) => {
+router.get("/api/auth/me", async (req, res) => {
   if (!req.isAuthenticated()) return res.json({ user: null });
   const { password_hash, verification_token, reset_token, reset_token_expires, ...safe } = req.user;
   const has_password = !!password_hash;
-  const memberships = getUserMemberships(req.user.id);
-  const adventureMemberships = getUserAdventureMemberships(req.user.id);
+  const memberships = await getUserMemberships(req.user.id);
+  const adventureMemberships = await getUserAdventureMemberships(req.user.id);
   const is_global_admin = !!req.user.is_admin;
   res.json({ user: { ...safe, is_global_admin, has_password }, memberships, adventureMemberships });
 });
 
-router.put("/api/auth/profile", requireAuth, validate(profileUpdateSchema), (req, res) => {
+router.put("/api/auth/profile", requireAuth, validate(profileUpdateSchema), async (req, res) => {
   try {
     const { name, user_type, parent_email, parent_email_2, age_confirmed } = req.body;
 
@@ -207,7 +207,7 @@ router.put("/api/auth/profile", requireAuth, validate(profileUpdateSchema), (req
 
     if (user_type && !["adult", "scout"].includes(user_type)) return res.status(400).json({ error: "user_type must be 'adult' or 'scout'" });
 
-    const currentUser = findUserById(req.user.id);
+    const currentUser = await findUserById(req.user.id);
     const effectiveAge = age_confirmed || currentUser.age_confirmed;
 
     // Age gate enforcement: must confirm age before setting role (either already set or being set now)
@@ -229,7 +229,7 @@ router.put("/api/auth/profile", requireAuth, validate(profileUpdateSchema), (req
         updates.tos_accepted_at = new Date().toISOString();
       }
     }
-    updateUserProfile(req.user.id, updates);
+    await updateUserProfile(req.user.id, updates);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });

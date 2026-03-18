@@ -45,10 +45,10 @@ export function requireGlobalAdmin(req, res, next) {
 }
 
 export function requireTroopMember(requiredStatus = "approved") {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     if (isGlobalAdmin(req)) { req.membership = { role: "admin", status: "approved" }; return next(); }
     const troopId = parseId(req.params.troopId);
-    const membership = getTroopMember(troopId, req.user.id);
+    const membership = await getTroopMember(troopId, req.user.id);
     if (!membership || membership.status !== requiredStatus) {
       return res.status(403).json({ error: "Not an approved member of this troop" });
     }
@@ -57,10 +57,10 @@ export function requireTroopMember(requiredStatus = "approved") {
   };
 }
 
-export function requireTroopAdmin(req, res, next) {
+export async function requireTroopAdmin(req, res, next) {
   if (isGlobalAdmin(req)) { req.membership = { role: "admin", status: "approved" }; return next(); }
   const troopId = parseId(req.params.troopId);
-  const membership = getTroopMember(troopId, req.user.id);
+  const membership = await getTroopMember(troopId, req.user.id);
   if (!membership || membership.role !== "admin" || membership.status !== "approved") {
     return res.status(403).json({ error: "Admin access required" });
   }
@@ -68,34 +68,34 @@ export function requireTroopAdmin(req, res, next) {
   next();
 }
 
-export function requireSelfOrAdmin(req, res, next) {
+export async function requireSelfOrAdmin(req, res, next) {
   const troopId = parseId(req.params.troopId);
   const targetUserId = parseId(req.params.userId);
   if (req.user.id === targetUserId) return next();
-  const membership = getTroopMember(troopId, req.user.id);
+  const membership = await getTroopMember(troopId, req.user.id);
   if (membership?.role === "admin" && membership.status === "approved") return next();
   res.status(403).json({ error: "Can only edit your own data" });
 }
 
-export function requireAdventureMember(req, res, next) {
+export async function requireAdventureMember(req, res, next) {
   const adventureId = parseId(req.params.adventureId);
-  const member = getAdventureMember(adventureId, req.user.id);
+  const member = await getAdventureMember(adventureId, req.user.id);
   if (!member) return res.status(403).json({ error: "Not a member of this adventure" });
   req.adventureMembership = member;
   next();
 }
 
-export function requireAdventureAdmin(req, res, next) {
+export async function requireAdventureAdmin(req, res, next) {
   if (isGlobalAdmin(req)) return next();
   const adventureId = parseId(req.params.adventureId);
-  const member = getAdventureMember(adventureId, req.user.id);
+  const member = await getAdventureMember(adventureId, req.user.id);
   if (member && member.role === "admin") {
     req.adventureMembership = member;
     return next();
   }
-  const adventure = getAdventure(adventureId);
+  const adventure = await getAdventure(adventureId);
   if (adventure) {
-    const troopMember = getTroopMember(adventure.troop_id, req.user.id);
+    const troopMember = await getTroopMember(adventure.troop_id, req.user.id);
     if (troopMember && troopMember.role === "admin" && troopMember.status === "approved") {
       req.adventureMembership = member;
       return next();
@@ -104,16 +104,16 @@ export function requireAdventureAdmin(req, res, next) {
   return res.status(403).json({ error: "Adventure admin access required" });
 }
 
-export function requireAdventureSelfOrAdmin(req, res, next) {
+export async function requireAdventureSelfOrAdmin(req, res, next) {
   if (isGlobalAdmin(req)) return next();
   const adventureId = parseId(req.params.adventureId);
   const targetUserId = parseId(req.params.userId);
   if (req.user.id === targetUserId) return next();
-  const member = getAdventureMember(adventureId, req.user.id);
+  const member = await getAdventureMember(adventureId, req.user.id);
   if (member?.role === "admin") return next();
-  const adventure = getAdventure(adventureId);
+  const adventure = await getAdventure(adventureId);
   if (adventure) {
-    const troopMember = getTroopMember(adventure.troop_id, req.user.id);
+    const troopMember = await getTroopMember(adventure.troop_id, req.user.id);
     if (troopMember?.role === "admin" && troopMember.status === "approved") return next();
   }
   res.status(403).json({ error: "Can only edit your own data" });
@@ -121,45 +121,45 @@ export function requireAdventureSelfOrAdmin(req, res, next) {
 
 // ── Crew middleware ──
 
-export function requireCrewMember(req, res, next) {
+export async function requireCrewMember(req, res, next) {
   const crewId = parseId(req.params.crewId);
   if (!crewId) return res.status(400).json({ error: "Invalid crew ID" });
-  const crew = getCrew(crewId);
+  const crew = await getCrew(crewId);
   if (!crew) return res.status(404).json({ error: "Crew not found" });
   req.crew = crew;
-  const member = getAdventureMember(crew.adventure_id, req.user.id);
+  const member = await getAdventureMember(crew.adventure_id, req.user.id);
   if (!member) return res.status(403).json({ error: "Not a member of this crew's adventure" });
   req.adventureMembership = member;
   next();
 }
 
-export function requireCrewAdmin(req, res, next) {
+export async function requireCrewAdmin(req, res, next) {
   if (isGlobalAdmin(req)) {
     const crewId = parseId(req.params.crewId);
-    const crew = getCrew(crewId);
+    const crew = await getCrew(crewId);
     if (!crew) return res.status(404).json({ error: "Crew not found" });
     req.crew = crew;
     return next();
   }
   const crewId = parseId(req.params.crewId);
   if (!crewId) return res.status(400).json({ error: "Invalid crew ID" });
-  const crew = getCrew(crewId);
+  const crew = await getCrew(crewId);
   if (!crew) return res.status(404).json({ error: "Crew not found" });
   req.crew = crew;
-  const member = getAdventureMember(crew.adventure_id, req.user.id);
+  const member = await getAdventureMember(crew.adventure_id, req.user.id);
   if (member?.role === "admin") return next();
-  const adventure = getAdventure(crew.adventure_id);
+  const adventure = await getAdventure(crew.adventure_id);
   if (adventure) {
-    const troopMember = getTroopMember(adventure.troop_id, req.user.id);
+    const troopMember = await getTroopMember(adventure.troop_id, req.user.id);
     if (troopMember?.role === "admin" && troopMember.status === "approved") return next();
   }
   return res.status(403).json({ error: "Crew admin access required" });
 }
 
-export function requireCrewSelfOrAdmin(req, res, next) {
+export async function requireCrewSelfOrAdmin(req, res, next) {
   if (isGlobalAdmin(req)) {
     const crewId = parseId(req.params.crewId);
-    const crew = getCrew(crewId);
+    const crew = await getCrew(crewId);
     if (!crew) return res.status(404).json({ error: "Crew not found" });
     req.crew = crew;
     return next();
@@ -167,7 +167,7 @@ export function requireCrewSelfOrAdmin(req, res, next) {
   const crewId = parseId(req.params.crewId);
   const targetUserId = parseId(req.params.userId);
   if (req.user.id === targetUserId) {
-    const crew = getCrew(crewId);
+    const crew = await getCrew(crewId);
     if (!crew) return res.status(404).json({ error: "Crew not found" });
     req.crew = crew;
     return next();
@@ -178,26 +178,26 @@ export function requireCrewSelfOrAdmin(req, res, next) {
 /**
  * Process a pending invitation — auto-join troop + adventure.
  */
-export function processInvitation(user, invitation) {
+export async function processInvitation(user, invitation) {
   try {
     // Auto-join troop if not already a member
-    const troopMember = getTroopMember(invitation.troop_id, user.id);
+    const troopMember = await getTroopMember(invitation.troop_id, user.id);
     if (!troopMember) {
-      requestJoinTroop(user.id, invitation.troop_id);
-      approveTroopMember(invitation.troop_id, user.id);
+      await requestJoinTroop(user.id, invitation.troop_id);
+      await approveTroopMember(invitation.troop_id, user.id);
     } else if (troopMember.status === "pending") {
-      approveTroopMember(invitation.troop_id, user.id);
+      await approveTroopMember(invitation.troop_id, user.id);
     }
     // Auto-join adventure if specified
     if (invitation.adventure_id) {
-      const advMember = getAdventureMember(invitation.adventure_id, user.id);
+      const advMember = await getAdventureMember(invitation.adventure_id, user.id);
       if (!advMember) {
-        addAdventureMember(invitation.adventure_id, user.id, "member");
-        if (user.user_type === "adult") autoLinkAdult(invitation.adventure_id, user.id);
-        else if (user.user_type === "scout") autoLinkScout(invitation.adventure_id, user.id);
+        await addAdventureMember(invitation.adventure_id, user.id, "member");
+        if (user.user_type === "adult") await autoLinkAdult(invitation.adventure_id, user.id);
+        else if (user.user_type === "scout") await autoLinkScout(invitation.adventure_id, user.id);
       }
     }
-    updateInvitationStatus(invitation.id, "accepted");
+    await updateInvitationStatus(invitation.id, "accepted");
   } catch (e) {
     console.error("processInvitation error:", e);
   }

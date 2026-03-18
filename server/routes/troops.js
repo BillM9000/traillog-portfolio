@@ -29,26 +29,26 @@ if (!existsSync(LOGO_DIR)) mkdirSync(LOGO_DIR, { recursive: true });
 // TROOP CRUD ROUTES
 // ═══════════════════════════════════════════
 
-router.get("/api/troops", requireAuth, (req, res) => {
-  try { res.json(getTroops(req.user.id)); }
+router.get("/api/troops", requireAuth, async (req, res) => {
+  try { res.json(await getTroops(req.user.id)); }
   catch (e) { safeError(res, e); }
 });
 
-router.get("/api/troops/:troopId", requireAuth, requireTroopMember(), (req, res) => {
+router.get("/api/troops/:troopId", requireAuth, requireTroopMember(), async (req, res) => {
   try {
-    const troop = getTroop(parseId(req.params.troopId));
+    const troop = await getTroop(parseId(req.params.troopId));
     if (!troop) return res.status(404).json({ error: "Troop not found" });
     res.json(troop);
   } catch (e) { safeError(res, e); }
 });
 
-router.post("/api/troops", requireAuth, validate(createTroopSchema), (req, res) => {
+router.post("/api/troops", requireAuth, validate(createTroopSchema), async (req, res) => {
   try {
     if (req.user.user_type === "scout") return res.status(403).json({ error: "Scouts cannot create troops" });
     // Troop creation limit (global admin exempt)
     if (!isGlobalAdmin(req)) {
-      const maxTroops = parseInt(getSetting("max_troops_per_user") || "2", 10);
-      const userTroops = getUserMemberships(req.user.id).filter(m => m.role === "admin" && m.status === "approved");
+      const maxTroops = parseInt((await getSetting("max_troops_per_user")) || "2", 10);
+      const userTroops = (await getUserMemberships(req.user.id)).filter(m => m.role === "admin" && m.status === "approved");
       if (userTroops.length >= maxTroops) {
         return res.status(403).json({ error: `You can create a maximum of ${maxTroops} troops` });
       }
@@ -57,16 +57,16 @@ router.post("/api/troops", requireAuth, validate(createTroopSchema), (req, res) 
     if (!name?.trim()) return res.status(400).json({ error: "Troop name required" });
     if (!council_id && !council?.trim()) return res.status(400).json({ error: "Council is required" });
     if (council && council.trim().length > 60) return res.status(400).json({ error: "Council name too long (60 char max)" });
-    const troop = createTroop({ name: name.trim(), description, council: council?.trim(), council_id, location: location?.trim(), is_public, created_by: req.user.id });
+    const troop = await createTroop({ name: name.trim(), description, council: council?.trim(), council_id, location: location?.trim(), is_public, created_by: req.user.id });
     res.status(201).json(troop);
   } catch (e) { safeError(res, e); }
 });
 
-router.put("/api/troops/:troopId", requireAuth, requireTroopAdmin, (req, res) => {
+router.put("/api/troops/:troopId", requireAuth, requireTroopAdmin, async (req, res) => {
   try {
     const { name, description, council, council_id, location, is_public } = req.body;
     if (council_id === undefined && council !== undefined && !council?.trim()) return res.status(400).json({ error: "Council is required" });
-    updateTroop(parseId(req.params.troopId), { name, description, council, council_id, location, is_public });
+    await updateTroop(parseId(req.params.troopId), { name, description, council, council_id, location, is_public });
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
@@ -117,12 +117,12 @@ router.put("/api/troops/:troopId/logo", requireAuth, requireTroopAdmin, (req, re
 });
 
 // Get troop info for join modal (adventures list)
-router.get("/api/troops/:troopId/join-info", requireAuth, (req, res) => {
+router.get("/api/troops/:troopId/join-info", requireAuth, async (req, res) => {
   try {
     const troopId = parseId(req.params.troopId);
-    const troop = getTroop(troopId);
+    const troop = await getTroop(troopId);
     if (!troop) return res.status(404).json({ error: "Troop not found" });
-    const adventures = getAdventures(troopId).filter(a => a.status === "active").map(a => ({
+    const adventures = (await getAdventures(troopId)).filter(a => a.status === "active").map(a => ({
       id: a.id, name: a.name, adventure_type: a.adventure_type,
       depart_date: a.depart_date, arrive_date: a.arrive_date,
       return_date: a.return_date, home_date: a.home_date,
@@ -131,10 +131,10 @@ router.get("/api/troops/:troopId/join-info", requireAuth, (req, res) => {
   } catch (e) { safeError(res, e); }
 });
 
-router.post("/api/troops/:troopId/join", requireAuth, (req, res) => {
+router.post("/api/troops/:troopId/join", requireAuth, async (req, res) => {
   try {
     const troopId = parseId(req.params.troopId);
-    const existing = getTroopMember(troopId, req.user.id);
+    const existing = await getTroopMember(troopId, req.user.id);
     if (existing) return res.status(409).json({ error: "Already requested or joined", status: existing.status });
 
     const { participation, adventure_ids } = req.body || {};
@@ -142,22 +142,22 @@ router.post("/api/troops/:troopId/join", requireAuth, (req, res) => {
     // Validate adventure_ids if provided
     let validAdventureIds = null;
     if (Array.isArray(adventure_ids) && adventure_ids.length > 0) {
-      const troopAdventures = getAdventures(troopId).filter(a => a.status === "active");
+      const troopAdventures = (await getAdventures(troopId)).filter(a => a.status === "active");
       const troopAdvIds = new Set(troopAdventures.map(a => a.id));
       validAdventureIds = adventure_ids.map(id => parseId(id)).filter(id => troopAdvIds.has(id));
       if (validAdventureIds.length === 0) validAdventureIds = null;
     }
 
-    requestJoinTroop(req.user.id, troopId, { participation: validParticipation, requestedAdventures: validAdventureIds });
+    await requestJoinTroop(req.user.id, troopId, { participation: validParticipation, requestedAdventures: validAdventureIds });
 
-    const troop = getTroop(troopId);
-    const admins = getTroopAdmins(troopId);
-    const user = findUserById(req.user.id);
+    const troop = await getTroop(troopId);
+    const admins = await getTroopAdmins(troopId);
+    const user = await findUserById(req.user.id);
 
     // Build adventure names for email
     let adventureNames = [];
     if (validAdventureIds) {
-      const allAdv = getAdventures(troopId);
+      const allAdv = await getAdventures(troopId);
       adventureNames = validAdventureIds.map(id => allAdv.find(a => a.id === id)?.name).filter(Boolean);
     }
 
@@ -185,26 +185,26 @@ router.post("/api/troops/:troopId/join", requireAuth, (req, res) => {
 // TROOP MEMBER ROUTES
 // ═══════════════════════════════════════════
 
-router.get("/api/troops/:troopId/members", requireAuth, requireTroopMember(), (req, res) => {
+router.get("/api/troops/:troopId/members", requireAuth, requireTroopMember(), async (req, res) => {
   try {
     const status = req.membership.role === "admin" ? null : "approved";
-    res.json(getTroopMembers(parseId(req.params.troopId), status));
+    res.json(await getTroopMembers(parseId(req.params.troopId), status));
   } catch (e) { safeError(res, e); }
 });
 
-router.put("/api/troops/:troopId/members/:userId/approve", requireAuth, requireTroopAdmin, (req, res) => {
+router.put("/api/troops/:troopId/members/:userId/approve", requireAuth, requireTroopAdmin, async (req, res) => {
   try {
     const troopId = parseId(req.params.troopId);
     const userId = parseId(req.params.userId);
 
     // Check if the member requested specific adventures
-    const membership = getTroopMember(troopId, userId);
+    const membership = await getTroopMember(troopId, userId);
     const requestedAdvIds = membership?.requested_adventures || null;
 
-    approveTroopMember(troopId, userId);
+    await approveTroopMember(troopId, userId);
 
     // Add to requested adventures only, or all if none specified
-    const allAdventures = getAdventures(troopId).filter(a => a.status === "active");
+    const allAdventures = (await getAdventures(troopId)).filter(a => a.status === "active");
     const adventuresToJoin = requestedAdvIds
       ? allAdventures.filter(a => requestedAdvIds.includes(a.id))
       : allAdventures;
@@ -213,11 +213,11 @@ router.put("/api/troops/:troopId/members/:userId/approve", requireAuth, requireT
     const participation = membership?.participation || "trekking";
 
     for (const adv of adventuresToJoin) {
-      const existing = getAdventureMember(adv.id, userId);
-      if (!existing) addAdventureMember(adv.id, userId, "member", participation);
+      const existing = await getAdventureMember(adv.id, userId);
+      if (!existing) await addAdventureMember(adv.id, userId, "member", participation);
     }
-    const user = findUserById(userId);
-    const troop = getTroop(troopId);
+    const user = await findUserById(userId);
+    const troop = await getTroop(troopId);
     const firstAdv = adventuresToJoin[0] || allAdventures[0];
     if (user?.email) {
       sendMemberApprovedEmail(user.email, user.name, troop.name, {
@@ -230,11 +230,11 @@ router.put("/api/troops/:troopId/members/:userId/approve", requireAuth, requireT
   } catch (e) { safeError(res, e); }
 });
 
-router.put("/api/troops/:troopId/members/:userId/deny", requireAuth, requireTroopAdmin, (req, res) => {
+router.put("/api/troops/:troopId/members/:userId/deny", requireAuth, requireTroopAdmin, async (req, res) => {
   try {
-    denyTroopMember(parseId(req.params.troopId), parseId(req.params.userId));
-    const user = findUserById(parseId(req.params.userId));
-    const troop = getTroop(parseId(req.params.troopId));
+    await denyTroopMember(parseId(req.params.troopId), parseId(req.params.userId));
+    const user = await findUserById(parseId(req.params.userId));
+    const troop = await getTroop(parseId(req.params.troopId));
     if (user?.email) {
       sendMemberDeniedEmail(user.email, user.name, troop.name)
         .catch(e => console.error("Denial email failed:", e));
@@ -243,47 +243,47 @@ router.put("/api/troops/:troopId/members/:userId/deny", requireAuth, requireTroo
   } catch (e) { safeError(res, e); }
 });
 
-router.delete("/api/troops/:troopId/members/:userId", requireAuth, requireTroopAdmin, (req, res) => {
+router.delete("/api/troops/:troopId/members/:userId", requireAuth, requireTroopAdmin, async (req, res) => {
   try {
-    removeTroopMember(parseId(req.params.troopId), parseId(req.params.userId));
+    await removeTroopMember(parseId(req.params.troopId), parseId(req.params.userId));
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
-router.post("/api/troops/:troopId/leave", requireAuth, (req, res) => {
+router.post("/api/troops/:troopId/leave", requireAuth, async (req, res) => {
   try {
     const troopId = parseId(req.params.troopId);
     if (!troopId) return res.status(400).json({ error: "Invalid troop ID" });
-    const membership = getTroopMember(troopId, req.user.id);
+    const membership = await getTroopMember(troopId, req.user.id);
     if (!membership || membership.status !== "approved") {
       return res.status(400).json({ error: "You are not a member of this troop" });
     }
     // Prevent sole admin from leaving
     if (membership.role === "admin") {
-      const admins = getTroopAdmins(troopId);
+      const admins = await getTroopAdmins(troopId);
       if (admins.length <= 1) {
         return res.status(400).json({ error: "Cannot leave: you are the only admin. Promote another member first or delete the troop." });
       }
     }
-    removeTroopMember(troopId, req.user.id);
+    await removeTroopMember(troopId, req.user.id);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
-router.put("/api/troops/:troopId/members/:userId/dates", requireAuth, requireTroopMember(), requireSelfOrAdmin, (req, res) => {
+router.put("/api/troops/:troopId/members/:userId/dates", requireAuth, requireTroopMember(), requireSelfOrAdmin, async (req, res) => {
   try {
     const { dates } = req.body;
     if (!Array.isArray(dates)) return res.status(400).json({ error: "dates must be array" });
-    updateMemberDates(parseId(req.params.troopId), parseId(req.params.userId), dates);
+    await updateMemberDates(parseId(req.params.troopId), parseId(req.params.userId), dates);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
-router.put("/api/troops/:troopId/members/:userId/skills", requireAuth, requireTroopMember(), requireSelfOrAdmin, (req, res) => {
+router.put("/api/troops/:troopId/members/:userId/skills", requireAuth, requireTroopMember(), requireSelfOrAdmin, async (req, res) => {
   try {
     const { skills } = req.body;
     if (!Array.isArray(skills)) return res.status(400).json({ error: "skills must be array" });
-    updateMemberSkills(parseId(req.params.troopId), parseId(req.params.userId), skills);
+    await updateMemberSkills(parseId(req.params.troopId), parseId(req.params.userId), skills);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
@@ -292,22 +292,22 @@ router.put("/api/troops/:troopId/members/:userId/skills", requireAuth, requireTr
 // TROOP SKILLS ROUTES (legacy, kept for compat)
 // ═══════════════════════════════════════════
 
-router.get("/api/troops/:troopId/skills", requireAuth, requireTroopMember(), (req, res) => {
-  try { res.json(getTroopSkills(parseId(req.params.troopId))); }
+router.get("/api/troops/:troopId/skills", requireAuth, requireTroopMember(), async (req, res) => {
+  try { res.json(await getTroopSkills(parseId(req.params.troopId))); }
   catch (e) { safeError(res, e); }
 });
 
-router.post("/api/troops/:troopId/skills", requireAuth, requireTroopAdmin, (req, res) => {
+router.post("/api/troops/:troopId/skills", requireAuth, requireTroopAdmin, async (req, res) => {
   try {
     const { name, desc } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Skill name required" });
-    res.status(201).json(addTroopSkill(parseId(req.params.troopId), name, desc));
+    res.status(201).json(await addTroopSkill(parseId(req.params.troopId), name, desc));
   } catch (e) { safeError(res, e); }
 });
 
-router.delete("/api/troops/:troopId/skills/:skillId", requireAuth, requireTroopAdmin, (req, res) => {
+router.delete("/api/troops/:troopId/skills/:skillId", requireAuth, requireTroopAdmin, async (req, res) => {
   try {
-    const result = removeTroopSkill(parseId(req.params.troopId), req.params.skillId);
+    const result = await removeTroopSkill(parseId(req.params.troopId), req.params.skillId);
     if (result.error) return res.status(400).json(result);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
@@ -317,13 +317,13 @@ router.delete("/api/troops/:troopId/skills/:skillId", requireAuth, requireTroopA
 // TROOP SETTINGS (admin)
 // ═══════════════════════════════════════════
 
-router.put("/api/troops/:troopId/settings", requireAuth, requireTroopAdmin, (req, res) => {
+router.put("/api/troops/:troopId/settings", requireAuth, requireTroopAdmin, async (req, res) => {
   try {
     const { amazon_affiliate_tag } = req.body;
     if (amazon_affiliate_tag !== undefined) {
       // Sanitize: Amazon tags are alphanumeric + hyphens only
       const safeTag = amazon_affiliate_tag ? String(amazon_affiliate_tag).replace(/[^a-zA-Z0-9\-]/g, "") : "";
-      updateTroopAffiliateTag(parseId(req.params.troopId), safeTag);
+      await updateTroopAffiliateTag(parseId(req.params.troopId), safeTag);
     }
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
@@ -333,43 +333,43 @@ router.put("/api/troops/:troopId/settings", requireAuth, requireTroopAdmin, (req
 // TROOP GEAR OVERRIDES & CUSTOM GEAR
 // ═══════════════════════════════════════════
 
-router.put("/api/troops/:troopId/gear-overrides/:gearId", requireAuth, requireTroopAdmin, (req, res) => {
+router.put("/api/troops/:troopId/gear-overrides/:gearId", requireAuth, requireTroopAdmin, async (req, res) => {
   try {
     const { hidden } = req.body;
-    setTroopGearOverride(parseId(req.params.troopId), parseId(req.params.gearId), hidden);
+    await setTroopGearOverride(parseId(req.params.troopId), parseId(req.params.gearId), hidden);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
 // Troop admin: get overrides
-router.get("/api/troops/:troopId/gear-overrides", requireAuth, requireTroopAdmin, (req, res) => {
-  try { res.json(getTroopGearOverrides(parseId(req.params.troopId))); }
+router.get("/api/troops/:troopId/gear-overrides", requireAuth, requireTroopAdmin, async (req, res) => {
+  try { res.json(await getTroopGearOverrides(parseId(req.params.troopId))); }
   catch (e) { safeError(res, e); }
 });
 
 // Troop admin: custom gear items
-router.get("/api/troops/:troopId/custom-gear", requireAuth, requireTroopMember(), (req, res) => {
-  try { res.json(getTroopCustomGear(parseId(req.params.troopId))); }
+router.get("/api/troops/:troopId/custom-gear", requireAuth, requireTroopMember(), async (req, res) => {
+  try { res.json(await getTroopCustomGear(parseId(req.params.troopId))); }
   catch (e) { safeError(res, e); }
 });
 
-router.post("/api/troops/:troopId/custom-gear", requireAuth, requireTroopAdmin, (req, res) => {
+router.post("/api/troops/:troopId/custom-gear", requireAuth, requireTroopAdmin, async (req, res) => {
   try {
-    const item = addTroopCustomGear(parseId(req.params.troopId), req.body);
+    const item = await addTroopCustomGear(parseId(req.params.troopId), req.body);
     res.status(201).json(item);
   } catch (e) { safeError(res, e); }
 });
 
-router.put("/api/troops/:troopId/custom-gear/:id", requireAuth, requireTroopAdmin, (req, res) => {
+router.put("/api/troops/:troopId/custom-gear/:id", requireAuth, requireTroopAdmin, async (req, res) => {
   try {
-    updateTroopCustomGearItem(parseId(req.params.troopId), parseId(req.params.id), req.body);
+    await updateTroopCustomGearItem(parseId(req.params.troopId), parseId(req.params.id), req.body);
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 
-router.delete("/api/troops/:troopId/custom-gear/:id", requireAuth, requireTroopAdmin, (req, res) => {
+router.delete("/api/troops/:troopId/custom-gear/:id", requireAuth, requireTroopAdmin, async (req, res) => {
   try {
-    deleteTroopCustomGear(parseId(req.params.troopId), parseId(req.params.id));
+    await deleteTroopCustomGear(parseId(req.params.troopId), parseId(req.params.id));
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
