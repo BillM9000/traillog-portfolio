@@ -6,6 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useAdventure } from "../contexts/AdventureContext";
 import { useToast } from "../contexts/ToastContext";
 import { fontBody, fontDisplay, card, cardTitle, tag } from "../utils/theme";
+import { useIsDesktop } from "../hooks/useIsDesktop";
 import { exportXLSX, printHTML, gearStatusFormat } from "../utils/exportUtils";
 import PackWeightWidget from "./PackWeightWidget";
 import type { ThemeColors, GearCatalogItem, MemberGearItem, AdventureMember } from "../types";
@@ -117,6 +118,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
   const { user } = useAuth();
   const { gearCatalog, memberGearMap, refreshMemberGear } = useAdventure();
   const { addToast } = useToast();
+  const isDesktop = useIsDesktop();
   const currentUserId = user?.id;
 
   const [category, setCategory] = useState<string>("all");
@@ -492,7 +494,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
       {/* Gear items by category */}
       {Object.entries(groupedItems).map(([cat, items]) => (
         <div key={cat}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: theme.heading, textTransform: "uppercase" as const, letterSpacing: 1, marginTop: 14, marginBottom: 6, fontFamily: fontDisplay }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: theme.heading, textTransform: "uppercase" as const, letterSpacing: 1, marginTop: isDesktop ? 10 : 14, marginBottom: isDesktop ? 4 : 6, fontFamily: fontDisplay }}>
             {cat}
             <span style={{ color: theme.textDimmer, fontWeight: 400, marginLeft: 6 }}>{items.length} items</span>
           </div>
@@ -513,10 +515,10 @@ export default function GearList({ troopId, adventureId, members, active, setAct
                 ...card(theme),
                 background: sel ? (sel.status === "packed" ? theme.accentBg : theme.bgCard) : theme.bgCard,
                 border: sel ? `1.5px solid ${sel.status === "packed" ? theme.borderAccent : theme.accent + "40"}` : `1px solid ${theme.border}`,
-                transition: "all .12s", padding: 12,
+                transition: "all .12s", padding: isDesktop ? 10 : 12,
               }}>
                 {/* Item header — clickable for status */}
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: isDesktop ? 6 : 8 }}>
                   {/* Status indicator / checkbox */}
                   <div
                     onClick={(e: React.MouseEvent) => { e.stopPropagation(); cycleGearStatus(item.id); }}

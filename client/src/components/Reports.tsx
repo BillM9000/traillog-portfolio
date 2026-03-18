@@ -5,6 +5,7 @@ import { useAdventure } from "../contexts/AdventureContext";
 import { useToast } from "../contexts/ToastContext";
 import { api } from "../api";
 import { card, cardTitle, fontBody, fontDisplay } from "../utils/theme";
+import { useIsDesktop } from "../hooks/useIsDesktop";
 import { computeCrewReadiness, computeMemberReadiness } from "../utils/readiness";
 import { Printer, FileSpreadsheet, ClipboardList, Users, Backpack, CalendarCheck, Map, ChevronDown, ChevronUp, Package } from "lucide-react";
 import { exportXLSX, exportXLSXWithSummary, printHTML, gearStatusFormat, gearMatrixFormat } from "../utils/exportUtils";
@@ -20,32 +21,33 @@ interface ReportCardProps {
   onXLSX?: () => void;
   onPrint?: () => void;
   theme: ThemeColors;
+  compact?: boolean;
 }
 
-function ReportCard({ icon: Icon, title, description, formats, onXLSX, onPrint, theme }: ReportCardProps) {
+function ReportCard({ icon: Icon, title, description, formats, onXLSX, onPrint, theme, compact }: ReportCardProps) {
   return (
     <div style={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "14px 16px", borderRadius: 12,
+      padding: compact ? "10px 14px" : "14px 16px", borderRadius: compact ? 10 : 12,
       background: theme.bgAlt, border: `1px solid ${theme.borderLight}`,
-      marginBottom: 8,
+      marginBottom: compact ? 6 : 8,
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: compact ? 10 : 12, flex: 1, minWidth: 0 }}>
         <div style={{
-          width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+          width: compact ? 32 : 36, height: compact ? 32 : 36, borderRadius: compact ? 8 : 10, flexShrink: 0,
           background: theme.accentBg, display: "flex", alignItems: "center", justifyContent: "center",
         }}>
-          <Icon size={18} color={theme.accent} strokeWidth={2} />
+          <Icon size={compact ? 16 : 18} color={theme.accent} strokeWidth={2} />
         </div>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: theme.heading, fontFamily: fontBody }}>{title}</div>
-          <div style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.3 }}>{description}</div>
+          <div style={{ fontSize: compact ? 12 : 13, fontWeight: 700, color: theme.heading, fontFamily: fontBody }}>{title}</div>
+          <div style={{ fontSize: compact ? 11 : 12, color: theme.textMuted, lineHeight: 1.3 }}>{description}</div>
         </div>
       </div>
       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
         {formats.includes("xlsx") && (
           <button onClick={onXLSX} title="Download Excel" style={{
-            width: 32, height: 32, borderRadius: 8, border: `1px solid ${theme.borderLight}`,
+            width: compact ? 30 : 32, height: compact ? 30 : 32, borderRadius: 8, border: `1px solid ${theme.borderLight}`,
             background: theme.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <FileSpreadsheet size={14} color={theme.accent} />
@@ -53,7 +55,7 @@ function ReportCard({ icon: Icon, title, description, formats, onXLSX, onPrint, 
         )}
         {formats.includes("print") && (
           <button onClick={onPrint} title="Print" style={{
-            width: 32, height: 32, borderRadius: 8, border: `1px solid ${theme.borderLight}`,
+            width: compact ? 30 : 32, height: compact ? 30 : 32, borderRadius: 8, border: `1px solid ${theme.borderLight}`,
             background: theme.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <Printer size={14} color={theme.accent} />
@@ -74,6 +76,7 @@ interface ReportsProps {
 
 export default function Reports({ members, analysis, adventure, isAdmin, trekDates }: ReportsProps) {
   const { theme } = useTheme();
+  const isDesktop = useIsDesktop();
   const { user } = useAuth();
   const { gearCatalog, memberGearMap, skills, itinerary, adventureId, achievements } = useAdventure();
   const { addToast } = useToast();
@@ -473,31 +476,31 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
             icon={Users} title="Crew Roster"
             description="Names, emails, roles, participation type"
             formats={["xlsx", "print"]}
-            onXLSX={exportRosterXLSX} onPrint={printRoster} theme={theme}
+            onXLSX={exportRosterXLSX} onPrint={printRoster} theme={theme} compact={isDesktop}
           />
           <ReportCard
             icon={ClipboardList} title="Gear Readiness Matrix"
             description="Every member \u00D7 every gear item \u2014 tabs for Need, Owned, Packed"
             formats={["xlsx"]}
-            onXLSX={exportGearMatrixXLSX} theme={theme}
+            onXLSX={exportGearMatrixXLSX} theme={theme} compact={isDesktop}
           />
           <ReportCard
             icon={Backpack} title="Pack Weight Summary"
             description={loadingWeights ? "Loading weights..." : "All members' weight breakdown (personal + food + water)"}
             formats={["xlsx"]}
-            onXLSX={exportPackWeightXLSX} theme={theme}
+            onXLSX={exportPackWeightXLSX} theme={theme} compact={isDesktop}
           />
           <ReportCard
             icon={CalendarCheck} title="Training RSVP Summary"
             description="Events summary + member attendance grid"
             formats={["xlsx"]}
-            onXLSX={exportRSVPXLSX} theme={theme}
+            onXLSX={exportRSVPXLSX} theme={theme} compact={isDesktop}
           />
           <ReportCard
             icon={Package} title="Crew Readiness Overview"
             description="Readiness scores by category for every member"
             formats={["print"]}
-            onPrint={printReadinessOverview} theme={theme}
+            onPrint={printReadinessOverview} theme={theme} compact={isDesktop}
           />
         </>
       )}
@@ -514,19 +517,19 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
         icon={ClipboardList} title="My Gear Checklist"
         description="Printable packing list \u2014 packed, owned, and unchecked items"
         formats={["print"]}
-        onPrint={printMyGearChecklist} theme={theme}
+        onPrint={printMyGearChecklist} theme={theme} compact={isDesktop}
       />
       <ReportCard
         icon={FileSpreadsheet} title="My Still-Need List"
         description="Gear you haven't checked off yet \u2014 great as a shopping list"
         formats={["xlsx", "print"]}
-        onXLSX={exportStillNeedXLSX} onPrint={printStillNeed} theme={theme}
+        onXLSX={exportStillNeedXLSX} onPrint={printStillNeed} theme={theme} compact={isDesktop}
       />
       <ReportCard
         icon={Map} title="Itinerary Cheat Sheet"
         description="Day-by-day trek summary \u2014 camps, miles, elevation, activities"
         formats={["print"]}
-        onPrint={printItinerary} theme={theme}
+        onPrint={printItinerary} theme={theme} compact={isDesktop}
       />
     </div>
   );

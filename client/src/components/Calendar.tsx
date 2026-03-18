@@ -4,6 +4,7 @@ import { daysInMonth, dateKey, dayOfWeek, isPast, normalizeDateEntry } from "../
 import { useTheme } from "../contexts/ThemeContext";
 import { toolbarBtn, fontBody, fontDisplay } from "../utils/theme";
 import { ChevronLeft, ChevronRight, Users, User, Check } from "lucide-react";
+import { useIsDesktop } from "../hooks/useIsDesktop";
 import type { AdventureMember, TrekDates, MonthRange } from "../types";
 
 interface CalendarMember {
@@ -57,6 +58,7 @@ interface CalendarProps {
 export default function Calendar({ members, active, months, analysis, onToggleDate, onBulkSelect, onClearAll, trekDates, allCrewsMode }: CalendarProps) {
   const dragRef = useRef<{ active: boolean; mode: string | null }>({ active: false, mode: null });
   const { theme, mode } = useTheme();
+  const isDesktop = useIsDesktop();
   const am = active !== null ? members[active] : null;
   const [viewMode, setViewMode] = useState<"my" | "group">("my");
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
@@ -234,7 +236,7 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
       )}
 
       {/* Calendar grid */}
-      <div ref={calendarRef} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(310px, 1fr))", gap: 14, position: "relative" }}>
+      <div ref={calendarRef} style={{ display: "grid", gridTemplateColumns: isDesktop ? "repeat(2, 1fr)" : "repeat(auto-fill, minmax(310px, 1fr))", gap: isDesktop ? 12 : 14, position: "relative" }}>
         {months.map(({ year, month }) => {
           const dim = daysInMonth(year, month);
           const start = dayOfWeek(year, month, 1);

@@ -4,6 +4,7 @@ import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import { card, cardTitle, fontDisplay, fontBody } from "../utils/theme";
+import { useIsDesktop } from "../hooks/useIsDesktop";
 import { exportXLSX } from "../utils/exportUtils";
 import PrintCheatSheet from "./PrintCheatSheet";
 import type { Adventure, ThemeColors, ThemeMode } from "../types";
@@ -123,6 +124,7 @@ interface InfoCardData {
 
 export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }: ItineraryProps) {
   const { theme, mode } = useTheme();
+  const isDesktop = useIsDesktop();
   const { addToast } = useToast();
   const [itin, setItin] = useState<ItineraryData | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
@@ -510,7 +512,7 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
         </div>
 
         {/* Stats */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: isDesktop ? 6 : 8, marginBottom: isDesktop ? 8 : 10 }}>
           {[
             [totalMiles.toFixed(0) + " mi", "Total"],
             [route.length + " days", "Duration"],
@@ -518,7 +520,7 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
             [String(staffedCamps), "Staffed Camps"],
             [itin.rating || "", "Rating"],
           ].map(([val, label]) => (
-            <div key={label} style={{ background: theme.statBg, borderRadius: 6, padding: "6px 10px", textAlign: "center" }}>
+            <div key={label} style={{ background: theme.statBg, borderRadius: 6, padding: isDesktop ? "4px 8px" : "6px 10px", textAlign: "center" }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: theme.heading, fontFamily: fontDisplay }}>{val}</div>
               <div style={{ fontSize: 10, color: theme.textDimmer }}>{label}</div>
             </div>
@@ -558,12 +560,12 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
 
         return (
           <div key={day.day} style={{
-            background: typeBg(day.type), borderRadius: 9, marginBottom: 5,
+            background: typeBg(day.type), borderRadius: isDesktop ? 8 : 9, marginBottom: isDesktop ? 3 : 5,
             border: typeBorder(day.type), overflow: "hidden",
           }}>
             {/* Day header — always visible */}
             <div onClick={() => hasDetail && toggle(day.day)} style={{
-              display: "flex", gap: 10, padding: "10px 12px", alignItems: "flex-start",
+              display: "flex", gap: isDesktop ? 8 : 10, padding: isDesktop ? "7px 10px" : "10px 12px", alignItems: "flex-start",
               cursor: hasDetail ? "pointer" : "default",
             }}>
               <div style={{ width: 32, textAlign: "center", flexShrink: 0 }}>
