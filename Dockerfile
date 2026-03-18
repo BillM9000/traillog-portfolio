@@ -1,18 +1,14 @@
-# Stage 1: Build frontend
-FROM node:20-alpine AS frontend
-WORKDIR /app/client
-COPY client/package*.json ./
-RUN npm install --legacy-peer-deps
-COPY client/ ./
-RUN npm run build
-
-# Stage 2: Production server
+# Single-stage: use pre-built client dist from local build
 FROM node:20-alpine
 WORKDIR /app
+
+# Server dependencies
 COPY server/package*.json ./server/
 RUN cd server && npm install --production
+
+# Copy server, pre-built client, and vote page
 COPY server/ ./server/
-COPY --from=frontend /app/client/dist ./client/dist
+COPY client/dist ./client/dist
 COPY vote-page/ ./vote-page/
 
 RUN addgroup -g 1001 appuser && adduser -D -u 1001 -G appuser appuser
