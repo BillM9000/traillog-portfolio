@@ -28,6 +28,7 @@
 | G2 | Affiliate links wiring — table + analytics tab built, connected to frontend gear items | Sprint 3 |
 | G3 | Gear product options — schema, UI, admin CRUD complete (data entry ongoing) | Sprint 3 |
 | A2 | Multi-crew availability views — All Crews picker, combined heat map, crew-grouped members | Sprint 4 |
+| A4 | Parent dashboard — scout progress cards with readiness breakdown, gear/training status | Sprint 4 |
 
 ---
 
@@ -46,7 +47,6 @@
 |---|------|--------|-------|
 | A1 | Additional adventure types — Northern Tier, Sea Base, Summit ("Coming Soon") | Large | Needs itinerary data + UI |
 | A3 | Photo/file uploads — share trek docs, training materials | Medium | VPS file storage for now |
-| A4 | Parent dashboard — dedicated view for parents to track scout progress | Medium | New user role/view |
 | A5 | Troop networking — connect troops with same trek dates for shared training | Large | Major social feature |
 
 ## 💰 Business & Monetization

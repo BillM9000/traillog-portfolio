@@ -27,6 +27,7 @@ import AdminPanel from "./components/AdminPanel";
 import TrainingEvents from "./components/TrainingEvents";
 import ProfilePage from "./components/ProfilePage";
 import Reports from "./components/Reports";
+import ParentDashboard from "./components/ParentDashboard";
 
 function AnnouncementBanner({ settings }) {
   if (!settings?.announcement_enabled || !settings?.announcement_banner) return null;
@@ -470,6 +471,16 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
         view={view}
         allCrewsMode={selectedCrewId === "all"}
       />
+
+      {/* Parent Dashboard — show for adults with linked scouts */}
+      {(() => {
+        const myMember = members.find(m => m.user_id === user.id);
+        const linkedScouts = myMember?.linked_scouts?.filter(id => id !== 0) || [];
+        if (linkedScouts.length > 0 && selectedCrewId !== "all") {
+          return <ParentDashboard linkedScouts={linkedScouts} onViewScout={(idx) => { setActive(idx); setView("training"); }} />;
+        }
+        return null;
+      })()}
 
       {/* CTA Banner */}
       <CTABanner members={members} active={active} setView={setView} theme={theme} />
