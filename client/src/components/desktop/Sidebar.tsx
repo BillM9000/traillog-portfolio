@@ -197,7 +197,7 @@ export default function Sidebar({
         <SidebarItem
           icon={LogOut} label="Sign Out" active={false}
           collapsed={collapsed} onClick={onLogout}
-          textColor={sidebarTextMuted} hoverBg={hoverBg} activeBg={activeBg}
+          textColor={sidebarTextDim} hoverBg={hoverBg} activeBg={activeBg}
         />
 
         {/* Collapse toggle */}
