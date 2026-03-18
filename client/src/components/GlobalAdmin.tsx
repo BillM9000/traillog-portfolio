@@ -314,8 +314,8 @@ export default function GlobalAdmin({ isGlobalAdmin, troopId, onClose, onEnterTr
 
   return (
     <div className={clsx(
-      alwaysOpen ? "min-h-screen bg-tl-bg font-body" : "fixed inset-0 z-[1000] overflow-y-auto"
-    )} style={alwaysOpen ? undefined : { background: "rgba(0,0,0,0.5)" }}>
+      alwaysOpen ? "min-h-screen bg-tl-bg font-body" : "fixed inset-0 z-[1000] overflow-y-auto bg-black/50"
+    )}>
       <div className={clsx(
         "max-w-[700px] bg-tl-card border border-tl-border",
         alwaysOpen ? "mx-auto min-h-screen" : "mx-auto my-5 rounded-2xl shadow-lg"
@@ -333,7 +333,7 @@ export default function GlobalAdmin({ isGlobalAdmin, troopId, onClose, onEnterTr
               </>
             )}
             {alwaysOpen && onClose && (
-              <button onClick={onClose} className="text-[11px] text-tl-accent font-body font-semibold px-2.5 py-1 rounded-[5px] cursor-pointer" style={{ background: "none", border: `1px solid ${theme.accent}40` }}>Lobby</button>
+              <button onClick={onClose} className="text-[11px] text-tl-accent font-body font-semibold px-2.5 py-1 rounded-[5px] cursor-pointer bg-transparent" style={{ border: `1px solid ${theme.accent}40` }}>Lobby</button>
             )}
             {alwaysOpen && onLogout ? (
               <button onClick={onLogout} className="text-[11px] text-tl-warn font-body font-semibold px-2.5 py-1 rounded-[5px] cursor-pointer bg-transparent border border-tl-warn-bg">Sign Out</button>
@@ -459,7 +459,7 @@ function CatalogTab({ catalog, grouped, search, setSearch, theme, addToast, refr
                 if (!confirm(`Archive "${item.name}"?`)) return;
                 await api.deleteGearCatalogItem(item.id);
                 addToast("Archived", "success"); refreshCatalog();
-              }} className="px-2 py-0.5 rounded text-[9px] cursor-pointer font-body bg-transparent" style={{ border: "1px solid #DC262640", color: "#DC2626" }}>Archive</button>
+              }} className="px-2 py-0.5 rounded text-[9px] cursor-pointer font-body bg-transparent border border-red-600/25 text-red-600">Archive</button>
             </div>
           ))}
           {/* Show existing product options under each item */}
@@ -476,7 +476,7 @@ function CatalogTab({ catalog, grouped, search, setSearch, theme, addToast, refr
                   <button onClick={async () => {
                     await api.deleteProductOption(opt.id);
                     addToast("Removed", "success"); refreshCatalog();
-                  }} className="px-1.5 py-px rounded-sm text-[8px] cursor-pointer font-body bg-transparent" style={{ border: "1px solid #DC262640", color: "#DC2626" }}>{"\u2715"}</button>
+                  }} className="px-1.5 py-px rounded-sm text-[8px] cursor-pointer font-body bg-transparent border border-red-600/25 text-red-600">{"\u2715"}</button>
                 </div>
               ))}
             </div>
@@ -621,7 +621,7 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop }:
       </div>
 
       {showCreate && createStep === 2 && (
-        <div className="mb-3 p-3.5 rounded-[10px] bg-tl-bg-alt" style={{ border: `1.5px solid ${theme.borderAccent}` }}>
+        <div className="mb-3 p-3.5 rounded-[10px] bg-tl-bg-alt border-[1.5px] border-tl-border-accent">
           <div className="text-xs font-bold text-tl-heading mb-1 font-display">Set Up First Adventure</div>
           <div className="text-[10px] text-tl-text-dim mb-2.5">
             <strong className="text-tl-heading">{createdTroopName}</strong> is ready! Now create the first adventure so members can join.
@@ -649,13 +649,11 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop }:
                 {ADVENTURE_TYPES.map((t: any) => (
                   <button key={t.id} type="button" disabled={!t.enabled}
                     onClick={() => t.enabled && setAdvForm({ ...advForm, adventure_type: t.id })}
-                    className="relative p-2.5 rounded-md font-body text-left"
-                    style={{
-                      cursor: t.enabled ? "pointer" : "default",
-                      border: advForm.adventure_type === t.id ? `2px solid ${theme.accent}` : `1px solid ${theme.borderLight}`,
-                      background: advForm.adventure_type === t.id ? theme.accentBg : theme.bgInput,
-                      opacity: t.enabled ? 1 : 0.45,
-                    }}>
+                    className={clsx(
+                      "relative p-2.5 rounded-md font-body text-left",
+                      advForm.adventure_type === t.id ? "border-2 border-tl-accent bg-tl-accent-bg" : "border border-tl-border-light bg-tl-input",
+                      t.enabled ? "cursor-pointer opacity-100" : "cursor-default opacity-45"
+                    )}>
                     <div className="text-xs mb-px">{t.icon}</div>
                     <div className={clsx("text-[10px] font-bold", t.enabled ? "text-tl-heading" : "text-tl-text-dim")}>{t.name}</div>
                     <div className="text-[9px] text-tl-text-dim">{t.location}</div>
@@ -699,14 +697,14 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop }:
               })}
             </select>
             <div className="flex gap-1.5">
-              <button type="submit" disabled={creating} className="flex-1 py-1.5 rounded-md border-none bg-tl-accent text-white text-[11px] font-bold font-display" style={{ cursor: creating ? "wait" : "pointer" }}>{creating ? "..." : "Create Adventure"}</button>
+              <button type="submit" disabled={creating} className={clsx("flex-1 py-1.5 rounded-md border-none bg-tl-accent text-white text-[11px] font-bold font-display", creating ? "cursor-wait" : "cursor-pointer")}>{creating ? "..." : "Create Adventure"}</button>
             </div>
           </form>
         </div>
       )}
 
       {showCreate && createStep === 1 && (
-        <div className="mb-3 p-3.5 rounded-[10px] bg-tl-bg-alt" style={{ border: `1.5px solid ${theme.borderAccent}` }}>
+        <div className="mb-3 p-3.5 rounded-[10px] bg-tl-bg-alt border-[1.5px] border-tl-border-accent">
           <div className="text-xs font-bold text-tl-heading mb-2 font-display">Create a Troop</div>
           <form onSubmit={handleCreate}>
             <input value={newTroop.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTroop({ ...newTroop, name: e.target.value })} placeholder="Troop name (e.g. Troop 444)" className="tl-input text-[11px] mb-1.5" required />
@@ -763,7 +761,7 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop }:
             </div>
             <div className="flex gap-1.5">
               <button type="button" onClick={() => { setShowCreate(false); setCreateStep(1); }} className="flex-1 py-1.5 rounded-md border border-tl-border-light bg-transparent text-tl-text-dim text-[11px] font-semibold cursor-pointer font-body">Cancel</button>
-              <button type="submit" disabled={creating} className="flex-1 py-1.5 rounded-md border-none bg-tl-accent text-white text-[11px] font-bold font-display" style={{ cursor: creating ? "wait" : "pointer" }}>{creating ? "..." : "Create"}</button>
+              <button type="submit" disabled={creating} className={clsx("flex-1 py-1.5 rounded-md border-none bg-tl-accent text-white text-[11px] font-bold font-display", creating ? "cursor-wait" : "cursor-pointer")}>{creating ? "..." : "Create"}</button>
             </div>
           </form>
         </div>
@@ -828,12 +826,12 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop }:
                       {m.status === "pending" ? (
                         <div className="flex gap-1">
                           <button onClick={() => handleApprove(t.id, m.user_id)} className="px-2 py-0.5 rounded text-[9px] font-semibold cursor-pointer font-body bg-tl-accent text-white border-none">Approve</button>
-                          <button onClick={() => handleDeny(t.id, m.user_id)} className="px-2 py-0.5 rounded text-[9px] font-semibold cursor-pointer font-body bg-transparent" style={{ border: "1px solid #DC262640", color: "#DC2626" }}>Deny</button>
+                          <button onClick={() => handleDeny(t.id, m.user_id)} className="px-2 py-0.5 rounded text-[9px] font-semibold cursor-pointer font-body bg-transparent border border-red-600/25 text-red-600">Deny</button>
                         </div>
                       ) : (
                         <div className="flex gap-1 items-center">
                           <span className="text-[9px] px-1 py-px rounded-sm font-semibold text-tl-accent" style={{ background: `${theme.accent}15` }}>{m.status}</span>
-                          <button onClick={() => handleRemove(t.id, m.user_id)} className="px-1.5 py-0.5 rounded text-[9px] cursor-pointer font-body bg-transparent" style={{ border: "1px solid #DC262640", color: "#DC2626" }}>Remove</button>
+                          <button onClick={() => handleRemove(t.id, m.user_id)} className="px-1.5 py-0.5 rounded text-[9px] cursor-pointer font-body bg-transparent border border-red-600/25 text-red-600">Remove</button>
                         </div>
                       )}
                     </div>
@@ -845,20 +843,23 @@ function TroopsTab({ troops, loaded, theme, addToast, onRefresh, onEnterTroop }:
               <div className="mt-2.5 pt-2 border-t border-tl-border-light">
                 {deleteConfirm === t.id ? (
                   <div>
-                    <div className="text-[11px] font-semibold mb-1.5" style={{ color: "#DC2626" }}>
+                    <div className="text-[11px] font-semibold mb-1.5 text-red-600">
                       Type &ldquo;{t.name}&rdquo; to confirm deletion. This removes the troop, all adventures, members, and gear data permanently.
                     </div>
                     <div className="flex gap-1.5">
                       <input value={deleteInput} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDeleteInput(e.target.value)} placeholder={t.name}
                         className="tl-input flex-1 text-[11px]" />
                       <button onClick={() => deleteInput === t.name && handleDelete(t.id)} disabled={deleteInput !== t.name}
-                        className="px-3 py-1 rounded-[5px] border-none text-[10px] font-bold font-body text-white" style={{ cursor: deleteInput === t.name ? "pointer" : "not-allowed", background: deleteInput === t.name ? "#DC2626" : "#DC262640" }}>Delete</button>
+                        className={clsx(
+                          "px-3 py-1 rounded-[5px] border-none text-[10px] font-bold font-body text-white",
+                          deleteInput === t.name ? "cursor-pointer bg-red-600" : "cursor-not-allowed bg-red-600/25"
+                        )}>Delete</button>
                       <button onClick={() => { setDeleteConfirm(null); setDeleteInput(""); }}
                         className="px-2.5 py-1 rounded-[5px] border border-tl-border-light text-[10px] cursor-pointer font-body bg-transparent text-tl-text-dim">Cancel</button>
                     </div>
                   </div>
                 ) : (
-                  <button onClick={() => setDeleteConfirm(t.id)} className="px-2.5 py-1 rounded-[5px] bg-transparent text-[10px] font-semibold cursor-pointer font-body" style={{ border: "1px solid #DC262630", color: "#DC2626" }}>Delete Troop</button>
+                  <button onClick={() => setDeleteConfirm(t.id)} className="px-2.5 py-1 rounded-[5px] bg-transparent text-[10px] font-semibold cursor-pointer font-body border border-red-600/20 text-red-600">Delete Troop</button>
                 )}
               </div>
             </div>
@@ -911,8 +912,8 @@ function AffiliateTab({ stats, theme }: AffiliateTabProps): React.ReactElement {
             const h = Math.max((d.clicks / maxClicks) * 70, 2);
             return (
               <div key={i} title={`${d.date}: ${d.clicks} clicks`}
-                className="flex-1 rounded-t min-w-1"
-                style={{ height: h, background: d.clicks > 0 ? theme.accent : theme.borderLight }} />
+                className={clsx("flex-1 rounded-t min-w-1", d.clicks > 0 ? "bg-tl-accent" : "bg-tl-border-light")}
+                style={{ height: h }} />
             );
           })}
         </div>
@@ -921,7 +922,7 @@ function AffiliateTab({ stats, theme }: AffiliateTabProps): React.ReactElement {
   );
 }
 
-function StatCard({ label, value, theme }: StatCardProps): React.ReactElement {
+function StatCard({ label, value }: StatCardProps): React.ReactElement {
   return (
     <div className="flex-1 px-3 py-2.5 rounded-lg bg-tl-bg-alt border border-tl-border-light text-center">
       <div className="text-xl font-extrabold text-tl-accent font-display">{value}</div>
@@ -959,8 +960,8 @@ function SettingsTab({ settings, loaded, setSettings, theme, addToast, allUsers 
         <div className="text-xs font-semibold text-tl-text font-body">{label}</div>
         {desc && <div className="text-[10px] text-tl-text-dimmer mt-0.5">{desc}</div>}
       </div>
-      <div onClick={() => onChange(!checked)} className="relative cursor-pointer transition-colors duration-200 rounded-[11px]" style={{ width: 40, height: 22, background: checked ? theme.accent : theme.borderLight }}>
-        <div className="absolute top-0.5 rounded-[9px] bg-white transition-[left] duration-200" style={{ width: 18, height: 18, left: checked ? 20 : 2, boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+      <div onClick={() => onChange(!checked)} className={clsx("relative cursor-pointer transition-colors duration-200 rounded-[11px]", checked ? "bg-tl-accent" : "bg-tl-border-light")} style={{ width: 40, height: 22 }}>
+        <div className="absolute top-0.5 rounded-[9px] bg-white transition-[left] duration-200 shadow-sm" style={{ width: 18, height: 18, left: checked ? 20 : 2 }} />
       </div>
     </div>
   );
@@ -1060,17 +1061,16 @@ function GearRefreshSection({ theme, addToast }: GearRefreshSectionProps): React
       <div className="text-xs font-semibold text-tl-text font-body">AI Gear Recommendations</div>
       <div className="text-[10px] text-tl-text-dimmer mt-0.5 mb-1.5">
         Background job refreshes cached recommendations every 7 days. Last refresh: {lastRefresh}
-        {status?.in_progress && <span className="ml-1.5" style={{ color: "#f59e0b" }}>(refresh in progress)</span>}
+        {status?.in_progress && <span className="ml-1.5 text-amber-500">(refresh in progress)</span>}
       </div>
       <button
         onClick={handleRefresh}
         disabled={refreshing || status?.in_progress}
-        className="px-3.5 py-1.5 rounded-md border-none text-[11px] font-semibold font-body text-white"
-        style={{
-          cursor: refreshing ? "not-allowed" : "pointer",
-          background: refreshing ? theme.borderLight : "#10b981",
-          opacity: refreshing || status?.in_progress ? 0.6 : 1,
-        }}
+        className={clsx(
+          "px-3.5 py-1.5 rounded-md border-none text-[11px] font-semibold font-body text-white",
+          refreshing ? "cursor-not-allowed bg-tl-border-light" : "cursor-pointer bg-emerald-500",
+          (refreshing || status?.in_progress) && "opacity-60"
+        )}
       >
         {refreshing || status?.in_progress ? "Refreshing..." : "Refresh AI Gear Recommendations"}
       </button>
@@ -1121,7 +1121,7 @@ function SystemAdminsSection({ allUsers, theme, addToast }: SystemAdminsSectionP
             <div className="text-[10px] text-tl-text-dimmer">{a.email}</div>
           </div>
           {admins.length > 1 && (
-            <button onClick={() => handleDemote(a.id, a.name || a.email)} className="text-[10px] px-2 py-1 rounded cursor-pointer font-body bg-transparent" style={{ border: `1px solid ${(theme as any).danger || "#dc3545"}`, color: (theme as any).danger || "#dc3545" }}>Remove</button>
+            <button onClick={() => handleDemote(a.id, a.name || a.email)} className="text-[10px] px-2 py-1 rounded cursor-pointer font-body bg-transparent border border-tl-danger text-tl-danger">Remove</button>
           )}
         </div>
       ))}
@@ -1158,20 +1158,15 @@ function TroopOverridesTab({ grouped, search, setSearch, hiddenIds, troopId, tro
           {items.map((item: ExtendedCatalogItem) => {
             const isHidden = hiddenIds.has(item.id);
             return (
-              <div key={item.id} className="flex items-center gap-2 px-2 py-1 rounded-md mb-0.5 border border-tl-border-light"
-                style={{
-                  background: isHidden ? theme.bgAlt + "80" : theme.bgAlt,
-                  opacity: isHidden ? 0.5 : 1,
-                }}>
+              <div key={item.id} className={clsx("flex items-center gap-2 px-2 py-1 rounded-md mb-0.5 border border-tl-border-light bg-tl-bg-alt", isHidden && "opacity-50")}>
                 <span className={clsx("flex-1 text-[11px] text-tl-text", isHidden ? "font-normal line-through" : "font-semibold")}>{item.name}</span>
                 <button onClick={async () => {
                   await api.setTroopGearOverride(troopId!, item.id, !isHidden);
                   refreshTroopData(); addToast(isHidden ? "Shown" : "Hidden", "success");
-                }} className="px-2 py-0.5 rounded border-none text-[9px] font-semibold cursor-pointer font-body"
-                  style={{
-                    background: isHidden ? theme.accent : "#DC262620",
-                    color: isHidden ? "#fff" : "#DC2626",
-                  }}>{isHidden ? "Show" : "Hide"}</button>
+                }} className={clsx(
+                  "px-2 py-0.5 rounded border-none text-[9px] font-semibold cursor-pointer font-body",
+                  isHidden ? "bg-tl-accent text-white" : "bg-red-600/[0.13] text-red-600"
+                )}>{isHidden ? "Show" : "Hide"}</button>
               </div>
             );
           })}
@@ -1193,7 +1188,7 @@ function TroopOverridesTab({ grouped, search, setSearch, hiddenIds, troopId, tro
             <span className="flex-1 text-[11px] text-tl-text font-semibold">{item.name}</span>
             <span className="text-[9px] text-tl-text-dimmer">{item.category}</span>
             <button onClick={async () => { await api.deleteTroopCustomGear(troopId!, item.id); refreshTroopData(); addToast("Removed", "success"); }}
-              className="px-2 py-0.5 rounded text-[9px] cursor-pointer font-body bg-transparent" style={{ border: "1px solid #DC262640", color: "#DC2626" }}>Remove</button>
+              className="px-2 py-0.5 rounded text-[9px] cursor-pointer font-body bg-transparent border border-red-600/25 text-red-600">Remove</button>
           </div>
         ))}
       </div>
@@ -1207,7 +1202,7 @@ function ItemEditModal({ item, theme, onClose, onSave, simple }: ItemEditModalPr
   const set = (k: string, v: unknown): void => setForm(prev => ({ ...prev, [k]: v }));
 
   return (
-    <div className="fixed inset-0 z-[1100] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)" }}>
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50">
       <div className="w-[450px] bg-tl-card rounded-[14px] border border-tl-border shadow-lg p-5">
         <h3 className="text-[15px] font-bold text-tl-heading font-display mt-0">
           {item.id ? "Edit Item" : "Add Item"}
@@ -1245,7 +1240,7 @@ function ItemEditModal({ item, theme, onClose, onSave, simple }: ItemEditModalPr
         </div>
         <div className="flex gap-2 justify-end mt-4">
           <button onClick={onClose} className="px-3.5 py-1.5 rounded-md border border-tl-border-light bg-transparent text-tl-text-dim text-[11px] cursor-pointer font-body">Cancel</button>
-          <button onClick={() => onSave(form)} className="px-3.5 py-1.5 rounded-md border-none text-white text-[11px] font-semibold cursor-pointer font-body" style={{ background: (theme as any).forestDeep || theme.accent }}>Save</button>
+          <button onClick={() => onSave(form)} className="px-3.5 py-1.5 rounded-md border-none text-white text-[11px] font-semibold cursor-pointer font-body bg-tl-forest-deep">Save</button>
         </div>
       </div>
     </div>
@@ -1258,7 +1253,7 @@ function OptionEditModal({ option, gearId, theme, onClose, onSave }: OptionEditM
   const set = (k: string, v: unknown): void => setForm(prev => ({ ...prev, [k]: v }));
 
   return (
-    <div className="fixed inset-0 z-[1100] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)" }}>
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50">
       <div className="w-[450px] bg-tl-card rounded-[14px] border border-tl-border shadow-lg p-5">
         <h3 className="text-[15px] font-bold text-tl-heading font-display mt-0">
           {option.id ? "Edit Product Option" : "Add Product Option"}
@@ -1287,7 +1282,7 @@ function OptionEditModal({ option, gearId, theme, onClose, onSave }: OptionEditM
         </div>
         <div className="flex gap-2 justify-end mt-4">
           <button onClick={onClose} className="px-3.5 py-1.5 rounded-md border border-tl-border-light bg-transparent text-tl-text-dim text-[11px] cursor-pointer font-body">Cancel</button>
-          <button onClick={() => onSave(form)} className="px-3.5 py-1.5 rounded-md border-none text-white text-[11px] font-semibold cursor-pointer font-body" style={{ background: (theme as any).forestDeep || theme.accent }}>Save</button>
+          <button onClick={() => onSave(form)} className="px-3.5 py-1.5 rounded-md border-none text-white text-[11px] font-semibold cursor-pointer font-body bg-tl-forest-deep">Save</button>
         </div>
       </div>
     </div>
