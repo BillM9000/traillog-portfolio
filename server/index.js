@@ -59,6 +59,8 @@ import db, {
   getReadinessPlan, upsertReadinessPlan, deleteReadinessPlan,
   getReadinessProgress, upsertReadinessProgress,
   getCrewReadinessDashboard, getGearStatusSummary,
+  // Documents
+  getAdventureDocuments, addAdventureDocument, getAdventureDocument, deleteAdventureDocument,
 } from "./db.js";
 import {
   sendJoinRequestEmail, sendParentNotificationEmail, sendVerificationEmail,
@@ -106,7 +108,7 @@ function safeError(res, e, status = 500) {
 }
 
 app.set("trust proxy", 1);
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "6mb" }));
 
 // ── Security Headers ──
 app.use(helmet({
@@ -648,6 +650,8 @@ app.put("/api/troops/:troopId", requireAuth, requireTroopAdmin, (req, res) => {
 
 const LOGO_DIR = join(process.env.DATA_DIR || "./data", "troop-logos");
 if (!existsSync(LOGO_DIR)) mkdirSync(LOGO_DIR, { recursive: true });
+const DOCS_DIR = join(process.env.DATA_DIR || "./data", "adventure-documents");
+if (!existsSync(DOCS_DIR)) mkdirSync(DOCS_DIR, { recursive: true });
 
 // Serve logo (no auth — logos are public)
 app.get("/api/troops/:troopId/logo", (req, res) => {
@@ -1038,6 +1042,80 @@ app.put("/api/adventures/:adventureId/milestones-config", requireAuth, requireAd
 app.delete("/api/adventures/:adventureId", requireAuth, requireAdventureAdmin, (req, res) => {
   try {
     deleteAdventure(parseId(req.params.adventureId));
+    res.json({ ok: true });
+  } catch (e) { safeError(res, e); }
+});
+
+// ═══════════════════════════════════════════
+// DOCUMENT ROUTES
+// ═══════════════════════════════════════════
+
+const ALLOWED_DOC_TYPES = new Set([
+  "application/pdf", "image/jpeg", "image/png", "image/webp", "image/gif",
+  "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/plain", "text/csv",
+]);
+const MAX_DOC_SIZE = 5 * 1024 * 1024; // 5MB
+
+// List documents for an adventure
+app.get("/api/adventures/:adventureId/documents", requireAuth, requireAdventureMember, (req, res) => {
+  try { res.json(getAdventureDocuments(parseId(req.params.adventureId))); }
+  catch (e) { safeError(res, e); }
+});
+
+// Upload document (admin only, base64 in JSON body)
+app.post("/api/adventures/:adventureId/documents", requireAuth, requireAdventureAdmin, (req, res) => {
+  try {
+    const adventureId = parseId(req.params.adventureId);
+    const { file, originalName, description } = req.body;
+    if (!file || !originalName) return res.status(400).json({ error: "file and originalName required" });
+
+    // Parse base64 data URL
+    const match = file.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) return res.status(400).json({ error: "Invalid file format (expected base64 data URL)" });
+    const mimeType = match[1];
+    const buffer = Buffer.from(match[2], "base64");
+
+    if (!ALLOWED_DOC_TYPES.has(mimeType)) return res.status(400).json({ error: "File type not allowed" });
+    if (buffer.length > MAX_DOC_SIZE) return res.status(400).json({ error: "File too large (max 5MB)" });
+
+    // Create adventure-specific directory
+    const advDir = join(DOCS_DIR, String(adventureId));
+    if (!existsSync(advDir)) mkdirSync(advDir, { recursive: true });
+
+    // Generate unique filename
+    const ext = originalName.includes(".") ? originalName.slice(originalName.lastIndexOf(".")) : "";
+    const storedName = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}${ext}`;
+    const filePath = join(advDir, storedName);
+    writeFileSync(filePath, buffer);
+
+    const result = addAdventureDocument(adventureId, storedName, originalName, filePath, mimeType, buffer.length, description || "", req.user.id);
+    logger.info({ action: "document_upload", adventureId, docId: result.lastInsertRowid, originalName, size: buffer.length, userId: req.user.id }, "Document uploaded");
+    res.json({ ok: true, id: result.lastInsertRowid });
+  } catch (e) { safeError(res, e); }
+});
+
+// Download/view document
+app.get("/api/adventures/:adventureId/documents/:docId/download", requireAuth, requireAdventureMember, (req, res) => {
+  try {
+    const doc = getAdventureDocument(parseId(req.params.docId));
+    if (!doc || doc.adventure_id !== parseId(req.params.adventureId)) return res.status(404).json({ error: "Document not found" });
+    if (!existsSync(doc.file_path)) return res.status(404).json({ error: "File not found on disk" });
+    res.setHeader("Content-Disposition", `inline; filename="${doc.original_name}"`);
+    res.setHeader("Content-Type", doc.mime_type || "application/octet-stream");
+    res.sendFile(doc.file_path);
+  } catch (e) { safeError(res, e); }
+});
+
+// Delete document (admin only)
+app.delete("/api/adventures/:adventureId/documents/:docId", requireAuth, requireAdventureAdmin, (req, res) => {
+  try {
+    const doc = getAdventureDocument(parseId(req.params.docId));
+    if (!doc || doc.adventure_id !== parseId(req.params.adventureId)) return res.status(404).json({ error: "Document not found" });
+    if (existsSync(doc.file_path)) { try { unlinkSync(doc.file_path); } catch {} }
+    deleteAdventureDocument(doc.id);
+    logger.info({ action: "document_delete", adventureId: doc.adventure_id, docId: doc.id, originalName: doc.original_name, userId: req.user.id }, "Document deleted");
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });

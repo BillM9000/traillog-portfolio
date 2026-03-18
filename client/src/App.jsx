@@ -8,7 +8,7 @@ import { DAYS_FULL } from "./utils/constants";
 import { getMonthsRange, daysInMonth, dateKey, parseDateKey, dayOfWeek, isPast } from "./utils/dates";
 import { fontBody, fontDisplay } from "./utils/theme";
 
-import { Calendar as CalendarIcon, ClipboardCheck, Map, Backpack, FileText } from "lucide-react";
+import { Calendar as CalendarIcon, ClipboardCheck, Map, Backpack, FileText, FolderOpen } from "lucide-react";
 import LandingPage from "./components/LandingPage";
 import ProfileSetup from "./components/ProfileSetup";
 import HomeDashboard from "./components/HomeDashboard";
@@ -28,6 +28,7 @@ import TrainingEvents from "./components/TrainingEvents";
 import ProfilePage from "./components/ProfilePage";
 import Reports from "./components/Reports";
 import ParentDashboard from "./components/ParentDashboard";
+import Documents from "./components/Documents";
 
 function AnnouncementBanner({ settings }) {
   if (!settings?.announcement_enabled || !settings?.announcement_banner) return null;
@@ -202,7 +203,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
   const [troopMembers, setTroopMembers] = useState([]);
   const [troop, setTroop] = useState(null);
   const [active, setActive] = useState(null);
-  const validTabs = ["calendar", "skills", "itinerary", "gear", "reports"];
+  const validTabs = ["calendar", "skills", "itinerary", "gear", "reports", "docs"];
   const [view, setView] = useState(initialTab && validTabs.includes(initialTab) ? initialTab : "calendar");
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [confirmManualDelete, setConfirmManualDelete] = useState(null); // { id, name }
@@ -411,6 +412,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
     ["itinerary", "Itinerary", Map],
     ["gear", "Gear", Backpack],
     ["reports", "Reports", FileText],
+    ["docs", "Docs", FolderOpen],
   ];
 
   return (
@@ -431,7 +433,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
 
       {/* Crew picker — only when multiple crews */}
       {crews.length > 1 && (
-        <div style={{ padding: "0 16px", marginBottom: 8, position: "relative", zIndex: 3 }}>
+        <div style={{ padding: "36px 16px 8px" }}>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             <button onClick={() => setSelectedCrewId("all")} style={{
               padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700,
@@ -544,6 +546,9 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
         )}
         {view === "reports" && (
           <Reports members={members} analysis={analysis} adventure={adventure} isAdmin={isAdmin} trekDates={trekDates} />
+        )}
+        {view === "docs" && (
+          <Documents adventureId={adventureId} isAdmin={isAdmin} />
         )}
       </div>
 

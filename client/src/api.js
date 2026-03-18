@@ -235,6 +235,12 @@ export const api = {
   trackAffiliateClick: (productOptionId, gearCatalogId, url) =>
     request("/affiliate/click", { method: "POST", body: JSON.stringify({ product_option_id: productOptionId, gear_catalog_id: gearCatalogId, url }) }),
 
+  // Documents
+  getDocuments: (advId) => request(`/adventures/${advId}/documents`),
+  uploadDocument: (advId, file, originalName, description) => request(`/adventures/${advId}/documents`, { method: "POST", body: JSON.stringify({ file, originalName, description }) }),
+  getDocumentUrl: (advId, docId) => `${BASE}/adventures/${advId}/documents/${docId}/download`,
+  deleteDocument: (advId, docId) => request(`/adventures/${advId}/documents/${docId}`, { method: "DELETE" }),
+
   // Public settings (no auth)
   getPublicSettings: () => fetch("/api/public-settings").then(r => r.json()),
 };

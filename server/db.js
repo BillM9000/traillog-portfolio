@@ -434,7 +434,7 @@ db.exec(`
 `);
 
 // ── Schema Migration ──
-const CURRENT_SCHEMA_VERSION = 24;
+const CURRENT_SCHEMA_VERSION = 25;
 
 function migrate() {
   const vRow = db.prepare("SELECT value FROM platform_settings WHERE key = 'schema_version'").get();
@@ -890,6 +890,25 @@ function migrate() {
     if (version < 24) {
       tryAlter("ALTER TABLE adventures ADD COLUMN attendance_milestones TEXT");
       console.log("[v24] Added attendance_milestones column to adventures");
+    }
+
+    // ── v25 migration: adventure documents ──
+    if (version < 25) {
+      db.exec(`CREATE TABLE IF NOT EXISTS adventure_documents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        adventure_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        original_name TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        mime_type TEXT,
+        size INTEGER DEFAULT 0,
+        description TEXT DEFAULT '',
+        uploaded_by INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (adventure_id) REFERENCES adventures(id),
+        FOREIGN KEY (uploaded_by) REFERENCES users(id)
+      )`);
+      console.log("[v25] Created adventure_documents table");
     }
 
     db.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('schema_version', ?)").run(String(CURRENT_SCHEMA_VERSION));
@@ -3402,6 +3421,33 @@ export function getLastGearRefreshTime() {
     "SELECT MAX(generated_at) as last_refresh FROM ai_gear_recommendations"
   ).get();
   return row?.last_refresh || null;
+}
+
+// ── Adventure Documents ──
+
+export function getAdventureDocuments(adventureId) {
+  return db.prepare(`
+    SELECT d.*, u.name as uploader_name
+    FROM adventure_documents d
+    LEFT JOIN users u ON d.uploaded_by = u.id
+    WHERE d.adventure_id = ?
+    ORDER BY d.created_at DESC
+  `).all(adventureId);
+}
+
+export function addAdventureDocument(adventureId, name, originalName, filePath, mimeType, size, description, uploadedBy) {
+  return db.prepare(`
+    INSERT INTO adventure_documents (adventure_id, name, original_name, file_path, mime_type, size, description, uploaded_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(adventureId, name, originalName, filePath, mimeType, size, description, uploadedBy);
+}
+
+export function getAdventureDocument(docId) {
+  return db.prepare("SELECT * FROM adventure_documents WHERE id = ?").get(docId);
+}
+
+export function deleteAdventureDocument(docId) {
+  return db.prepare("DELETE FROM adventure_documents WHERE id = ?").run(docId);
 }
 
 export default db;
