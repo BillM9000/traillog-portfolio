@@ -1,34 +1,51 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import { useAuth } from "./contexts/AuthContext";
 import { useTheme } from "./contexts/ThemeContext";
 import { AdventureProvider, useAdventure } from "./contexts/AdventureContext";
 import { useToast } from "./contexts/ToastContext";
 import { api } from "./api";
 import { DAYS_FULL } from "./utils/constants";
-import { getMonthsRange, daysInMonth, dateKey, parseDateKey, dayOfWeek, isPast } from "./utils/dates";
+import { getMonthsRange, daysInMonth, dateKey, parseDateKey, dayOfWeek, isPast, normalizeDateEntry } from "./utils/dates";
 import { fontBody, fontDisplay } from "./utils/theme";
 
 import { Calendar as CalendarIcon, ClipboardCheck, Map, Backpack, FileText, FolderOpen } from "lucide-react";
-import LandingPage from "./components/LandingPage";
-import ProfileSetup from "./components/ProfileSetup";
-import HomeDashboard from "./components/HomeDashboard";
-import HelpSystem from "./components/HelpSystem";
-import AdventurePicker from "./components/AdventurePicker";
+
+// Shared components — always in main bundle
 import Header from "./components/Header";
 import MemberBar from "./components/MemberBar";
-import Calendar, { normalizeDateEntry } from "./components/Calendar";
-import Skills from "./components/Skills";
-import Itinerary from "./components/Itinerary";
-import GearList from "./components/GearList";
-import GearAIChat from "./components/GearAIChat";
-import GlobalAdmin from "./components/GlobalAdmin";
 import ConfirmModal from "./components/ConfirmModal";
-import AdminPanel from "./components/AdminPanel";
-import TrainingEvents from "./components/TrainingEvents";
-import ProfilePage from "./components/ProfilePage";
-import Reports from "./components/Reports";
-import ParentDashboard from "./components/ParentDashboard";
-import Documents from "./components/Documents";
+
+// Lazy-loaded: top-level views (mutually exclusive)
+const LandingPage = lazy(() => import("./components/LandingPage"));
+const ProfileSetup = lazy(() => import("./components/ProfileSetup"));
+const HomeDashboard = lazy(() => import("./components/HomeDashboard"));
+const ProfilePage = lazy(() => import("./components/ProfilePage"));
+const AdventurePicker = lazy(() => import("./components/AdventurePicker"));
+const HelpSystem = lazy(() => import("./components/HelpSystem"));
+
+// Lazy-loaded: tab views (only one visible at a time)
+const Calendar = lazy(() => import("./components/Calendar"));
+const Skills = lazy(() => import("./components/Skills"));
+const Itinerary = lazy(() => import("./components/Itinerary"));
+const GearList = lazy(() => import("./components/GearList"));
+const Reports = lazy(() => import("./components/Reports"));
+const Documents = lazy(() => import("./components/Documents"));
+const TrainingEvents = lazy(() => import("./components/TrainingEvents"));
+const ParentDashboard = lazy(() => import("./components/ParentDashboard"));
+
+// Lazy-loaded: modals (opened on demand)
+const AdminPanel = lazy(() => import("./components/AdminPanel"));
+const GlobalAdmin = lazy(() => import("./components/GlobalAdmin"));
+const GearAIChat = lazy(() => import("./components/GearAIChat"));
+
+function LoadingFallback() {
+  const { theme } = useTheme();
+  return (
+    <div style={{ padding: "40px 16px", textAlign: "center" }}>
+      <div style={{ color: theme.textDim, fontSize: 13, fontFamily: fontBody }}>Loading...</div>
+    </div>
+  );
+}
 
 function AnnouncementBanner({ settings }) {
   if (!settings?.announcement_enabled || !settings?.announcement_banner) return null;
@@ -95,19 +112,21 @@ export default function App() {
     );
   }
 
-  if (!user) return (<><AnnouncementBanner settings={publicSettings} /><LandingPage onLogin={login} onSignup={signup} registrationEnabled={publicSettings?.registration_enabled !== false} /></>);
-  if (!user.age_confirmed || !user.user_type) return <ProfileSetup user={user} onComplete={updateProfile} />;
+  if (!user) return (<Suspense fallback={<LoadingFallback />}><AnnouncementBanner settings={publicSettings} /><LandingPage onLogin={login} onSignup={signup} registrationEnabled={publicSettings?.registration_enabled !== false} /></Suspense>);
+  if (!user.age_confirmed || !user.user_type) return <Suspense fallback={<LoadingFallback />}><ProfileSetup user={user} onComplete={updateProfile} /></Suspense>;
 
   // Profile page — shown when user clicks "View Profile" from any context
   if (showProfilePage) return (
-    <div style={{ minHeight: "100vh", background: theme.bg }}>
-      <ProfilePage
-        memberships={memberships}
-        onBack={() => setShowProfilePage(false)}
-        onEnterTroop={(id) => { setTroopId(id); setAdventureId(null); setShowProfilePage(false); }}
-        onLogout={logout}
-      />
-    </div>
+    <Suspense fallback={<LoadingFallback />}>
+      <div style={{ minHeight: "100vh", background: theme.bg }}>
+        <ProfilePage
+          memberships={memberships}
+          onBack={() => setShowProfilePage(false)}
+          onEnterTroop={(id) => { setTroopId(id); setAdventureId(null); setShowProfilePage(false); }}
+          onLogout={logout}
+        />
+      </div>
+    </Suspense>
   );
 
   // Home Dashboard — shown when no troop+adventure selected
@@ -117,7 +136,7 @@ export default function App() {
       const currentMembership = memberships.find(m => m.troop_id === troopId);
       const isAdmin = currentMembership?.role === "admin" || isGlobalAdmin;
       return (
-        <>
+        <Suspense fallback={<LoadingFallback />}>
           <AdventurePicker
             user={user}
             troop={{ id: troopId, name: currentMembership?.troop_name || "Troop", council: currentMembership?.troop_council, location: currentMembership?.troop_location }}
@@ -132,13 +151,13 @@ export default function App() {
           {showGlobalAdmin && (
             <GlobalAdmin isGlobalAdmin={isGlobalAdmin} troopId={troopId} onClose={() => setShowGlobalAdmin(false)} />
           )}
-        </>
+        </Suspense>
       );
     }
 
     // No troop selected — show home dashboard
     return (
-      <>
+      <Suspense fallback={<LoadingFallback />}>
         <AnnouncementBanner settings={publicSettings} />
         <HomeDashboard
           user={user} memberships={memberships} onRefresh={refresh} onLogout={logout}
@@ -147,7 +166,6 @@ export default function App() {
           onEnterAdventure={(tid, aid) => {
             setTroopId(tid);
             if (aid) setAdventureId(aid);
-            // If aid is null (e.g. troop with no adventures), will show adventure picker
           }}
           onViewProfile={() => setShowProfilePage(true)}
           onHelpClick={() => setShowHelp(true)}
@@ -160,7 +178,7 @@ export default function App() {
         {showHelp && (
           <HelpSystem onClose={() => setShowHelp(false)} user={user} isAdmin={false} isGlobalAdmin={isGlobalAdmin} />
         )}
-      </>
+      </Suspense>
     );
   }
 
@@ -188,9 +206,11 @@ export default function App() {
         onViewProfile={() => setShowProfilePage(true)}
         onHelpClick={() => setShowHelp(true)}
       />
-      {showHelp && (
-        <HelpSystem onClose={() => setShowHelp(false)} user={user} isAdmin={isAdmin} isGlobalAdmin={isGlobalAdmin} />
-      )}
+      <Suspense fallback={null}>
+        {showHelp && (
+          <HelpSystem onClose={() => setShowHelp(false)} user={user} isAdmin={isAdmin} isGlobalAdmin={isGlobalAdmin} />
+        )}
+      </Suspense>
     </AdventureProvider>
   );
 }
@@ -475,14 +495,16 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
       />
 
       {/* Parent Dashboard — show for adults with linked scouts */}
-      {(() => {
-        const myMember = members.find(m => m.user_id === user.id);
-        const linkedScouts = myMember?.linked_scouts?.filter(id => id !== 0) || [];
-        if (linkedScouts.length > 0 && selectedCrewId !== "all") {
-          return <ParentDashboard linkedScouts={linkedScouts} onViewScout={(idx) => { setActive(idx); setView("training"); }} />;
-        }
-        return null;
-      })()}
+      <Suspense fallback={null}>
+        {(() => {
+          const myMember = members.find(m => m.user_id === user.id);
+          const linkedScouts = myMember?.linked_scouts?.filter(id => id !== 0) || [];
+          if (linkedScouts.length > 0 && selectedCrewId !== "all") {
+            return <ParentDashboard linkedScouts={linkedScouts} onViewScout={(idx) => { setActive(idx); setView("training"); }} />;
+          }
+          return null;
+        })()}
+      </Suspense>
 
       {/* CTA Banner */}
       <CTABanner members={members} active={active} setView={setView} theme={theme} />
@@ -504,53 +526,54 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
       </div>
 
       {/* View content */}
-      <div style={{ padding: "0 16px 18px 16px", overflowX: "auto" }}>
-        {view === "calendar" && (
-          <>
-            <Calendar members={members} active={selectedCrewId === "all" ? null : active} months={months} analysis={analysis}
-              trekDates={trekDates} onToggleDate={toggleDate} onBulkSelect={bulkSelect} onClearAll={clearAll}
-              allCrewsMode={selectedCrewId === "all"} />
-            <div style={{ marginTop: 16 }}>
-              <TrainingEvents adventureId={adventureId} isAdmin={isAdmin} currentUserId={user.id} members={members} bestDates={analysis.bestDates} />
-            </div>
-          </>
-        )}
-        {view === "skills" && (
-          <Skills members={members} active={active} skills={skills} analysis={analysis}
-            isAdmin={isAdmin} onToggleSkill={toggleSkill} onAddSkill={addNewSkill} onRemoveSkill={removeSkillItem}
-            adventureId={adventureId} updateMemberLocally={updateMemberLocally}
-            achievements={achievements}
-          />
-        )}
-        {view === "itinerary" && <Itinerary adventureId={adventureId} adventure={adventure} isAdmin={isAdmin} onRefresh={refreshAll} />}
-        {view === "gear" && (
-          <div>
-            {/* Gear admin & AI chat buttons */}
-            {isAdmin && (
-              <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                <button onClick={() => setShowGearAdmin(true)} style={{
-                  padding: "6px 12px", borderRadius: 8, border: `1px solid ${theme.borderLight}`,
-                  background: theme.bgAlt, color: theme.textDim, fontSize: 11, fontWeight: 600,
-                  cursor: "pointer", fontFamily: fontBody,
-                }}>{isGlobalAdmin ? "🌐 Global Admin" : "⚙️ Gear Admin"}</button>
-                <button onClick={() => setShowAIChat(!showAIChat)} style={{
-                  padding: "6px 12px", borderRadius: 8, border: `1px solid ${theme.borderLight}`,
-                  background: showAIChat ? theme.accent : theme.bgAlt,
-                  color: showAIChat ? "#fff" : theme.textDim,
-                  fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-                }}>🤖 AI Advisor</button>
+      <Suspense fallback={<LoadingFallback />}>
+        <div style={{ padding: "0 16px 18px 16px", overflowX: "auto" }}>
+          {view === "calendar" && (
+            <>
+              <Calendar members={members} active={selectedCrewId === "all" ? null : active} months={months} analysis={analysis}
+                trekDates={trekDates} onToggleDate={toggleDate} onBulkSelect={bulkSelect} onClearAll={clearAll}
+                allCrewsMode={selectedCrewId === "all"} />
+              <div style={{ marginTop: 16 }}>
+                <TrainingEvents adventureId={adventureId} isAdmin={isAdmin} currentUserId={user.id} members={members} bestDates={analysis.bestDates} />
               </div>
-            )}
-            <GearList troopId={troopId} adventureId={adventureId} members={members} active={active} setActive={setActive} updateMemberLocally={updateMemberLocally} />
-          </div>
-        )}
-        {view === "reports" && (
-          <Reports members={members} analysis={analysis} adventure={adventure} isAdmin={isAdmin} trekDates={trekDates} />
-        )}
-        {view === "docs" && (
-          <Documents adventureId={adventureId} isAdmin={isAdmin} />
-        )}
-      </div>
+            </>
+          )}
+          {view === "skills" && (
+            <Skills members={members} active={active} skills={skills} analysis={analysis}
+              isAdmin={isAdmin} onToggleSkill={toggleSkill} onAddSkill={addNewSkill} onRemoveSkill={removeSkillItem}
+              adventureId={adventureId} updateMemberLocally={updateMemberLocally}
+              achievements={achievements}
+            />
+          )}
+          {view === "itinerary" && <Itinerary adventureId={adventureId} adventure={adventure} isAdmin={isAdmin} onRefresh={refreshAll} />}
+          {view === "gear" && (
+            <div>
+              {isAdmin && (
+                <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                  <button onClick={() => setShowGearAdmin(true)} style={{
+                    padding: "6px 12px", borderRadius: 8, border: `1px solid ${theme.borderLight}`,
+                    background: theme.bgAlt, color: theme.textDim, fontSize: 11, fontWeight: 600,
+                    cursor: "pointer", fontFamily: fontBody,
+                  }}>{isGlobalAdmin ? "🌐 Global Admin" : "⚙️ Gear Admin"}</button>
+                  <button onClick={() => setShowAIChat(!showAIChat)} style={{
+                    padding: "6px 12px", borderRadius: 8, border: `1px solid ${theme.borderLight}`,
+                    background: showAIChat ? theme.accent : theme.bgAlt,
+                    color: showAIChat ? "#fff" : theme.textDim,
+                    fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
+                  }}>🤖 AI Advisor</button>
+                </div>
+              )}
+              <GearList troopId={troopId} adventureId={adventureId} members={members} active={active} setActive={setActive} updateMemberLocally={updateMemberLocally} />
+            </div>
+          )}
+          {view === "reports" && (
+            <Reports members={members} analysis={analysis} adventure={adventure} isAdmin={isAdmin} trekDates={trekDates} />
+          )}
+          {view === "docs" && (
+            <Documents adventureId={adventureId} isAdmin={isAdmin} />
+          )}
+        </div>
+      </Suspense>
 
       {/* Modals */}
       {confirmDelete !== null && (
@@ -571,30 +594,32 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
         />
       )}
 
-      {showAdmin && (
-        <AdminPanel
-          troop={troop}
-          adventure={adventure}
-          troopMembers={troopMembers}
-          adventureMembers={members}
-          currentUserId={user.id}
-          onClose={() => setShowAdmin(false)}
-          onRefresh={() => { refreshAll(); api.getTroop(troopId).then(setTroop).catch(console.error); }}
-          onSelectAdventure={onSelectAdventure}
-        />
-      )}
+      <Suspense fallback={null}>
+        {showAdmin && (
+          <AdminPanel
+            troop={troop}
+            adventure={adventure}
+            troopMembers={troopMembers}
+            adventureMembers={members}
+            currentUserId={user.id}
+            onClose={() => setShowAdmin(false)}
+            onRefresh={() => { refreshAll(); api.getTroop(troopId).then(setTroop).catch(console.error); }}
+            onSelectAdventure={onSelectAdventure}
+          />
+        )}
 
-      {showGearAdmin && (
-        <GlobalAdmin
-          isGlobalAdmin={isGlobalAdmin}
-          troopId={troopId}
-          onClose={() => { setShowGearAdmin(false); refreshAll(); }}
-        />
-      )}
+        {showGearAdmin && (
+          <GlobalAdmin
+            isGlobalAdmin={isGlobalAdmin}
+            troopId={troopId}
+            onClose={() => { setShowGearAdmin(false); refreshAll(); }}
+          />
+        )}
 
-      {showAIChat && (
-        <GearAIChat adventureId={adventureId} onClose={() => setShowAIChat(false)} />
-      )}
+        {showAIChat && (
+          <GearAIChat adventureId={adventureId} onClose={() => setShowAIChat(false)} />
+        )}
+      </Suspense>
     </div>
   );
 }

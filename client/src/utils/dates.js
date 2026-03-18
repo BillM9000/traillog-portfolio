@@ -42,3 +42,17 @@ export function formatDateFull(k) {
   const d = parseDateKey(k);
   return `${DAYS_FULL[d.getDay()]}, ${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
 }
+
+// Strip legacy period suffixes: "2026-03-15:am" → "2026-03-15"
+export function normalizeDateEntry(entry) {
+  const idx = entry.lastIndexOf(":");
+  if (idx > 0 && ["am", "pm", "all"].includes(entry.slice(idx + 1))) {
+    return entry.slice(0, idx);
+  }
+  return entry;
+}
+
+// Backward-compat wrapper
+export function parseDateEntry(entry) {
+  return { date: normalizeDateEntry(entry), period: "all" };
+}

@@ -1,23 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { DAYS_ABBR, MONTH_NAMES } from "../utils/constants";
-import { daysInMonth, dateKey, dayOfWeek, isPast } from "../utils/dates";
+import { daysInMonth, dateKey, dayOfWeek, isPast, normalizeDateEntry } from "../utils/dates";
 import { useTheme } from "../contexts/ThemeContext";
 import { toolbarBtn, fontBody, fontDisplay } from "../utils/theme";
 import { ChevronLeft, ChevronRight, Users, User, Check } from "lucide-react";
-
-// Strip legacy period suffixes: "2026-03-15:am" → "2026-03-15"
-export function normalizeDateEntry(entry) {
-  const idx = entry.lastIndexOf(":");
-  if (idx > 0 && ["am", "pm", "all"].includes(entry.slice(idx + 1))) {
-    return entry.slice(0, idx);
-  }
-  return entry;
-}
-
-// Backward-compat: legacy parseDateEntry for any imports that still need it
-export function parseDateEntry(entry) {
-  return { date: normalizeDateEntry(entry), period: "all" };
-}
 
 // Legacy compat
 export function getMemberPeriod(dates, key) {
