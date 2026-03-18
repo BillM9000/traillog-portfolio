@@ -17,8 +17,9 @@
 
 ## Architecture
 - React 18 + Vite SPA, Express.js backend, PostgreSQL (async pool via pg), schema v25 [migrated from SQLite 2026-03-18]
+- **Tailwind CSS v4** with `@tailwindcss/vite` plugin, CSS custom properties for theme tokens, `tl-*` component utility classes, `clsx` for conditional classes [migrated from inline styles 2026-03-18]
 - Google OAuth + email/password auth (bcrypt, verification tokens, password reset), session-based
-- 4 React Contexts: AuthContext, ThemeContext, AdventureContext, ToastContext
+- 4 React Contexts: AuthContext, ThemeContext (dark mode toggle via `dark` class on `<html>`), AdventureContext, ToastContext
 - Multi-admin: `users.is_admin` column, `ADMIN_EMAIL` seeds first admin on startup, promote/demote via API
 - Docker multi-stage build, Traefik reverse proxy, Let's Encrypt TLS
 - Icons: Lucide React (MIT) for small functional UI (<20px); clay PNGs reserved for large decorative spots (24px+)

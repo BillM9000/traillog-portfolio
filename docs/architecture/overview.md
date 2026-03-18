@@ -52,7 +52,7 @@ The front end is a single-page application built with:
 - **30+ components** organized by feature (gear list, itinerary, admin panel, training calendar, readiness dashboard, home dashboard, help system, and others)
 - **4 React Contexts** that provide shared state:
   - **AuthContext** -- current user, login/logout state
-  - **ThemeContext** -- light/dark mode preference
+  - **ThemeContext** -- light/dark mode toggle (adds/removes `dark` class on `<html>`; theme colors defined as CSS custom properties in Tailwind CSS)
   - **AdventureContext** -- active adventure data including members, gear, and achievements
   - **ToastContext** -- transient notification messages
 

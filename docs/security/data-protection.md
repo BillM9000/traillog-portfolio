@@ -166,7 +166,7 @@ base-uri    'self';
 |-----------|-------|-----------|
 | `default-src` | `'self'` | Only allow resources from the same origin by default |
 | `script-src` | `'self'` | No inline scripts, no external script sources. The theme initialization script was moved to `client/public/theme-init.js` to eliminate the need for `unsafe-inline`. |
-| `style-src` | `'self' 'unsafe-inline'` | Inline styles required by 21 React components using CSS-in-JS patterns |
+| `style-src` | `'self' 'unsafe-inline'` | Tailwind CSS builds to external stylesheets; `unsafe-inline` retained for minor runtime style needs |
 | `img-src` | `'self' data: blob: https://*.googleusercontent.com` | Allows same-origin images, data URIs (for icons), blob URIs (for logo previews), and Google user avatars |
 | `font-src` | `'self' fonts.googleapis.com fonts.gstatic.com` | Google Fonts loaded from Google CDN |
 | `frame-src` | `'none'` | No iframes allowed; prevents clickjacking via embedded frames |

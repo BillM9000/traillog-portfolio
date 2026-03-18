@@ -153,12 +153,14 @@ eliminated.
 
 **Risk:** Style injection could be used for data exfiltration (CSS-based attacks).
 
-**Current mitigation:** React's JSX escaping prevents injection of arbitrary HTML.
-The `unsafe-inline` directive is required because 21 components use inline styles
-(React CSS-in-JS pattern). `script-src` does NOT allow `unsafe-inline`.
+**Current mitigation:** The app uses Tailwind CSS v4 utility classes compiled to
+external stylesheets at build time. React's JSX escaping prevents injection of
+arbitrary HTML. `script-src` does NOT allow `unsafe-inline`. The `unsafe-inline`
+directive for `style-src` is retained for minor runtime style needs but the vast
+majority of styling is now in Tailwind's compiled CSS output.
 
-**Recommendation:** Migrate to CSS modules or a build-time CSS-in-JS solution to
-eliminate the need for `unsafe-inline` in `style-src`.
+**Recommendation:** Audit remaining inline style usage and remove `unsafe-inline`
+from `style-src` once all runtime style injections are eliminated.
 
 ### No Encryption at Rest
 

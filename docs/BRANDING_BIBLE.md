@@ -204,14 +204,64 @@ All header text is light-on-dark regardless of theme mode.
 
 ---
 
+## Tailwind CSS Class Mapping
+
+The app uses **Tailwind CSS v4** with custom CSS properties defined in `client/src/app.css`. The `@theme` directive registers brand tokens with Tailwind. Components use `className` with Tailwind utilities instead of inline `style={{}}` objects.
+
+### Theme Token Classes
+
+| Brand Token | Tailwind Class (bg) | Tailwind Class (text) | CSS Variable |
+|-------------|---------------------|----------------------|--------------|
+| Page bg | `bg-tl-bg` | — | `--color-tl-bg` |
+| Card bg | `bg-tl-bgCard` | — | `--color-tl-bgCard` |
+| Alt bg | `bg-tl-bgAlt` | — | `--color-tl-bgAlt` |
+| Primary text | — | `text-tl-text` | `--color-tl-text` |
+| Muted text | — | `text-tl-textMuted` | `--color-tl-textMuted` |
+| Dim text | — | `text-tl-textDim` | `--color-tl-textDim` |
+| Heading text | — | `text-tl-heading` | `--color-tl-heading` |
+| Accent | `bg-tl-accent` | `text-tl-accent` | `--color-tl-accent` |
+| Border | `border-tl-border` | — | `--color-tl-border` |
+| Border light | `border-tl-borderLight` | — | `--color-tl-borderLight` |
+| Gold | `bg-tl-gold` | `text-tl-gold` | `--color-tl-gold` |
+| Danger | `bg-tl-danger` | `text-tl-danger` | `--color-tl-danger` |
+
+### Component Utility Classes (`tl-*`)
+
+Custom `@layer components` classes in `app.css` replace the old JavaScript helper functions from `theme.ts`:
+
+| Old JS Helper | New Tailwind Class | Usage |
+|---------------|-------------------|-------|
+| `card()` | `tl-card` | Card container with bg, border, radius, shadow |
+| `badge()` | `tl-badge` | Inline badge with padding, radius, font |
+| `toolbarBtn()` | `tl-btn-toolbar` | Toolbar action button |
+| `cardTitle()` | `tl-card-title` | Card heading typography |
+| `statCard()` | `tl-stat-card` | Dashboard stat card |
+| `input()` | `tl-input` | Form input field |
+
+### Dark Mode
+
+Dark mode is controlled by a `dark` class on the `<html>` element. ThemeContext manages the toggle; Tailwind's `dark:` variant prefix applies dark theme styles automatically. CSS custom properties in `app.css` switch values based on the `.dark` selector.
+
+### Conditional Classes
+
+Use `clsx` (imported from `clsx`) for conditional class composition:
+```tsx
+import { clsx } from 'clsx';
+className={clsx('tl-card', isActive && 'ring-2 ring-tl-accent')}
+```
+
+---
+
 ## File & Asset Locations
 
 | Asset | Path |
 |-------|------|
-| Logo component | `client/src/components/Logo.jsx` |
-| Theme definitions | `client/src/contexts/ThemeContext.jsx` |
-| Style helpers | `client/src/utils/theme.js` |
-| Export colors | `client/src/utils/exportUtils.js` |
+| Logo component | `client/src/components/Logo.tsx` |
+| Tailwind config & theme variables | `client/src/app.css` |
+| Theme context (dark mode toggle) | `client/src/contexts/ThemeContext.tsx` |
+| Theme constants (badges, waypoints) | `client/src/utils/theme.ts` |
+| Export colors | `client/src/utils/exportUtils.ts` |
+| Vite config (Tailwind plugin) | `client/vite.config.ts` |
 | Favicon | `client/public/favicon.svg` |
 | Branding SVGs | `branding/` |
 | Google Fonts link | `client/index.html` |

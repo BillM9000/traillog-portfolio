@@ -105,4 +105,4 @@
 |---|------|--------|-------|
 | S3 | Penetration testing — OWASP ZAP scan, securityheaders.com audit | Medium | Do after features stabilize |
 | S4 | Encryption at rest — LUKS disk encryption for PostgreSQL data directory | Medium | Final hardening |
-| S5 | CSP `unsafe-inline` for styles — migrate CSS-in-JS to CSS modules (21 components) | Large | Massive refactor, low risk in practice |
+| S5 | CSP `unsafe-inline` for styles — audit remaining inline styles after Tailwind migration | Medium | Tailwind CSS migration (2026-03-18) moved most styling to compiled CSS; audit for remaining runtime style usage |
