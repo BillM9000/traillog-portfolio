@@ -8,6 +8,7 @@ import { api } from "./api";
 import { DAYS_FULL } from "./utils/constants";
 import { getMonthsRange, daysInMonth, dateKey, parseDateKey, dayOfWeek, isPast, normalizeDateEntry } from "./utils/dates";
 import { fontBody, fontDisplay } from "./utils/theme";
+import { useIsDesktop } from "./hooks/useIsDesktop";
 import type { User, Membership, Adventure, AdventureMember, Skill, Achievement, ThemeColors, MonthRange } from "./types";
 
 import { Calendar as CalendarIcon, ClipboardCheck, Map, Backpack, FileText, FolderOpen } from "lucide-react";
@@ -16,6 +17,8 @@ import { Calendar as CalendarIcon, ClipboardCheck, Map, Backpack, FileText, Fold
 import Header from "./components/Header";
 import MemberBar from "./components/MemberBar";
 import ConfirmModal from "./components/ConfirmModal";
+import Sidebar from "./components/desktop/Sidebar";
+import TopBar from "./components/desktop/TopBar";
 
 // Lazy-loaded: top-level views (mutually exclusive)
 const LandingPage = lazy(() => import("./components/LandingPage"));
@@ -246,6 +249,7 @@ type Troop = any;
 
 function MainView({ user, troopId, adventureId, memberships, approvedTroops, isAdmin, publicSettings, initialTab, onSwitchTroop, onGoHome, onSelectAdventure, onLogout, onRefresh, onViewProfile, onHelpClick }: MainViewProps) {
   const { theme } = useTheme();
+  const isDesktop = useIsDesktop();
   const { addToast } = useToast();
   const { adventure, members, skills, itinerary, trekDate, trekDates, achievements, loading: advLoading, refreshAll, refreshMembers, updateMemberLocally, crews, selectedCrewId, selectedCrew, setSelectedCrewId, refreshCrews } = useAdventure();
 
@@ -460,147 +464,123 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
     ["docs", "Docs", FolderOpen],
   ];
 
-  return (
-    <div style={{ fontFamily: fontBody, background: theme.bg, color: theme.text, minHeight: "100vh", userSelect: "none" }}>
-      <AnnouncementBanner settings={publicSettings} />
-      <Header
-        user={user} troop={troop} adventure={adventure} members={members} analysis={analysis}
-        trekDate={trekDate} trekDates={trekDates} saving={saving} isAdmin={isAdmin} approvedTroops={approvedTroops as any}
-        onSwitchTroop={onSwitchTroop}
-        onGoHome={onGoHome}
-        onLogout={onLogout}
-        onAdminClick={() => setShowAdmin(true)}
-        onRefreshAuth={onRefresh}
-        onViewProfile={onViewProfile}
-        onHelpClick={onHelpClick}
-        achievements={achievements as any}
-      />
+  // Map view key to display title
+  const viewTitles: Record<string, string> = {
+    calendar: "Training", skills: "Readiness", itinerary: "Itinerary",
+    gear: "Gear", reports: "Reports", docs: "Documents",
+  };
 
-      {/* Crew picker — only when multiple crews */}
-      {crews.length > 1 && (
-        <div style={{ padding: "36px 16px 8px" }}>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <button onClick={() => setSelectedCrewId("all")} style={{
-              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700,
-              fontFamily: fontBody, cursor: "pointer", transition: "all 0.15s ease",
-              border: selectedCrewId === "all" ? `2px solid ${theme.accent}` : `1.5px solid ${theme.borderLight}`,
-              background: selectedCrewId === "all" ? theme.accentBg : theme.bgAlt,
-              color: selectedCrewId === "all" ? theme.accent : theme.textDim,
-            }}>
-              All Crews
-            </button>
-            {crews.map(c => (
-              <button key={c.id} onClick={() => setSelectedCrewId(c.id)} style={{
-                padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700,
-                fontFamily: fontBody, cursor: "pointer", transition: "all 0.15s ease",
-                border: c.id === selectedCrewId ? `2px solid ${theme.accent}` : `1.5px solid ${theme.borderLight}`,
-                background: c.id === selectedCrewId ? theme.accentBg : theme.bgAlt,
-                color: c.id === selectedCrewId ? theme.accent : theme.textDim,
-              }}>
-                {c.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <MemberBar
-        members={members} active={selectedCrewId === "all" ? null : active} setActive={setActive}
-        pendingMembers={pendingMembers} isAdmin={isAdmin} currentUserId={user.id}
-        onConfirmDelete={setConfirmDelete}
-        onRemoveManual={(memberId: number) => {
-          const m = members.find(x => x.id === memberId);
-          setConfirmManualDelete({ id: memberId, name: m?.name || "this member" });
-        }}
-        onApproveMember={approveMemberFn} onDenyMember={denyMemberFn}
-        achievements={achievements}
-        onRequestLink={requestLinkFn}
-        view={view}
-        allCrewsMode={selectedCrewId === "all"}
-      />
-
-      {/* Parent Dashboard — show for adults with linked scouts */}
-      <Suspense fallback={null}>
-        {(() => {
-          const myMember = members.find(m => m.user_id === user.id);
-          const linkedScouts = myMember?.linked_scouts?.filter((id: number) => id !== 0) || [];
-          if (linkedScouts.length > 0 && selectedCrewId !== "all") {
-            return <ParentDashboard linkedScouts={linkedScouts} onViewScout={(idx: number) => { setActive(idx); setView("training"); }} />;
-          }
-          return null;
-        })()}
-      </Suspense>
-
-      {/* CTA Banner */}
-      <CTABanner members={members} active={active} setView={setView} theme={theme} />
-
-      {/* Tabs — 3×2 Grid (all visible on mobile) */}
-      <div style={{ padding: "0 16px", marginBottom: 16 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-          {tabs.map(([k, l, Icon]) => (
-            <button key={k} onClick={() => setView(k)} style={{
-              padding: "7px 4px", borderRadius: 10, border: view === k ? `1.5px solid ${theme.accent}` : `1px solid ${theme.borderLight}`,
-              cursor: "pointer", fontSize: 11, fontWeight: view === k ? 700 : 600, fontFamily: fontBody,
-              background: view === k ? theme.pillActiveBg : theme.pillInactiveBg,
-              color: view === k ? theme.pillActiveText : theme.pillInactiveText,
-              boxShadow: view === k ? "0 2px 8px rgba(58,77,42,0.18)" : "none",
-              transition: "all 0.2s ease", display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-            }}><Icon size={13} strokeWidth={2.5} />{l}</button>
-          ))}
-        </div>
+  // ── Shared content blocks (used in both mobile and desktop) ──
+  const crewPicker = crews.length > 1 ? (
+    <div style={{ padding: isDesktop ? "12px 0 8px" : "36px 16px 8px" }}>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <button onClick={() => setSelectedCrewId("all")} style={{
+          padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700,
+          fontFamily: fontBody, cursor: "pointer", transition: "all 0.15s ease",
+          border: selectedCrewId === "all" ? `2px solid ${theme.accent}` : `1.5px solid ${theme.borderLight}`,
+          background: selectedCrewId === "all" ? theme.accentBg : theme.bgAlt,
+          color: selectedCrewId === "all" ? theme.accent : theme.textDim,
+        }}>
+          All Crews
+        </button>
+        {crews.map(c => (
+          <button key={c.id} onClick={() => setSelectedCrewId(c.id)} style={{
+            padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700,
+            fontFamily: fontBody, cursor: "pointer", transition: "all 0.15s ease",
+            border: c.id === selectedCrewId ? `2px solid ${theme.accent}` : `1.5px solid ${theme.borderLight}`,
+            background: c.id === selectedCrewId ? theme.accentBg : theme.bgAlt,
+            color: c.id === selectedCrewId ? theme.accent : theme.textDim,
+          }}>
+            {c.name}
+          </button>
+        ))}
       </div>
+    </div>
+  ) : null;
 
-      {/* View content */}
-      <Suspense fallback={<LoadingFallback />}>
-        <div style={{ padding: "0 16px 18px 16px", overflowX: "auto" }}>
-          {view === "calendar" && (
-            <>
-              <Calendar members={members} active={selectedCrewId === "all" ? null : active} months={months} analysis={analysis}
-                trekDates={trekDates} onToggleDate={toggleDate} onBulkSelect={bulkSelect} onClearAll={clearAll}
-                allCrewsMode={selectedCrewId === "all"} />
-              <div style={{ marginTop: 16 }}>
-                <TrainingEvents adventureId={adventureId} isAdmin={isAdmin} currentUserId={user.id} members={members} bestDates={analysis.bestDates} />
-              </div>
-            </>
-          )}
-          {view === "skills" && (
-            <Skills members={members} active={active} skills={skills} analysis={analysis}
-              isAdmin={isAdmin} onToggleSkill={toggleSkill} onAddSkill={addNewSkill} onRemoveSkill={removeSkillItem}
-              adventureId={adventureId} updateMemberLocally={updateMemberLocally}
-              achievements={achievements as any}
-            />
-          )}
-          {view === "itinerary" && <Itinerary adventureId={adventureId} adventure={adventure} isAdmin={isAdmin} onRefresh={refreshAll} />}
-          {view === "gear" && (
-            <div>
-              {isAdmin && (
-                <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                  <button onClick={() => setShowGearAdmin(true)} style={{
-                    padding: "6px 12px", borderRadius: 8, border: `1px solid ${theme.borderLight}`,
-                    background: theme.bgAlt, color: theme.textDim, fontSize: 11, fontWeight: 600,
-                    cursor: "pointer", fontFamily: fontBody,
-                  }}>{isGlobalAdmin ? "🌐 Global Admin" : "⚙️ Gear Admin"}</button>
-                  <button onClick={() => setShowAIChat(!showAIChat)} style={{
-                    padding: "6px 12px", borderRadius: 8, border: `1px solid ${theme.borderLight}`,
-                    background: showAIChat ? theme.accent : theme.bgAlt,
-                    color: showAIChat ? "#fff" : theme.textDim,
-                    fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
-                  }}>🤖 AI Advisor</button>
-                </div>
-              )}
-              <GearList troopId={troopId} adventureId={adventureId} members={members} active={active} setActive={setActive} updateMemberLocally={updateMemberLocally} />
+  const memberBar = (
+    <MemberBar
+      members={members} active={selectedCrewId === "all" ? null : active} setActive={setActive}
+      pendingMembers={pendingMembers} isAdmin={isAdmin} currentUserId={user.id}
+      onConfirmDelete={setConfirmDelete}
+      onRemoveManual={(memberId: number) => {
+        const m = members.find(x => x.id === memberId);
+        setConfirmManualDelete({ id: memberId, name: m?.name || "this member" });
+      }}
+      onApproveMember={approveMemberFn} onDenyMember={denyMemberFn}
+      achievements={achievements}
+      onRequestLink={requestLinkFn}
+      view={view}
+      allCrewsMode={selectedCrewId === "all"}
+    />
+  );
+
+  const parentDash = (
+    <Suspense fallback={null}>
+      {(() => {
+        const myMember = members.find(m => m.user_id === user.id);
+        const linkedScouts = myMember?.linked_scouts?.filter((id: number) => id !== 0) || [];
+        if (linkedScouts.length > 0 && selectedCrewId !== "all") {
+          return <ParentDashboard linkedScouts={linkedScouts} onViewScout={(idx: number) => { setActive(idx); setView("training"); }} />;
+        }
+        return null;
+      })()}
+    </Suspense>
+  );
+
+  const viewContent = (
+    <Suspense fallback={<LoadingFallback />}>
+      <div style={{ padding: isDesktop ? "0 0 24px" : "0 16px 18px 16px", overflowX: "auto" }}>
+        {view === "calendar" && (
+          <>
+            <Calendar members={members} active={selectedCrewId === "all" ? null : active} months={months} analysis={analysis}
+              trekDates={trekDates} onToggleDate={toggleDate} onBulkSelect={bulkSelect} onClearAll={clearAll}
+              allCrewsMode={selectedCrewId === "all"} />
+            <div style={{ marginTop: 16 }}>
+              <TrainingEvents adventureId={adventureId} isAdmin={isAdmin} currentUserId={user.id} members={members} bestDates={analysis.bestDates} />
             </div>
-          )}
-          {view === "reports" && (
-            <Reports members={members} analysis={analysis} adventure={adventure} isAdmin={isAdmin} trekDates={trekDates} />
-          )}
-          {view === "docs" && (
-            <Documents adventureId={adventureId} isAdmin={isAdmin} />
-          )}
-        </div>
-      </Suspense>
+          </>
+        )}
+        {view === "skills" && (
+          <Skills members={members} active={active} skills={skills} analysis={analysis}
+            isAdmin={isAdmin} onToggleSkill={toggleSkill} onAddSkill={addNewSkill} onRemoveSkill={removeSkillItem}
+            adventureId={adventureId} updateMemberLocally={updateMemberLocally}
+            achievements={achievements as any}
+          />
+        )}
+        {view === "itinerary" && <Itinerary adventureId={adventureId} adventure={adventure} isAdmin={isAdmin} onRefresh={refreshAll} />}
+        {view === "gear" && (
+          <div>
+            {isAdmin && (
+              <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                <button onClick={() => setShowGearAdmin(true)} style={{
+                  padding: "6px 12px", borderRadius: 8, border: `1px solid ${theme.borderLight}`,
+                  background: theme.bgAlt, color: theme.textDim, fontSize: 11, fontWeight: 600,
+                  cursor: "pointer", fontFamily: fontBody,
+                }}>{isGlobalAdmin ? "🌐 Global Admin" : "⚙️ Gear Admin"}</button>
+                <button onClick={() => setShowAIChat(!showAIChat)} style={{
+                  padding: "6px 12px", borderRadius: 8, border: `1px solid ${theme.borderLight}`,
+                  background: showAIChat ? theme.accent : theme.bgAlt,
+                  color: showAIChat ? "#fff" : theme.textDim,
+                  fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: fontBody,
+                }}>🤖 AI Advisor</button>
+              </div>
+            )}
+            <GearList troopId={troopId} adventureId={adventureId} members={members} active={active} setActive={setActive} updateMemberLocally={updateMemberLocally} />
+          </div>
+        )}
+        {view === "reports" && (
+          <Reports members={members} analysis={analysis} adventure={adventure} isAdmin={isAdmin} trekDates={trekDates} />
+        )}
+        {view === "docs" && (
+          <Documents adventureId={adventureId} isAdmin={isAdmin} />
+        )}
+      </div>
+    </Suspense>
+  );
 
-      {/* Modals */}
+  const modals = (
+    <>
       {confirmDelete !== null && (
         <ConfirmModal
           memberName={members[confirmDelete]?.name}
@@ -618,7 +598,6 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
           onCancel={() => setConfirmManualDelete(null)}
         />
       )}
-
       <Suspense fallback={null}>
         {showAdmin && (
           <AdminPanel
@@ -632,7 +611,6 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
             onSelectAdventure={onSelectAdventure}
           />
         )}
-
         {showGearAdmin && (
           <GlobalAdmin
             isGlobalAdmin={isGlobalAdmin}
@@ -640,11 +618,97 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
             onClose={() => { setShowGearAdmin(false); refreshAll(); }}
           />
         )}
-
         {showAIChat && (
           <GearAIChat adventureId={adventureId} onClose={() => setShowAIChat(false)} />
         )}
       </Suspense>
+    </>
+  );
+
+  // ── Desktop layout ──
+  if (isDesktop) {
+    return (
+      <div style={{ display: "flex", minHeight: "100vh", fontFamily: fontBody, background: theme.bg, color: theme.text }}>
+        <Sidebar
+          user={user}
+          view={view}
+          setView={setView}
+          isAdmin={isAdmin}
+          isGlobalAdmin={isGlobalAdmin}
+          adventureName={adventure?.name || null}
+          troopName={troop?.name || null}
+          onGoHome={onGoHome}
+          onAdminClick={() => setShowAdmin(true)}
+          onViewProfile={onViewProfile}
+          onHelpClick={onHelpClick}
+          onLogout={onLogout}
+          onGlobalAdminClick={() => setShowGearAdmin(true)}
+        />
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+          <AnnouncementBanner settings={publicSettings} />
+          <TopBar
+            user={user}
+            sectionTitle={viewTitles[view] || "TrailLog"}
+            adventureName={adventure?.name || null}
+            trekDates={trekDates}
+            trekDate={trekDate}
+            saving={saving}
+            onViewProfile={onViewProfile}
+          />
+          <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px" }}>
+            <div style={{ maxWidth: 900, margin: "0 auto" }}>
+              {crewPicker}
+              {memberBar}
+              {parentDash}
+              <CTABanner members={members} active={active} setView={setView} theme={theme} />
+              {viewContent}
+            </div>
+          </div>
+        </div>
+        {modals}
+      </div>
+    );
+  }
+
+  // ── Mobile layout (unchanged) ──
+  return (
+    <div style={{ fontFamily: fontBody, background: theme.bg, color: theme.text, minHeight: "100vh", userSelect: "none" }}>
+      <AnnouncementBanner settings={publicSettings} />
+      <Header
+        user={user} troop={troop} adventure={adventure} members={members} analysis={analysis}
+        trekDate={trekDate} trekDates={trekDates} saving={saving} isAdmin={isAdmin} approvedTroops={approvedTroops as any}
+        onSwitchTroop={onSwitchTroop}
+        onGoHome={onGoHome}
+        onLogout={onLogout}
+        onAdminClick={() => setShowAdmin(true)}
+        onRefreshAuth={onRefresh}
+        onViewProfile={onViewProfile}
+        onHelpClick={onHelpClick}
+        achievements={achievements as any}
+      />
+      {crewPicker}
+      {memberBar}
+      {parentDash}
+      <CTABanner members={members} active={active} setView={setView} theme={theme} />
+
+      {/* Tabs — 3×2 Grid (mobile only) */}
+      <div style={{ padding: "0 16px", marginBottom: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+          {tabs.map(([k, l, Icon]) => (
+            <button key={k} onClick={() => setView(k)} style={{
+              padding: "7px 4px", borderRadius: 10, border: view === k ? `1.5px solid ${theme.accent}` : `1px solid ${theme.borderLight}`,
+              cursor: "pointer", fontSize: 11, fontWeight: view === k ? 700 : 600, fontFamily: fontBody,
+              background: view === k ? theme.pillActiveBg : theme.pillInactiveBg,
+              color: view === k ? theme.pillActiveText : theme.pillInactiveText,
+              boxShadow: view === k ? "0 2px 8px rgba(58,77,42,0.18)" : "none",
+              transition: "all 0.2s ease", display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+            }}><Icon size={13} strokeWidth={2.5} />{l}</button>
+          ))}
+        </div>
+      </div>
+
+      {viewContent}
+      {modals}
     </div>
   );
 }
