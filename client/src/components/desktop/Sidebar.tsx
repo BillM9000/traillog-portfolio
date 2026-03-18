@@ -12,18 +12,19 @@ import clsx from "clsx";
 
 interface SidebarProps {
   user: User;
-  view: string;
-  setView: (v: string) => void;
+  view?: string | null;
+  setView?: (v: string) => void;
   isAdmin: boolean;
   isGlobalAdmin: boolean;
   adventureName: string | null;
   troopName: string | null;
   onGoHome: () => void;
-  onAdminClick: () => void;
+  onAdminClick?: () => void;
   onViewProfile: () => void;
   onHelpClick: () => void;
   onLogout: () => void;
   onGlobalAdminClick?: () => void;
+  homeActive?: boolean;
 }
 
 interface NavItem {
@@ -50,6 +51,7 @@ const STORAGE_KEY = "sidebar-collapsed";
 export default function Sidebar({
   user, view, setView, isAdmin, isGlobalAdmin, adventureName, troopName,
   onGoHome, onAdminClick, onViewProfile, onHelpClick, onLogout, onGlobalAdminClick,
+  homeActive,
 }: SidebarProps) {
   const { mode } = useTheme();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(STORAGE_KEY) === "true");
@@ -76,7 +78,7 @@ export default function Sidebar({
       <div
         className={clsx(
           "flex items-center gap-2.5 border-b border-white/[0.08] min-h-[56px]",
-          collapsed ? "justify-center py-4 px-0" : "justify-start py-4 px-4"
+          collapsed ? "justify-center py-4 px-0" : "justify-start py-4 px-5"
         )}
       >
         <div className="w-7 h-7 shrink-0">
@@ -91,7 +93,7 @@ export default function Sidebar({
 
       {/* Adventure / Troop context */}
       {!collapsed && (troopName || adventureName) && (
-        <div className="px-4 pt-3 pb-2 border-b border-white/[0.08]">
+        <div className="px-5 pt-3 pb-2 border-b border-white/[0.08]">
           {troopName && (
             <div className="text-[11px] font-semibold font-body text-tl-text-on-dark-dim uppercase tracking-wide mb-0.5">
               {troopName}
@@ -106,37 +108,41 @@ export default function Sidebar({
       )}
 
       {/* Home button */}
-      <div className="px-2 pt-2 pb-1">
+      <div className="px-4 pt-2 pb-1">
         <SidebarItem
-          icon={Home} label="Home" active={false}
+          icon={Home} label="Home" active={!!homeActive}
           collapsed={collapsed} onClick={onGoHome}
         />
       </div>
 
-      {/* Nav items */}
-      <nav className="flex-1 px-2 py-1 overflow-y-auto">
-        <div
-          className={clsx(
-            "text-[10px] font-semibold font-body text-tl-text-on-dark-dim uppercase tracking-widest",
-            collapsed ? "py-2 text-center" : "py-2 px-2"
-          )}
-        >
-          {!collapsed && "Views"}
-        </div>
-        {NAV_ITEMS.map(item => (
-          <SidebarItem
-            key={item.key}
-            icon={item.icon} label={item.label}
-            active={view === item.key}
-            collapsed={collapsed}
-            onClick={() => setView(item.key)}
-          />
-        ))}
-      </nav>
+      {/* Nav items — only when inside an adventure */}
+      {view != null && setView ? (
+        <nav className="flex-1 px-4 py-1 overflow-y-auto">
+          <div
+            className={clsx(
+              "text-[10px] font-semibold font-body text-tl-text-on-dark-dim uppercase tracking-widest",
+              collapsed ? "py-2 text-center" : "py-2 px-1"
+            )}
+          >
+            {!collapsed && "Views"}
+          </div>
+          {NAV_ITEMS.map(item => (
+            <SidebarItem
+              key={item.key}
+              icon={item.icon} label={item.label}
+              active={view === item.key}
+              collapsed={collapsed}
+              onClick={() => setView(item.key)}
+            />
+          ))}
+        </nav>
+      ) : (
+        <div className="flex-1" />
+      )}
 
       {/* Bottom actions */}
-      <div className="px-2 pt-2 pb-3 border-t border-white/[0.08] flex flex-col gap-0.5">
-        {isAdmin && (
+      <div className="px-4 pt-2 pb-3 border-t border-white/[0.08] flex flex-col gap-0.5">
+        {isAdmin && onAdminClick && (
           <SidebarItem
             icon={Settings} label="Admin Panel" active={false}
             collapsed={collapsed} onClick={onAdminClick}
@@ -188,9 +194,10 @@ function SidebarItem({ icon: Icon, label, active, collapsed, onClick }: SidebarI
     <button
       onClick={onClick}
       title={collapsed ? label : undefined}
+      style={collapsed ? undefined : { paddingLeft: 20, paddingRight: 12 }}
       className={clsx(
         "tl-sidebar-item flex items-center gap-2.5 w-full h-9 rounded-btn border-none cursor-pointer font-body text-[13px] transition-colors duration-150 relative",
-        collapsed ? "justify-center px-0" : "justify-start px-2",
+        collapsed ? "justify-center px-0" : "justify-start",
         active
           ? "bg-white/15 text-white font-bold border-l-[3px] border-l-[#B8CC9A]"
           : "bg-transparent text-tl-text-on-dark-sub border-l-[3px] border-l-transparent font-medium hover:bg-white/[0.08]",
