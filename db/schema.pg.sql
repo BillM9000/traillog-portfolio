@@ -135,6 +135,7 @@ CREATE TABLE IF NOT EXISTS troops (
   council_id          INTEGER REFERENCES councils(id) ON DELETE SET NULL,
   location            TEXT NOT NULL DEFAULT '',
   is_public           INTEGER NOT NULL DEFAULT 1,
+  invite_code         TEXT UNIQUE,
   created_by          INTEGER REFERENCES users(id) ON DELETE SET NULL,
   created_at          TIMESTAMPTZ DEFAULT NOW()
 );

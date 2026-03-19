@@ -362,6 +362,35 @@
   color: var(--tl-text-muted);
 }
 
+/* Gear filter pills */
+@utility gear-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'DM Sans', Helvetica, sans-serif;
+  border: 1.5px solid transparent;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+@utility gear-pill-active {
+  background: var(--tl-accent-bg);
+  color: var(--tl-accent);
+  border-color: var(--tl-border-accent);
+  font-weight: 700;
+}
+
+@utility gear-pill-inactive {
+  background: var(--tl-bg-alt);
+  color: var(--tl-text-dim);
+  border-color: var(--tl-border-light);
+}
+
 /* Landing page specific utilities (dark-only, hardcoded colors) */
 
 @utility lp-input {

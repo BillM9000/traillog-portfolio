@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Logo from "./Logo";
-import { Compass, Users, ShieldCheck, LucideIcon } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import clsx from "clsx";
 import type { User } from "../types";
 
@@ -21,7 +21,7 @@ interface RoleCard {
   label: string;
   subtitle: string;
   desc: string;
-  Icon: LucideIcon;
+  img: string;
 }
 
 export default function ProfileSetup({ user, onComplete }: ProfileSetupProps) {
@@ -62,14 +62,14 @@ export default function ProfileSetup({ user, onComplete }: ProfileSetupProps) {
       label: "Youth / Scout",
       subtitle: "Ages 13\u201317",
       desc: "Youth trekking crew member",
-      Icon: Compass,
+      img: "/icons/scoutrope280good.png",
     },
     {
       type: "adult",
       label: "Adult Leader",
       subtitle: "Ages 18+",
       desc: "Parent, adviser, or crew leader",
-      Icon: Users,
+      img: "/icons/scoutguy280good.png",
     },
   ];
 
@@ -90,7 +90,7 @@ export default function ProfileSetup({ user, onComplete }: ProfileSetupProps) {
         </div>
 
         <div className="flex gap-3 justify-center mb-5">
-          {roleCards.map(({ type, label, subtitle, desc, Icon }) => {
+          {roleCards.map(({ type, label, subtitle, desc, img }) => {
             const selected = choice === type;
             return (
               <button key={type} onClick={() => setChoice(type)} className={clsx(
@@ -99,12 +99,12 @@ export default function ProfileSetup({ user, onComplete }: ProfileSetupProps) {
                   ? "bg-[rgba(91,122,58,0.15)] border-2 border-[#5B7A3A]"
                   : "bg-[rgba(26,36,18,0.4)] border-2 border-[#3A4D2A]"
               )}>
-                <Icon
-                  size={48}
-                  strokeWidth={1.5}
+                <img
+                  src={img}
+                  alt={label}
                   className={clsx(
-                    "mb-2.5 transition-colors duration-200",
-                    selected ? "text-[#A3C47A]" : "text-[#5B7A3A]"
+                    "w-20 h-20 mx-auto mb-2.5 object-contain transition-opacity duration-200",
+                    selected ? "opacity-100" : "opacity-60"
                   )}
                 />
                 <div className={clsx(

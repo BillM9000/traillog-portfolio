@@ -45,6 +45,7 @@ const AdminPanel = lazy(() => import("./components/AdminPanel"));
 const GlobalAdmin = lazy(() => import("./components/GlobalAdmin"));
 const GearAIChat = lazy(() => import("./components/GearAIChat"));
 const OnboardingWizard = lazy(() => import("./components/OnboardingWizard"));
+const ApprovalPage = lazy(() => import("./components/ApprovalPage"));
 
 function LoadingFallback() {
   return (
@@ -138,6 +139,16 @@ export default function App() {
 
   // Go home = clear troop and adventure selection
   const goHome = () => { setTroopId(null); setAdventureId(null); };
+
+  // ── Approval page (standalone, no auth required) ──
+  const approvalMatch = window.location.pathname.match(/^\/approve\/(.+)$/);
+  if (approvalMatch) {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <ApprovalPage token={approvalMatch[1]} />
+      </Suspense>
+    );
+  }
 
   // ── Auth gates ──
   if (loading) {

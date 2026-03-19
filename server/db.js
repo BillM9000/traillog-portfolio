@@ -1,8 +1,14 @@
 import pg from "pg";
+import crypto from "crypto";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { BSA_COUNCILS } from "./councils.js";
+
+function generateInviteCode() {
+  // 8-char alphanumeric, uppercase for readability
+  return crypto.randomBytes(5).toString("base64url").slice(0, 8).toUpperCase();
+}
 
 const { Pool } = pg;
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -524,9 +530,10 @@ export async function createTroop({ unit_type, unit_number, name, description, c
   }
   // Compose display name from unit_type + unit_number if provided
   const displayName = (unit_type && unit_number) ? `${unit_type} ${unit_number}` : name;
+  const inviteCode = generateInviteCode();
   const { rows } = await pool.query(
-    "INSERT INTO troops (name, unit_type, unit_number, description, council, council_id, location, is_public, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id",
-    [displayName, unit_type || "Troop", unit_number || "", description || "", councilName, council_id || null, location || "", is_public !== undefined ? (is_public ? 1 : 0) : 1, created_by]
+    "INSERT INTO troops (name, unit_type, unit_number, description, council, council_id, location, is_public, invite_code, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id",
+    [displayName, unit_type || "Troop", unit_number || "", description || "", councilName, council_id || null, location || "", is_public !== undefined ? (is_public ? 1 : 0) : 1, inviteCode, created_by]
   );
   const troopId = rows[0].id;
   const memberCount = Number((await pool.query("SELECT COUNT(*) as c FROM troop_members WHERE troop_id = $1", [troopId])).rows[0].c);
@@ -568,6 +575,38 @@ export async function updateTroop(troopId, { name, unit_type, unit_number, descr
 
 export async function updateTroopAffiliateTag(troopId, tag) {
   await pool.query("UPDATE troops SET amazon_affiliate_tag = $1 WHERE id = $2", [tag, troopId]);
+}
+
+export async function searchTroopsByCouncil(councilId, userId) {
+  const { rows } = await pool.query(`
+    SELECT t.id, t.name, t.unit_type, t.unit_number, COALESCE(c.name, t.council) as council, t.location,
+           (SELECT COUNT(*) FROM troop_members tm WHERE tm.troop_id = t.id AND tm.status = 'approved') as member_count
+    FROM troops t LEFT JOIN councils c ON t.council_id = c.id
+    WHERE t.council_id = $1 AND t.is_public = 1
+      AND t.id NOT IN (SELECT troop_id FROM troop_members WHERE user_id = $2)
+    ORDER BY t.name
+  `, [councilId, userId]);
+  return rows;
+}
+
+export async function findTroopByInviteCode(code) {
+  const { rows } = await pool.query(`
+    SELECT t.id, t.name, t.unit_type, t.unit_number, COALESCE(c.name, t.council) as council, t.location
+    FROM troops t LEFT JOIN councils c ON t.council_id = c.id
+    WHERE t.invite_code = $1
+  `, [code.toUpperCase().trim()]);
+  return rows[0] || null;
+}
+
+export async function getTroopInviteCode(troopId) {
+  const { rows } = await pool.query("SELECT invite_code FROM troops WHERE id = $1", [troopId]);
+  return rows[0]?.invite_code || null;
+}
+
+export async function regenerateInviteCode(troopId) {
+  const code = generateInviteCode();
+  await pool.query("UPDATE troops SET invite_code = $1 WHERE id = $2", [code, troopId]);
+  return code;
 }
 
 // ── Troop Member Queries ──
@@ -648,7 +687,34 @@ export async function denyTroopMember(troopId, userId) {
 }
 
 export async function removeTroopMember(troopId, userId) {
-  await pool.query("DELETE FROM troop_members WHERE troop_id = $1 AND user_id = $2", [troopId, userId]);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    // Get all adventures for this troop to cascade cleanup
+    const { rows: adventures } = await client.query("SELECT id FROM adventures WHERE troop_id = $1", [troopId]);
+    for (const adv of adventures) {
+      // Remove assessments for any crews in this adventure
+      await client.query(`
+        DELETE FROM member_assessments WHERE user_id = $1 AND crew_id IN (SELECT id FROM crews WHERE adventure_id = $2)
+      `, [userId, adv.id]);
+      // Remove from crew_members for any crews in this adventure
+      await client.query(`
+        DELETE FROM crew_members WHERE user_id = $1 AND crew_id IN (SELECT id FROM crews WHERE adventure_id = $2)
+      `, [userId, adv.id]);
+      // Remove from adventure_members
+      await client.query("DELETE FROM adventure_members WHERE adventure_id = $1 AND user_id = $2", [adv.id, userId]);
+      // Remove gear selections
+      await client.query("DELETE FROM member_gear WHERE adventure_id = $1 AND user_id = $2", [adv.id, userId]);
+    }
+    // Remove from troop_members
+    await client.query("DELETE FROM troop_members WHERE troop_id = $1 AND user_id = $2", [troopId, userId]);
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
 }
 
 export async function updateMemberDates(troopId, userId, dates) {

@@ -92,6 +92,10 @@ export const api = {
     request(`/troops/check-duplicate?unit_type=${encodeURIComponent(unitType)}&unit_number=${encodeURIComponent(unitNumber)}&council_id=${councilId}`),
   updateTroop: (id: number, data: ApiData) => request(`/troops/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   joinTroop: (id: number, data?: ApiData) => request(`/troops/${id}/join`, { method: "POST", body: JSON.stringify(data || {}) }),
+  joinTroopByCode: (code: string) => request<{ ok: boolean; troop_id: number; troop_name: string; auto_approved: boolean }>("/troops/join-by-code", { method: "POST", body: JSON.stringify({ code }) }),
+  searchTroopsByCouncil: (councilId: number) => request<Array<{ id: number; name: string; unit_type: string; unit_number: string; council: string; location: string; member_count: number }>>(`/troops/search?council_id=${councilId}`),
+  getTroopInviteCode: (id: number) => request<{ invite_code: string }>(`/troops/${id}/invite-code`),
+  regenerateInviteCode: (id: number) => request<{ invite_code: string }>(`/troops/${id}/invite-code/regenerate`, { method: "POST" }),
   getTroopJoinInfo: (id: number) => request(`/troops/${id}/join-info`),
   uploadTroopLogo: (id: number, image: string) => request(`/troops/${id}/logo`, { method: "PUT", body: JSON.stringify({ image }) }),
   deleteTroopLogo: (id: number) => request(`/troops/${id}/logo`, { method: "PUT", body: JSON.stringify({}) }),
@@ -303,6 +307,10 @@ export const api = {
   setOnboardingRole: (role: string) => request("/onboarding/role", { method: "PUT", body: JSON.stringify({ role }) }),
   completeOnboardingStep: (step: string) => request("/onboarding/step", { method: "PUT", body: JSON.stringify({ step }) }),
   completeOnboarding: () => request("/onboarding/complete", { method: "PUT" }),
+
+  // Approval (token-based, no auth required)
+  getApprovalInfo: (token: string) => request<{ troop_name: string; user_name: string; user_type: string; user_email: string; parent_email: string | null; participation: string; status: string; created_at: string }>(`/troops/approval-info/${token}`),
+  actOnApproval: (token: string, action: string) => request<{ ok: boolean; action: string; userName: string }>("/troops/approve-by-token", { method: "POST", body: JSON.stringify({ token, action }) }),
 
   // Public settings (no auth)
   getPublicSettings: (): Promise<AnnouncementSettings> => fetch("/api/public-settings").then(r => r.json()),

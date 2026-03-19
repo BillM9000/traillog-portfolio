@@ -1,8 +1,10 @@
 import { Router } from "express";
+import crypto from "crypto";
 import { requireAuth, requireTroopMember, requireTroopAdmin, requireSelfOrAdmin, isGlobalAdmin, parseId, safeError } from "../middleware.js";
 import {
   getTroops, getTroop, createTroop, updateTroop, updateTroopAffiliateTag,
-  findDuplicateTroop,
+  findDuplicateTroop, searchTroopsByCouncil, findTroopByInviteCode,
+  getTroopInviteCode, regenerateInviteCode,
   getTroopMembers, getTroopMember, getUserMemberships,
   requestJoinTroop, approveTroopMember, denyTroopMember, removeTroopMember,
   updateMemberDates, updateMemberSkills, getTroopAdmins,
@@ -21,6 +23,29 @@ import { join, resolve } from "path";
 import { existsSync, mkdirSync, writeFileSync, unlinkSync } from "fs";
 
 const router = Router();
+
+// ── Approval token utilities ──
+function generateApprovalToken(troopId, userId) {
+  const secret = process.env.SESSION_SECRET || "dev-secret-local-only";
+  const payload = `${troopId}:${userId}`;
+  const sig = crypto.createHmac("sha256", secret).update(payload).digest("hex").slice(0, 16);
+  // Base64url encode: troopId:userId:signature
+  return Buffer.from(`${payload}:${sig}`).toString("base64url");
+}
+
+function verifyApprovalToken(token) {
+  try {
+    const decoded = Buffer.from(token, "base64url").toString("utf8");
+    const [troopIdStr, userIdStr, sig] = decoded.split(":");
+    const troopId = parseInt(troopIdStr, 10);
+    const userId = parseInt(userIdStr, 10);
+    if (!troopId || !userId || !sig) return null;
+    const secret = process.env.SESSION_SECRET || "dev-secret-local-only";
+    const expectedSig = crypto.createHmac("sha256", secret).update(`${troopId}:${userId}`).digest("hex").slice(0, 16);
+    if (sig !== expectedSig) return null;
+    return { troopId, userId };
+  } catch { return null; }
+}
 
 // ── Troop Logo directory ──
 const LOGO_DIR = join(process.env.DATA_DIR || "./data", "troop-logos");
@@ -50,6 +75,40 @@ router.get("/api/troops/check-duplicate", requireAuth, async (req, res) => {
       location: existing.location,
     });
   } catch (e) { safeError(res, e); }
+});
+
+// Search public troops by council
+router.get("/api/troops/search", requireAuth, async (req, res) => {
+  try {
+    const councilId = parseInt(req.query.council_id, 10);
+    if (!councilId) return res.status(400).json({ error: "council_id required" });
+    res.json(await searchTroopsByCouncil(councilId, req.user.id));
+  } catch (e) { safeError(res, e); }
+});
+
+// Join by invite code
+router.post("/api/troops/join-by-code", requireAuth, async (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code?.trim()) return res.status(400).json({ error: "Invite code required" });
+    const troop = await findTroopByInviteCode(code);
+    if (!troop) return res.status(404).json({ error: "Invalid invite code" });
+    const existing = await getTroopMember(troop.id, req.user.id);
+    if (existing) return res.status(409).json({ error: "Already requested or joined", status: existing.status });
+    // Auto-approve via invite code
+    await requestJoinTroop(req.user.id, troop.id);
+    await approveTroopMember(troop.id, req.user.id);
+    // Add to active adventures
+    const allAdventures = (await getAdventures(troop.id)).filter(a => a.status === "active");
+    for (const adv of allAdventures) {
+      const ex = await getAdventureMember(adv.id, req.user.id);
+      if (!ex) await addAdventureMember(adv.id, req.user.id, "member", "trekking");
+    }
+    res.json({ ok: true, troop_id: troop.id, troop_name: troop.name, auto_approved: true });
+  } catch (e) {
+    if (e.message?.includes("UNIQUE")) return res.status(409).json({ error: "Already requested" });
+    safeError(res, e);
+  }
 });
 
 router.get("/api/troops/:troopId", requireAuth, requireTroopMember(), async (req, res) => {
@@ -200,10 +259,15 @@ router.post("/api/troops/:troopId/join", requireAuth, async (req, res) => {
       adventureNames = validAdventureIds.map(id => allAdv.find(a => a.id === id)?.name).filter(Boolean);
     }
 
+    const appUrl = process.env.APP_URL || "https://traillog.gracezero.ai";
+    const approvalToken = generateApprovalToken(troopId, req.user.id);
+    const approveUrl = `${appUrl}/approve/${approvalToken}`;
+
     admins.forEach(admin => {
       sendJoinRequestEmail(admin.email, admin.name, user.name, user.user_type, troop.name, user.parent_email, {
         participation: validParticipation,
         adventureNames,
+        approveUrl,
       }).catch(e => console.error("Join notification failed:", e));
     });
 
@@ -368,6 +432,22 @@ router.put("/api/troops/:troopId/settings", requireAuth, requireTroopAdmin, asyn
   } catch (e) { safeError(res, e); }
 });
 
+// ── Invite Code ──
+
+router.get("/api/troops/:troopId/invite-code", requireAuth, requireTroopAdmin, async (req, res) => {
+  try {
+    const code = await getTroopInviteCode(parseId(req.params.troopId));
+    res.json({ invite_code: code });
+  } catch (e) { safeError(res, e); }
+});
+
+router.post("/api/troops/:troopId/invite-code/regenerate", requireAuth, requireTroopAdmin, async (req, res) => {
+  try {
+    const code = await regenerateInviteCode(parseId(req.params.troopId));
+    res.json({ invite_code: code });
+  } catch (e) { safeError(res, e); }
+});
+
 // ═══════════════════════════════════════════
 // TROOP GEAR OVERRIDES & CUSTOM GEAR
 // ═══════════════════════════════════════════
@@ -413,4 +493,100 @@ router.delete("/api/troops/:troopId/custom-gear/:id", requireAuth, requireTroopA
   } catch (e) { safeError(res, e); }
 });
 
+// ═══════════════════════════════════════════
+// DIRECT APPROVAL PAGE & API
+// ═══════════════════════════════════════════
+
+// Token-based approve/deny (requires auth but NOT troop admin — the token proves authorization)
+router.post("/api/troops/approve-by-token", requireAuth, async (req, res) => {
+  try {
+    const { token, action } = req.body;
+    if (!token || !["approve", "deny"].includes(action)) return res.status(400).json({ error: "Invalid request" });
+
+    const parsed = verifyApprovalToken(token);
+    if (!parsed) return res.status(403).json({ error: "Invalid or expired approval link" });
+
+    const { troopId, userId } = parsed;
+
+    // Verify the requesting user is actually an admin of this troop
+    const adminMembership = await getTroopMember(troopId, req.user.id);
+    if (!adminMembership || adminMembership.role !== "admin" || adminMembership.status !== "approved") {
+      return res.status(403).json({ error: "You are not an admin of this troop" });
+    }
+
+    // Check the member is still pending
+    const membership = await getTroopMember(troopId, userId);
+    if (!membership) return res.status(404).json({ error: "Join request not found" });
+    if (membership.status !== "pending") return res.status(409).json({ error: `Already ${membership.status}` });
+
+    if (action === "approve") {
+      const requestedAdvIds = membership.requested_adventures || null;
+      await approveTroopMember(troopId, userId);
+      const allAdventures = (await getAdventures(troopId)).filter(a => a.status === "active");
+      const adventuresToJoin = requestedAdvIds
+        ? allAdventures.filter(a => requestedAdvIds.includes(a.id))
+        : allAdventures;
+      const participation = membership.participation || "trekking";
+      for (const adv of adventuresToJoin) {
+        const existing = await getAdventureMember(adv.id, userId);
+        if (!existing) await addAdventureMember(adv.id, userId, "member", participation);
+      }
+      const user = await findUserById(userId);
+      const troop = await getTroop(troopId);
+      const firstAdv = adventuresToJoin[0] || allAdventures[0];
+      if (user?.email) {
+        sendMemberApprovedEmail(user.email, user.name, troop.name, {
+          council: troop.council, adventureName: firstAdv?.name,
+          adventureType: firstAdv?.adventure_type, departDate: firstAdv?.depart_date, returnDate: firstAdv?.return_date,
+          troopId, adventureId: firstAdv?.id,
+        }).catch(e => console.error("Approval email failed:", e));
+      }
+      res.json({ ok: true, action: "approved", userName: user?.name });
+    } else {
+      await denyTroopMember(troopId, userId);
+      const user = await findUserById(userId);
+      const troop = await getTroop(troopId);
+      if (user?.email) {
+        sendMemberDeniedEmail(user.email, user.name, troop.name)
+          .catch(e => console.error("Denial email failed:", e));
+      }
+      res.json({ ok: true, action: "denied", userName: user?.name });
+    }
+  } catch (e) { safeError(res, e); }
+});
+
+// Token verification (for the approval page to get details)
+router.get("/api/troops/approval-info/:token", requireAuth, async (req, res) => {
+  try {
+    const parsed = verifyApprovalToken(req.params.token);
+    if (!parsed) return res.status(403).json({ error: "Invalid approval link" });
+
+    const { troopId, userId } = parsed;
+
+    // Verify requesting user is admin
+    const adminMembership = await getTroopMember(troopId, req.user.id);
+    if (!adminMembership || adminMembership.role !== "admin" || adminMembership.status !== "approved") {
+      return res.status(403).json({ error: "You are not an admin of this troop" });
+    }
+
+    const membership = await getTroopMember(troopId, userId);
+    if (!membership) return res.status(404).json({ error: "Join request not found" });
+
+    const user = await findUserById(userId);
+    const troop = await getTroop(troopId);
+
+    res.json({
+      troop_name: troop?.name,
+      user_name: user?.name,
+      user_type: user?.user_type,
+      user_email: user?.email,
+      parent_email: user?.parent_email,
+      participation: membership.participation,
+      status: membership.status,
+      created_at: membership.created_at,
+    });
+  } catch (e) { safeError(res, e); }
+});
+
+export { generateApprovalToken, verifyApprovalToken };
 export default router;

@@ -172,6 +172,8 @@ export default function GearList({ troopId, adventureId, members, active, setAct
       f = f.filter(g => {
         const sel = myGearMap[g.id];
         if (statusFilter === "none") return !sel;
+        // "needed" means items not yet acquired: explicitly marked "needed" OR no selection at all
+        if (statusFilter === "needed") return !sel || sel.status === "needed";
         return sel?.status === statusFilter;
       });
     }

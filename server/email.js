@@ -21,7 +21,7 @@ function getTransporter() {
   return transporter;
 }
 
-export async function sendJoinRequestEmail(adminEmail, adminName, requesterName, requesterType, troopName, parentEmail, { participation, adventureNames } = {}) {
+export async function sendJoinRequestEmail(adminEmail, adminName, requesterName, requesterType, troopName, parentEmail, { participation, adventureNames, approveUrl } = {}) {
   const t = getTransporter();
   if (!t) return console.log(`[email skip] Join request: ${requesterName} → ${troopName} (no SMTP configured)`);
 
@@ -36,6 +36,10 @@ export async function sendJoinRequestEmail(adminEmail, adminName, requesterName,
     ? `<p><strong>Requested adventure${adventureNames.length > 1 ? "s" : ""}:</strong> ${adventureNames.map(n => esc(n)).join(", ")}</p>`
     : "";
 
+  const approveBlock = approveUrl
+    ? `<p style="margin:16px 0"><a href="${approveUrl}" style="display:inline-block;background:#5B7A3A;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px">Review &amp; Approve</a></p>`
+    : `<p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="color:#4a7a55;font-weight:bold">Open TrailLog</a></p>`;
+
   await t.sendMail({
     from: `"TrailLog" <${process.env.SMTP_USER}>`,
     to: adminEmail,
@@ -48,8 +52,7 @@ export async function sendJoinRequestEmail(adminEmail, adminName, requesterName,
           ${adventureLine}
           ${scoutLine}
         </div>
-        <p>Log in to approve or deny this request:</p>
-        <p><a href="${process.env.APP_URL || "https://traillog.gracezero.ai"}" style="color:#4a7a55;font-weight:bold">Open TrailLog</a></p>
+        ${approveBlock}
       </div>
     `,
   });

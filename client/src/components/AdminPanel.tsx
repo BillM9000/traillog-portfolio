@@ -96,6 +96,9 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   });
   const [troopDesc, setTroopDesc] = useState<string>(troop?.description || "");
   const [troopPublic, setTroopPublic] = useState<boolean>(troop?.is_public !== 0);
+  const [inviteCodeVal, setInviteCodeVal] = useState<string>("");
+  const [inviteCodeLoaded, setInviteCodeLoaded] = useState<boolean>(false);
+  const [regeneratingCode, setRegeneratingCode] = useState<boolean>(false);
   const [advName, setAdvName] = useState<string>(adventure?.name || "");
   const [advDesc, setAdvDesc] = useState<string>((adventure as any)?.description || "");
   const [departDate, setDepartDate] = useState<string>(adventure?.depart_date || "");
@@ -181,6 +184,23 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
     }
   }, [adventure?.id]);
 
+  useEffect(() => {
+    if (troop?.id && !inviteCodeLoaded) {
+      api.getTroopInviteCode(troop.id).then(r => { setInviteCodeVal(r.invite_code || ""); setInviteCodeLoaded(true); }).catch(() => setInviteCodeLoaded(true));
+    }
+  }, [troop?.id, inviteCodeLoaded]);
+
+  const handleRegenerateCode = async () => {
+    if (!troop?.id) return;
+    setRegeneratingCode(true);
+    try {
+      const r = await api.regenerateInviteCode(troop.id);
+      setInviteCodeVal(r.invite_code);
+      addToast("Invite code regenerated", "success");
+    } catch { addToast("Failed to regenerate code", "error"); }
+    finally { setRegeneratingCode(false); }
+  };
+
   const normalize = (s: string) => s.replace(/\s+/g, " ").trim();
 
   const saveTroop = async () => {
@@ -247,7 +267,12 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   };
 
   const removeMemberFromAdventure = async (userId: number) => {
-    try { await api.removeCrewMember(selectedCrewId as number, userId); setConfirmRemoveMember(null); onRefresh(); addToast("Member removed", "success"); }
+    try {
+      await api.removeCrewMember(selectedCrewId as number, userId);
+      // Also remove from troop so they don't see the troop on their dashboard
+      await api.removeMember(troop.id, userId);
+      setConfirmRemoveMember(null); onRefresh(); addToast("Member removed", "success");
+    }
     catch (e: unknown) { addToast((e as Error).message, "error"); }
   };
 
@@ -734,6 +759,35 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
 
           {tab === "members" && (
             <>
+              {/* Invite Code */}
+              <div className="mb-3.5 p-[10px_12px] rounded-[8px] bg-tl-bg-alt border border-tl-border">
+                <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Invite Code</label>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="tl-input !mb-0 flex-1 font-mono tracking-widest text-center text-sm font-bold">
+                    {inviteCodeVal || "—"}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { if (inviteCodeVal) { navigator.clipboard.writeText(inviteCodeVal); addToast("Copied!", "success"); } }}
+                    disabled={!inviteCodeVal}
+                    className="px-2.5 py-[5px] rounded-[6px] border border-tl-border-light bg-tl-bg-alt text-tl-text text-[11px] font-semibold cursor-pointer font-body"
+                  >
+                    Copy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRegenerateCode}
+                    disabled={regeneratingCode}
+                    className="px-2.5 py-[5px] rounded-[6px] border border-tl-border-light bg-tl-bg-alt text-tl-text-dim text-[11px] font-body cursor-pointer"
+                  >
+                    {regeneratingCode ? "..." : "New Code"}
+                  </button>
+                </div>
+                <div className="text-[10px] text-tl-text-dim">
+                  Share this code with members so they can join your unit instantly.
+                </div>
+              </div>
+
               {/* Pending Troop Join Requests */}
               {(troopMembers || []).filter(m => m.status === "pending").length > 0 && (
                 <div className="mb-3.5 p-[10px_12px] rounded-[8px]" style={{ background: isDark ? "#2a2820" : "#faf5e8", border: `1px solid ${isDark ? "#E8A84C40" : "#C4A03540"}` }}>

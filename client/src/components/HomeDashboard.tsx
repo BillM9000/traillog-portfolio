@@ -569,15 +569,29 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
         {loading ? (
           <div className="text-center p-10 text-tl-text-dim">Loading...</div>
         ) : (dashboard?.troops || []).length === 0 && !showCreate ? (
-          <div className="tl-card text-center py-10 px-5">
-            <div className="text-[32px] mb-2">{"\u{1F3D5}\uFE0F"}</div>
-            <div className="text-sm font-semibold text-tl-heading mb-1">
-              {user.user_type === "scout" ? "No troops yet" : "Get started"}
+          pendingRequests.length > 0 ? (
+            <div className="tl-card text-center py-8 px-5">
+              <div className="text-[32px] mb-2">⏳</div>
+              <div className="text-sm font-semibold text-tl-heading mb-1">
+                Waiting for Approval
+              </div>
+              <div className="text-xs text-tl-text-dim">
+                Your crew leader will review your request. You'll get full access once approved.
+              </div>
             </div>
-            <div className="text-xs text-tl-text-dim">
-              {user.user_type === "scout" ? "A troop leader will need to create one and invite you." : "Create a troop or browse public troops to join."}
+          ) : (
+            <div className="tl-card text-center py-10 px-5">
+              <div className="text-[32px] mb-2">{"\u{1F3D5}\uFE0F"}</div>
+              <div className="text-sm font-semibold text-tl-heading mb-1">
+                {user.user_type === "scout" ? "No troops yet" : user.user_type === "parent" ? "No troops yet" : "Get started"}
+              </div>
+              <div className="text-xs text-tl-text-dim">
+                {user.user_type === "scout" ? "A troop leader will need to create one and invite you."
+                  : user.user_type === "parent" ? "Ask your scout's troop leader for the invite code, or browse public troops to join."
+                  : "Create a troop or browse public troops to join."}
+              </div>
             </div>
-          </div>
+          )
         ) : (
           (dashboard?.troops || []).map(troop => (
             <div key={troop.id} className="tl-card mb-3">
@@ -647,7 +661,11 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
 
         {/* ── Quick Actions ── */}
         <div className="flex gap-2 mt-2">
-          {!showCreate && user.user_type !== "scout" && (
+          {!showCreate && user.user_type === "adult" && (dashboard?.troops || []).length === 0 && pendingRequests.length === 0 && (
+            <button onClick={() => { setShowCreate(true); setCreateStep(1); }}
+              className="flex-1 py-3 rounded-btn border-[1.5px] border-dashed border-tl-border-light bg-transparent text-tl-accent text-[13px] font-semibold cursor-pointer font-body">+ Register Unit</button>
+          )}
+          {!showCreate && user.user_type === "adult" && (dashboard?.troops || []).length > 0 && (
             <button onClick={() => { setShowCreate(true); setCreateStep(1); }}
               className="flex-1 py-3 rounded-btn border-[1.5px] border-dashed border-tl-border-light bg-transparent text-tl-accent text-[13px] font-semibold cursor-pointer font-body">+ Register Unit</button>
           )}

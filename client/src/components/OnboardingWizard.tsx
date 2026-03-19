@@ -19,21 +19,21 @@ const ADVENTURE_TYPES = [
 ];
 
 const ESSENTIAL_GEAR = [
-  { name: "Backpack (50-80L)", icon: "\uD83C\uDF92" },
-  { name: "Hiking Boots", icon: "\uD83E\uDD7E" },
-  { name: "Sleeping Bag", icon: "\uD83D\uDECF\uFE0F" },
-  { name: "Sleeping Pad", icon: "\uD83C\uDFD5\uFE0F" },
-  { name: "Water Filter", icon: "\uD83D\uDCA7" },
-  { name: "Stove & Fuel", icon: "\uD83C\uDF73" },
-  { name: "Compass", icon: "\uD83E\uDDED" },
-  { name: "Rain Gear", icon: "\u2614" },
-  { name: "Headlamp", icon: "\uD83D\uDD26" },
-  { name: "First Aid Kit", icon: "\u26D1\uFE0F" },
-  { name: "Mess Kit", icon: "\uD83C\uDF7D\uFE0F" },
-  { name: "Sunscreen", icon: "\u2600\uFE0F" },
-  { name: "Water Bottles (2+)", icon: "\uD83E\uDED7" },
-  { name: "Trekking Poles", icon: "\uD83E\uDD62" },
-  { name: "Camp Clothes", icon: "\uD83D\uDC55" },
+  { name: "Backpack (50-80L)", icon: "🎒" },
+  { name: "Hiking Boots", icon: "🥾" },
+  { name: "Sleeping Bag", icon: "🛏️" },
+  { name: "Sleeping Pad", icon: "🏕️" },
+  { name: "Water Filter", icon: "💧" },
+  { name: "Stove & Fuel", icon: "🍳" },
+  { name: "Compass", icon: "🧭" },
+  { name: "Rain Gear", icon: "☔" },
+  { name: "Headlamp", icon: "🔦" },
+  { name: "First Aid Kit", icon: "⛑️" },
+  { name: "Mess Kit", icon: "🍽️" },
+  { name: "Sunscreen", icon: "☀️" },
+  { name: "Water Bottles (2+)", icon: "🫗" },
+  { name: "Trekking Poles", icon: "🥢" },
+  { name: "Camp Clothes", icon: "👕" },
 ];
 
 const READINESS_QUESTIONS = [
@@ -42,8 +42,8 @@ const READINESS_QUESTIONS = [
     label: "Longest hike in the past 3 months?",
     options: [
       { value: 2, label: "< 3 miles" },
-      { value: 5, label: "3\u20137 miles" },
-      { value: 10, label: "7\u201312 miles" },
+      { value: 5, label: "3–7 miles" },
+      { value: 10, label: "7–12 miles" },
       { value: 15, label: "12+ miles" },
     ],
   },
@@ -110,6 +110,7 @@ function getStepsForPath(role: string | null, userType: string | null): StepDef[
   if (role === "parent") {
     return [
       { id: "role_select", title: "What brings you here?", required: true },
+      { id: "find_unit", title: "Find Your Unit", required: true },
       { id: "connect_scout", title: "Connect to Your Scout", required: true },
       { id: "parent_dashboard", title: "Your Dashboard", required: true },
     ];
@@ -474,7 +475,7 @@ function SkipLink({ onClick, label }: { onClick: () => void; label?: string }) {
       onClick={onClick}
       className="mt-3 w-full py-2 border-none bg-transparent text-tl-text-dim text-xs font-body cursor-pointer hover:text-tl-text transition-colors"
     >
-      {label || "I'll do this later"} &rarr;
+      {label || "I'll do this later"} →
     </button>
   );
 }
@@ -514,7 +515,7 @@ function StepRoleSelect({ onSelect, busy, userType }: { onSelect: (role: string)
   return (
     <WizardCard>
       <WizardTitle
-        icon="\uD83C\uDFD5\uFE0F"
+        icon="🏕️"
         title="What brings you here?"
         subtitle="This helps us set up the right experience for you."
       />
@@ -550,17 +551,17 @@ function StepScoutWelcome({ onContinue, busy, userName }: { onContinue: () => vo
   return (
     <WizardCard>
       <WizardTitle
-        icon="\u26FA"
+        icon="⛺"
         title={`Welcome, ${userName.split(" ")[0]}!`}
         subtitle="TrailLog helps you track your gear, training, and readiness for your High Adventure trek."
       />
 
       <div className="flex flex-col gap-2 mb-6">
         {[
-          { icon: "\uD83D\uDDFA\uFE0F", label: "See your crew's itinerary day-by-day" },
-          { icon: "\uD83C\uDF92", label: "Track your gear with a personal checklist" },
-          { icon: "\uD83D\uDCAA", label: "Get a training plan based on your fitness" },
-          { icon: "\u23F1\uFE0F", label: "Count down the days to departure" },
+          { icon: "🗺️", label: "See your crew's itinerary day-by-day" },
+          { icon: "🎒", label: "Track your gear with a personal checklist" },
+          { icon: "💪", label: "Get a training plan based on your fitness" },
+          { icon: "⏱️", label: "Count down the days to departure" },
         ].map((f, i) => (
           <div key={i} className="flex items-center gap-3 py-2 px-3 rounded-btn bg-tl-bg-alt">
             <span className="text-lg">{f.icon}</span>
@@ -632,7 +633,7 @@ function StepRegisterUnit({ onComplete }: { onComplete: (troopId: number) => voi
   return (
     <WizardCard>
       <WizardTitle
-        icon="\uD83C\uDFE0"
+        icon="🏠"
         title="Register Your Unit"
         subtitle="Set up your BSA unit so your crew members can find and join you."
       />
@@ -732,10 +733,9 @@ function StepFindUnit({ onComplete, userType }: { onComplete: (troopId: number, 
   const [councilId, setCouncilId] = useState<number | null>(null);
   const [councilSearch, setCouncilSearch] = useState("");
   const [showCouncilDropdown, setShowCouncilDropdown] = useState(false);
-  const [unitType, setUnitType] = useState("troop");
-  const [unitNumber, setUnitNumber] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searched, setSearched] = useState(false);
   const [searching, setSearching] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -749,19 +749,17 @@ function StepFindUnit({ onComplete, userType }: { onComplete: (troopId: number, 
     return councils.filter(c => c.name.toLowerCase().includes(q)).slice(0, 20);
   }, [councils, councilSearch]);
 
-  const handleSearch = async () => {
-    if (!councilId || !unitNumber.trim()) return;
+  // Auto-search when council is selected
+  const selectCouncil = async (council: Council) => {
+    setCouncilId(council.id);
+    setCouncilSearch(council.name);
+    setShowCouncilDropdown(false);
     setSearching(true);
+    setSearched(false);
     try {
-      // Use dashboard to find matching public troops
-      const data = await api.getDashboard() as any;
-      const publicTroops = (data.public_troops || []).filter((t: any) =>
-        t.council_id === councilId && t.name?.toLowerCase().includes(unitNumber.trim().toLowerCase()),
-      );
-      setSearchResults(publicTroops);
-      if (publicTroops.length === 0) {
-        addToast("No matching units found. Try a different search or use an invite code.", "info");
-      }
+      const troops = await api.searchTroopsByCouncil(council.id);
+      setSearchResults(troops);
+      setSearched(true);
     } catch {
       addToast("Search failed", "error");
     } finally {
@@ -782,12 +780,26 @@ function StepFindUnit({ onComplete, userType }: { onComplete: (troopId: number, 
     }
   };
 
+  const handleJoinByCode = async () => {
+    if (!inviteCode.trim()) return;
+    setBusy(true);
+    try {
+      const result = await api.joinTroopByCode(inviteCode.trim());
+      addToast(`Joined ${result.troop_name}!`, "success");
+      onComplete(result.troop_id, false);
+    } catch (e: any) {
+      addToast(e.message || "Invalid invite code", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <WizardCard>
       <WizardTitle
-        icon="\uD83D\uDD0D"
+        icon="🔍"
         title={userType === "scout" ? "Find Your Troop" : "Find Your Unit"}
-        subtitle="Search for your unit or enter an invite code from your crew leader."
+        subtitle="Search by council or enter an invite code from your crew leader."
       />
 
       {/* Toggle search / invite code */}
@@ -801,7 +813,7 @@ function StepFindUnit({ onComplete, userType }: { onComplete: (troopId: number, 
               : "bg-tl-bg-alt text-tl-text-dim border-2 border-tl-border-light",
           )}
         >
-          Search
+          Search by Council
         </button>
         <button
           onClick={() => setSearchMode("code")}
@@ -818,26 +830,30 @@ function StepFindUnit({ onComplete, userType }: { onComplete: (troopId: number, 
 
       {searchMode === "search" ? (
         <div className="flex flex-col gap-3">
-          {/* Council */}
+          {/* Council search */}
           <div className="relative">
-            <label className="block text-xs font-bold text-tl-text-dim mb-1 font-body">Council</label>
+            <label className="block text-xs font-bold text-tl-text-dim mb-1 font-body">Search your council</label>
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-tl-text-dim" />
               <input
                 type="text"
                 value={councilSearch}
-                onChange={e => { setCouncilSearch(e.target.value); setShowCouncilDropdown(true); }}
+                onChange={e => {
+                  setCouncilSearch(e.target.value);
+                  setShowCouncilDropdown(true);
+                  if (councilId) { setCouncilId(null); setSearchResults([]); setSearched(false); }
+                }}
                 onFocus={() => setShowCouncilDropdown(true)}
-                placeholder="Search council..."
+                placeholder="Type your council name..."
                 className="tl-input w-full pl-8"
               />
             </div>
-            {showCouncilDropdown && councilSearch && filteredCouncils.length > 0 && (
+            {showCouncilDropdown && councilSearch && !councilId && filteredCouncils.length > 0 && (
               <div className="absolute left-0 right-0 top-full mt-1 max-h-40 overflow-y-auto rounded-btn border border-tl-border bg-tl-bg shadow-lg z-10">
                 {filteredCouncils.map(c => (
                   <button
                     key={c.id}
-                    onClick={() => { setCouncilId(c.id); setCouncilSearch(c.name); setShowCouncilDropdown(false); }}
+                    onClick={() => selectCouncil(c)}
                     className="w-full text-left py-2 px-3 text-xs font-body text-tl-text hover:bg-tl-bg-alt cursor-pointer border-none bg-transparent"
                   >
                     {c.name}
@@ -847,55 +863,50 @@ function StepFindUnit({ onComplete, userType }: { onComplete: (troopId: number, 
             )}
           </div>
 
-          {/* Unit type + number */}
-          <div className="flex gap-2">
-            <div className="w-28">
-              <label className="block text-xs font-bold text-tl-text-dim mb-1 font-body">Type</label>
-              <select
-                value={unitType}
-                onChange={e => setUnitType(e.target.value)}
-                className="tl-input w-full"
-              >
-                <option value="troop">Troop</option>
-                <option value="crew">Crew</option>
-                <option value="ship">Ship</option>
-                <option value="post">Post</option>
-              </select>
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-bold text-tl-text-dim mb-1 font-body">Number</label>
-              <input
-                type="text"
-                value={unitNumber}
-                onChange={e => setUnitNumber(e.target.value)}
-                placeholder="614"
-                className="tl-input w-full"
-              />
-            </div>
-          </div>
+          {/* Loading */}
+          {searching && (
+            <div className="text-center py-4 text-xs text-tl-text-dim">Searching units...</div>
+          )}
 
-          <PrimaryButton onClick={handleSearch} disabled={!councilId || !unitNumber.trim() || searching}>
-            {searching ? "Searching..." : "Search"}
-          </PrimaryButton>
-
-          {/* Results */}
-          {searchResults.length > 0 && (
-            <div className="flex flex-col gap-2 mt-2">
+          {/* Results — troops in this council */}
+          {searched && !searching && searchResults.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <div className="text-xs text-tl-text-dim font-body">
+                {searchResults.length} unit{searchResults.length !== 1 ? "s" : ""} found in this council:
+              </div>
               {searchResults.map((t: any) => (
                 <div key={t.id} className="flex items-center justify-between py-3 px-4 rounded-btn bg-tl-bg-alt border border-tl-border-light">
                   <div>
                     <div className="text-sm font-bold text-tl-heading font-display">{t.name}</div>
-                    <div className="text-[10px] text-tl-text-dim">{t.council || "Unknown Council"}</div>
+                    <div className="text-[10px] text-tl-text-dim">
+                      {t.location || t.council}{t.member_count ? ` · ${t.member_count} member${Number(t.member_count) !== 1 ? "s" : ""}` : ""}
+                    </div>
                   </div>
                   <button
                     onClick={() => handleJoin(t.id)}
                     disabled={busy}
-                    className="py-1.5 px-3 rounded-btn bg-tl-accent text-white text-xs font-bold cursor-pointer border-none font-body"
+                    className="py-1.5 px-3 rounded-btn bg-tl-accent text-white text-xs font-bold cursor-pointer border-none font-body shrink-0"
                   >
                     Request to Join
                   </button>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* No results — offer to register */}
+          {searched && !searching && searchResults.length === 0 && (
+            <div className="text-center py-4 px-3 rounded-btn bg-tl-bg-alt border border-tl-border-light">
+              <div className="text-sm font-bold text-tl-heading font-display mb-1">No units found</div>
+              <div className="text-xs text-tl-text-dim mb-3">
+                No units are registered in this council yet. Ask your crew leader for an invite code, or if you're the leader, go back and choose "Start a New Unit" instead.
+              </div>
+              <button
+                onClick={() => setSearchMode("code")}
+                className="py-2 px-4 rounded-btn bg-tl-accent/20 text-tl-accent text-xs font-bold cursor-pointer border border-tl-accent/40 font-body"
+              >
+                Try Invite Code Instead
+              </button>
             </div>
           )}
         </div>
@@ -906,13 +917,17 @@ function StepFindUnit({ onComplete, userType }: { onComplete: (troopId: number, 
             <input
               type="text"
               value={inviteCode}
-              onChange={e => setInviteCode(e.target.value)}
-              placeholder="Enter your invite code..."
-              className="tl-input w-full"
+              onChange={e => setInviteCode(e.target.value.toUpperCase())}
+              placeholder="e.g. AB3XK9P2"
+              maxLength={8}
+              className="tl-input w-full text-center tracking-widest text-base font-mono"
             />
+            <div className="text-[10px] text-tl-text-dim mt-1">
+              Get this from your troop admin or crew leader
+            </div>
           </div>
-          <PrimaryButton onClick={() => addToast("Invite code feature coming soon", "info")} disabled={!inviteCode.trim()}>
-            Join with Code
+          <PrimaryButton onClick={handleJoinByCode} disabled={!inviteCode.trim() || busy}>
+            {busy ? "Joining..." : "Join with Code"}
           </PrimaryButton>
         </div>
       )}
@@ -984,7 +999,7 @@ function StepPlanAdventure({ troopId, onComplete }: { troopId: number; onComplet
   return (
     <WizardCard>
       <WizardTitle
-        icon="\uD83D\uDDFA\uFE0F"
+        icon="🗺️"
         title="Plan Your Adventure"
         subtitle="Tell us about your High Adventure trek."
       />
@@ -1067,7 +1082,7 @@ function StepPlanAdventure({ troopId, onComplete }: { troopId: number; onComplet
                           : "bg-transparent text-tl-text hover:bg-tl-bg",
                       )}
                     >
-                      {it.name} &middot; {it.miles}mi
+                      {it.name} · {it.miles}mi
                     </button>
                   ))}
                 </div>
@@ -1081,7 +1096,7 @@ function StepPlanAdventure({ troopId, onComplete }: { troopId: number; onComplet
         </PrimaryButton>
       </div>
 
-      <FeatureCallout text="Your itinerary drives everything \u2014 daily schedules, dry camp warnings, water strategies, elevation profiles. Each crew member sees their own countdown." />
+      <FeatureCallout text="Your itinerary drives everything — daily schedules, dry camp warnings, water strategies, elevation profiles. Each crew member sees their own countdown." />
     </WizardCard>
   );
 }
@@ -1090,17 +1105,17 @@ function StepPlanAdventure({ troopId, onComplete }: { troopId: number; onComplet
 
 function StepFeatureTour({ onContinue }: { onContinue: () => void }) {
   const features = [
-    { icon: "\uD83D\uDDFA\uFE0F", title: "Your Itinerary", desc: "Day-by-day route with camps, programs, dry camp warnings" },
-    { icon: "\uD83C\uDF92", title: "Personal Gear List", desc: "Check off items, track pack weight, get AI suggestions" },
-    { icon: "\uD83D\uDCAA", title: "Readiness Plan", desc: "AI generates a personalized training plan based on your fitness" },
-    { icon: "\uD83D\uDCC5", title: "Training Events", desc: "See scheduled hikes, mark attendance, coordinate with crew" },
-    { icon: "\u23F1\uFE0F", title: "Countdown", desc: "Live countdown to departure with phase tracking" },
+    { icon: "🗺️", title: "Your Itinerary", desc: "Day-by-day route with camps, programs, dry camp warnings" },
+    { icon: "🎒", title: "Personal Gear List", desc: "Check off items, track pack weight, get AI suggestions" },
+    { icon: "💪", title: "Readiness Plan", desc: "AI generates a personalized training plan based on your fitness" },
+    { icon: "📅", title: "Training Events", desc: "See scheduled hikes, mark attendance, coordinate with crew" },
+    { icon: "⏱️", title: "Countdown", desc: "Live countdown to departure with phase tracking" },
   ];
 
   return (
     <WizardCard>
       <WizardTitle
-        icon="\u2728"
+        icon="✨"
         title="What TrailLog Does For You"
         subtitle="Here's everything you'll have access to once you're set up."
       />
@@ -1118,7 +1133,7 @@ function StepFeatureTour({ onContinue }: { onContinue: () => void }) {
       </div>
 
       <PrimaryButton onClick={onContinue}>
-        Got It \u2014 Let's Continue
+        Got It — Let's Continue
       </PrimaryButton>
     </WizardCard>
   );
@@ -1129,36 +1144,99 @@ function StepFeatureTour({ onContinue }: { onContinue: () => void }) {
 function StepReadiness({ crewId, pendingApproval, onComplete }: {
   crewId: number | null; pendingApproval: boolean; onComplete: () => void;
 }) {
-  const { addToast } = useToast();
   const [answers, setAnswers] = useState<Record<string, string | number>>({});
   const [busy, setBusy] = useState(false);
+  const [showResult, setShowResult] = useState(false);
 
   const allAnswered = READINESS_QUESTIONS.every(q => answers[q.key] !== undefined);
 
-  const handleSubmit = async () => {
+  // Compute a simple readiness estimate from answers
+  const readinessEstimate = useMemo(() => {
+    if (!allAnswered) return null;
+    let score = 0;
+    const dist = answers.current_distance_miles as number;
+    if (dist >= 15) score += 30; else if (dist >= 10) score += 22; else if (dist >= 5) score += 12; else score += 5;
+    const pack = answers.pack_experience as string;
+    if (pack === "multi_day") score += 25; else if (pack === "day_pack") score += 15; else score += 5;
+    const elev = answers.elevation_access as string;
+    if (elev === "real_elevation") score += 25; else if (elev === "some_hills") score += 15; else score += 5;
+    const activity = answers.activity_level as string;
+    if (activity === "very_active") score += 20; else if (activity === "regularly_active") score += 15; else if (activity === "lightly_active") score += 8; else score += 3;
+    return Math.min(score, 100);
+  }, [answers, allAnswered]);
+
+  const handleAnalyze = async () => {
     if (!allAnswered) return;
     setBusy(true);
     try {
-      if (crewId && !pendingApproval) {
+      if (crewId) {
         await api.submitAssessment(crewId, answers);
       }
-      // Even if we can't submit to a crew yet, mark step done
-      onComplete();
-    } catch (e: any) {
-      // Still proceed even if API fails
+    } catch (e) {
+      // If pending approval, the API may reject — that's OK, score still shows locally
       console.error(e);
-      onComplete();
     } finally {
       setBusy(false);
+      setShowResult(true);
     }
   };
+
+  const getReadinessLabel = (score: number) => {
+    if (score >= 75) return { label: "Looking Strong", color: "text-green-500", tip: "You're in great shape. Keep up the training and you'll be ready." };
+    if (score >= 50) return { label: "Good Foundation", color: "text-yellow-500", tip: "Solid start. Focus on increasing distance and pack weight over the next few months." };
+    if (score >= 25) return { label: "Building Up", color: "text-orange-400", tip: "Start with regular hikes and gradually add pack weight. You've got time." };
+    return { label: "Getting Started", color: "text-red-400", tip: "No worries — everyone starts somewhere. Start walking regularly and build up from there." };
+  };
+
+  if (showResult && readinessEstimate !== null) {
+    const info = getReadinessLabel(readinessEstimate);
+    return (
+      <WizardCard>
+        <WizardTitle
+          icon="📊"
+          title="Your Readiness Snapshot"
+        />
+
+        {/* Readiness ring */}
+        <div className="flex flex-col items-center mb-5">
+          <div className="relative w-28 h-28">
+            <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="currentColor" strokeWidth="8" className="text-tl-border" />
+              <circle cx="60" cy="60" r="50" fill="none" strokeWidth="8" strokeLinecap="round"
+                className="text-tl-accent transition-all duration-1000"
+                strokeDasharray={`${readinessEstimate * 3.14} 314`}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-2xl font-black font-display text-tl-heading">{readinessEstimate}%</span>
+            </div>
+          </div>
+          <div className={clsx("text-sm font-bold font-display mt-2", info.color)}>{info.label}</div>
+        </div>
+
+        {/* Tip */}
+        <div className="py-3 px-4 rounded-btn bg-tl-bg-alt border border-tl-border-light mb-5">
+          <div className="text-xs text-tl-text leading-relaxed">{info.tip}</div>
+        </div>
+
+        {/* What happens next */}
+        <div className="text-[10px] text-tl-text-dim mb-4 text-center">
+          Once you're in your crew, the Readiness tab will generate a personalized week-by-week training plan.
+        </div>
+
+        <PrimaryButton onClick={onComplete}>
+          Continue
+        </PrimaryButton>
+      </WizardCard>
+    );
+  }
 
   return (
     <WizardCard>
       <WizardTitle
-        icon="\uD83E\uDDD7"
+        icon="🧗"
         title="How Ready Are You?"
-        subtitle="Quick fitness check \u2014 this helps us build your personalized training plan."
+        subtitle="Quick fitness check — this helps us build your personalized training plan."
       />
 
       <div className="flex flex-col gap-5">
@@ -1186,8 +1264,8 @@ function StepReadiness({ crewId, pendingApproval, onComplete }: {
       </div>
 
       <div className="mt-6">
-        <PrimaryButton onClick={handleSubmit} disabled={!allAnswered || busy}>
-          {busy ? "Analyzing..." : "See My Training Plan"}
+        <PrimaryButton onClick={handleAnalyze} disabled={!allAnswered || busy}>
+          {busy ? "Analyzing..." : "See My Readiness"}
         </PrimaryButton>
       </div>
     </WizardCard>
@@ -1228,7 +1306,7 @@ function StepTrainingDates({ onComplete, onSkip }: { onComplete: () => void; onS
   return (
     <WizardCard>
       <WizardTitle
-        icon="\uD83D\uDCC5"
+        icon="📅"
         title="Your First Training Week"
         subtitle="Pick days you can train this week. We'll help coordinate with your crew."
       />
@@ -1280,7 +1358,7 @@ function StepGearCheck({ onComplete, onSkip }: { onComplete: () => void; onSkip:
   return (
     <WizardCard>
       <WizardTitle
-        icon="\uD83C\uDF92"
+        icon="🎒"
         title="Gear You Already Own"
         subtitle="Tap items you own. We'll track the rest on your gear checklist."
       />
@@ -1291,7 +1369,7 @@ function StepGearCheck({ onComplete, onSkip }: { onComplete: () => void; onSkip:
           <div className="h-full rounded-full bg-tl-accent transition-all duration-300" style={{ width: `${pct}%` }} />
         </div>
         <span className="text-[11px] font-bold text-tl-text-dim font-body whitespace-nowrap">
-          {owned.size} of {ESSENTIAL_GEAR.length} &middot; {pct}%
+          {owned.size} of {ESSENTIAL_GEAR.length} · {pct}%
         </span>
       </div>
 
@@ -1358,7 +1436,7 @@ function StepInviteMembers({ adventureId, onComplete, onSkip }: {
   return (
     <WizardCard>
       <WizardTitle
-        icon="\uD83D\uDCE8"
+        icon="📨"
         title="Build Your Crew"
         subtitle="Invite crew members by email. They'll get a link to join your adventure."
       />
@@ -1404,10 +1482,10 @@ function StepInviteMembers({ adventureId, onComplete, onSkip }: {
         </div>
         <div className="grid grid-cols-2 gap-2">
           {[
-            { icon: "\uD83C\uDF92", title: "Gear Checklist", desc: "AI-powered pack list" },
-            { icon: "\uD83D\uDCCA", title: "Readiness Engine", desc: "Personalized training plans" },
-            { icon: "\uD83D\uDCC5", title: "Training Calendar", desc: "Schedule hikes, track attendance" },
-            { icon: "\uD83D\uDCCB", title: "Reports", desc: "Excel exports for everything" },
+            { icon: "🎒", title: "Gear Checklist", desc: "AI-powered pack list" },
+            { icon: "📊", title: "Readiness Engine", desc: "Personalized training plans" },
+            { icon: "📅", title: "Training Calendar", desc: "Schedule hikes, track attendance" },
+            { icon: "📋", title: "Reports", desc: "Excel exports for everything" },
           ].map((f, i) => (
             <div key={i} className="py-2 px-3 rounded-btn bg-tl-bg-alt text-center">
               <div className="text-lg">{f.icon}</div>
@@ -1450,7 +1528,7 @@ function StepConnectScout({ onComplete }: { onComplete: () => void }) {
   return (
     <WizardCard>
       <WizardTitle
-        icon="\uD83D\uDC68\u200D\uD83D\uDC66"
+        icon="👨‍👦"
         title="Connect to Your Scout"
         subtitle="Enter your scout's email address so we can link your accounts."
       />
@@ -1483,17 +1561,17 @@ function StepParentDashboard({ onFinish, busy }: { onFinish: () => void; busy: b
   return (
     <WizardCard>
       <WizardTitle
-        icon="\uD83D\uDCF1"
+        icon="📱"
         title="Your Dashboard"
         subtitle="Here's what you'll see when you log in."
       />
 
       <div className="flex flex-col gap-3 mb-6">
         {[
-          { icon: "\uD83D\uDCCA", title: "Readiness Score", desc: "See how prepared your scout is for the trek" },
-          { icon: "\uD83C\uDF92", title: "Gear Progress", desc: "Track what gear they still need to get" },
-          { icon: "\uD83D\uDCC5", title: "Training Schedule", desc: "View upcoming training hikes and events" },
-          { icon: "\uD83D\uDCDD", title: "Documents", desc: "Access permission forms and medical info" },
+          { icon: "📊", title: "Readiness Score", desc: "See how prepared your scout is for the trek" },
+          { icon: "🎒", title: "Gear Progress", desc: "Track what gear they still need to get" },
+          { icon: "📅", title: "Training Schedule", desc: "View upcoming training hikes and events" },
+          { icon: "📝", title: "Documents", desc: "Access permission forms and medical info" },
         ].map((f, i) => (
           <div key={i} className="flex items-center gap-3 py-3 px-4 rounded-btn bg-tl-bg-alt border border-tl-border-light">
             <span className="text-xl shrink-0">{f.icon}</span>
@@ -1520,7 +1598,7 @@ function StepSummary({ role, pendingApproval, onFinish, busy }: {
   return (
     <WizardCard>
       <WizardTitle
-        icon={"\u2705"}
+        icon="✅"
         title={pendingApproval ? "Almost There!" : "You're All Set"}
         subtitle={pendingApproval
           ? "Your join request has been sent. You'll get access once your crew leader approves you."
@@ -1532,16 +1610,16 @@ function StepSummary({ role, pendingApproval, onFinish, busy }: {
         <div className="flex flex-col gap-3 mb-6">
           {role === "admin" && (
             <>
-              <SummaryAction icon="\uD83C\uDF92" title="Open Gear Catalog" desc="Customize gear requirements for your crew" />
-              <SummaryAction icon="\uD83D\uDCC5" title="Schedule a Training Hike" desc="Plan your crew's first group outing" />
-              <SummaryAction icon="\uD83D\uDDFA\uFE0F" title="Explore Your Itinerary" desc="See your route day by day" />
+              <SummaryAction icon="🎒" title="Open Gear Catalog" desc="Customize gear requirements for your crew" />
+              <SummaryAction icon="📅" title="Schedule a Training Hike" desc="Plan your crew's first group outing" />
+              <SummaryAction icon="🗺️" title="Explore Your Itinerary" desc="See your route day by day" />
             </>
           )}
           {role === "trekker" && (
             <>
-              <SummaryAction icon="\uD83C\uDF92" title="Start Your Gear List" desc="Check off items you already own" />
-              <SummaryAction icon="\uD83D\uDCAA" title="View Training Plan" desc="See your personalized readiness plan" />
-              <SummaryAction icon="\uD83D\uDDFA\uFE0F" title="Explore Itinerary" desc="Check out your trek route" />
+              <SummaryAction icon="🎒" title="Start Your Gear List" desc="Check off items you already own" />
+              <SummaryAction icon="💪" title="View Training Plan" desc="See your personalized readiness plan" />
+              <SummaryAction icon="🗺️" title="Explore Itinerary" desc="Check out your trek route" />
             </>
           )}
         </div>
