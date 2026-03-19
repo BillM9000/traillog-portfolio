@@ -505,26 +505,52 @@ export async function getTroop(id) {
   return { ...rows[0], itinerary_overrides: JSON.parse(rows[0].itinerary_overrides) };
 }
 
-export async function createTroop({ name, description, council, council_id, location, is_public, created_by }) {
+export async function findDuplicateTroop(unitType, unitNumber, councilId) {
+  if (!councilId || !unitNumber) return null;
+  const { rows } = await pool.query(`
+    SELECT t.id, t.name, t.unit_type, t.unit_number, t.council, t.council_id,
+           COALESCE(c.name, t.council) as council_name, t.location
+    FROM troops t LEFT JOIN councils c ON t.council_id = c.id
+    WHERE t.unit_type = $1 AND t.unit_number = $2 AND t.council_id = $3
+  `, [unitType, unitNumber, councilId]);
+  return rows[0] || null;
+}
+
+export async function createTroop({ unit_type, unit_number, name, description, council, council_id, location, is_public, created_by }) {
   let councilName = council || "";
   if (council_id) {
     const c = (await pool.query("SELECT name FROM councils WHERE id = $1", [council_id])).rows[0];
     if (c) councilName = c.name;
   }
+  // Compose display name from unit_type + unit_number if provided
+  const displayName = (unit_type && unit_number) ? `${unit_type} ${unit_number}` : name;
   const { rows } = await pool.query(
-    "INSERT INTO troops (name, description, council, council_id, location, is_public, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
-    [name, description || "", councilName, council_id || null, location || "", is_public !== undefined ? (is_public ? 1 : 0) : 1, created_by]
+    "INSERT INTO troops (name, unit_type, unit_number, description, council, council_id, location, is_public, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id",
+    [displayName, unit_type || "Troop", unit_number || "", description || "", councilName, council_id || null, location || "", is_public !== undefined ? (is_public ? 1 : 0) : 1, created_by]
   );
   const troopId = rows[0].id;
   const memberCount = Number((await pool.query("SELECT COUNT(*) as c FROM troop_members WHERE troop_id = $1", [troopId])).rows[0].c);
   await pool.query("INSERT INTO troop_members (user_id, troop_id, role, status, color_bg) VALUES ($1, $2, 'admin', 'approved', $3)",
     [created_by, troopId, COLORS[memberCount % COLORS.length]]);
-  return { id: troopId, name, description: description || "", council: councilName, council_id: council_id || null, location: location || "", is_public: is_public !== undefined ? (is_public ? 1 : 0) : 1 };
+  return { id: troopId, name: displayName, unit_type: unit_type || "Troop", unit_number: unit_number || "", description: description || "", council: councilName, council_id: council_id || null, location: location || "", is_public: is_public !== undefined ? (is_public ? 1 : 0) : 1 };
 }
 
-export async function updateTroop(troopId, { name, description, council, council_id, location, is_public }) {
+export async function updateTroop(troopId, { name, unit_type, unit_number, description, council, council_id, location, is_public }) {
   const sets = []; const vals = []; let n = 1;
-  if (name !== undefined) { sets.push(`name = $${n++}`); vals.push(name); }
+  if (unit_type !== undefined) { sets.push(`unit_type = $${n++}`); vals.push(unit_type); }
+  if (unit_number !== undefined) { sets.push(`unit_number = $${n++}`); vals.push(unit_number); }
+  // Recompose display name if unit fields changed
+  if (unit_type !== undefined || unit_number !== undefined) {
+    // Fetch current values if only one changed
+    const current = (await pool.query("SELECT unit_type, unit_number FROM troops WHERE id = $1", [troopId])).rows[0];
+    const finalType = unit_type !== undefined ? unit_type : current?.unit_type || "Troop";
+    const finalNum = unit_number !== undefined ? unit_number : current?.unit_number || "";
+    if (finalNum) {
+      sets.push(`name = $${n++}`); vals.push(`${finalType} ${finalNum}`);
+    }
+  } else if (name !== undefined) {
+    sets.push(`name = $${n++}`); vals.push(name);
+  }
   if (description !== undefined) { sets.push(`description = $${n++}`); vals.push(description); }
   if (council_id !== undefined) {
     sets.push(`council_id = $${n++}`); vals.push(council_id);
@@ -2130,4 +2156,37 @@ export async function getAdventureDocument(docId) {
 
 export async function deleteAdventureDocument(docId) {
   return await pool.query("DELETE FROM adventure_documents WHERE id = $1", [docId]);
+}
+
+// ── Onboarding ──
+
+export async function getOnboarding(userId) {
+  const row = (await pool.query(
+    "SELECT onboarding_role, onboarding_completed, onboarding_steps FROM users WHERE id = $1",
+    [userId]
+  )).rows[0];
+  if (!row) return { role: null, steps: [], completed: false };
+  return {
+    role: row.onboarding_role || null,
+    steps: row.onboarding_steps ? JSON.parse(row.onboarding_steps) : [],
+    completed: row.onboarding_completed === 1,
+  };
+}
+
+export async function setOnboardingRole(userId, role) {
+  await pool.query("UPDATE users SET onboarding_role = $1 WHERE id = $2", [role, userId]);
+}
+
+export async function completeOnboardingStep(userId, step) {
+  const row = (await pool.query("SELECT onboarding_steps FROM users WHERE id = $1", [userId])).rows[0];
+  const steps = row?.onboarding_steps ? JSON.parse(row.onboarding_steps) : [];
+  if (!steps.includes(step)) {
+    steps.push(step);
+  }
+  await pool.query("UPDATE users SET onboarding_steps = $1 WHERE id = $2", [JSON.stringify(steps), userId]);
+  return steps;
+}
+
+export async function completeOnboarding(userId) {
+  await pool.query("UPDATE users SET onboarding_completed = 1 WHERE id = $1", [userId]);
 }

@@ -219,9 +219,41 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
             </label>
             <label className="text-[11px] font-semibold text-tl-text-dim flex flex-col gap-[3px]">
               Time (optional)
-              <input type="text" placeholder="e.g. 9:00 AM" value={form.time_label}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, time_label: e.target.value }))}
-                className="py-[7px] px-2.5 rounded-badge-sm border border-tl-border bg-tl-bg-alt text-tl-text text-[13px] font-body outline-none" />
+              <select value={form.time_label} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm(f => ({ ...f, time_label: e.target.value }))}
+                className="py-[7px] px-2.5 rounded-badge-sm border border-tl-border bg-tl-bg-alt text-tl-text text-[13px] font-body outline-none">
+                <option value="">Select time...</option>
+                <option value="6:00 AM">6:00 AM</option>
+                <option value="6:30 AM">6:30 AM</option>
+                <option value="7:00 AM">7:00 AM</option>
+                <option value="7:30 AM">7:30 AM</option>
+                <option value="8:00 AM">8:00 AM</option>
+                <option value="8:30 AM">8:30 AM</option>
+                <option value="9:00 AM">9:00 AM</option>
+                <option value="9:30 AM">9:30 AM</option>
+                <option value="10:00 AM">10:00 AM</option>
+                <option value="10:30 AM">10:30 AM</option>
+                <option value="11:00 AM">11:00 AM</option>
+                <option value="11:30 AM">11:30 AM</option>
+                <option value="12:00 PM">12:00 PM</option>
+                <option value="12:30 PM">12:30 PM</option>
+                <option value="1:00 PM">1:00 PM</option>
+                <option value="1:30 PM">1:30 PM</option>
+                <option value="2:00 PM">2:00 PM</option>
+                <option value="2:30 PM">2:30 PM</option>
+                <option value="3:00 PM">3:00 PM</option>
+                <option value="3:30 PM">3:30 PM</option>
+                <option value="4:00 PM">4:00 PM</option>
+                <option value="4:30 PM">4:30 PM</option>
+                <option value="5:00 PM">5:00 PM</option>
+                <option value="5:30 PM">5:30 PM</option>
+                <option value="6:00 PM">6:00 PM</option>
+                <option value="6:30 PM">6:30 PM</option>
+                <option value="7:00 PM">7:00 PM</option>
+                <option value="7:30 PM">7:30 PM</option>
+                <option value="8:00 PM">8:00 PM</option>
+                <option value="8:30 PM">8:30 PM</option>
+                <option value="9:00 PM">9:00 PM</option>
+              </select>
             </label>
             <label className="text-[11px] font-semibold text-tl-text-dim flex flex-col gap-[3px]">
               Location

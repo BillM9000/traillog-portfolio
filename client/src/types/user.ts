@@ -14,6 +14,9 @@ export interface User {
   is_global_admin?: boolean;
   email_verified: number;
   created_at: string;
+  onboarding_role?: string | null;
+  onboarding_completed?: number;
+  onboarding_steps?: string | null;
 }
 
 export interface Membership {

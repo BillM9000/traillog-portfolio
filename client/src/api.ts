@@ -88,6 +88,8 @@ export const api = {
   getTroops: () => request<Troop[]>("/troops"),
   getTroop: (id: number) => request<Troop>(`/troops/${id}`),
   createTroop: (data: ApiData) => request<Troop>("/troops", { method: "POST", body: JSON.stringify(data) }),
+  checkDuplicateTroop: (unitType: string, unitNumber: string, councilId: number) =>
+    request(`/troops/check-duplicate?unit_type=${encodeURIComponent(unitType)}&unit_number=${encodeURIComponent(unitNumber)}&council_id=${councilId}`),
   updateTroop: (id: number, data: ApiData) => request(`/troops/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   joinTroop: (id: number, data?: ApiData) => request(`/troops/${id}/join`, { method: "POST", body: JSON.stringify(data || {}) }),
   getTroopJoinInfo: (id: number) => request(`/troops/${id}/join-info`),
@@ -295,6 +297,12 @@ export const api = {
   uploadDocument: (advId: number, file: string, originalName: string, description: string) => request(`/adventures/${advId}/documents`, { method: "POST", body: JSON.stringify({ file, originalName, description }) }),
   getDocumentUrl: (advId: number, docId: number): string => `${BASE}/adventures/${advId}/documents/${docId}/download`,
   deleteDocument: (advId: number, docId: number) => request(`/adventures/${advId}/documents/${docId}`, { method: "DELETE" }),
+
+  // Onboarding
+  getOnboarding: () => request<{ role: string | null; steps: string[]; completed: boolean }>("/onboarding"),
+  setOnboardingRole: (role: string) => request("/onboarding/role", { method: "PUT", body: JSON.stringify({ role }) }),
+  completeOnboardingStep: (step: string) => request("/onboarding/step", { method: "PUT", body: JSON.stringify({ step }) }),
+  completeOnboarding: () => request("/onboarding/complete", { method: "PUT" }),
 
   // Public settings (no auth)
   getPublicSettings: (): Promise<AnnouncementSettings> => fetch("/api/public-settings").then(r => r.json()),

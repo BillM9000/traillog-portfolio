@@ -44,8 +44,12 @@ export const profileUpdateSchema = z.object({
 });
 
 // ─── Troop schemas ───────────────────────────────────────────────────
+const unitType = z.enum(["Troop", "Venturing Crew", "Ship", "Post"]);
+const unitNumber = z.string().trim().min(1, "Unit number is required").max(10).regex(/^[A-Za-z0-9]+$/, "Unit number must be alphanumeric (e.g. 10, 123B, 123G)");
+
 export const createTroopSchema = z.object({
-  name,
+  unit_type: unitType,
+  unit_number: unitNumber,
   description: optionalString,
   council: z.string().trim().max(60).optional(),
   council_id: id.optional(),
@@ -55,6 +59,8 @@ export const createTroopSchema = z.object({
 
 export const updateTroopSchema = z.object({
   name: name.optional(),
+  unit_type: unitType.optional(),
+  unit_number: z.string().trim().max(10).regex(/^[A-Za-z0-9]*$/, "Unit number must be alphanumeric").optional(),
   description: optionalString,
   council: z.string().trim().max(60).optional(),
   council_id: id.optional(),

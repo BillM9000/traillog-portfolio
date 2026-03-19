@@ -11,6 +11,7 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import {
   pool, initializeDatabase, getSetting, getCouncils, getDashboardData,
+  getOnboarding, setOnboardingRole, completeOnboardingStep, completeOnboarding,
 } from "./db.js";
 import { validate, voteSchema, deleteVoteSchema } from "./validation.js";
 import { startGearRefreshSchedule } from "./gear-ai.js";
@@ -158,6 +159,43 @@ app.get("/api/dashboard", requireAuth, async (req, res) => {
   try {
     const data = await getDashboardData(req.user.id, !!req.user.is_admin);
     res.json(data);
+  } catch (e) { safeError(res, e); }
+});
+
+// ── Onboarding ──
+app.get("/api/onboarding", requireAuth, async (req, res) => {
+  try {
+    const data = await getOnboarding(req.user.id);
+    res.json(data);
+  } catch (e) { safeError(res, e); }
+});
+
+app.put("/api/onboarding/role", requireAuth, async (req, res) => {
+  try {
+    const { role } = req.body;
+    if (!["trekker", "admin", "parent"].includes(role)) {
+      return res.status(400).json({ error: "Invalid onboarding role" });
+    }
+    await setOnboardingRole(req.user.id, role);
+    res.json({ ok: true });
+  } catch (e) { safeError(res, e); }
+});
+
+app.put("/api/onboarding/step", requireAuth, async (req, res) => {
+  try {
+    const { step } = req.body;
+    if (!step || typeof step !== "string") {
+      return res.status(400).json({ error: "Step ID required" });
+    }
+    const steps = await completeOnboardingStep(req.user.id, step);
+    res.json({ steps });
+  } catch (e) { safeError(res, e); }
+});
+
+app.put("/api/onboarding/complete", requireAuth, async (req, res) => {
+  try {
+    await completeOnboarding(req.user.id);
+    res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });
 

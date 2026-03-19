@@ -8,7 +8,8 @@ import { US_STATES, ADVENTURE_TYPES } from "../utils/constants";
 import Logo from "./Logo";
 import TroopLogo from "./TroopLogo";
 import CouncilPicker from "./CouncilPicker";
-import type { User, Membership, ThemeColors, AdventureType as AdventureTypeT } from "../types";
+import OnboardingChecklist from "./OnboardingChecklist";
+import type { User, Membership, ThemeColors, AdventureType as AdventureTypeT, OnboardingState } from "../types";
 
 const ADVENTURE_TYPE_NAMES: Record<string, string> = {
   philmont: "Philmont Scout Ranch",
@@ -309,10 +310,29 @@ interface HomeDashboardProps {
   onEnterAdventure: (troopId: number, adventureId: number | null) => void;
   onViewProfile?: () => void;
   onHelpClick?: () => void;
+  onboarding?: OnboardingState | null;
+  onRefreshOnboarding?: () => Promise<void>;
+}
+
+const UNIT_TYPES = [
+  { value: "Troop", label: "Troop", sub: "Scouts BSA" },
+  { value: "Venturing Crew", label: "Venturing Crew", sub: "Venturing" },
+  { value: "Ship", label: "Ship", sub: "Sea Scouts" },
+  { value: "Post", label: "Post", sub: "Exploring" },
+] as const;
+
+interface ExistingTroop {
+  id: number;
+  name: string;
+  unit_type: string;
+  unit_number: string;
+  council: string | null;
+  location: string | null;
 }
 
 interface NewTroopState {
-  name: string;
+  unit_type: string;
+  unit_number: string;
   council_id: number | string | null;
   city: string;
   state: string;
@@ -338,7 +358,7 @@ interface ItineraryListItem {
   rating: string;
 }
 
-export default function HomeDashboard({ user, memberships, onRefresh, onLogout, isGlobalAdmin, onGlobalAdminClick, onEnterAdventure, onViewProfile, onHelpClick }: HomeDashboardProps) {
+export default function HomeDashboard({ user, memberships, onRefresh, onLogout, isGlobalAdmin, onGlobalAdminClick, onEnterAdventure, onViewProfile, onHelpClick, onboarding, onRefreshOnboarding }: HomeDashboardProps) {
   const { theme, toggle } = useTheme();
   const { addToast } = useToast();
 
@@ -351,7 +371,8 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
   const [createStep, setCreateStep] = useState(1);
   const [createdTroopId, setCreatedTroopId] = useState<number | null>(null);
   const [createdTroopName, setCreatedTroopName] = useState("");
-  const [newTroop, setNewTroop] = useState<NewTroopState>({ name: "", council_id: null, city: "", state: "", is_public: true });
+  const [newTroop, setNewTroop] = useState<NewTroopState>({ unit_type: "Troop", unit_number: "", council_id: null, city: "", state: "", is_public: true });
+  const [duplicateTroop, setDuplicateTroop] = useState<ExistingTroop | null>(null);
   const [newLogoFile, setNewLogoFile] = useState<File | null>(null);
   const [newLogoPreview, setNewLogoPreview] = useState<string | null>(null);
   const [advForm, setAdvForm] = useState<AdvFormState>({ name: "", depart_date: "", arrive_date: "", return_date: "", home_date: "", itinerary_id: "", adventure_type: "philmont" });
@@ -398,7 +419,9 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
 
   const handleCreateTroop = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTroop.name.trim()) return setError("Troop name required");
+    setDuplicateTroop(null);
+    if (!newTroop.unit_number.trim()) return setError("Unit number is required");
+    if (!/^[A-Za-z0-9]+$/.test(newTroop.unit_number.trim())) return setError("Unit number must be alphanumeric (e.g. 10, 123B, 123G)");
     if (!newTroop.council_id) return setError("Council is required");
     if (!newTroop.city.trim()) return setError("City is required");
     if (!newTroop.state) return setError("State is required");
@@ -408,7 +431,7 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
       const location = [newTroop.city.trim(), newTroop.state].filter(Boolean).join(", ");
       const isCustomCouncil = typeof newTroop.council_id === "string" && newTroop.council_id.startsWith("custom:");
       const councilPayload = isCustomCouncil ? { council: (newTroop.council_id as string).slice(7), council_id: null } : { council_id: newTroop.council_id };
-      const created = await api.createTroop({ ...newTroop, ...councilPayload, location }) as { id: number };
+      const created = await api.createTroop({ ...newTroop, unit_number: newTroop.unit_number.trim(), ...councilPayload, location }) as { id: number };
       if (newLogoFile && created?.id) {
         try {
           const reader = new FileReader();
@@ -417,12 +440,27 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
         } catch (logoErr) { console.warn("Logo upload failed:", logoErr); }
       }
       setCreatedTroopId(created.id);
-      setCreatedTroopName(newTroop.name.trim());
+      setCreatedTroopName(`${newTroop.unit_type} ${newTroop.unit_number.trim()}`);
       setCreateStep(2);
       setError("");
       refreshDashboard();
       try { setItineraries(await api.getItineraries() as unknown as ItineraryListItem[]); } catch {}
-    } catch (e) { setError((e as Error).message); }
+    } catch (e: unknown) {
+      const err = e as Error;
+      setError(err.message);
+      // If it's a duplicate, try to get existing troop info
+      if (err.message?.includes("already exists")) {
+        try {
+          const isCustomCouncil2 = typeof newTroop.council_id === "string" && newTroop.council_id.startsWith("custom:");
+          if (!isCustomCouncil2 && newTroop.council_id) {
+            const checkResp = await api.checkDuplicateTroop(newTroop.unit_type, newTroop.unit_number.trim(), newTroop.council_id as number);
+            if (checkResp && (checkResp as ExistingTroop).id) {
+              setDuplicateTroop(checkResp as ExistingTroop);
+            }
+          }
+        } catch {}
+      }
+    }
     finally { setFormLoading(false); setNewLogoFile(null); setNewLogoPreview(null); }
   };
 
@@ -481,6 +519,11 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
       </div>
 
       <div className="max-w-[600px] mx-auto py-6 px-5">
+
+        {/* ── Onboarding Checklist ── */}
+        {onboarding && !onboarding.completed && onboarding.role && onRefreshOnboarding && (
+          <OnboardingChecklist onboarding={onboarding} onRefresh={onRefreshOnboarding} />
+        )}
 
         {/* ── Platform Overview (sys admins only) ── */}
         {isGlobalAdmin && stats && (
@@ -614,7 +657,7 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
         <div className="flex gap-2 mt-2">
           {!showCreate && user.user_type !== "scout" && (
             <button onClick={() => { setShowCreate(true); setCreateStep(1); }}
-              className="flex-1 py-3 rounded-btn border-[1.5px] border-dashed border-tl-border-light bg-transparent text-tl-accent text-[13px] font-semibold cursor-pointer font-body">+ Create Troop</button>
+              className="flex-1 py-3 rounded-btn border-[1.5px] border-dashed border-tl-border-light bg-transparent text-tl-accent text-[13px] font-semibold cursor-pointer font-body">+ Register Unit</button>
           )}
           {(dashboard?.public_troops || []).length > 0 && !showCreate && (
             <button onClick={() => setShowBrowse(!showBrowse)}
@@ -718,11 +761,25 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
 
         {showCreate && createStep === 1 && (
           <div className="tl-card mt-3">
-            <div className="tl-card-title">Create a Troop</div>
+            <div className="tl-card-title">Register Your Unit</div>
             <form onSubmit={handleCreateTroop}>
-              <input value={newTroop.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTroop({ ...newTroop, name: e.target.value })}
-                placeholder="Troop or crew name (e.g. Troop 10, Crew 614)"
+              <label className="text-[9px] font-bold text-tl-text-dim uppercase mb-1 block">Unit Type</label>
+              <select value={newTroop.unit_type} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { setNewTroop({ ...newTroop, unit_type: e.target.value }); setDuplicateTroop(null); setError(""); }}
+                className="w-full py-2.5 px-3 rounded-[7px] border-[1.5px] border-tl-border-light bg-tl-input text-tl-text text-xs font-body outline-none mb-2 box-border cursor-pointer">
+                {UNIT_TYPES.map(ut => (
+                  <option key={ut.value} value={ut.value}>{ut.label} ({ut.sub})</option>
+                ))}
+              </select>
+              <label className="text-[9px] font-bold text-tl-text-dim uppercase mb-1 block">Unit Number</label>
+              <input value={newTroop.unit_number} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setNewTroop({ ...newTroop, unit_number: e.target.value }); setDuplicateTroop(null); setError(""); }}
+                placeholder="e.g. 10, 123B, 123G"
+                maxLength={10}
                 className="w-full py-2.5 px-3 rounded-[7px] border-[1.5px] border-tl-border-light bg-tl-input text-tl-text text-xs font-body outline-none mb-2 box-border" required />
+              {newTroop.unit_number.trim() && (
+                <div className="text-[11px] text-tl-accent font-semibold mb-2 -mt-1">
+                  Will be created as: <strong>{newTroop.unit_type} {newTroop.unit_number.trim()}</strong>
+                </div>
+              )}
               <CouncilPicker value={newTroop.council_id} onChange={(id: number | string | null) => setNewTroop({ ...newTroop, council_id: id })} />
               <div className="flex gap-2 mb-2">
                 <input value={newTroop.city} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTroop({ ...newTroop, city: e.target.value })}
@@ -780,13 +837,41 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
                     : "Your troop will be hidden from search. You'll need to invite each member by email."}
                 </div>
               </div>
-              {error && <div className="text-xs text-tl-danger mb-2">{error}</div>}
+              {error && !duplicateTroop && <div className="text-xs text-tl-danger mb-2">{error}</div>}
+
+              {/* Duplicate troop found — show info + join link */}
+              {duplicateTroop && (
+                <div className="mb-3 p-3 rounded-btn border-2 border-tl-gold bg-tl-bg-alt">
+                  <div className="text-xs font-bold text-tl-heading mb-1.5">
+                    {duplicateTroop.name} already exists!
+                  </div>
+                  <div className="text-[11px] text-tl-text-dim mb-1">
+                    {[duplicateTroop.council, duplicateTroop.location].filter(Boolean).join(" · ")}
+                  </div>
+                  <div className="text-[11px] text-tl-text-dim mb-2.5">
+                    If this is your unit, you can request to join it instead of creating a new one.
+                  </div>
+                  <button type="button"
+                    onClick={() => {
+                      setDuplicateTroop(null);
+                      setError("");
+                      setShowCreate(false);
+                      handleJoinClick(duplicateTroop.id, duplicateTroop.name);
+                    }}
+                    className="w-full py-2.5 rounded-[7px] border-none bg-tl-accent text-white text-[13px] font-bold font-display cursor-pointer">
+                    Request to Join {duplicateTroop.name}
+                  </button>
+                </div>
+              )}
+
               <div className="flex gap-2">
-                <button type="button" onClick={() => { setShowCreate(false); setCreateStep(1); setCreatedTroopId(null); }}
+                <button type="button" onClick={() => { setShowCreate(false); setCreateStep(1); setCreatedTroopId(null); setDuplicateTroop(null); }}
                   className="flex-1 py-2.5 rounded-[7px] border border-tl-border-light bg-tl-bg-alt text-tl-text-muted text-xs font-semibold cursor-pointer font-body">Cancel</button>
-                <button type="submit" disabled={formLoading}
-                  className="flex-1 py-2.5 rounded-[7px] border-none bg-tl-accent text-white text-[13px] font-bold font-display tracking-[0.3px]"
-                  style={{ cursor: formLoading ? "wait" : "pointer" }}>{formLoading ? "..." : "Create"}</button>
+                {!duplicateTroop && (
+                  <button type="submit" disabled={formLoading}
+                    className="flex-1 py-2.5 rounded-[7px] border-none bg-tl-accent text-white text-[13px] font-bold font-display tracking-[0.3px]"
+                    style={{ cursor: formLoading ? "wait" : "pointer" }}>{formLoading ? "..." : "Create"}</button>
+                )}
               </div>
             </form>
           </div>

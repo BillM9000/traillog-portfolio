@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth, requireTroopMember, requireTroopAdmin, requireSelfOrAdmin, isGlobalAdmin, parseId, safeError } from "../middleware.js";
 import {
   getTroops, getTroop, createTroop, updateTroop, updateTroopAffiliateTag,
+  findDuplicateTroop,
   getTroopMembers, getTroopMember, getUserMemberships,
   requestJoinTroop, approveTroopMember, denyTroopMember, removeTroopMember,
   updateMemberDates, updateMemberSkills, getTroopAdmins,
@@ -34,6 +35,23 @@ router.get("/api/troops", requireAuth, async (req, res) => {
   catch (e) { safeError(res, e); }
 });
 
+router.get("/api/troops/check-duplicate", requireAuth, async (req, res) => {
+  try {
+    const { unit_type, unit_number, council_id } = req.query;
+    if (!unit_type || !unit_number || !council_id) return res.status(400).json({ error: "unit_type, unit_number, and council_id required" });
+    const existing = await findDuplicateTroop(unit_type, unit_number, parseInt(council_id, 10));
+    if (!existing) return res.json(null);
+    res.json({
+      id: existing.id,
+      name: existing.name,
+      unit_type: existing.unit_type,
+      unit_number: existing.unit_number,
+      council: existing.council_name || existing.council,
+      location: existing.location,
+    });
+  } catch (e) { safeError(res, e); }
+});
+
 router.get("/api/troops/:troopId", requireAuth, requireTroopMember(), async (req, res) => {
   try {
     const troop = await getTroop(parseId(req.params.troopId));
@@ -53,13 +71,34 @@ router.post("/api/troops", requireAuth, validate(createTroopSchema), async (req,
         return res.status(403).json({ error: `You can create a maximum of ${maxTroops} troops` });
       }
     }
-    const { name, description, council, council_id, location, is_public } = req.body;
-    if (!name?.trim()) return res.status(400).json({ error: "Troop name required" });
+    const { unit_type, unit_number, description, council, council_id, location, is_public } = req.body;
     if (!council_id && !council?.trim()) return res.status(400).json({ error: "Council is required" });
-    if (council && council.trim().length > 60) return res.status(400).json({ error: "Council name too long (60 char max)" });
-    const troop = await createTroop({ name: name.trim(), description, council: council?.trim(), council_id, location: location?.trim(), is_public, created_by: req.user.id });
+
+    // Check for duplicate unit within council
+    const existing = await findDuplicateTroop(unit_type, unit_number, council_id);
+    if (existing) {
+      return res.status(409).json({
+        error: `${existing.name} already exists in ${existing.council_name || existing.council || "this council"}`,
+        existing_troop: {
+          id: existing.id,
+          name: existing.name,
+          unit_type: existing.unit_type,
+          unit_number: existing.unit_number,
+          council: existing.council_name || existing.council,
+          location: existing.location,
+        },
+      });
+    }
+
+    const troop = await createTroop({ unit_type, unit_number, description, council: council?.trim(), council_id, location: location?.trim(), is_public, created_by: req.user.id });
     res.status(201).json(troop);
-  } catch (e) { safeError(res, e); }
+  } catch (e) {
+    // Handle race condition — unique constraint violation
+    if (e.code === "23505" && e.constraint?.includes("unit_council")) {
+      return res.status(409).json({ error: `${req.body.unit_type} ${req.body.unit_number} already exists in this council` });
+    }
+    safeError(res, e);
+  }
 });
 
 router.put("/api/troops/:troopId", requireAuth, requireTroopAdmin, async (req, res) => {

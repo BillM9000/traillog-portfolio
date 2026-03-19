@@ -86,7 +86,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   const { addToast } = useToast();
   const { selectedCrewId, crews, selectedCrew, refreshCrews, refreshAll: refreshAdventureAll } = useAdventure();
   const [tab, setTab] = useState<string>("adventure");
-  const [troopName, setTroopName] = useState<string>(troop?.name || "");
+  const [troopName] = useState<string>(troop?.name || "");
   const [troopCouncilId, setTroopCouncilId] = useState<number | string | null>(troop?.council_id || null);
   const [troopCity, setTroopCity] = useState<string>(() => {
     const loc = troop?.location || "";
@@ -188,14 +188,13 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   const normalize = (s: string) => s.replace(/\s+/g, " ").trim();
 
   const saveTroop = async () => {
-    if (!troopName.trim()) { addToast("Troop name is required", "error"); return; }
     if (!troopCouncilId) { addToast("Council is required", "error"); return; }
     setSaving(true);
     try {
       const location = [troopCity.trim(), troopState].filter(Boolean).join(", ");
       const isCustomCouncil = typeof troopCouncilId === "string" && troopCouncilId.startsWith("custom:");
       const councilPayload = isCustomCouncil ? { council: (troopCouncilId as string).slice(7), council_id: null } : { council_id: troopCouncilId };
-      await api.updateTroop(troop.id, { name: normalize(troopName), ...councilPayload, location: normalize(location), description: normalize(troopDesc), is_public: troopPublic });
+      await api.updateTroop(troop.id, { ...councilPayload, location: normalize(location), description: normalize(troopDesc), is_public: troopPublic });
       onRefresh(); addToast("Troop saved", "success");
     } catch (e: unknown) { addToast((e as Error).message, "error"); }
     setSaving(false);
@@ -902,8 +901,8 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
 
           {tab === "troop" && (
             <>
-              <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Troop Name</label>
-              <input value={troopName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTroopName(e.target.value)} className="tl-input mb-2" />
+              <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Unit Name</label>
+              <div className="tl-input mb-2 opacity-60 cursor-default">{troopName}</div>
               <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Council</label>
               <CouncilPicker value={troopCouncilId} onChange={(id: number | string | null) => setTroopCouncilId(id)} />
               <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Location</label>

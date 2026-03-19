@@ -34,6 +34,9 @@ CREATE TABLE IF NOT EXISTS users (
   reset_token_expires TIMESTAMPTZ,
   tos_accepted_at     TIMESTAMPTZ,
   is_admin            INTEGER NOT NULL DEFAULT 0,
+  onboarding_role     TEXT,
+  onboarding_completed INTEGER NOT NULL DEFAULT 0,
+  onboarding_steps    TEXT,
   created_at          TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -120,6 +123,8 @@ CREATE TABLE IF NOT EXISTS gear_items (
 CREATE TABLE IF NOT EXISTS troops (
   id                  SERIAL PRIMARY KEY,
   name                TEXT NOT NULL,
+  unit_type           TEXT NOT NULL DEFAULT 'Troop',
+  unit_number         TEXT NOT NULL DEFAULT '',
   description         TEXT NOT NULL DEFAULT '',
   trek_date           TEXT,
   itinerary_id        TEXT REFERENCES itineraries(id) ON DELETE SET NULL,
@@ -133,6 +138,11 @@ CREATE TABLE IF NOT EXISTS troops (
   created_by          INTEGER REFERENCES users(id) ON DELETE SET NULL,
   created_at          TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Prevent duplicate units within the same council (e.g. two "Troop 10" in same council)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_troops_unit_council
+  ON troops (unit_type, unit_number, council_id)
+  WHERE council_id IS NOT NULL AND unit_number != '';
 
 CREATE TABLE IF NOT EXISTS troop_members (
   id                  SERIAL PRIMARY KEY,

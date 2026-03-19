@@ -9,7 +9,7 @@ import { DAYS_FULL } from "./utils/constants";
 import { getMonthsRange, daysInMonth, dateKey, parseDateKey, dayOfWeek, isPast, normalizeDateEntry } from "./utils/dates";
 import { useIsDesktop } from "./hooks/useIsDesktop";
 import clsx from "clsx";
-import type { User, Membership, Adventure, AdventureMember, Skill, Achievement, ThemeColors, MonthRange } from "./types";
+import type { User, Membership, Adventure, AdventureMember, Skill, Achievement, ThemeColors, MonthRange, OnboardingState } from "./types";
 
 import { Calendar as CalendarIcon, ClipboardCheck, Map, Backpack, FileText, FolderOpen } from "lucide-react";
 
@@ -44,6 +44,7 @@ const ParentDashboard = lazy(() => import("./components/ParentDashboard"));
 const AdminPanel = lazy(() => import("./components/AdminPanel"));
 const GlobalAdmin = lazy(() => import("./components/GlobalAdmin"));
 const GearAIChat = lazy(() => import("./components/GearAIChat"));
+const OnboardingRoleModal = lazy(() => import("./components/OnboardingRoleModal"));
 
 function LoadingFallback() {
   return (
@@ -74,12 +75,34 @@ function AnnouncementBanner({ settings }: AnnouncementBannerProps) {
 export default function App() {
   const { user, memberships, approvedTroops, loading, login, signup, logout, updateProfile, refresh } = useAuth();
   const { theme } = useTheme();
+  const isDesktop = useIsDesktop();
 
   // ── Public settings (banner, registration, maintenance) ──
   const [publicSettings, setPublicSettings] = useState<Record<string, any> | null>(null);
   useEffect(() => {
     api.getPublicSettings().then(setPublicSettings).catch(() => {});
   }, []);
+
+  // ── Onboarding state ──
+  const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
+  const [onboardingLoading, setOnboardingLoading] = useState(false);
+
+  const refreshOnboarding = useCallback(async () => {
+    try {
+      const data = await api.getOnboarding();
+      setOnboarding(data);
+    } catch {
+      // If API fails, assume no onboarding needed
+      setOnboarding({ role: "trekker", steps: [], completed: true });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user && user.age_confirmed && user.user_type) {
+      setOnboardingLoading(true);
+      refreshOnboarding().finally(() => setOnboardingLoading(false));
+    }
+  }, [user, refreshOnboarding]);
 
   // ── Deep link from email CTAs (?troop=X&adventure=Y&tab=Z) ──
   const deepLinkRef = useRef<{ troopId: number; adventureId: number; tab: string | null } | null>(null);
@@ -128,6 +151,9 @@ export default function App() {
   if (!user) return (<Suspense fallback={<LoadingFallback />}><AnnouncementBanner settings={publicSettings} /><LandingPage onLogin={login} onSignup={signup} registrationEnabled={publicSettings?.registration_enabled !== false} /></Suspense>);
   if (!user.age_confirmed || !user.user_type) return <Suspense fallback={<LoadingFallback />}><ProfileSetup user={user} onComplete={updateProfile} /></Suspense>;
 
+  // Show onboarding role selection modal if user hasn't picked a role yet
+  const showOnboardingRoleModal = onboarding !== null && !onboardingLoading && !onboarding.role && !onboarding.completed;
+
   // Profile page — shown when user clicks "View Profile" from any context
   if (showProfilePage) return (
     <Suspense fallback={<LoadingFallback />}>
@@ -169,9 +195,8 @@ export default function App() {
     }
 
     // No troop selected — show home dashboard
-    return (
+    const homeContent = (
       <Suspense fallback={<LoadingFallback />}>
-        <AnnouncementBanner settings={publicSettings} />
         <HomeDashboard
           user={user} memberships={memberships} onRefresh={refresh} onLogout={logout}
           isGlobalAdmin={isGlobalAdmin}
@@ -182,6 +207,8 @@ export default function App() {
           }}
           onViewProfile={() => setShowProfilePage(true)}
           onHelpClick={() => setShowHelp(true)}
+          onboarding={onboarding}
+          onRefreshOnboarding={refreshOnboarding}
         />
         {showGlobalAdmin && (
           <GlobalAdmin isGlobalAdmin={isGlobalAdmin} troopId={null} onClose={() => { setShowGlobalAdmin(false); refresh(); }}
@@ -191,7 +218,54 @@ export default function App() {
         {showHelp && (
           <HelpSystem onClose={() => setShowHelp(false)} user={user} isAdmin={false} isGlobalAdmin={isGlobalAdmin} />
         )}
+        {showOnboardingRoleModal && (
+          <OnboardingRoleModal onRoleSelected={() => refreshOnboarding()} />
+        )}
       </Suspense>
+    );
+
+    if (isDesktop) {
+      return (
+        <div className="flex min-h-screen font-body bg-tl-bg text-tl-text">
+          <Sidebar
+            user={user}
+            isAdmin={false}
+            isGlobalAdmin={isGlobalAdmin}
+            adventureName={null}
+            troopName={null}
+            homeActive
+            onGoHome={goHome}
+            onViewProfile={() => setShowProfilePage(true)}
+            onHelpClick={() => setShowHelp(true)}
+            onLogout={logout}
+            onGlobalAdminClick={() => setShowGlobalAdmin(true)}
+          />
+          <div className="flex-1 flex flex-col min-w-0">
+            <AnnouncementBanner settings={publicSettings} />
+            <TopBar
+              user={user}
+              sectionTitle="Home"
+              adventureName={null}
+              trekDates={null}
+              trekDate={null}
+              saving={false}
+              onViewProfile={() => setShowProfilePage(true)}
+            />
+            <div className="flex-1 overflow-y-auto py-4 px-6">
+              <div className="max-w-[900px] mx-auto">
+                {homeContent}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <AnnouncementBanner settings={publicSettings} />
+        {homeContent}
+      </>
     );
   }
 
@@ -535,11 +609,11 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
       <div className={clsx(isDesktop ? "pb-6" : "px-4 pb-[18px]", "overflow-x-auto")}>
         {view === "calendar" && (
           <>
-            <Calendar members={members} active={selectedCrewId === "all" ? null : active} months={months} analysis={analysis}
-              trekDates={trekDates} onToggleDate={toggleDate} onBulkSelect={bulkSelect} onClearAll={clearAll}
-              allCrewsMode={selectedCrewId === "all"} />
+            <TrainingEvents adventureId={adventureId} isAdmin={isAdmin} currentUserId={user.id} members={members} bestDates={analysis.bestDates} />
             <div className="mt-4">
-              <TrainingEvents adventureId={adventureId} isAdmin={isAdmin} currentUserId={user.id} members={members} bestDates={analysis.bestDates} />
+              <Calendar members={members} active={selectedCrewId === "all" ? null : active} months={months} analysis={analysis}
+                trekDates={trekDates} onToggleDate={toggleDate} onBulkSelect={bulkSelect} onClearAll={clearAll}
+                allCrewsMode={selectedCrewId === "all"} />
             </div>
           </>
         )}

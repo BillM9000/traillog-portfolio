@@ -57,11 +57,13 @@ interface CalendarProps {
 
 export default function Calendar({ members, active, months, analysis, onToggleDate, onBulkSelect, onClearAll, trekDates, allCrewsMode }: CalendarProps) {
   const dragRef = useRef<{ active: boolean; mode: string | null }>({ active: false, mode: null });
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const { theme, mode } = useTheme();
   const isDesktop = useIsDesktop();
   const am = active !== null ? members[active] : null;
   const [viewMode, setViewMode] = useState<"my" | "group">("my");
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
+  const [mobileMonthIndex, setMobileMonthIndex] = useState(0);
   const calendarRef = useRef<HTMLDivElement>(null);
 
   // Build set of blocked trek dates
@@ -233,12 +235,41 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
         </div>
       )}
 
+      {/* Mobile month navigation */}
+      {!isDesktop && months.length > 1 && (
+        <div className="flex items-center justify-between mb-2 px-1">
+          <button
+            onClick={() => setMobileMonthIndex(i => Math.max(0, i - 1))}
+            disabled={mobileMonthIndex === 0}
+            className={clsx(
+              "p-1.5 rounded-full border-none cursor-pointer",
+              mobileMonthIndex === 0 ? "opacity-30 cursor-default text-tl-text-dimmest" : "text-tl-accent bg-tl-bg-alt"
+            )}
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <span className="text-sm font-bold text-tl-heading">
+            {MONTH_NAMES[months[mobileMonthIndex].month]} {months[mobileMonthIndex].year}
+          </span>
+          <button
+            onClick={() => setMobileMonthIndex(i => Math.min(months.length - 1, i + 1))}
+            disabled={mobileMonthIndex >= months.length - 1}
+            className={clsx(
+              "p-1.5 rounded-full border-none cursor-pointer",
+              mobileMonthIndex >= months.length - 1 ? "opacity-30 cursor-default text-tl-text-dimmest" : "text-tl-accent bg-tl-bg-alt"
+            )}
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+      )}
+
       {/* Calendar grid */}
       <div ref={calendarRef} className={clsx(
         "grid gap-3 relative",
-        isDesktop ? "grid-cols-2" : "grid-cols-[repeat(auto-fill,minmax(310px,1fr))]"
+        isDesktop ? "grid-cols-2" : "grid-cols-1"
       )} style={{ gap: isDesktop ? 12 : 14 }}>
-        {months.map(({ year, month }) => {
+        {(isDesktop ? months : months.length > 1 ? [months[mobileMonthIndex]] : months).map(({ year, month }) => {
           const dim = daysInMonth(year, month);
           const start = dayOfWeek(year, month, 1);
           const cells: (number | null)[] = Array(start).fill(null).concat(Array.from({ length: dim }, (_, i) => i + 1));
@@ -309,8 +340,39 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
                     <div key={key}
                       onPointerDown={(e: React.PointerEvent<HTMLDivElement>) => {
                         if (past || blocked) return;
+                        pointerStartRef.current = { x: e.clientX, y: e.clientY };
+                        if (isDesktop) {
+                          // Desktop: immediate interaction (drag-to-select)
+                          if (showGroupView && (active !== null || allCrewsMode)) {
+                            if (hmData) {
+                              if (isTooltipTarget) { setTooltip(null); }
+                              else {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setTooltip({
+                                  key,
+                                  names: hmData.labels || hmData.names,
+                                  missing: hmData.missingLabels || hmData.missing,
+                                  x: rect.left + rect.width / 2,
+                                  y: rect.bottom + 6,
+                                });
+                              }
+                            }
+                            return;
+                          }
+                          if (active !== null) { e.preventDefault(); onDown(key); }
+                        }
+                      }}
+                      onPointerUp={(e: React.PointerEvent<HTMLDivElement>) => {
+                        if (past || blocked || isDesktop) return;
+                        const start = pointerStartRef.current;
+                        pointerStartRef.current = null;
+                        if (start) {
+                          const dx = e.clientX - start.x;
+                          const dy = e.clientY - start.y;
+                          if (Math.sqrt(dx * dx + dy * dy) > 10) return; // scroll/drag, not a tap
+                        }
+                        // Mobile tap confirmed
                         if (showGroupView && (active !== null || allCrewsMode)) {
-                          // In group view, tapping shows tooltip
                           if (hmData) {
                             if (isTooltipTarget) { setTooltip(null); }
                             else {
@@ -326,7 +388,7 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
                           }
                           return;
                         }
-                        if (active !== null) { e.preventDefault(); onDown(key); }
+                        if (active !== null) { onDown(key); }
                       }}
                       onPointerEnter={() => {
                         if (!past && !blocked && !showGroupView && active !== null) onEnter(key);
@@ -337,7 +399,7 @@ export default function Calendar({ members, active, months, analysis, onToggleDa
                       style={{
                         aspectRatio: "1", minHeight: 36, maxHeight: 44,
                         fontWeight: mySelected && !showGroupView ? 700 : 500,
-                        touchAction: "none",
+                        touchAction: isDesktop ? "none" : "auto",
                         cursor: past || (active === null && !showGroupView && !allCrewsMode) || blocked ? "default" : "pointer",
                         opacity: past ? 0.22 : 1,
                         background: bg, color,

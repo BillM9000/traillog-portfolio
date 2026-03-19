@@ -198,16 +198,82 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
     );
   }
 
+  // ── Defensive parsers for fields that may arrive as strings from the DB ──
+  const parsePrograms = (raw: unknown): ItineraryProgram[] => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) {
+      return raw.map(p =>
+        typeof p === "string" ? { name: p.trim(), type: "program", description: "" } : p
+      );
+    }
+    if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsePrograms(parsed);
+      } catch { /* not JSON */ }
+      return raw.split(/;\s*/).filter(Boolean).map(p => ({
+        name: p.trim(), type: "program", description: "",
+      }));
+    }
+    return [];
+  };
+
+  const parseStringArray = (raw: unknown): string[] => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw.map(String);
+    if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed.map(String);
+      } catch { /* not JSON */ }
+      return raw.split(/;\s*/).filter(Boolean);
+    }
+    return [];
+  };
+
+  const parseOptionalHikes = (raw: unknown): OptionalHike[] => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) {
+      return raw.map(h =>
+        typeof h === "string" ? { name: h.trim(), description: "" } : h
+      );
+    }
+    if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parseOptionalHikes(parsed);
+      } catch { /* not JSON */ }
+      return raw.split(/;\s*/).filter(Boolean).map(h => ({ name: h.trim(), description: "" }));
+    }
+    return [];
+  };
+
+  const parseWater = (raw: unknown): WaterStrategy | null => {
+    if (!raw) return null;
+    if (typeof raw === "object" && raw !== null) return raw as WaterStrategy;
+    if (typeof raw === "string") {
+      try { return JSON.parse(raw); } catch { return null; }
+    }
+    return null;
+  };
+
   // Normalize route data: new format (from PDF) has simple fields, adapt to rich format
   const rawRoute = itin.route_data || [];
   const route: RouteDay[] = rawRoute.map(day => {
-    // Already rich format (has 'type' field) — use as-is
-    if (day.type) return day;
+    // Already rich format (has 'type' field) — normalize array fields defensively
+    if (day.type) {
+      return {
+        ...day,
+        programs: parsePrograms(day.programs),
+        warnings: parseStringArray(day.warnings),
+        optional_hikes: parseOptionalHikes(day.optional_hikes),
+        water: parseWater(day.water),
+      };
+    }
     // New simple format — derive type from camp name conventions
     const campUpper = (day.camp || "").toUpperCase();
-    const progStr = Array.isArray(day.programs)
-      ? day.programs.map(p => typeof p === "string" ? p : p.name).join("; ")
-      : "";
+    const parsedPrograms = parsePrograms(day.programs);
+    const progStr = parsedPrograms.map(p => p.name).join("; ");
     const isDry = progStr.toLowerCase().includes("dry camp");
     const isStaffed = campUpper === day.camp && day.camp !== "Camping HQ" && !isDry;
     const isLayover = day.miles === 0 && day.day > 1;
@@ -217,17 +283,13 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
       : isStaffed ? "Staffed"
       : "Trail";
     const foodPickup = progStr.match(/Food Pickup|pick up/i) ? progStr : null;
-    // Parse program string into array of objects
-    const programs: ItineraryProgram[] = progStr ? progStr.split(/;\s*/).filter(Boolean).map(p => ({
-      name: p.trim(), type: "program", description: "",
-    })) : [];
     return {
       ...day,
       type,
       notes: progStr,
       showers: false,
       food_pickup: foodPickup,
-      programs,
+      programs: parsedPrograms,
       water: isDry ? { strategy: "Dry camp \u2014 carry extra water", fill_location: "", next_source: "", carry_liters: 4 } : null,
       warnings: isDry ? ["DRY CAMP \u2014 carry minimum 4-6 liters per person"] : [],
       optional_hikes: [],

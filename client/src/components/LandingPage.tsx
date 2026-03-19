@@ -231,7 +231,7 @@ const AuthForm = forwardRef<HTMLDivElement, AuthFormProps>(function AuthForm({ o
       {/* Google Sign In */}
       {(mode === "login" || mode === "signup") && (
         <>
-          <a href="/auth/google" className="flex items-center justify-center gap-2.5 w-full py-3 rounded-[12px] text-[14px] font-semibold no-underline font-body cursor-pointer mb-3.5 box-border" style={{
+          <a href="/auth/google" className="flex items-center justify-center gap-2.5 w-full py-3 rounded-[12px] text-[14px] font-semibold no-underline font-body cursor-pointer mb-3.5 box-border lp-focus-ring" style={{
             background: "#FDFAF5", color: "#2C2416", border: "none",
             boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
           }}>
@@ -250,21 +250,26 @@ const AuthForm = forwardRef<HTMLDivElement, AuthFormProps>(function AuthForm({ o
       <form onSubmit={handleSubmit}>
         {mode === "signup" && (
           <input value={name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)} placeholder="Your name"
+            id="lp-name" name="name" autoComplete="name" aria-label="Your name"
             className="lp-input" required />
         )}
         {(mode === "login" || mode === "signup" || mode === "forgot") && (
           <input value={email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} placeholder="Email address" type="email"
+            id="lp-email" name="email" autoComplete="email" aria-label="Email address"
             className="lp-input" required />
         )}
         {(mode === "login" || mode === "signup") && (
           <input value={password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} placeholder="Password" type="password"
+            id="lp-password" name="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} aria-label="Password"
             className="lp-input" required minLength={8} />
         )}
         {mode === "reset" && (
           <>
             <input value={password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} placeholder="New password" type="password"
+              id="lp-new-password" name="new-password" autoComplete="new-password" aria-label="New password"
               className="lp-input" required minLength={8} />
             <input value={password2} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword2(e.target.value)} placeholder="Confirm new password" type="password"
+              id="lp-confirm-password" name="confirm-password" autoComplete="new-password" aria-label="Confirm new password"
               className="lp-input" required minLength={8} />
           </>
         )}
@@ -282,7 +287,7 @@ const AuthForm = forwardRef<HTMLDivElement, AuthFormProps>(function AuthForm({ o
         )}
         {error && <div className="text-[12px] mb-2" style={{ color: "#d08080" }}>{error}</div>}
         <button type="submit" disabled={loading || (mode === "signup" && !tosAccepted)} className={clsx(
-          "w-full py-3 rounded-[12px] border-none text-[14px] font-semibold font-body mb-3",
+          "w-full py-3 rounded-[12px] border-none text-[14px] font-semibold font-body mb-3 lp-focus-ring",
           loading ? "cursor-wait opacity-70" : "cursor-pointer opacity-100"
         )} style={{
           background: "#5B7A3A", color: "#FDFAF5",
@@ -344,7 +349,7 @@ function FAQItem({ question, answer }: FAQItemProps): React.ReactElement {
     <div className="rounded-[12px] overflow-hidden" style={{
       background: "rgba(255,255,255,0.05)", border: "1px solid rgba(184,204,154,0.15)",
     }}>
-      <button onClick={() => setOpen(!open)} className="w-full px-5 py-4 bg-transparent border-none cursor-pointer flex items-center justify-between gap-3 text-left">
+      <button onClick={() => setOpen(!open)} className="w-full px-5 py-4 bg-transparent border-none cursor-pointer flex items-center justify-between gap-3 text-left lp-focus-ring">
         <span className="text-[14px] font-semibold font-body leading-[1.4]" style={{ color: "#FDFAF5" }}>
           {question}
         </span>
@@ -443,7 +448,7 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
               The AI-powered readiness coordinator for Scouting America high adventure crews. Track training, gear, and admin prep from first meeting to summit day.
             </p>
             <p className="italic" style={{
-              fontSize: 10, color: "#8A9A7A", marginTop: 6, lineHeight: 1.4, maxWidth: 480,
+              fontSize: 12, color: "#8A9A7A", marginTop: 6, lineHeight: 1.4, maxWidth: 480,
               marginLeft: isMobile ? "auto" : 0, marginRight: isMobile ? "auto" : 0,
             }}>
               An independent tool by GraceZero.ai &mdash; not affiliated with or endorsed by Scouting America or any national scouting organization.
@@ -673,14 +678,14 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
             }}>
               <div />
               <div className="text-center" style={{ padding: "16px 8px", borderLeft: "1px solid #DDD6C8" }}>
-                <button onClick={scrollToAuth} className="w-full py-2 rounded-[8px] text-[12px] font-bold cursor-pointer font-body" style={{
+                <button onClick={scrollToAuth} className="w-full py-2 rounded-[8px] text-[12px] font-bold cursor-pointer font-body lp-focus-ring" style={{
                   border: "2px solid #5B7A3A", background: "transparent", color: "#5B7A3A",
                 }}>
                   Start Free
                 </button>
               </div>
               <div className="text-center" style={{ padding: "16px 8px", borderLeft: "1px solid #DDD6C8" }}>
-                <button onClick={scrollToAuth} className="w-full py-2 rounded-[8px] border-none text-[12px] font-bold cursor-pointer font-body" style={{
+                <button onClick={scrollToAuth} className="w-full py-2 rounded-[8px] border-none text-[12px] font-bold cursor-pointer font-body lp-focus-ring" style={{
                   background: "#5B7A3A", color: "#FDFAF5",
                 }}>
                   Get Started
@@ -847,7 +852,7 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
           <p className="text-[14px] mb-7 max-w-[400px] mx-auto" style={{ color: "#B0A898" }}>
             Your crew's adventure starts here.
           </p>
-          <button onClick={scrollToAuth} className="px-10 py-3.5 rounded-[12px] border-none text-[16px] font-bold cursor-pointer font-body" style={{
+          <button onClick={scrollToAuth} className="px-10 py-3.5 rounded-[12px] border-none text-[16px] font-bold cursor-pointer font-body lp-focus-ring" style={{
             background: "#5B7A3A", color: "#FDFAF5",
             boxShadow: "0 4px 16px rgba(58,77,42,0.4)",
           }}>

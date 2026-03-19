@@ -55,6 +55,7 @@ export default function Documents({ adventureId, isAdmin }: DocumentsProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<AdventureDocument | null>(null);
+  const [thumbErrors, setThumbErrors] = useState<Set<number>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadDocs = useCallback(async () => {
@@ -273,11 +274,20 @@ export default function Documents({ adventureId, isAdmin }: DocumentsProps) {
             const isImage = doc.mime_type?.startsWith("image/");
             return (
               <div key={doc.id} className="bg-tl-card rounded-xl border border-tl-border py-3 px-3.5 flex items-center gap-3">
-                {/* Icon */}
-                <div className="w-10 h-10 rounded-[10px] shrink-0 flex items-center justify-center"
-                  style={{ background: mode === "dark" ? "#2A2E24" : "#F5F5F0" }}>
-                  <IconComp size={20} color={fi.color} />
-                </div>
+                {/* Icon / Thumbnail */}
+                {isImage && !thumbErrors.has(doc.id) ? (
+                  <img
+                    src={api.getDocumentUrl(adventureId, doc.id)}
+                    alt={doc.original_name}
+                    className="w-12 h-12 object-cover rounded-lg shrink-0"
+                    onError={() => setThumbErrors(prev => new Set(prev).add(doc.id))}
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-[10px] shrink-0 flex items-center justify-center"
+                    style={{ background: mode === "dark" ? "#2A2E24" : "#F5F5F0" }}>
+                    <IconComp size={20} color={fi.color} />
+                  </div>
+                )}
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
