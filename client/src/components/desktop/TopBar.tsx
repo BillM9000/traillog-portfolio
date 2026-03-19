@@ -17,18 +17,53 @@ export default function TopBar({ user, sectionTitle, adventureName, trekDates, t
   const { theme, mode, toggle } = useTheme();
   const countdown = useCountdown(trekDates || trekDate);
 
-  // Countdown badge — compact "86d" format with urgency colors
-  const countdownDays = countdown?.days ?? null;
-  let countdownColor = theme.accent; // green >60d
+  // Countdown badge — full display matching mobile Header
+  let countdownColor = theme.accent;
   let countdownLabel = "";
-  if (countdownDays !== null && !countdown?.gone) {
-    if (countdownDays < 14) countdownColor = theme.danger;
-    else if (countdownDays < 30) countdownColor = theme.urgency;
-    else if (countdownDays <= 60) countdownColor = theme.gold;
-    countdownLabel = `${countdownDays}d`;
-  } else if (countdown?.onTrek) {
-    countdownColor = theme.accent;
-    countdownLabel = "On Trek";
+  let countdownIcon = "";
+
+  if (countdown) {
+    if (countdown.onTrek) {
+      countdownColor = theme.accent;
+      countdownIcon = "\u26FA";
+      countdownLabel = `On trail \u00B7 ${countdown.label}`;
+    } else if (countdown.gone && countdown.phase === "complete") {
+      countdownColor = theme.gold;
+      countdownIcon = "\u2713";
+      countdownLabel = `Complete \u00B7 ${countdown.label?.split("!")[0] || "Done"}`;
+    } else if (countdown.phase === "travel_there") {
+      countdownColor = theme.accentLight || theme.accent;
+      countdownIcon = "\u{1F690}";
+      countdownLabel = `En route \u00B7 ${countdown.label}`;
+    } else if (countdown.phase === "travel_back") {
+      countdownColor = theme.accentLight || theme.accent;
+      countdownIcon = "\u{1F690}";
+      countdownLabel = `Heading home \u00B7 ${countdown.days}d left`;
+    } else if (countdown.days !== undefined && countdown.days !== null) {
+      // Pre-departure
+      if (countdown.days <= 1 && countdown.hours !== undefined) {
+        countdownColor = theme.urgency;
+        countdownIcon = "\u23F1";
+        countdownLabel = `${countdown.hours}h ${countdown.minutes}m \u00B7 Departure tomorrow`;
+      } else if (countdown.days <= 7) {
+        countdownColor = theme.urgency;
+        countdownIcon = "\u23F1";
+        countdownLabel = `${countdown.days}d ${countdown.hours}h \u00B7 ${countdown.label}`;
+      } else {
+        if (countdown.days < 14) countdownColor = theme.danger;
+        else if (countdown.days < 30) countdownColor = theme.urgency;
+        else if (countdown.days <= 60) countdownColor = theme.gold;
+        // Format departure date
+        const targetDate = trekDates?.depart || trekDate;
+        let dateStr = "";
+        if (targetDate) {
+          const d = typeof targetDate === "string" ? new Date(targetDate + "T00:00:00") : targetDate;
+          dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        }
+        countdownIcon = "\u23F1";
+        countdownLabel = `${countdown.days} days \u00B7 ${countdown.label || "Departure"} ${dateStr}`;
+      }
+    }
   }
 
   return (
@@ -47,16 +82,17 @@ export default function TopBar({ user, sectionTitle, adventureName, trekDates, t
 
       {/* Right: countdown badge + theme toggle + avatar */}
       <div className="flex items-center gap-3">
-        {/* Countdown badge — keep inline style for dynamic color */}
+        {/* Countdown badge — full display with icon */}
         {countdownLabel && (
           <div
-            className="py-[3px] px-2.5 rounded-[14px] text-xs font-bold font-body"
+            className="py-[3px] px-3 rounded-[14px] text-[11px] font-bold font-body flex items-center gap-1.5"
             style={{
               background: `${countdownColor}18`,
               border: `1px solid ${countdownColor}40`,
               color: countdownColor,
             }}
           >
+            {countdownIcon && <span className="text-sm leading-none">{countdownIcon}</span>}
             {countdownLabel}
           </div>
         )}

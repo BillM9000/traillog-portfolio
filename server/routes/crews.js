@@ -37,13 +37,23 @@ router.get("/api/adventures/:adventureId/all-crew-members", requireAuth, require
 });
 
 // Create crew (admin only)
+// Sister crews MUST share adventure dates — only name and itinerary can differ.
+// If different dates are needed, that's a separate adventure.
 router.post("/api/adventures/:adventureId/crews", requireAuth, requireAdventureAdmin, async (req, res) => {
   try {
-    const { name, itinerary_id, depart_date, arrive_date, return_date, home_date } = req.body;
+    const { name, itinerary_id } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "Crew name required" });
+    // Inherit dates from the adventure — crews share dates
+    const adventureId = parseId(req.params.adventureId);
+    const adventure = await getAdventure(adventureId);
+    if (!adventure) return res.status(404).json({ error: "Adventure not found" });
     const crew = await createCrew({
-      adventure_id: parseId(req.params.adventureId),
-      name: name.trim(), itinerary_id, depart_date, arrive_date, return_date, home_date,
+      adventure_id: adventureId,
+      name: name.trim(), itinerary_id,
+      depart_date: adventure.depart_date,
+      arrive_date: adventure.arrive_date,
+      return_date: adventure.return_date,
+      home_date: adventure.home_date,
       leader_id: req.user.id,
     });
     res.status(201).json(crew);
@@ -56,11 +66,12 @@ router.get("/api/crews/:crewId", requireAuth, requireCrewMember, async (req, res
   catch (e) { safeError(res, e); }
 });
 
-// Update crew (name, dates, itinerary)
+// Update crew (name and itinerary only — dates come from adventure)
 router.put("/api/crews/:crewId", requireAuth, requireCrewAdmin, async (req, res) => {
   try {
-    const { name, itinerary_id, depart_date, arrive_date, return_date, home_date } = req.body;
-    await updateCrew(parseId(req.params.crewId), { name, itinerary_id, depart_date, arrive_date, return_date, home_date });
+    const { name, itinerary_id } = req.body;
+    // Only allow name and itinerary changes — dates are adventure-level
+    await updateCrew(parseId(req.params.crewId), { name, itinerary_id });
     res.json({ ok: true });
   } catch (e) { safeError(res, e); }
 });

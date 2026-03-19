@@ -23,6 +23,8 @@ services:
       - SMTP_PASS=${SMTP_PASS}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - DATABASE_URL=postgresql://traillog:traillog2026@172.18.0.1:5432/traillog
+    volumes:
+      - app-data:/app/data
     labels:
       - traefik.enable=true
       # HTTPS router
@@ -39,6 +41,9 @@ services:
       - traefik.http.services.crew614.loadbalancer.server.port=3614
     networks:
       - n8n_default
+
+volumes:
+  app-data:
 
 networks:
   n8n_default:

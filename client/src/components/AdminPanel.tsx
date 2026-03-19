@@ -53,10 +53,6 @@ interface CrewFormState {
 
 interface NewCrewState {
   name: string;
-  depart_date: string;
-  arrive_date: string;
-  return_date: string;
-  home_date: string;
   itinerary_id: string;
 }
 
@@ -128,7 +124,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
   const [crewForm, setCrewForm] = useState<CrewFormState>({});
   const [savingCrew, setSavingCrew] = useState<boolean>(false);
   const [showCreateCrew, setShowCreateCrew] = useState<boolean>(false);
-  const [newCrew, setNewCrew] = useState<NewCrewState>({ name: "", depart_date: "", arrive_date: "", return_date: "", home_date: "", itinerary_id: "" });
+  const [newCrew, setNewCrew] = useState<NewCrewState>({ name: "", itinerary_id: "" });
   const [creatingCrew, setCreatingCrew] = useState<boolean>(false);
   const [confirmDeleteCrew, setConfirmDeleteCrew] = useState<number | null>(null);
 
@@ -354,7 +350,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
     setCreatingCrew(true);
     try {
       await api.createCrew(adventure.id, newCrew);
-      setNewCrew({ name: "", depart_date: "", arrive_date: "", return_date: "", home_date: "", itinerary_id: "" });
+      setNewCrew({ name: "", itinerary_id: "" });
       setShowCreateCrew(false);
       refreshCrews();
       addToast("Crew created", "success");
@@ -651,12 +647,6 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                     <>
                       <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Crew Name</label>
                       <input value={crewForm.name || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCrewForm({ ...crewForm, name: e.target.value.slice(0, 30) })} maxLength={30} className="tl-input mb-2" />
-                      <div className="grid grid-cols-2 gap-1.5 mb-1.5">
-                        <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.depart}</label><input value={crewForm.depart_date || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCrewForm({ ...crewForm, depart_date: e.target.value })} type="date" className="tl-input !mb-0" /></div>
-                        <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.arrive}</label><input value={crewForm.arrive_date || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCrewForm({ ...crewForm, arrive_date: e.target.value })} type="date" className="tl-input !mb-0" /></div>
-                        <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.return}</label><input value={crewForm.return_date || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCrewForm({ ...crewForm, return_date: e.target.value })} type="date" className="tl-input !mb-0" /></div>
-                        <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.home}</label><input value={crewForm.home_date || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCrewForm({ ...crewForm, home_date: e.target.value })} type="date" className="tl-input !mb-0" /></div>
-                      </div>
                       <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Itinerary</label>
                       <select value={crewForm.itinerary_id || ""} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setCrewForm({ ...crewForm, itinerary_id: e.target.value })} className={clsx("tl-input mb-2", crewForm.itinerary_id ? "text-tl-text" : "text-tl-text-dim")}>
                         <option value="">Select itinerary...</option>
@@ -708,11 +698,8 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                   <>
                     <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Crew Name</label>
                     <input value={newCrew.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCrew({ ...newCrew, name: e.target.value.slice(0, 30) })} maxLength={30} className="tl-input mb-2" placeholder="e.g. Crew 614-B" />
-                    <div className="grid grid-cols-2 gap-1.5 mb-1.5">
-                      <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.depart}</label><input value={newCrew.depart_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCrew({ ...newCrew, depart_date: e.target.value })} type="date" className="tl-input !mb-0" /></div>
-                      <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.arrive}</label><input value={newCrew.arrive_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCrew({ ...newCrew, arrive_date: e.target.value })} type="date" className="tl-input !mb-0" /></div>
-                      <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.return}</label><input value={newCrew.return_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCrew({ ...newCrew, return_date: e.target.value })} type="date" className="tl-input !mb-0" /></div>
-                      <div><label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">{dateLabels.home}</label><input value={newCrew.home_date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCrew({ ...newCrew, home_date: e.target.value })} type="date" className="tl-input !mb-0" /></div>
+                    <div className="text-[10px] text-tl-text-dim mb-2 p-2 rounded-[6px] bg-tl-bg-alt border border-tl-border">
+                      Dates are shared across all crews in this adventure. To change dates, edit the adventure settings above. Sister crews can have different itineraries.
                     </div>
                     <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Itinerary</label>
                     <select value={newCrew.itinerary_id} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewCrew({ ...newCrew, itinerary_id: e.target.value })} className={clsx("tl-input mb-2", newCrew.itinerary_id ? "text-tl-text" : "text-tl-text-dim")}>
