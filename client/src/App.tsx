@@ -44,7 +44,7 @@ const ParentDashboard = lazy(() => import("./components/ParentDashboard"));
 const AdminPanel = lazy(() => import("./components/AdminPanel"));
 const GlobalAdmin = lazy(() => import("./components/GlobalAdmin"));
 const GearAIChat = lazy(() => import("./components/GearAIChat"));
-const OnboardingRoleModal = lazy(() => import("./components/OnboardingRoleModal"));
+const OnboardingWizard = lazy(() => import("./components/OnboardingWizard"));
 
 function LoadingFallback() {
   return (
@@ -151,8 +151,21 @@ export default function App() {
   if (!user) return (<Suspense fallback={<LoadingFallback />}><AnnouncementBanner settings={publicSettings} /><LandingPage onLogin={login} onSignup={signup} registrationEnabled={publicSettings?.registration_enabled !== false} /></Suspense>);
   if (!user.age_confirmed || !user.user_type) return <Suspense fallback={<LoadingFallback />}><ProfileSetup user={user} onComplete={updateProfile} /></Suspense>;
 
-  // Show onboarding role selection modal if user hasn't picked a role yet
-  const showOnboardingRoleModal = onboarding !== null && !onboardingLoading && !onboarding.role && !onboarding.completed;
+  // Show forced onboarding wizard if not completed
+  const showOnboardingWizard = onboarding !== null && !onboardingLoading && !onboarding.completed;
+  if (showOnboardingWizard) {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <OnboardingWizard
+          user={user}
+          onboarding={onboarding!}
+          onRefreshOnboarding={refreshOnboarding}
+          onComplete={() => {}} // After completion, onboarding.completed=true triggers re-render
+          onRefreshAuth={refresh}
+        />
+      </Suspense>
+    );
+  }
 
   // Profile page — shown when user clicks "View Profile" from any context
   if (showProfilePage) return (
@@ -207,8 +220,6 @@ export default function App() {
           }}
           onViewProfile={() => setShowProfilePage(true)}
           onHelpClick={() => setShowHelp(true)}
-          onboarding={onboarding}
-          onRefreshOnboarding={refreshOnboarding}
         />
         {showGlobalAdmin && (
           <GlobalAdmin isGlobalAdmin={isGlobalAdmin} troopId={null} onClose={() => { setShowGlobalAdmin(false); refresh(); }}
@@ -217,9 +228,6 @@ export default function App() {
         )}
         {showHelp && (
           <HelpSystem onClose={() => setShowHelp(false)} user={user} isAdmin={false} isGlobalAdmin={isGlobalAdmin} />
-        )}
-        {showOnboardingRoleModal && (
-          <OnboardingRoleModal onRoleSelected={() => refreshOnboarding()} />
         )}
       </Suspense>
     );

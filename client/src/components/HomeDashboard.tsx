@@ -8,8 +8,7 @@ import { US_STATES, ADVENTURE_TYPES } from "../utils/constants";
 import Logo from "./Logo";
 import TroopLogo from "./TroopLogo";
 import CouncilPicker from "./CouncilPicker";
-import OnboardingChecklist from "./OnboardingChecklist";
-import type { User, Membership, ThemeColors, AdventureType as AdventureTypeT, OnboardingState } from "../types";
+import type { User, Membership, ThemeColors, AdventureType as AdventureTypeT } from "../types";
 
 const ADVENTURE_TYPE_NAMES: Record<string, string> = {
   philmont: "Philmont Scout Ranch",
@@ -310,8 +309,6 @@ interface HomeDashboardProps {
   onEnterAdventure: (troopId: number, adventureId: number | null) => void;
   onViewProfile?: () => void;
   onHelpClick?: () => void;
-  onboarding?: OnboardingState | null;
-  onRefreshOnboarding?: () => Promise<void>;
 }
 
 const UNIT_TYPES = [
@@ -358,7 +355,7 @@ interface ItineraryListItem {
   rating: string;
 }
 
-export default function HomeDashboard({ user, memberships, onRefresh, onLogout, isGlobalAdmin, onGlobalAdminClick, onEnterAdventure, onViewProfile, onHelpClick, onboarding, onRefreshOnboarding }: HomeDashboardProps) {
+export default function HomeDashboard({ user, memberships, onRefresh, onLogout, isGlobalAdmin, onGlobalAdminClick, onEnterAdventure, onViewProfile, onHelpClick }: HomeDashboardProps) {
   const { theme, toggle } = useTheme();
   const { addToast } = useToast();
 
@@ -519,11 +516,6 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
       </div>
 
       <div className="max-w-[600px] mx-auto py-6 px-5">
-
-        {/* ── Onboarding Checklist ── */}
-        {onboarding && !onboarding.completed && onboarding.role && onRefreshOnboarding && (
-          <OnboardingChecklist onboarding={onboarding} onRefresh={onRefreshOnboarding} />
-        )}
 
         {/* ── Platform Overview (sys admins only) ── */}
         {isGlobalAdmin && stats && (
