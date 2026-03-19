@@ -321,7 +321,7 @@ export default function GearList({ troopId, adventureId, members, active, setAct
             <span className="text-[12px] font-bold text-tl-heading font-display">Gear Guide</span>
             <span className="text-[9px] text-tl-text-dimmer">weight & sharing info</span>
           </div>
-          <span className="text-[14px] text-tl-text-dimmer transition-transform duration-200" style={{ transform: showGearGuide ? "rotate(90deg)" : "none" }}>&rsaquo;</span>
+          <span className="text-[10px] text-tl-text-dimmer font-medium">{showGearGuide ? "Collapse" : "Expand"}</span>
         </div>
         {showGearGuide && (
           <div className="mt-2.5">

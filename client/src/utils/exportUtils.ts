@@ -319,9 +319,21 @@ export function printHTML(title: string, bodyHTML: string) {
       .badge-need { background: #f0e0c0; color: #7a5a2a; }
       .section { margin-top: 20px; }
       .meta { font-size: 11px; color: #999; margin-bottom: 16px; }
-      @media print { body { padding: 12px; } .no-print { display: none; } }
+      .print-toolbar { position: sticky; top: 0; z-index: 10; background: #3A4D2A; color: #fff; padding: 10px 20px; margin: -24px -24px 20px -24px; display: flex; align-items: center; justify-content: space-between; font-family: Arial, sans-serif; }
+      .print-toolbar button { padding: 8px 20px; border-radius: 6px; border: none; font-size: 14px; font-weight: 700; cursor: pointer; }
+      .print-btn { background: #B8CC9A; color: #2A3620; }
+      .close-btn { background: transparent; color: #B8CC9A; border: 1.5px solid #B8CC9A !important; }
+      @media print { body { padding: 12px; } .no-print, .print-toolbar { display: none; } }
     </style>
-  </head><body>${bodyHTML}</body></html>`);
+  </head><body>
+    <div class="print-toolbar no-print">
+      <span style="font-weight:700;font-size:14px;">Print Preview — ${title}</span>
+      <div style="display:flex;gap:8px;">
+        <button class="close-btn" onclick="window.close()">Close</button>
+        <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+      </div>
+    </div>
+    ${bodyHTML}
+  </body></html>`);
   w.document.close();
-  setTimeout(() => w.print(), 300);
 }

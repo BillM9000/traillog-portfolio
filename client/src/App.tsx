@@ -732,6 +732,10 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
           isGlobalAdmin={isGlobalAdmin}
           adventureName={adventure?.name || null}
           troopName={troop?.name || null}
+          troopId={troopId}
+          trekDates={trekDates}
+          memberCount={members.length}
+          trekkingCount={members.filter(m => m.participation === "trekking").length}
           onGoHome={onGoHome}
           onAdminClick={() => setShowAdmin(true)}
           onViewProfile={onViewProfile}

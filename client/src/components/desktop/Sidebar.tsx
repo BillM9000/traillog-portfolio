@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "../../contexts/ThemeContext";
 import Logo from "../Logo";
+import TroopLogo from "../TroopLogo";
 import type { User } from "../../types";
 import clsx from "clsx";
 
@@ -18,6 +19,10 @@ interface SidebarProps {
   isGlobalAdmin: boolean;
   adventureName: string | null;
   troopName: string | null;
+  troopId?: number | null;
+  trekDates?: { depart: Date | null; arrive: Date | null; return: Date | null; home: Date | null } | null;
+  memberCount?: number;
+  trekkingCount?: number;
   onGoHome: () => void;
   onAdminClick?: () => void;
   onViewProfile: () => void;
@@ -50,6 +55,7 @@ const STORAGE_KEY = "sidebar-collapsed";
 
 export default function Sidebar({
   user, view, setView, isAdmin, isGlobalAdmin, adventureName, troopName,
+  troopId, trekDates, memberCount, trekkingCount,
   onGoHome, onAdminClick, onViewProfile, onHelpClick, onLogout, onGlobalAdminClick,
   homeActive,
 }: SidebarProps) {
@@ -93,17 +99,43 @@ export default function Sidebar({
 
       {/* Adventure / Troop context */}
       {!collapsed && (troopName || adventureName) && (
-        <div className="px-5 pt-3 pb-2 border-b border-white/[0.08]">
-          {troopName && (
-            <div className="text-[11px] font-semibold font-body text-tl-text-on-dark-dim uppercase tracking-wide mb-0.5">
-              {troopName}
+        <div className="px-5 pt-3 pb-2.5 border-b border-white/[0.08]">
+          <div className="flex items-center gap-2.5 mb-1">
+            {troopId && (
+              <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-white/10">
+                <TroopLogo troopId={troopId} size={40} />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              {troopName && (
+                <div className="text-[10px] font-semibold font-body text-tl-text-on-dark-dim uppercase tracking-wide">
+                  {troopName}
+                </div>
+              )}
+              {adventureName && (
+                <div className="text-[12px] font-bold font-display text-tl-text-on-dark overflow-hidden text-ellipsis whitespace-nowrap">
+                  {adventureName}
+                </div>
+              )}
+            </div>
+          </div>
+          {trekDates?.arrive && trekDates?.return && (
+            <div className="text-[10px] font-body text-[#B8CC9A] mt-1">
+              {trekDates.arrive.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – {trekDates.return.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
             </div>
           )}
-          {adventureName && (
-            <div className="text-[13px] font-bold font-display text-tl-text-on-dark overflow-hidden text-ellipsis whitespace-nowrap">
-              {adventureName}
+          {(memberCount !== undefined && memberCount > 0) && (
+            <div className="text-[10px] font-body text-tl-text-on-dark-dim mt-0.5">
+              {trekkingCount || memberCount} trekking{(memberCount - (trekkingCount || 0)) > 0 ? ` · ${memberCount - (trekkingCount || 0)} support` : ""}
             </div>
           )}
+        </div>
+      )}
+      {collapsed && troopId && (
+        <div className="flex justify-center py-2 border-b border-white/[0.08]">
+          <div className="w-9 h-9 rounded-lg overflow-hidden bg-white/10">
+            <TroopLogo troopId={troopId} size={36} />
+          </div>
         </div>
       )}
 

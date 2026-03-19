@@ -862,7 +862,7 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
             <span className="text-[13px] font-bold text-tl-heading font-display">Trail Guide</span>
             <span className="text-[10px] text-tl-text-dimmer">badges & waypoints</span>
           </div>
-          <span className="text-[14px] text-tl-text-dimmer transition-transform duration-200" style={{ transform: showBadgeLegend ? "rotate(90deg)" : "none" }}>&rsaquo;</span>
+          <span className="text-[10px] text-tl-text-dimmer font-medium">{showBadgeLegend ? "Collapse" : "Expand"}</span>
         </div>
 
         {showBadgeLegend && (

@@ -288,6 +288,16 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
     catch (e: unknown) { addToast((e as Error).message, "error"); }
   };
 
+  const changeMemberCrew = async (userId: number, newCrewId: number) => {
+    try {
+      await api.removeCrewMember(selectedCrewId as number, userId);
+      await api.addCrewMember(newCrewId, userId, "member");
+      onRefresh();
+      const targetCrew = crews.find(c => c.id === newCrewId);
+      addToast(`Moved to ${targetCrew?.name || "crew"}`, "success");
+    } catch (e: unknown) { addToast((e as Error).message, "error"); }
+  };
+
   const toggleUserType = async (userId: number, current: string) => {
     const next = current === "adult" ? "scout" : "adult";
     try { await api.updateMemberUserType(adventure.id, userId, next); onRefresh(); addToast(`Changed to ${next}`, "success"); }
@@ -849,6 +859,21 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                         <button onClick={() => toggleRole(m.user_id!, m.role)} className="text-[10px] text-tl-accent bg-transparent border-none cursor-pointer underline font-body">{m.role === "admin" ? "Demote" : "Make Admin"}</button>
                         <button onClick={() => toggleUserType(m.user_id!, m.user_type || "")} className="text-[10px] bg-transparent border-none cursor-pointer underline font-body" style={{ color: m.user_type === "adult" ? "#5080b0" : "#508050" }}>{m.user_type === "adult" ? "Change to Scout" : "Change to Adult"}</button>
                         <button onClick={() => toggleParticipation(m.user_id!, m.participation)} className="text-[10px] bg-transparent border-none cursor-pointer underline font-body" style={{ color: "#8a6d3b" }}>{m.participation === "trekking" ? "Set Support" : "Set Trekking"}</button>
+                        {crews.length > 1 && (
+                          <select
+                            value=""
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                              const v = parseInt(e.target.value);
+                              if (v && v !== selectedCrewId) changeMemberCrew(m.user_id!, v);
+                            }}
+                            className="text-[9px] px-1 py-[1px] bg-tl-input border border-tl-border-light rounded-[3px] text-tl-text font-body"
+                          >
+                            <option value="">Move crew…</option>
+                            {crews.filter(c => c.id !== selectedCrewId).map(c => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                        )}
                         {m.user_type === "adult" && (() => {
                           const scouts = m.linked_scouts || [];
                           const linkedScoutIds = new Set(scouts);

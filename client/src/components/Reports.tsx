@@ -101,14 +101,14 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
     const mapMember = (m: AdventureMember) => ({
       Name: m.name,
       Email: m.email || "(manual)",
-      Type: m.user_type || "\u2014",
+      Type: m.user_type || "—",
       Role: m.role,
       Participation: m.participation,
       "Date Count": (m.dates || []).length,
     });
     await exportXLSXWithSummary(
       {
-        title: `${crewName} \u2014 Crew Roster`,
+        title: `${crewName} — Crew Roster`,
         stats: [
           { label: "Total Members", value: members.length },
           { label: "Trekking", value: trekking.length, color: "3A4D2A" },
@@ -133,12 +133,12 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
       if (!list.length) return "";
       return `<div class="section"><h3>${title} (${list.length})</h3><table>
         <tr><th>Name</th><th>Email</th><th>Type</th><th>Role</th></tr>
-        ${list.map(m => `<tr><td>${m.name}</td><td>${m.email || "\u2014"}</td><td>${m.user_type || "\u2014"}</td><td>${m.role}</td></tr>`).join("")}
+        ${list.map(m => `<tr><td>${m.name}</td><td>${m.email || "—"}</td><td>${m.user_type || "—"}</td><td>${m.role}</td></tr>`).join("")}
       </table></div>`;
     };
-    printHTML(`${crewName} \u2014 Crew Roster`, `
-      <h1>${crewName} \u2014 Crew Roster</h1>
-      <h2>${members.length} members \u00B7 ${trekking.length} trekking \u00B7 ${support.length} support</h2>
+    printHTML(`${crewName} — Crew Roster`, `
+      <h1>${crewName} — Crew Roster</h1>
+      <h2>${members.length} members · ${trekking.length} trekking · ${support.length} support</h2>
       <div class="meta">Generated ${now}</div>
       ${section("Trekking", trekking)}
       ${section("Support", support)}
@@ -155,7 +155,7 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
       const gearByItem: Record<number, string> = {};
       gear.forEach(g => { gearByItem[g.gear_catalog_id] = g.status; });
       const row: Record<string, unknown> = { Name: m.name, Participation: m.participation };
-      activeGear.forEach(g => { row[g.name] = gearByItem[g.id] || "\u2014"; });
+      activeGear.forEach(g => { row[g.name] = gearByItem[g.id] || "—"; });
       return row;
     });
     // Need tab — items each member still needs
@@ -165,8 +165,8 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
       const gearByItem: Record<number, string> = {};
       gear.forEach(g => { gearByItem[g.gear_catalog_id] = g.status; });
       activeGear.forEach(g => {
-        const status = gearByItem[g.id] || "\u2014";
-        if (status === "needed" || status === "\u2014") {
+        const status = gearByItem[g.id] || "—";
+        if (status === "needed" || status === "—") {
           needRows.push({ Member: m.name, Item: g.name, Category: g.category, Status: status === "needed" ? "Need" : "Unchecked" });
         }
       });
@@ -202,9 +202,9 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
     const uncheckedCount = needRows.filter(r => r.Status === "Unchecked").length;
     await exportXLSXWithSummary(
       {
-        title: `${crewName} \u2014 Gear Readiness Matrix`,
+        title: `${crewName} — Gear Readiness Matrix`,
         stats: [
-          { label: "Total Member\u00D7Item Slots", value: totalItems },
+          { label: "Total Member×Item Slots", value: totalItems },
           { label: "Packed", value: packedCount, color: "3A4D2A" },
           { label: "Owned", value: ownCount, color: "3B6BB0" },
           { label: "Need", value: needCount, color: "B8740A" },
@@ -250,7 +250,7 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
       const maxTotal = rows.length ? Math.max(...rows.map(r => r["Total (lbs)"])).toFixed(1) : "0";
       await exportXLSXWithSummary(
         {
-          title: `${crewName} \u2014 Pack Weight Summary`,
+          title: `${crewName} — Pack Weight Summary`,
           stats: [
             { label: "Members", value: rows.length },
             { label: "Average Total Weight", value: `${avgTotal} lbs`, color: "3A4D2A" },
@@ -274,11 +274,11 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
       const goingCount = (evt.rsvps || []).filter(r => r.status === "going").length;
       const cantCount = (evt.rsvps || []).filter(r => r.status === "cant").length;
       return {
-        Date: evt.date, Period: evt.period, Time: evt.time_label || "\u2014",
-        Location: evt.location || "\u2014", Notes: evt.notes || "",
+        Date: evt.date, Period: evt.period, Time: evt.time_label || "—",
+        Location: evt.location || "—", Notes: evt.notes || "",
         "Going (#)": goingCount, "Can't (#)": cantCount,
         "No Reply (#)": members.length - goingCount - cantCount,
-        "Going": going || "\u2014", "Can't Make It": cant || "\u2014",
+        "Going": going || "—", "Can't Make It": cant || "—",
       };
     });
     // Per-member attendance sheet
@@ -292,7 +292,7 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
     });
     await exportXLSXWithSummary(
       {
-        title: `${crewName} \u2014 Training RSVP Summary`,
+        title: `${crewName} — Training RSVP Summary`,
         stats: [
           { label: "Training Events", value: trainingEvents.length },
           { label: "Members", value: members.length },
@@ -316,8 +316,8 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
         <td>${r}%</td>
         <td><strong>${r}%</strong></td></tr>`;
     }).join("");
-    printHTML(`${crewName} \u2014 Crew Readiness`, `
-      <h1>${crewName} \u2014 Crew Readiness Overview</h1>
+    printHTML(`${crewName} — Crew Readiness`, `
+      <h1>${crewName} — Crew Readiness Overview</h1>
       <h2>Overall: ${crew.overall}%</h2>
       <div class="meta">Generated ${now}</div>
       <table>
@@ -347,7 +347,7 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
     activeGear.forEach(g => {
       const mg = myGear.find(item => item.gear_catalog_id === g.id);
       const status = (mg?.status || "unchecked") as string;
-      const entry = { name: g.name, category: g.category, weight: g.weight_lbs ? `${(g.weight_lbs * 16).toFixed(0)} oz (${g.weight_lbs.toFixed(1)} lbs)` : "\u2014", sharing: g.sharing_type || "personal" };
+      const entry = { name: g.name, category: g.category, weight: g.weight_lbs ? `${(g.weight_lbs * 16).toFixed(0)} oz (${g.weight_lbs.toFixed(1)} lbs)` : "—", sharing: g.sharing_type || "personal" };
       if (status === "packed") gearByStatus.packed.push(entry);
       else if (status === "owned") gearByStatus.owned.push(entry);
       else if (status === "needed") gearByStatus.need.push(entry);
@@ -356,16 +356,16 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
     const section = (title: string, items: { name: string; category: string; weight: string; sharing: string }[]) => {
       if (!items.length) return "";
       return `<div class="section"><h3>${title} (${items.length})</h3><table>
-        <tr><th>\u2610</th><th>Item</th><th>Category</th><th>Weight</th><th>Type</th></tr>
-        ${items.map(i => `<tr><td>\u2610</td><td>${i.name}</td><td>${i.category}</td><td>${i.weight}</td><td>${i.sharing}</td></tr>`).join("")}
+        <tr><th>☐</th><th>Item</th><th>Category</th><th>Weight</th><th>Type</th></tr>
+        ${items.map(i => `<tr><td>☐</td><td>${i.name}</td><td>${i.category}</td><td>${i.weight}</td><td>${i.sharing}</td></tr>`).join("")}
       </table></div>`;
     };
     const me = members.find(m => String(m.user_id) === String(currentUserId));
-    printHTML(`${me?.name || "My"} \u2014 Gear Checklist`, `
-      <h1>${me?.name || "My"} \u2014 Gear Checklist</h1>
+    printHTML(`${me?.name || "My"} — Gear Checklist`, `
+      <h1>${me?.name || "My"} — Gear Checklist</h1>
       <h2>${crewName}</h2>
-      <div class="meta">Generated ${now} \u00B7 ${gearByStatus.packed.length} packed \u00B7 ${gearByStatus.owned.length} owned \u00B7 ${gearByStatus.need.length} need \u00B7 ${gearByStatus.unchecked.length} unchecked</div>
-      ${section("\u2705 Packed", gearByStatus.packed)}
+      <div class="meta">Generated ${now} · ${gearByStatus.packed.length} packed · ${gearByStatus.owned.length} owned · ${gearByStatus.need.length} need · ${gearByStatus.unchecked.length} unchecked</div>
+      ${section("✅ Packed", gearByStatus.packed)}
       ${section("Owned (not packed yet)", gearByStatus.owned)}
       ${section("Need to Get", gearByStatus.need)}
       ${section("Unchecked", gearByStatus.unchecked)}
@@ -385,8 +385,8 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
     }).map(g => ({
       Name: g.name,
       Category: g.category,
-      Priority: (g as GearCatalogItem & { priority?: string }).priority || "\u2014",
-      Weight: g.weight_lbs ? `${(g.weight_lbs * 16).toFixed(0)} oz (${g.weight_lbs.toFixed(1)} lbs)` : "\u2014",
+      Priority: (g as GearCatalogItem & { priority?: string }).priority || "—",
+      Weight: g.weight_lbs ? `${(g.weight_lbs * 16).toFixed(0)} oz (${g.weight_lbs.toFixed(1)} lbs)` : "—",
       Type: g.sharing_type || "personal",
     }));
   };
@@ -401,13 +401,13 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
   const printStillNeed = () => {
     const items = getStillNeedData();
     const me = members.find(m => String(m.user_id) === String(currentUserId));
-    printHTML(`${me?.name || "My"} \u2014 Still Need List`, `
-      <h1>${me?.name || "My"} \u2014 Still Need List</h1>
-      <h2>${crewName} \u00B7 ${items.length} items remaining</h2>
+    printHTML(`${me?.name || "My"} — Still Need List`, `
+      <h1>${me?.name || "My"} — Still Need List</h1>
+      <h2>${crewName} · ${items.length} items remaining</h2>
       <div class="meta">Generated ${now}</div>
       ${items.length ? `<table>
-        <tr><th>\u2610</th><th>Item</th><th>Category</th><th>Priority</th><th>Weight</th><th>Type</th></tr>
-        ${items.map(i => `<tr><td>\u2610</td><td>${i.Name}</td><td>${i.Category}</td><td>${i.Priority}</td><td>${i.Weight}</td><td>${i.Type}</td></tr>`).join("")}
+        <tr><th>☐</th><th>Item</th><th>Category</th><th>Priority</th><th>Weight</th><th>Type</th></tr>
+        ${items.map(i => `<tr><td>☐</td><td>${i.Name}</td><td>${i.Category}</td><td>${i.Priority}</td><td>${i.Weight}</td><td>${i.Type}</td></tr>`).join("")}
       </table>` : "<p>All gear accounted for!</p>"}
     `);
   };
@@ -417,19 +417,19 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
     const itineraryData = itinerary as { name?: string; id?: string; days?: number; difficulty?: string; route_data?: Array<{ day: number; camp?: string; type?: string; miles?: number; elevation?: number; gain?: number; loss?: number; programs?: Array<string | { name: string }>; notes?: string; warnings?: string[] }> } | null;
     if (!itineraryData) { addToast("No itinerary selected", "error"); return; }
     const days = itineraryData.route_data || [];
-    printHTML(`${crewName} \u2014 Itinerary`, `
-      <h1>${crewName} \u2014 Itinerary Cheat Sheet</h1>
-      <h2>${itineraryData.name || itineraryData.id} \u00B7 ${itineraryData.days} days \u00B7 ${itineraryData.difficulty || ""}</h2>
+    printHTML(`${crewName} — Itinerary`, `
+      <h1>${crewName} — Itinerary Cheat Sheet</h1>
+      <h2>${itineraryData.name || itineraryData.id} · ${itineraryData.days} days · ${itineraryData.difficulty || ""}</h2>
       <div class="meta">Generated ${now}</div>
       <table>
         <tr><th>Day</th><th>Camp</th><th>Miles</th><th>Elev</th><th>Gain/Loss</th><th>Programs</th><th>Notes</th></tr>
         ${days.map(d => `<tr>
           <td>${d.day}</td>
-          <td>${d.camp || "\u2014"}${d.type && d.type !== "Trail" ? ` <span style="font-size:10px;color:#888">(${d.type})</span>` : ""}</td>
-          <td>${d.miles || "\u2014"}</td>
-          <td>${d.elevation ? d.elevation.toLocaleString() + "'" : "\u2014"}</td>
-          <td>${d.gain || d.loss ? `+${d.gain || 0}/-${d.loss || 0}` : "\u2014"}</td>
-          <td>${(d.programs || []).map(p => typeof p === "string" ? p : p.name).join(", ") || "\u2014"}</td>
+          <td>${d.camp || "—"}${d.type && d.type !== "Trail" ? ` <span style="font-size:10px;color:#888">(${d.type})</span>` : ""}</td>
+          <td>${d.miles || "—"}</td>
+          <td>${d.elevation ? d.elevation.toLocaleString() + "'" : "—"}</td>
+          <td>${d.gain || d.loss ? `+${d.gain || 0}/-${d.loss || 0}` : "—"}</td>
+          <td>${(d.programs || []).map(p => typeof p === "string" ? p : p.name).join(", ") || "—"}</td>
           <td style="font-size:11px;color:#666">${d.notes || ""}</td>
         </tr>`).join("")}
       </table>
@@ -477,7 +477,7 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
           />
           <ReportCard
             icon={ClipboardList} title="Gear Readiness Matrix"
-            description="Every member \u00D7 every gear item \u2014 tabs for Need, Owned, Packed"
+            description="Every member × every gear item — tabs for Need, Owned, Packed"
             formats={["xlsx"]}
             onXLSX={exportGearMatrixXLSX} theme={theme} compact={isDesktop}
           />
@@ -509,19 +509,19 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
 
       <ReportCard
         icon={ClipboardList} title="My Gear Checklist"
-        description="Printable packing list \u2014 packed, owned, and unchecked items"
+        description="Printable packing list — packed, owned, and unchecked items"
         formats={["print"]}
         onPrint={printMyGearChecklist} theme={theme} compact={isDesktop}
       />
       <ReportCard
         icon={FileSpreadsheet} title="My Still-Need List"
-        description="Gear you haven't checked off yet \u2014 great as a shopping list"
+        description="Gear you haven't checked off yet — great as a shopping list"
         formats={["xlsx", "print"]}
         onXLSX={exportStillNeedXLSX} onPrint={printStillNeed} theme={theme} compact={isDesktop}
       />
       <ReportCard
         icon={Map} title="Itinerary Cheat Sheet"
-        description="Day-by-day trek summary \u2014 camps, miles, elevation, activities"
+        description="Day-by-day trek summary — camps, miles, elevation, activities"
         formats={["print"]}
         onPrint={printItinerary} theme={theme} compact={isDesktop}
       />

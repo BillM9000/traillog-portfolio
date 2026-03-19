@@ -1,6 +1,6 @@
 import { Router } from "express";
 import crypto from "crypto";
-import { join } from "path";
+import { join, resolve } from "path";
 import { existsSync, mkdirSync, writeFileSync, unlinkSync } from "fs";
 import {
   requireAuth, requireAdventureMember, requireAdventureAdmin,
@@ -255,8 +255,9 @@ router.post("/api/adventures/:adventureId/documents", requireAuth, requireAdvent
     writeFileSync(filePath, buffer);
 
     const result = await addAdventureDocument(adventureId, storedName, originalName, filePath, mimeType, buffer.length, description || "", req.user.id);
-    logger.info({ action: "document_upload", adventureId, docId: result.lastInsertRowid, originalName, size: buffer.length, userId: req.user.id }, "Document uploaded");
-    res.json({ ok: true, id: result.lastInsertRowid });
+    const docId = result.rows?.[0]?.id;
+    logger.info({ action: "document_upload", adventureId, docId, originalName, size: buffer.length, userId: req.user.id }, "Document uploaded");
+    res.json({ ok: true, id: docId });
   } catch (e) { safeError(res, e); }
 });
 
@@ -265,10 +266,11 @@ router.get("/api/adventures/:adventureId/documents/:docId/download", requireAuth
   try {
     const doc = await getAdventureDocument(parseId(req.params.docId));
     if (!doc || doc.adventure_id !== parseId(req.params.adventureId)) return res.status(404).json({ error: "Document not found" });
-    if (!existsSync(doc.file_path)) return res.status(404).json({ error: "File not found on disk" });
+    const absPath = resolve(doc.file_path);
+    if (!existsSync(absPath)) return res.status(404).json({ error: "File not found on disk" });
     res.setHeader("Content-Disposition", `inline; filename="${doc.original_name}"`);
     res.setHeader("Content-Type", doc.mime_type || "application/octet-stream");
-    res.sendFile(doc.file_path);
+    res.sendFile(absPath);
   } catch (e) { safeError(res, e); }
 });
 
