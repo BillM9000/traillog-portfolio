@@ -17,7 +17,7 @@ import {
   sendMemberApprovedEmail, sendMemberDeniedEmail,
 } from "../email.js";
 import { validate, createTroopSchema } from "../validation.js";
-import { join } from "path";
+import { join, resolve } from "path";
 import { existsSync, mkdirSync, writeFileSync, unlinkSync } from "fs";
 
 const router = Router();
@@ -115,7 +115,7 @@ router.put("/api/troops/:troopId", requireAuth, requireTroopAdmin, async (req, r
 // Serve logo (no auth — logos are public)
 router.get("/api/troops/:troopId/logo", (req, res) => {
   const troopId = parseId(req.params.troopId);
-  const logoPath = join(LOGO_DIR, `${troopId}.png`);
+  const logoPath = resolve(join(LOGO_DIR, `${troopId}.png`));
   if (!existsSync(logoPath)) return res.status(404).json({ error: "No logo" });
   res.setHeader("Cache-Control", "public, max-age=3600");
   res.sendFile(logoPath);

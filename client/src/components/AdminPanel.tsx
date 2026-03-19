@@ -349,7 +349,13 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
     if (!newCrew.name?.trim()) { addToast("Crew name is required", "error"); return; }
     setCreatingCrew(true);
     try {
-      await api.createCrew(adventure.id, newCrew);
+      // Auto-prefix: ensure crew name starts with "Crew " for consistency
+      // e.g. user types "614-B" → becomes "Crew 614-B"
+      let crewName = newCrew.name.trim();
+      if (!crewName.toLowerCase().startsWith("crew")) {
+        crewName = "Crew " + crewName;
+      }
+      await api.createCrew(adventure.id, { ...newCrew, name: crewName });
       setNewCrew({ name: "", itinerary_id: "" });
       setShowCreateCrew(false);
       refreshCrews();
@@ -697,7 +703,7 @@ export default function AdminPanel({ troop, adventure, troopMembers, adventureMe
                 ) : (
                   <>
                     <label className="block text-[10px] font-bold text-tl-text-dim uppercase mb-1">Crew Name</label>
-                    <input value={newCrew.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCrew({ ...newCrew, name: e.target.value.slice(0, 30) })} maxLength={30} className="tl-input mb-2" placeholder="e.g. Crew 614-B" />
+                    <input value={newCrew.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCrew({ ...newCrew, name: e.target.value.slice(0, 30) })} maxLength={30} className="tl-input mb-2" placeholder={crews.length > 0 ? `e.g. ${crews[0].name?.replace(/-[A-Za-z]+$/, "") || "Crew"}-B` : "e.g. Crew 614-B"} />
                     <div className="text-[10px] text-tl-text-dim mb-2 p-2 rounded-[6px] bg-tl-bg-alt border border-tl-border">
                       Dates are shared across all crews in this adventure. To change dates, edit the adventure settings above. Sister crews can have different itineraries.
                     </div>
