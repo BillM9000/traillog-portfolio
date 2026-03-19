@@ -259,7 +259,7 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
 
   // Normalize route data: new format (from PDF) has simple fields, adapt to rich format
   const rawRoute = itin.route_data || [];
-  const route: RouteDay[] = rawRoute.map(day => {
+  const route: RouteDay[] = rawRoute.map((day, idx) => {
     // Already rich format (has 'type' field) — normalize array fields defensively
     if (day.type) {
       return {
@@ -271,16 +271,20 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
       };
     }
     // New simple format — derive type from camp name conventions
+    // ALL CAPS = Staffed (even if also dry — staffed camps can lack water)
+    // Layover = 2nd+ consecutive day at same camp (exclusive type)
+    // Dry is a property flag, not an exclusive type — trail camps can be dry
     const campUpper = (day.camp || "").toUpperCase();
     const parsedPrograms = parsePrograms(day.programs);
     const progStr = parsedPrograms.map(p => p.name).join("; ");
     const isDry = progStr.toLowerCase().includes("dry camp");
-    const isStaffed = campUpper === day.camp && day.camp !== "Camping HQ" && !isDry;
-    const isLayover = day.miles === 0 && day.day > 1;
+    const isAllCaps = campUpper === day.camp && day.camp !== "Camping HQ";
+    const prevCamp = idx > 0 ? rawRoute[idx - 1]?.camp : null;
+    const isLayover = (prevCamp && prevCamp === day.camp && day.day > 1);
     const type = day.camp === "Camping HQ" ? "Base Camp"
       : isLayover ? "Layover"
+      : isAllCaps ? "Staffed"
       : isDry ? "Dry Camp"
-      : isStaffed ? "Staffed"
       : "Trail";
     const foodPickup = progStr.match(/Food Pickup|pick up/i) ? progStr : null;
     return {
@@ -323,7 +327,9 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
 
   // Stats bar
   const totalMiles = route.reduce((s, d) => s + d.miles, 0);
-  const dryCamps = route.filter(d => d.type === "Dry Camp").length;
+  // isDry checks warnings (set for ALL dry camps including staffed ones like HARLAN)
+  const isDryDay = (d: RouteDay) => (d.warnings?.length || 0) > 0 && d.warnings!.some((w: string) => w.includes("DRY CAMP"));
+  const dryCamps = route.filter(isDryDay).length;
   const staffedCamps = route.filter(d => d.type === "Staffed").length;
 
   // ── Derive info card data from route + global_info ──
@@ -348,7 +354,7 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
     const totalGain = route.reduce((s, d) => s + (d.gain || 0), 0);
     const totalLoss = route.reduce((s, d) => s + (d.loss || 0), 0);
     // Dry camp days
-    const dryCampDays = route.filter(d => d.type === "Dry Camp").map(d => d.day);
+    const dryCampDays = route.filter(d => isDryDay(d) || d.type === "Dry Camp").map(d => d.day);
     // Food pickups
     const foodPickups = route.filter(d => d.food_pickup).map(d => ({ day: d.day, location: d.food_pickup }));
     // Staffed camps with programs
@@ -594,7 +600,8 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
       {/* Day cards */}
       {route.filter(day => {
         if (!typeFilter) return true;
-        if (typeFilter === "other") return !["Staffed", "Dry Camp", "Layover"].includes(day.type);
+        if (typeFilter === "other") return !["Staffed", "Dry Camp", "Layover"].includes(day.type) && !isDryDay(day);
+        if (typeFilter === "Dry Camp") return day.type === "Dry Camp" || isDryDay(day);
         return day.type === typeFilter;
       }).map(day => {
         const isOpen = expanded.has(day.day);
@@ -638,6 +645,10 @@ export default function Itinerary({ adventureId, adventure, isAdmin, onRefresh }
               <div className="shrink-0 flex items-center gap-1.5">
                 <span className="text-[9px] font-semibold py-0.5 px-2 rounded-[4px] whitespace-nowrap border border-tl-border"
                   style={{ background: typeBg(day.type), color: typeColor(day.type) }}>{day.type}</span>
+                {day.type === "Staffed" && isDryDay(day) && (
+                  <span className="text-[9px] font-semibold py-0.5 px-1.5 rounded-[4px] whitespace-nowrap"
+                    style={{ background: mode === "dark" ? "#2a2520" : "#fdf6f0", color: theme.warn }}>Dry</span>
+                )}
                 {hasDetail && <span className="text-xs text-tl-text-dimmer transition-transform duration-200" style={{ transform: isOpen ? "rotate(90deg)" : "none" }}>{"\u203A"}</span>}
               </div>
             </div>

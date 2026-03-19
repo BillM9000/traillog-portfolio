@@ -96,7 +96,7 @@
         "miles": 4.7,
         "gain": 1310,
         "loss": 1750,
-        "programs": "High Ropes Course & Climbing Tower Program @ RMSC"
+        "programs": "High Ropes Course & Climbing Tower Program @ RMSC; Dry Camp"
       },
       {
         "day": 12,
@@ -150,7 +150,7 @@
         "miles": 4.9,
         "gain": 2960,
         "loss": 1970,
-        "programs": "Forest Stewardship Program @ Demonstration Forest;"
+        "programs": "Forest Stewardship Program @ Demonstration Forest;; Dry Camp"
       },
       {
         "day": 4,
@@ -187,7 +187,7 @@
       {
         "day": 8,
         "camp": "CROOKED CREEK",
-        "miles": 4.0,
+        "miles": 4,
         "gain": 1800,
         "loss": 1750,
         "programs": "Passthrough Commissary & Trading Post @ Phillips"
@@ -330,7 +330,7 @@
         "miles": 5.1,
         "gain": 1590,
         "loss": 2210,
-        "programs": "Lovers Leap Overlook; Trail Camp"
+        "programs": "Lovers Leap Overlook; Trail Camp; Dry Camp"
       },
       {
         "day": 12,
@@ -510,7 +510,7 @@
         "miles": 6.9,
         "gain": 3340,
         "loss": 3050,
-        "programs": "Passthrough Philturn Five Points Camp Program & Cantina"
+        "programs": "Passthrough Philturn Five Points Camp Program & Cantina; Dry Camp"
       },
       {
         "day": 6,
@@ -633,7 +633,7 @@
         "miles": 10.5,
         "gain": 3320,
         "loss": 2180,
-        "programs": "Passthrough Challenge Course Program @ Dan Beard;"
+        "programs": "Passthrough Challenge Course Program @ Dan Beard;; Dry Camp"
       },
       {
         "day": 7,
@@ -856,7 +856,7 @@
         "miles": 7.6,
         "gain": 2840,
         "loss": 2700,
-        "programs": "Passthrough Philturn Five Camps Program & Cantina @"
+        "programs": "Passthrough Philturn Five Camps Program & Cantina @; Dry Camp"
       },
       {
         "day": 6,
@@ -869,7 +869,7 @@
       {
         "day": 7,
         "camp": "Ewells Park",
-        "miles": 4.0,
+        "miles": 4,
         "gain": 2300,
         "loss": 970,
         "programs": "Baldy Hike Prep; Trail Camp"
@@ -946,7 +946,7 @@
       {
         "day": 2,
         "camp": "DEAN COW",
-        "miles": 5.0,
+        "miles": 5,
         "gain": 2970,
         "loss": 2660,
         "programs": "Ranger Training; Rock Climbing Program Camping HQ"
@@ -965,7 +965,7 @@
         "miles": 7.6,
         "gain": 2840,
         "loss": 2700,
-        "programs": "Passthrough Philturn Five Points Camp Program & Cantina"
+        "programs": "Passthrough Philturn Five Points Camp Program & Cantina; Dry Camp"
       },
       {
         "day": 5,
@@ -989,7 +989,7 @@
         "miles": 12.6,
         "gain": 4260,
         "loss": 5150,
-        "programs": "Passthrough Fire Ecology & Wildlife Conservation Program"
+        "programs": "Passthrough Fire Ecology & Wildlife Conservation Program; Dry Camp"
       },
       {
         "day": 8,
@@ -1026,7 +1026,7 @@
       {
         "day": 12,
         "camp": "Camping HQ",
-        "miles": 7.0,
+        "miles": 7,
         "gain": 1980,
         "loss": 3590,
         "programs": "Tooth of Time; Hike Into Base; Closing Campfire"
@@ -1102,7 +1102,7 @@
       {
         "day": 7,
         "camp": "Comanche Peak",
-        "miles": 6.0,
+        "miles": 6,
         "gain": 3210,
         "loss": 2420,
         "programs": "Mount Phillips; Comanche Peak; Dry Camp (Water @"
@@ -1129,7 +1129,7 @@
         "miles": 8.7,
         "gain": 3470,
         "loss": 4190,
-        "programs": "Passthrough Commissary & Trading Post @ Ute Gulch;"
+        "programs": "Passthrough Commissary & Trading Post @ Ute Gulch;; Dry Camp"
       },
       {
         "day": 11,
@@ -1137,7 +1137,7 @@
         "miles": 6.1,
         "gain": 1530,
         "loss": 2490,
-        "programs": "Shotgun Shooting & Shotshell Reloading Program"
+        "programs": "Shotgun Shooting & Shotshell Reloading Program; Dry Camp"
       },
       {
         "day": 12,
@@ -1167,7 +1167,7 @@
       "Big Red 11,020 ft",
       "Shaefers Peak 9,413 ft"
     ],
-    "description": "Experience the beauty of Philmont\u2019s North Country as you loop around the region on this rugged journey. Offering a good mix of hiking and program, this itinerary provides opportunities to see this land from the perspective of those living in the late 1800s through today! Start in Ute Park previewing your route with iconic views of Baldy Mountain. Hike through the site of an old west shootout and over ridges into the historic Ponil Region where you'll encounter cowboys, homesteaders, railroads, and the loggers that supported them. As you approach the Summit of Baldy Mountain, you'll visit the mining districts before wrapping things up at the beautiful Miranda Meadow.",
+    "description": "Experience the beauty of Philmont’s North Country as you loop around the region on this rugged journey. Offering a good mix of hiking and program, this itinerary provides opportunities to see this land from the perspective of those living in the late 1800s through today! Start in Ute Park previewing your route with iconic views of Baldy Mountain. Hike through the site of an old west shootout and over ridges into the historic Ponil Region where you'll encounter cowboys, homesteaders, railroads, and the loggers that supported them. As you approach the Summit of Baldy Mountain, you'll visit the mining districts before wrapping things up at the beautiful Miranda Meadow.",
     "route_data": [
       {
         "day": 1,
@@ -1220,7 +1220,7 @@
       {
         "day": 7,
         "camp": "DAN BEARD",
-        "miles": 6.0,
+        "miles": 6,
         "gain": 2110,
         "loss": 1410,
         "programs": "Challenge Course Program"
@@ -1244,7 +1244,7 @@
       {
         "day": 10,
         "camp": "Ewells Park",
-        "miles": 12.0,
+        "miles": 12,
         "gain": 6750,
         "loss": 6750,
         "programs": "Passthrough Claude Mining & Milling Company Program @"
@@ -1375,7 +1375,7 @@
       {
         "day": 12,
         "camp": "Camping HQ",
-        "miles": 7.0,
+        "miles": 7,
         "gain": 1980,
         "loss": 3590,
         "programs": "Tooth of Time; Hike Into Camping Headquarters; Closing"
@@ -1421,7 +1421,7 @@
         "miles": 3.6,
         "gain": 1550,
         "loss": 2010,
-        "programs": "Passthrough Challenge Course Program @ Urraca; Dry"
+        "programs": "Passthrough Challenge Course Program @ Urraca; Dry; Dry Camp"
       },
       {
         "day": 4,
@@ -1442,7 +1442,7 @@
       {
         "day": 6,
         "camp": "BLACK MOUNTAIN",
-        "miles": 8.0,
+        "miles": 8,
         "gain": 4020,
         "loss": 3900,
         "programs": "Forest Fuels Reduction Project @ Beaubien; Passthrough"
@@ -1490,7 +1490,7 @@
       {
         "day": 12,
         "camp": "Camping HQ",
-        "miles": 7.0,
+        "miles": 7,
         "gain": 1980,
         "loss": 3590,
         "programs": "Tooth of Time; Hike Into Base; Closing Campfire"
@@ -1553,7 +1553,7 @@
         "miles": 8.8,
         "gain": 3410,
         "loss": 3080,
-        "programs": "50-Miler Forest Stewardship Program @ Demonstration"
+        "programs": "50-Miler Forest Stewardship Program @ Demonstration; Dry Camp"
       },
       {
         "day": 6,
@@ -1582,7 +1582,7 @@
       {
         "day": 9,
         "camp": "BALDY TOWN",
-        "miles": 4.0,
+        "miles": 4,
         "gain": 2340,
         "loss": 890,
         "programs": "50-Miler Geology Program; Baldy Mining District Program;"
@@ -1695,7 +1695,7 @@
       {
         "day": 9,
         "camp": "Elkhorn",
-        "miles": 4.0,
+        "miles": 4,
         "gain": 1760,
         "loss": 1310,
         "programs": "Trail Construction Project; Trail Camp"
@@ -1780,10 +1780,10 @@
       {
         "day": 5,
         "camp": "Beatty Lakes",
-        "miles": 6.0,
+        "miles": 6,
         "gain": 620,
         "loss": 410,
-        "programs": "Stream Restoration Project @ McCrystal Creek;"
+        "programs": "Stream Restoration Project @ McCrystal Creek;; Dry Camp"
       },
       {
         "day": 6,
@@ -1860,7 +1860,7 @@
       "Tooth of Time 9,003 ft",
       "Comanche Peak 11,303 ft"
     ],
-    "description": "Explore Philmont\u2019s southwestern corner on this hiking-focused itinerary that begins in the heart of the 2018 Ute Park Fire recovery area. If summiting peaks is your crew's biggest wish, this trek offers the opportunity to climb Mount Phillips, Comanche Peak, Trail Peak, and the Tooth of Time among others. While program is not the main focus of this trek, your crew will still have several opportunities to experience campfire shows, living history, and climbing programs. This is a strenuous trek with some long days and large gains in elevation. If your crew is looking to challenge themselves while experiencing some of the most beautiful scenery at Philmont, this trek is for you!",
+    "description": "Explore Philmont’s southwestern corner on this hiking-focused itinerary that begins in the heart of the 2018 Ute Park Fire recovery area. If summiting peaks is your crew's biggest wish, this trek offers the opportunity to climb Mount Phillips, Comanche Peak, Trail Peak, and the Tooth of Time among others. While program is not the main focus of this trek, your crew will still have several opportunities to experience campfire shows, living history, and climbing programs. This is a strenuous trek with some long days and large gains in elevation. If your crew is looking to challenge themselves while experiencing some of the most beautiful scenery at Philmont, this trek is for you!",
     "route_data": [
       {
         "day": 1,
@@ -1876,7 +1876,7 @@
         "miles": 2.6,
         "gain": 790,
         "loss": 270,
-        "programs": "Ranger Training; Passthrough Fire Ecology & Wildlife"
+        "programs": "Ranger Training; Passthrough Fire Ecology & Wildlife; Dry Camp"
       },
       {
         "day": 3,
@@ -1903,12 +1903,18 @@
         "programs": "Comanche Peak; Dry Camp (Water @ Red Hills)"
       },
       {
+        "day": 6,
+        "camp": "SAWMILL",
+        "miles": 5.8,
+        "programs": "Rifle Shooting & Cartridge Reloading Program"
+      },
+      {
         "day": 7,
         "camp": "Lost Cabin",
         "miles": 6.5,
         "gain": 2540,
         "loss": 2290,
-        "programs": "Passthrough Jicarrila Apache Ethnology Program @"
+        "programs": "Passthrough Jicarrila Apache Ethnology Program @; Dry Camp"
       },
       {
         "day": 8,
@@ -1945,7 +1951,7 @@
       {
         "day": 12,
         "camp": "Camping HQ",
-        "miles": 7.0,
+        "miles": 7,
         "gain": 1980,
         "loss": 3590,
         "programs": "Tooth of Time; Hike Into Base; Closing Campfire"
@@ -1970,7 +1976,7 @@
       "Mount Phillips 11,736 ft",
       "Big Red 11,020 ft"
     ],
-    "description": "Circumnavigate Philmont\u2019s South Country on one of the few itineraries that has you hike in and out of Base Camp! This trek has many high mileage days, so preparation will be key. Challenge your crew to climb Mount Phillips before making your way down to Clarks Fork for a hearty chuckwagon dinner. Learn about forest stewardship and life at a ranch in the 1960s and end your trek with a memorable hike down into Base Camp through the iconic We All Made It sign.",
+    "description": "Circumnavigate Philmont’s South Country on one of the few itineraries that has you hike in and out of Base Camp! This trek has many high mileage days, so preparation will be key. Challenge your crew to climb Mount Phillips before making your way down to Clarks Fork for a hearty chuckwagon dinner. Learn about forest stewardship and life at a ranch in the 1960s and end your trek with a memorable hike down into Base Camp through the iconic We All Made It sign.",
     "route_data": [
       {
         "day": 1,
@@ -2026,7 +2032,7 @@
         "miles": 7.3,
         "gain": 3880,
         "loss": 2610,
-        "programs": "Passthrough Taos Trappers Program @ Clear Creek;"
+        "programs": "Passthrough Taos Trappers Program @ Clear Creek;; Dry Camp"
       },
       {
         "day": 8,
@@ -2039,7 +2045,7 @@
       {
         "day": 9,
         "camp": "SAWMILL",
-        "miles": 2.0,
+        "miles": 2,
         "gain": 450,
         "loss": 1150,
         "programs": "Trail Building Project; Rifle Shooting & Cartridge Reloading"
@@ -2150,12 +2156,12 @@
         "miles": 7.3,
         "gain": 3880,
         "loss": 2610,
-        "programs": "Passthrough Taos Trappers Program @ Clear Creek;"
+        "programs": "Passthrough Taos Trappers Program @ Clear Creek;; Dry Camp"
       },
       {
         "day": 9,
         "camp": "BLACK MOUNTAIN",
-        "miles": 7.0,
+        "miles": 7,
         "gain": 2660,
         "loss": 5260,
         "programs": "Comanche Peak; Big Red; Black Mountain (optional); Black"
@@ -2179,7 +2185,7 @@
       {
         "day": 12,
         "camp": "Camping HQ",
-        "miles": 7.0,
+        "miles": 7,
         "gain": 1980,
         "loss": 3590,
         "programs": "Tooth of Time; Hike Into Base; Closing Campfire"
@@ -2243,7 +2249,7 @@
         "miles": 8.2,
         "gain": 3290,
         "loss": 2960,
-        "programs": "Passthrough Commissary & Trading Post @ Ute Gulch;"
+        "programs": "Passthrough Commissary & Trading Post @ Ute Gulch; Dry Camp"
       },
       {
         "day": 6,
@@ -2251,7 +2257,7 @@
         "miles": 6.9,
         "gain": 3290,
         "loss": 2730,
-        "programs": "Reforestation Project @ Cimarroncita; Passthrough Fire"
+        "programs": "Reforestation Project @ Cimarroncita; Passthrough Fire; Dry Camp"
       },
       {
         "day": 7,
@@ -2280,7 +2286,7 @@
       {
         "day": 10,
         "camp": "PUEBLANO",
-        "miles": 4.0,
+        "miles": 4,
         "gain": 970,
         "loss": 2300,
         "programs": "Continental Tie & Lumber Company Program; Campfire"
@@ -2299,7 +2305,7 @@
         "miles": 3.7,
         "gain": 1470,
         "loss": 2810,
-        "programs": ""
+        "programs": "Closing Campfire"
       }
     ],
     "elevations": {
@@ -2335,7 +2341,7 @@
         "miles": 4.4,
         "gain": 1170,
         "loss": 470,
-        "programs": "Ranger Training; Passthrough High Ropes Program @"
+        "programs": "Ranger Training; Passthrough High Ropes Program @; Dry Camp"
       },
       {
         "day": 3,
@@ -2412,7 +2418,7 @@
       {
         "day": 12,
         "camp": "Camping HQ",
-        "miles": 7.0,
+        "miles": 7,
         "gain": 1980,
         "loss": 3590,
         "programs": "Tooth of Time; Hike Into Base Camp; Closing Campfire"
@@ -2451,7 +2457,7 @@
         "miles": 3.7,
         "gain": 2050,
         "loss": 1210,
-        "programs": "Ranger Training; Passthrough Philturn Five Points Camp"
+        "programs": "Ranger Training; Passthrough Philturn Five Points Camp; Dry Camp"
       },
       {
         "day": 3,
@@ -2475,7 +2481,7 @@
         "miles": 8.7,
         "gain": 5350,
         "loss": 5350,
-        "programs": "Passthrough Claude Mining & Milling Program @ French"
+        "programs": "Passthrough Claude Mining & Milling Program @ French; Dry Camp"
       },
       {
         "day": 6,
@@ -2483,7 +2489,7 @@
         "miles": 11.3,
         "gain": 3200,
         "loss": 4330,
-        "programs": "Passthrough Bent, St. Vrain & Company Program @"
+        "programs": "Passthrough Bent, St. Vrain & Company Program @; Dry Camp"
       },
       {
         "day": 7,
@@ -2512,7 +2518,7 @@
       {
         "day": 10,
         "camp": "CIMARRONCITO",
-        "miles": 10.0,
+        "miles": 10,
         "gain": 4510,
         "loss": 5700,
         "programs": "Rock Climbing Program; Commissary & Trading Post @"
@@ -2523,7 +2529,7 @@
         "miles": 6.1,
         "gain": 3090,
         "loss": 2470,
-        "programs": "Passthrough Western Lore Program @ Clarks Fork; Dry"
+        "programs": "Passthrough Western Lore Program @ Clarks Fork; Dry; Dry Camp"
       },
       {
         "day": 12,
@@ -2576,12 +2582,12 @@
         "miles": 5.6,
         "gain": 3060,
         "loss": 1870,
-        "programs": "Trail Camp (no services)"
+        "programs": "Trail Camp (no services); Dry Camp"
       },
       {
         "day": 4,
         "camp": "HEAD OF DEAN",
-        "miles": 4.0,
+        "miles": 4,
         "gain": 1440,
         "loss": 1150,
         "programs": "Challenge Course Program"
@@ -2629,7 +2635,7 @@
       {
         "day": 10,
         "camp": "Vaca",
-        "miles": 10.0,
+        "miles": 10,
         "gain": 4050,
         "loss": 3890,
         "programs": "Passthrough Shotgun Program @ Harlan; Trail Camp"
@@ -2715,7 +2721,7 @@
         "miles": 12.4,
         "gain": 3910,
         "loss": 5370,
-        "programs": "Passthrough Challenge Course Program @ Head of Dean;"
+        "programs": "Passthrough Challenge Course Program @ Head of Dean;; Dry Camp"
       },
       {
         "day": 7,
@@ -2739,7 +2745,7 @@
         "miles": 6.8,
         "gain": 3610,
         "loss": 3130,
-        "programs": "Comanche Peak & Mount Phillips (optional); Trail Camp"
+        "programs": "Comanche Peak & Mount Phillips (optional); Trail Camp; Dry Camp"
       },
       {
         "day": 10,
@@ -2755,7 +2761,7 @@
         "miles": 9.2,
         "gain": 4970,
         "loss": 5530,
-        "programs": "Passthrough Black Mountain Encampment Program; Dry"
+        "programs": "Passthrough Black Mountain Encampment Program; Dry; Dry Camp"
       },
       {
         "day": 12,
@@ -3014,7 +3020,7 @@
         "miles": 6.7,
         "gain": 3970,
         "loss": 1910,
-        "programs": "Drop Off @ Miranda Burro Pens; Baldy Hike Prep; Dry"
+        "programs": "Drop Off @ Miranda Burro Pens; Baldy Hike Prep; Dry Camp"
       },
       {
         "day": 7,
@@ -3022,7 +3028,7 @@
         "miles": 6.2,
         "gain": 4030,
         "loss": 4030,
-        "programs": "Baldy Mountain; Passthrough Claude Mining & Milling"
+        "programs": "Baldy Mountain; Passthrough Claude Mining & Milling; Dry Camp"
       },
       {
         "day": 8,
@@ -3167,7 +3173,7 @@
         "miles": 4.1,
         "gain": 1630,
         "loss": 710,
-        "programs": "Ranger Training; Shotgun Shooting & Shotshell Reloading"
+        "programs": "Ranger Training; Shotgun Shooting & Shotshell Reloading; Dry Camp"
       },
       {
         "day": 3,
@@ -3207,7 +3213,7 @@
         "miles": 5.7,
         "gain": 2920,
         "loss": 2520,
-        "programs": "Passthrough Ancestral Puebloan Archaeology Program @"
+        "programs": "Passthrough Ancestral Puebloan Archaeology Program @; Dry Camp"
       },
       {
         "day": 8,
@@ -3301,7 +3307,7 @@
       {
         "day": 8,
         "camp": "Shaefers Pass",
-        "miles": 6.0,
+        "miles": 6,
         "gain": 3140,
         "loss": 3460,
         "programs": "Trail Building Project @ North Fork Urraca; Dry Camp"
@@ -3353,7 +3359,7 @@
         "miles": 9.2,
         "gain": 3220,
         "loss": 2020,
-        "programs": "Passthrough Cimarron & Northwestern Railway Program @"
+        "programs": "Passthrough Cimarron & Northwestern Railway Program @; Dry Camp"
       },
       {
         "day": 4,
@@ -3366,10 +3372,10 @@
       {
         "day": 5,
         "camp": "Iris Park",
-        "miles": 8.0,
+        "miles": 8,
         "gain": 860,
         "loss": 420,
-        "programs": "Stream Restoration Project @ McCrystal Creek; Low"
+        "programs": "Stream Restoration Project @ McCrystal Creek; Low; Dry Camp"
       },
       {
         "day": 6,
@@ -3393,7 +3399,7 @@
         "miles": 6.8,
         "gain": 2590,
         "loss": 2250,
-        "programs": "Passthrough Challenge Course Program @ Head of Dean;"
+        "programs": "Passthrough Challenge Course Program @ Head of Dean;; Dry Camp"
       },
       {
         "day": 9,
@@ -3438,7 +3444,7 @@
         "miles": 5.4,
         "gain": 2360,
         "loss": 1900,
-        "programs": "Ranger Training; Shotgun Shooting & Shotshell Reloading"
+        "programs": "Ranger Training; Shotgun Shooting & Shotshell Reloading; Dry Camp"
       },
       {
         "day": 3,
@@ -3470,7 +3476,7 @@
         "miles": 6.1,
         "gain": 5040,
         "loss": 2980,
-        "programs": "Passthrough St. Louis & Cimarron Mining Company"
+        "programs": "Passthrough St. Louis & Cimarron Mining Company; Dry Camp"
       },
       {
         "day": 7,
@@ -3666,10 +3672,10 @@
       {
         "day": 8,
         "camp": "Stockade Ridge",
-        "miles": 8.0,
+        "miles": 8,
         "gain": 3100,
         "loss": 3540,
-        "programs": "High Ropes & Climbing Tower Program @ RMSC COPE"
+        "programs": "High Ropes & Climbing Tower Program @ RMSC COPE; Dry Camp"
       },
       {
         "day": 9,
@@ -3714,7 +3720,7 @@
         "miles": 3.7,
         "gain": 2810,
         "loss": 1470,
-        "programs": "Ranger Training; Passthrough Philturn Five Points Camp"
+        "programs": "Ranger Training; Passthrough Philturn Five Points Camp; Dry Camp"
       },
       {
         "day": 3,
@@ -3727,7 +3733,7 @@
       {
         "day": 4,
         "camp": "Vaca",
-        "miles": 10.0,
+        "miles": 10,
         "gain": 4050,
         "loss": 3890,
         "programs": "Black Jack's Hideout (optional); Passthrough Shotgun"
@@ -3767,7 +3773,7 @@
       {
         "day": 9,
         "camp": "Camping HQ",
-        "miles": 7.0,
+        "miles": 7,
         "gain": 1980,
         "loss": 3590,
         "programs": "Tooth of Time; Hike Into Camping Headquarters; Closing"
@@ -3805,7 +3811,7 @@
         "miles": 4.1,
         "gain": 1630,
         "loss": 710,
-        "programs": "Ranger Training; Shotgun Shooting & Shotshell Reloading"
+        "programs": "Ranger Training; Shotgun Shooting & Shotshell Reloading; Dry Camp"
       },
       {
         "day": 3,
@@ -3829,12 +3835,12 @@
         "miles": 8.2,
         "gain": 5820,
         "loss": 3330,
-        "programs": "Trail Building Project @ Sawmill; Comanche Peak; Dry"
+        "programs": "Trail Building Project @ Sawmill; Comanche Peak; Dry; Dry Camp"
       },
       {
         "day": 6,
         "camp": "Porcupine",
-        "miles": 10.0,
+        "miles": 10,
         "gain": 2560,
         "loss": 5080,
         "programs": "Mount Phillips; Passthrough Taos Trappers Program @"
@@ -3853,7 +3859,7 @@
         "miles": 9.2,
         "gain": 4970,
         "loss": 5530,
-        "programs": "Passthrough Black Mountain Encampment Program; Black"
+        "programs": "Passthrough Black Mountain Encampment Program; Black; Dry Camp"
       },
       {
         "day": 9,
@@ -3995,7 +4001,7 @@
         "miles": 5.4,
         "gain": 2990,
         "loss": 1710,
-        "programs": "Trail Construction Project @ Sioux; Trail Camp"
+        "programs": "Trail Construction Project @ Sioux; Trail Camp; Dry Camp"
       },
       {
         "day": 6,
@@ -4008,7 +4014,7 @@
       {
         "day": 7,
         "camp": "Camping HQ",
-        "miles": 5.0,
+        "miles": 5,
         "gain": 2660,
         "loss": 2970,
         "programs": "Hike to Nine Mile Trailhead; Closing Campfire"
@@ -4046,7 +4052,7 @@
         "miles": 3.7,
         "gain": 2810,
         "loss": 1470,
-        "programs": "Ranger Training; Trail Camp Camping HQ"
+        "programs": "Ranger Training; Trail Camp Camping HQ; Dry Camp"
       },
       {
         "day": 3,
@@ -4116,7 +4122,7 @@
       {
         "day": 2,
         "camp": "Coyote Howl",
-        "miles": 5.0,
+        "miles": 5,
         "gain": 2500,
         "loss": 1700,
         "programs": "Ranger Training; T-Rex Track; Passthrough Ancestral"
@@ -4143,7 +4149,7 @@
         "miles": 6.6,
         "gain": 3230,
         "loss": 2080,
-        "programs": "Horse Ride; Trail Camp"
+        "programs": "Horse Ride; Trail Camp; Dry Camp"
       },
       {
         "day": 6,
@@ -4267,7 +4273,7 @@
         "miles": 4.1,
         "gain": 1630,
         "loss": 710,
-        "programs": "Ranger Training; Shotgun Shooting & Shotshell Reloading"
+        "programs": "Ranger Training; Shotgun Shooting & Shotshell Reloading; Dry Camp"
       },
       {
         "day": 3,
@@ -4280,7 +4286,7 @@
       {
         "day": 4,
         "camp": "Hunting Lodge",
-        "miles": 6.0,
+        "miles": 6,
         "gain": 2040,
         "loss": 2750,
         "programs": "Passthrough Climbing Program @ Cimarroncito; Window"
@@ -4291,7 +4297,7 @@
         "miles": 4.9,
         "gain": 2960,
         "loss": 1970,
-        "programs": "Forest Stewardship @ Demonstration Forest; Passthrough"
+        "programs": "Forest Stewardship @ Demonstration Forest; Passthrough; Dry Camp"
       },
       {
         "day": 6,
@@ -4358,7 +4364,7 @@
         "miles": 4.6,
         "gain": 2310,
         "loss": 2000,
-        "programs": "Passthrough Continental Tie & Lumber Company Program"
+        "programs": "Passthrough Continental Tie & Lumber Company Program; Dry Camp"
       },
       {
         "day": 5,
@@ -4374,12 +4380,12 @@
         "miles": 6.3,
         "gain": 2440,
         "loss": 2120,
-        "programs": "Passthrough High Ropes Course & Climbing Tower"
+        "programs": "Passthrough High Ropes Course & Climbing Tower; Dry Camp"
       },
       {
         "day": 7,
         "camp": "Camping HQ",
-        "miles": 7.0,
+        "miles": 7,
         "gain": 1980,
         "loss": 3590,
         "programs": "Tooth of Time; Hike Into Base; Closing Campfire"
@@ -4450,7 +4456,7 @@
         "miles": 7.4,
         "gain": 3710,
         "loss": 5030,
-        "programs": "Passthrough @ Hunting Lodge (no services); Forest"
+        "programs": "Passthrough @ Hunting Lodge (no services); Forest; Dry Camp"
       },
       {
         "day": 7,
@@ -4523,7 +4529,7 @@
       {
         "day": 6,
         "camp": "Shaefers Pass",
-        "miles": 6.0,
+        "miles": 6,
         "gain": 3140,
         "loss": 3460,
         "programs": "Black Mountain (optional - very strenuous); Dry Camp"
@@ -4646,7 +4652,7 @@
         "miles": 2.6,
         "gain": 790,
         "loss": 270,
-        "programs": "Ranger Training; Passthrough Fire Ecology & Wildlife"
+        "programs": "Ranger Training; Passthrough Fire Ecology & Wildlife; Dry Camp"
       },
       {
         "day": 3,
@@ -4662,7 +4668,13 @@
         "miles": 10.9,
         "gain": 8380,
         "loss": 5430,
-        "programs": "Passthrough St. Louis & Cimarron Mining Company"
+        "programs": "Passthrough St. Louis & Cimarron Mining Company; Dry Camp"
+      },
+      {
+        "day": 5,
+        "camp": "CYPHERS MINE",
+        "miles": 4.5,
+        "programs": "St. Louis & Cimarron Mining Company Program"
       },
       {
         "day": 6,
@@ -4750,7 +4762,7 @@
         "miles": 7.4,
         "gain": 3710,
         "loss": 5030,
-        "programs": "Passthrough @ Hunting Lodge (no services); Forest"
+        "programs": "Passthrough @ Hunting Lodge (no services); Forest; Dry Camp"
       },
       {
         "day": 7,

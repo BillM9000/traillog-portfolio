@@ -2246,7 +2246,7 @@ export const PHILMONT_2026_ITINERARIES = [
         "miles": 8.2,
         "gain": 3290,
         "loss": 2960,
-        "programs": "Passthrough Commissary & Trading Post @ Ute Gulch;"
+        "programs": "Passthrough Commissary & Trading Post @ Ute Gulch; Dry Camp"
       },
       {
         "day": 6,
@@ -2254,7 +2254,7 @@ export const PHILMONT_2026_ITINERARIES = [
         "miles": 6.9,
         "gain": 3290,
         "loss": 2730,
-        "programs": "Reforestation Project @ Cimarroncita; Passthrough Fire"
+        "programs": "Reforestation Project @ Cimarroncita; Passthrough Fire; Dry Camp"
       },
       {
         "day": 7,
@@ -2302,7 +2302,7 @@ export const PHILMONT_2026_ITINERARIES = [
         "miles": 3.7,
         "gain": 1470,
         "loss": 2810,
-        "programs": ""
+        "programs": "Closing Campfire"
       }
     ],
     "elevations": {
