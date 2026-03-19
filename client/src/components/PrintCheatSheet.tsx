@@ -43,7 +43,7 @@ export default function PrintCheatSheet({ adventure, itinerary, onClose }: Props
   const totalMiles = route.reduce((s, d) => s + d.miles, 0);
 
   const print = (type: "pocket" | "full"): void => {
-    const w = window.open("", "_blank");
+    const w = window.open("", "printPreview", "width=900,height=700,scrollbars=yes,resizable=yes");
     if (!w) return;
     const dates = [adventure?.depart_date, adventure?.arrive_date, adventure?.return_date, adventure?.home_date].filter(Boolean);
     const dateRange = dates.length >= 2 ? `${dates[0]} to ${dates[dates.length - 1]}` : dates[0] || "";

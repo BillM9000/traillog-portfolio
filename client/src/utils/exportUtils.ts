@@ -303,7 +303,7 @@ export function gearMatrixFormat(ws: any, headers: string[], startRow: number, e
 }
 
 export function printHTML(title: string, bodyHTML: string) {
-  const w = window.open("", "_blank");
+  const w = window.open("", "printPreview", "width=900,height=700,scrollbars=yes,resizable=yes");
   if (!w) return;
   w.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
     <style>

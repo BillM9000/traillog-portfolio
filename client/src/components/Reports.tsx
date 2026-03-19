@@ -415,8 +415,11 @@ export default function Reports({ members, analysis, adventure, isAdmin, trekDat
   // ── EVERYONE: Itinerary Cheat Sheet Print (reuse existing pattern) ──
   const printItinerary = () => {
     const itineraryData = itinerary as { name?: string; id?: string; days?: number; difficulty?: string; route_data?: Array<{ day: number; camp?: string; type?: string; miles?: number; elevation?: number; gain?: number; loss?: number; programs?: Array<string | { name: string }>; notes?: string; warnings?: string[] }> } | null;
-    if (!itineraryData) { addToast("No itinerary selected", "error"); return; }
-    const days = itineraryData.route_data || [];
+    if (!itineraryData || !itineraryData.route_data?.length) {
+      addToast("No itinerary data available — select an itinerary in Admin settings first", "error");
+      return;
+    }
+    const days = itineraryData.route_data;
     printHTML(`${crewName} — Itinerary`, `
       <h1>${crewName} — Itinerary Cheat Sheet</h1>
       <h2>${itineraryData.name || itineraryData.id} · ${itineraryData.days} days · ${itineraryData.difficulty || ""}</h2>
