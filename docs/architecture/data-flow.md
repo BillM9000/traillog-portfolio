@@ -5,18 +5,18 @@
 Every client interaction follows the same path through the system:
 
 ```
-Browser (React SPA)
-  → api.js fetch() wrapper
-    → Express middleware chain
-      → Route handler
-        → SQLite prepared statement
-          → JSON response
-            → React state update
+Browser (React SPA, TypeScript)
+  -> api.ts fetch() wrapper
+    -> Express middleware chain
+      -> Route handler
+        -> PostgreSQL parameterized query (async)
+          -> JSON response
+            -> React state update
 ```
 
-1. The React client calls a helper function in `api.js`, which wraps the native `fetch()` API with the base URL, credentials (`include`), and JSON content-type headers.
+1. The React client calls a helper function in `api.ts`, which wraps the native `fetch()` API with the base URL, credentials (`include`), and JSON content-type headers.
 2. The request arrives at Express, where it passes through the middleware chain in order (described below).
-3. If the request passes all middleware checks, the route handler executes one or more SQLite prepared statements synchronously.
+3. If the request passes all middleware checks, the route handler executes one or more PostgreSQL queries asynchronously via the `pg` Pool.
 4. The handler returns a JSON response with an appropriate HTTP status code.
 5. The React component or context that initiated the request updates its local state with the response data.
 
@@ -26,16 +26,16 @@ Middleware executes in the following order for every request:
 
 | Order | Middleware | Purpose |
 |-------|-----------|---------|
-| 1 | Public settings route | `GET /api/public-settings` — no auth, served before rate limiter |
-| 2 | `express.json({ limit: '1mb' })` | Parse JSON request bodies up to 1 MB |
-| 3 | `helmet()` | Set security-related HTTP headers (CSP, HSTS, X-Frame-Options, etc.) |
-| 4 | `morgan('short')` | Log every HTTP request (method, URL, status, response time) to stdout |
+| 1 | Public settings route | `GET /api/public-settings` -- no auth, served before rate limiter |
+| 2 | `express.json({ limit: '10kb' })` | Parse JSON request bodies up to 10 KB |
+| 3 | `helmet()` | Set security-related HTTP headers (CSP with `scriptSrc: ["'self'"]`, HSTS, X-Frame-Options, etc.) |
+| 4 | `pino` logger | Structured JSON audit logging for all requests |
 | 5 | `authLimiter` | Rate limit authentication endpoints: 20 requests per 15 minutes |
 | 6 | `apiLimiter` | Rate limit general API endpoints: 100 requests per minute |
-| 7 | `express-session` | Establish or resume a session from the session cookie, backed by SQLite |
+| 7 | `express-session` | Establish or resume a session from the session cookie, backed by PostgreSQL (`connect-pg-simple`) |
 | 8 | `passport.initialize()` / `passport.session()` | Deserialize the authenticated user from the session |
 | 9 | Maintenance check | Block all non-admin API requests when maintenance mode is enabled (503) |
-| 10 | CSRF verification | Validate `X-CSRF-Token` header on POST/PUT/DELETE/PATCH (exempts `/api/vote`) |
+| 10 | CSRF verification | Validate `X-CSRF-Token` header matches `XSRF-TOKEN` cookie on POST/PUT/DELETE/PATCH (exempts `/api/vote`, `/api/public-settings`) |
 | 11 | `express.static` | Serve the built React SPA, vote page, and static assets |
 | 12 | Route handlers | Application logic, guarded by per-route auth middleware |
 
@@ -49,9 +49,9 @@ Route handlers are protected by composable middleware functions that enforce acc
 
 - **`requireTroopAdmin`** -- Confirms the authenticated user has the admin role on the specified troop. Returns 403 if not an admin.
 
-- **`requireAdventureMember`** -- Confirms the authenticated user is a member of the specified adventure. Returns 403 if not a member.
+- **`requireAdventureMember`** -- Confirms the authenticated user is a member of the specified adventure. Returns 403 if not a member. **Note: this does NOT bypass for global admins.**
 
-- **`requireAdventureAdmin`** -- Confirms the user is an admin of the specified adventure, with a fallthrough: troop-level admins are automatically considered adventure admins. Returns 403 otherwise.
+- **`requireAdventureAdmin`** -- Confirms the user is an admin of the specified adventure, with fallthrough: troop-level admins and global admins are automatically considered adventure admins. Returns 403 otherwise.
 
 - **`requireAdventureSelfOrAdmin`** -- Allows access if the user is either the target member (self-action) or an adventure/troop admin. Used for endpoints where members can modify their own data.
 
@@ -75,14 +75,14 @@ The gear system involves four layers that compose into a member's personalized g
 
 ```
 Global Catalog (76 items, managed by Global Admin)
-  → Troop Overrides (hide or show specific global items per troop)
-    → Troop Custom Gear (troop-specific additions)
-      → Member Selections (per-adventure, per-user)
+  -> Troop Overrides (hide or show specific global items per troop)
+    -> Troop Custom Gear (troop-specific additions)
+      -> Member Selections (per-adventure, per-user)
 ```
 
 ### Global Catalog
 
-The `gear_catalog` table contains 76 seeded items organized by category (e.g., Clothing, Cooking, Navigation) and subcategory, each with a priority level (essential, recommended, optional) and default weight. The global admin manages this catalog through the Global Admin panel.
+The `gear_catalog` table contains 76 seeded items organized by category (e.g., Clothing, Cooking, Navigation) and subcategory, each with a priority level (essential, recommended, optional), sharing type (personal, crew, buddy, provided), and default weight. The global admin manages this catalog through the Global Admin panel.
 
 ### Troop Overrides
 
@@ -102,7 +102,7 @@ Each member manages their own gear for a specific adventure through the `member_
 
 ### Pack Weight Calculation
 
-The pack weight endpoint (`/api/adventures/:id/members/:userId/pack-weight`) sums weights from items with status "packed" that have a custom weight value entered by the member. Only personal sharing-type items count toward pack weight; crew, buddy, and provided items are excluded. The total includes a dynamic food estimate (1.75 lbs/day x itinerary days) and a water weight constant (6.6 lbs / 3L). The API response includes `trek_days` for display purposes.
+The pack weight endpoint sums weights from items with status "packed" that have a custom weight value entered by the member. Only personal sharing-type items count toward pack weight; crew, buddy, and provided items are excluded. The total includes a dynamic food estimate (1.75 lbs/day x itinerary days) and a water weight constant (6.6 lbs / 3L).
 
 ## Parent-Scout Linking
 
@@ -129,30 +129,30 @@ If the recipient does not yet have an account, they are prompted to register or 
 
 ## Readiness Calculation
 
-Crew readiness is computed entirely on the client side. The single source of truth is `client/src/utils/readiness.js`, which exports two functions:
+Crew readiness is computed both client-side and server-side using the same 4-category algorithm:
 
-- **`computeCrewReadiness()`** -- Calculates overall crew preparedness by averaging four category scores (training, gear, medical, admin) across all trekking members. Support crew members are excluded from the calculation.
+- **`computeCrewReadiness()`** (client, `utils/readiness.ts`) -- Calculates overall crew preparedness by averaging four category scores (training, gear, medical, admin) across all trekking members. Support crew members are excluded from the calculation.
 
-- **`computeMemberReadiness()`** -- Calculates an individual member's readiness across the same four categories.
+- **`computeMemberReadiness()`** (client) -- Calculates an individual member's readiness across the same four categories.
 
-These functions are consumed by three components: the **Header** (countdown and readiness percentage), the **Skills/Readiness tab** (detailed breakdown), and the **MemberBar** (per-member readiness indicators).
-
-Gear readiness data comes from the `memberGearMap` in the AdventureContext, not from the legacy `adventure_members.gear` JSON column.
+- **`computeServerReadiness(adventureId)`** (server, `db.js`) -- Server-side computation used by the Home Dashboard for troop overview cards.
 
 Categories with no items or no requirements evaluate to 0% readiness, not 100%.
 
-The server also computes readiness via `computeServerReadiness(adventureId)` in db.js for the Home Dashboard, using the same 4-category algorithm.
+Gear readiness data comes from the `memberGearMap` in the AdventureContext, not from the legacy `adventure_members.gear` JSON column.
 
 ## Standalone Pages
 
-The vote page (`/vote`) operates independently from the React SPA. It is served as static HTML/JS from `vote-page/philmont-vote-portal/` and communicates with the server via 4 API endpoints (`/api/vote/*`). It has no session, no CSRF token, and no authentication — it uses a simple name-based identity stored in localStorage.
+- **Vote Page** (`/vote`): Independent from the React SPA. Serves static HTML/JS, no auth, no CSRF. Uses name-based identity in localStorage. 2 votes per person with leaderboard.
+
+- **Approval Page** (`/approve/:token`): Standalone React route for HMAC-signed approve/deny actions from email links.
 
 ## Error Handling
 
 The API uses conventional HTTP status codes:
 
-- **400-level errors** are returned with descriptive messages intended for the client to display. These cover validation failures, authorization denials, and resource-not-found conditions.
+- **400-level errors** are returned with descriptive messages intended for the client to display. These cover validation failures (including Zod schema errors), authorization denials, and resource-not-found conditions.
 
-- **500-level errors** are sanitized in production through a `safeError()` helper that strips internal details (stack traces, file paths, SQL errors) before sending the response. The full error is logged server-side for debugging.
+- **500-level errors** are sanitized in production through a `safeError()` helper that strips internal details (stack traces, file paths, SQL errors) before sending the response. The full error is logged server-side via pino for debugging.
 
 The client displays error messages through the ToastContext, which renders transient notification banners.

@@ -1,644 +1,514 @@
 # TrailLog Architecture
 
-> **Schema Version:** 25 | **Last Updated:** 2026-03-31
+> **Schema Version:** 25 | **Last Updated:** 2026-03-30
 
 ## System Overview
 
 ```
-                        ┌─────────────────────────────────────┐
-                        │         app.example.com       │
-                        │          (Traefik + TLS)            │
-                        └──────────────┬──────────────────────┘
-                                       │ :443
-                                       ▼
-                        ┌─────────────────────────────────────┐
-                        │       Docker: crew614 container     │
-                        │            Node 20 Alpine           │
-                        │              :3614                  │
-                        ├─────────────────────────────────────┤
-                        │                                     │
-                        │  ┌───────────┐    ┌──────────────┐  │
-                        │  │  Express   │    │  Vite-built  │  │
-                        │  │  API       │    │  React SPA   │  │
-                        │  │  Server    │    │  (static)    │  │
-                        │  └─────┬─────┘    └──────────────┘  │
-                        │        │                            │
-                        │  ┌─────▼─────────────────────────┐  │
-                        │  │  PostgreSQL (pg Pool)         │  │
-                        │  │  Host: 172.18.0.1:5432        │  │
-                        │  │  DB: traillog (32 tables)     │  │
-                        │  └───────────────────────────────┘  │
-                        └─────────────────────────────────────┘
-                                       │
-                        ┌──────────────┴──────────────────────┐
-                        │          External Services          │
-                        ├─────────────────────────────────────┤
-                        │  Google OAuth    │  Gmail SMTP      │
-                        │  (Passport.js)   │  (Nodemailer)    │
-                        ├─────────────────────────────────────┤
-                        │  Anthropic Claude API               │
-                        │  (AI Readiness Engine)              │
-                        └─────────────────────────────────────┘
+                        +-------------------------------------+
+                        |       traillog.gracezero.ai         |
+                        |          (Traefik + TLS)            |
+                        +-----------------+-------------------+
+                                          | :443
+                                          v
+                        +-------------------------------------+
+                        |       Docker: crew614 container     |
+                        |            Node 20 Alpine           |
+                        |              :3614                  |
+                        +-------------------------------------+
+                        |                                     |
+                        |  +-----------+    +--------------+  |
+                        |  |  Express   |    |  Vite-built  |  |
+                        |  |  API       |    |  React SPA   |  |
+                        |  |  Server    |    |  (static)    |  |
+                        |  +-----+-----+    +--------------+  |
+                        |        |                            |
+                        +--------+----------------------------+
+                                 |
+                        +--------v----------------------------+
+                        |     PostgreSQL (host)               |
+                        |     traillog database               |
+                        |     connect via 172.18.0.1:5432     |
+                        +-------------------------------------+
+                                 |
+                        +--------+----------------------------+
+                        |          External Services          |
+                        +-------------------------------------+
+                        |  Google OAuth    |  Gmail SMTP      |
+                        |  (Passport.js)   |  (Nodemailer)    |
+                        +-------------------------------------+
+                        |  Anthropic Claude API               |
+                        |  (AI Readiness + Gear Engines)      |
+                        +-------------------------------------+
 ```
 
 ## Infrastructure & Deployment
 
 ```
-VPS: <VPS_IP> (Hostinger)
-SSH: root@<VPS_IP> (key: ~/.ssh/id_ed25519)
-GitHub: BillM9000/traillog-portfolio (master branch)
-Global Admin: ADMIN_EMAIL=admin@example.com (in /opt/app/.env)
+VPS: Hostinger (Ubuntu)
+Docker: single-stage build (pre-built client/dist), Traefik reverse proxy
+Database: PostgreSQL on VPS host, Docker connects via host network bridge
+GitHub: BillM9000/traillog-portfolio (public), BillM9000/crew614-philmont (private)
 
 Deploy Pipeline:
-  local build → tar → scp → VPS extract → docker compose build → up
+  npm run build (local) -> tar -> scp -> VPS extract -> docker compose build -> up
 
 Backup Strategy:
-  ┌─────────────────────────────────────────────────────────────┐
-  │  /opt/app/backup.sh (rolling, keeps last 10)            │
-  │  ├── Daily Cron (3 AM server time)                          │
-  │  ├── pg_dump → /opt/crew614/backups/ (gzipped, timestamped) │
-  │  ├── .env snapshot  → /opt/crew614/backups/              │
-  │  ├── Rotate: keeps last 10 backups, auto-deletes oldest     │
-  │  └── Manual: ssh root@<VPS_IP> /opt/app/backup.sh            │
-  ├─────────────────────────────────────────────────────────────┤
-  │  Code Backup                                                │
-  │  └── Git push to GitHub (master branch)                     │
-  └─────────────────────────────────────────────────────────────┘
+  +-------------------------------------------------------------+
+  |  backup.sh (rolling, keeps last 10)                         |
+  |  +-- Daily Cron (3 AM UTC)                                  |
+  |  +-- pg_dump (peer auth via postgres user) -> gzip          |
+  |  +-- Docker data export (troop logos, adventure docs)       |
+  |  +-- .env snapshot                                          |
+  |  +-- Rotate: keeps last 10 of each type, auto-deletes      |
+  +-------------------------------------------------------------+
+  |  Code Backup                                                |
+  |  +-- Git push to GitHub (master branch)                     |
+  +-------------------------------------------------------------+
 ```
 
-## Data Model (Schema v25, PostgreSQL)
+## Data Model (Schema v25, 32 tables)
 
 ```
-┌─────────────────────────┐
-│         users            │
-├─────────────────────────┤
-│ id, google_id            │
-│ name, email, avatar      │
-│ password_hash            │
-│ user_type ───────────────┼──── "adult" | "scout"
-│ parent_email             │
-│ parent_email_2           │
-│ email_verified           │
-│ verification_token       │
-└────────┬────────────────┘
-         │
-         │ user_id
-         ▼
-┌─────────────────────┐         ┌─────────────────────┐
-│   troop_members      │◄────────│       troops         │
-├─────────────────────┤  troop  ├─────────────────────┤
-│ user_id, troop_id   │  _id    │ id, name            │
-│ role (admin/member) │         │ description         │
-│ status (pending/    │         │ council (required)   │
-│   approved/denied)  │         │ location             │
-│                     │         │ is_public (0/1)      │
-│                     │         │ affiliate_tag        │
-│                     │         └──────────┬──────────┘
-└─────────────────────┘                    │
-                                           │ troop_id
-                                           ▼
-                                ┌─────────────────────┐
-                                │     adventures       │
-                                ├─────────────────────┤
-                                │ id, troop_id, name  │
-                                │ itinerary_id        │
-                                │ depart_date         │
-                                │ arrive_date         │
-                                │ return_date         │
-                                │ home_date           │
-                                │ status              │
-                                └──────────┬──────────┘
-                                           │
-                          ┌────────────────┼────────────────┬──────────────────┐
-                          │                │                │                  │
-                          ▼                ▼                ▼                  ▼
-               ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ ┌──────────────┐
-               │ adventure_   │ │ adventure_   │ │  adventure_      │ │ link_        │
-               │  members     │ │  skills      │ │  achievements    │ │  requests    │
-               ├──────────────┤ ├──────────────┤ ├──────────────────┤ ├──────────────┤
-               │ user_id      │ │ id, adv_id   │ │ id, adv_id       │ │ id, adv_id   │
-               │ adventure_id │ │ name, desc   │ │ user_id, type    │ │ requester_id │
-               │ role         │ │ category     │ │ badge_type       │ │ scout_id     │
-               │ participation│ └──────────────┘ │ awarded_at       │ │ status       │
-               │ linked_to    │                  └──────────────────┘ │ reviewed_by  │
-               │ is_manual    │                                       └──────────────┘
-               │ dates (JSON) │
-               │ skills (JSON)│
-               │ gear (JSON)  │
-               └──────────────┘
++-------------------------+
+|         users            |
++-------------------------+
+| id, google_id            |
+| name, email, avatar      |
+| password_hash            |
+| user_type                |---- "adult" | "scout"
+| parent_email             |
+| parent_email_2           |
+| email_verified           |
+| verification_token       |
+| is_admin (0/1)           |
++--------+----------------+
+         |
+         | user_id
+         v
++---------------------+         +---------------------+
+|   troop_members      |<--------|       troops         |
++---------------------+  troop  +---------------------+
+| user_id, troop_id   |  _id    | id, name            |
+| role (admin/member) |         | description         |
+| status (pending/    |         | council (required)   |
+|   approved/denied)  |         | location             |
+|                     |         | is_public (0/1)      |
+|                     |         | affiliate_tag        |
++---------------------+         | invite_code          |
+                                | logo_url             |
+                                +----------+-----------+
+                                           |
+                                           | troop_id
+                                           v
+                                +---------------------+
+                                |     adventures       |
+                                +---------------------+
+                                | id, troop_id, name  |
+                                | adventure_type      |
+                                | itinerary_id        |
+                                | depart/arrive/      |
+                                |   return/home_date  |
+                                | status              |
+                                +----------+----------+
+                                           |
+                          +----------------+----------------+
+                          |                |                |
+                          v                v                v
+               +--------------+ +--------------+ +------------------+
+               |    crews      | | adventure_   | |  adventure_      |
+               +--------------+ |  skills      | |  achievements    |
+               | id, adv_id   | +--------------+ +------------------+
+               | name, dates  | | id, adv_id   | | id, adv_id       |
+               | itinerary_id | | name, desc   | | user_id, type    |
+               +--------------+ | category     | | badge_type       |
+                     |          +--------------+ | awarded_at       |
+                     v                           +------------------+
+               +--------------+
+               | crew_members |
+               +--------------+
+               | crew_id      |
+               | user_id      |
+               | role         |
+               +--------------+
+                     |
+                     v
+               +--------------+
+               | adventure_   |
+               |  members     |
+               +--------------+
+               | user_id      |
+               | adventure_id |
+               | role         |
+               | participation|
+               | linked_to    |
+               | is_manual    |
+               | dates (JSON) |
+               | skills (JSON)|
+               +--------------+
 
-─── Gear System (v5-v6) ───
+--- Gear System ---
 
-┌─────────────────────┐     ┌───────────────────────┐
-│   gear_catalog       │     │  gear_product_options  │
-├─────────────────────┤     ├───────────────────────┤
-│ id, name            │◄────│ gear_catalog_id        │
-│ category            │     │ product_name, brand    │
-│ subcategory         │     │ price, weight_oz       │
-│ weight_oz           │     │ tier (budget/mid/      │
-│ priority (essential/│     │   premium)             │
-│  recommended/       │     │ star_rating, notes     │
-│  optional)          │     │ affiliate_url          │
-│ is_crew_shared      │     │ is_ultralight_pick     │
-│ description         │     └───────────────────────┘
-│ msrp, rating_stars  │
-│ sort_order          │
-│ is_active           │
-└─────────┬───────────┘
-          │
-          │ gear_catalog_id
-          ▼
-┌──────────────────────┐     ┌───────────────────────┐
-│  member_gear_items   │     │  troop_gear_overrides  │
-├──────────────────────┤     ├───────────────────────┤
-│ adventure_id         │     │ troop_id              │
-│ user_id              │     │ gear_catalog_id       │
-│ gear_catalog_id      │     │ hidden (0/1)          │
-│ status (needed/      │     └───────────────────────┘
-│   owned/packed)      │
-│ selected_option_id   │     ┌───────────────────────┐
-│ custom_product_name  │     │  troop_custom_gear    │
-│ custom_weight_oz     │     ├───────────────────────┤
-│ notes                │     │ troop_id, name        │
-└──────────────────────┘     │ category, priority    │
-                             │ weight_oz, description│
-                             └───────────────────────┘
++---------------------+     +-----------------------+
+|   gear_catalog       |     |  gear_product_options  |
++---------------------+     +-----------------------+
+| id, name            |<----|  gear_catalog_id       |
+| category            |     |  product_name, brand   |
+| subcategory         |     |  price, weight_oz      |
+| weight_oz           |     |  tier (budget/mid/     |
+| priority (essential/|     |    premium)            |
+|  recommended/       |     |  affiliate_url         |
+|  optional)          |     +-----------------------+
+| sharing_type        |
++----------+----------+
+           |
+           v
++----------------------+     +-----------------------+
+|  member_gear_items   |     |  troop_gear_overrides  |
++----------------------+     +-----------------------+
+| adventure_id         |     | troop_id              |
+| user_id              |     | gear_catalog_id       |
+| gear_catalog_id      |     | hidden (0/1)          |
+| status (needed/      |     +-----------------------+
+|   owned/packed)      |
+| custom_weight_oz     |     +-----------------------+
++----------------------+     |  troop_custom_gear    |
+                             +-----------------------+
+                             | troop_id, name        |
+                             | category, priority    |
+                             | weight_oz             |
+                             +-----------------------+
 
-┌─────────────────────┐     ┌───────────────────────┐
-│  affiliate_clicks    │     │  platform_settings    │
-├─────────────────────┤     ├───────────────────────┤
-│ user_id             │     │ key, value            │
-│ product_option_id   │     │ (schema_version = 7)  │
-│ gear_catalog_id     │     └───────────────────────┘
-│ url, referrer       │
-│ created_at          │
-└─────────────────────┘
+--- Additional Tables ---
 
-─── Invitations ───
-
-┌──────────────┐
-│ invitations  │
-├──────────────┤
-│ troop_id     │
-│ adventure_id │
-│ email, token │
-│ invited_by   │
-│ status       │
-└──────────────┘
+training_events, training_rsvps, invitations, link_requests,
+member_assessments, adventure_documents, affiliate_clicks,
+platform_settings, sessions (connect-pg-simple)
 ```
 
 ## Two-Tier Admin System
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  GLOBAL ADMIN (ADMIN_EMAIL env var)                          │
-│  ├── Gear Catalog: CRUD items + product options              │
-│  │    └── Affiliate URLs on product options                  │
-│  ├── Troop Overview: all troops, member counts, tiers        │
-│  ├── Affiliate Analytics: click tracking, top products       │
-│  ├── Platform Settings: key-value config editor              │
-│  └── Also has all Troop Admin powers                         │
-├─────────────────────────────────────────────────────────────┤
-│  TROOP ADMIN (role=admin on troop_members)                   │
-│  ├── Gear Overrides: hide/show global items for their troop  │
-│  ├── Custom Gear: add troop-specific items                   │
-│  ├── Member Management: role, type, participation, linking   │
-│  ├── Adventure Management: create, dates, status             │
-│  └── Skills Management: add/remove training skills           │
-└─────────────────────────────────────────────────────────────┘
++-------------------------------------------------------------+
+|  GLOBAL ADMIN (users.is_admin = 1)                           |
+|  +-- Gear Catalog: CRUD items + product options              |
+|  +-- Troop Overview: all troops, member counts               |
+|  +-- Affiliate Analytics: click tracking, top products       |
+|  +-- Platform Settings: key-value config editor              |
+|  +-- Promote/demote other admins via API                     |
+|  +-- Also has all Troop Admin powers                         |
++-------------------------------------------------------------+
+|  TROOP ADMIN (role=admin on troop_members)                   |
+|  +-- Gear Overrides: hide/show global items for their troop  |
+|  +-- Custom Gear: add troop-specific items                   |
+|  +-- Member Management: role, type, participation, linking   |
+|  +-- Adventure Management: create, dates, status             |
+|  +-- Skills Management: add/remove training skills           |
+|  +-- Training Events: schedule, manage RSVPs                 |
++-------------------------------------------------------------+
 
-isGlobalAdmin computed server-side in /api/auth/me:
-  user.email === process.env.ADMIN_EMAIL → is_global_admin: true
-```
-
-## Parent-Scout Linking (v4)
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  1. AUTO-LINK (email match, instant)                        │
-│     Adult email matches scout's parent_email or             │
-│     parent_email_2 → auto-linked on join/invite             │
-│                                                             │
-│  2. REQUEST/APPROVE (admin approval required)               │
-│     Adult → selects scout → link_requests → admin approves  │
-│                                                             │
-│  3. ADMIN OVERRIDE (direct)                                 │
-│     Admin can directly link any adult → any scout           │
-└─────────────────────────────────────────────────────────────┘
+Middleware access control:
+  requireAdventureMember  -- NO global admin bypass
+  requireAdventureAdmin   -- YES global admin + troop admin bypass
+  requireGlobalAdmin      -- checks users.is_admin = 1
 ```
 
 ## Client Architecture
 
-All components migrated to TypeScript (`.tsx`). 16 heavy components are lazy-loaded via
-`React.lazy` + `Suspense`, reducing the main bundle from 599KB → 226KB gzip (62% reduction).
-All Recharts imports are confined to lazy-loaded chart chunks; main bundle stays ~257KB.
-
 ```
 main.tsx
-  └─ ThemeProvider
-       └─ ToastProvider
-            └─ AuthProvider
-                 └─ App.tsx
-                      │
-                      ├── LandingPage        (unauthenticated)
-                      ├── ProfileSetup       (no user_type yet)
-                      ├── HomeDashboard      (troop selector, readiness %, platform stats)
-                      ├── AdventurePicker    (no adventure selected)
-                      │
-                      └── AdventureProvider  (adventure selected)
-                           └─ AdventureThemeProvider (per-adventure visual theme)
-                                └─ MainView
-                                     │
-                                     ├── ── MOBILE (< 1024px) ──────────────────────
-                                     ├── Header      (compact inner-page hero)
-                                     ├── MemberBar   (crew avatars, badges, link requests)
-                                     ├── CTA Banner  (highest-priority action)
-                                     ├── Tab Bar     (3×2 grid: Training | Readiness |
-                                     │               Itinerary | Gear | Reports | Docs)
-                                     │
-                                     ├── ── DESKTOP (≥ 1024px) ─────────────────────
-                                     ├── Sidebar     (220px/64px collapsible, forest gradient)
-                                     ├── TopBar      (48px: section title, countdown, avatar)
-                                     ├── DashboardOverview   (4 stat cards + readiness bars)
-                                     ├── MembersTable        (sortable: Name/Role/Readiness%)
-                                     ├── DesktopBIChartRow   (ReadinessTrendChart + BadgeRow)
-                                     └── MemberDetailPanel   (52px score, 4-category bars, ⚠)
-                                     │
-                                     ├── [Training/Calendar] — two-panel: TrainingEvents + Calendar
-                                     ├── [Readiness/Skills]  — BI header + 50/50 drill-down
-                                     ├── [Itinerary]         — day cards, print cheat sheet
-                                     ├── [Gear]
-                                     │    ├── GearList — catalog browser, 3-state status,
-                                     │    │   product options, affiliate buy links,
-                                     │    │   category/priority/status filters, search
-                                     │    ├── GearCompletionChart (Recharts, lazy-loaded)
-                                     │    ├── PackWeightWidget — base + food + water calc
-                                     │    └── GearAIChat button — AI gear advisor
-                                     ├── [Reports] — Excel export (exceljs, lazy 940KB chunk)
-                                     ├── [Docs]    — file uploads, base64, VPS storage
-                                     │
-                                     ├── AdminPanel (modal) — adventure/members/troop settings
-                                     ├── GlobalAdmin (modal) — Gear Catalog, Troop Overview,
-                                     │    Affiliate Analytics, Platform Settings, Troop Overrides
-                                     └── GearAIChat (modal) — AI gear advisor
+  +- ThemeProvider (dark class on <html>, localStorage)
+       +- ToastProvider
+            +- AuthProvider
+                 +- App.tsx
+                      |
+                      +-- LandingPage        (unauthenticated, 5-section marketing)
+                      +-- ProfileSetup       (no user_type yet)
+                      +-- OnboardingWizard   (forced flow for new users)
+                      +-- HomeDashboard      (post-login hub, troop cards)
+                      +-- ApprovalPage       (/approve/:token, standalone)
+                      |
+                      +-- AdventureProvider  (adventure selected)
+                           +- MainView
+                                |
+                                +-- Desktop (1024px+):
+                                |   +-- Sidebar (220px, collapsible to 64px)
+                                |   +-- TopBar (48px, section title, countdown)
+                                |   +-- DashboardOverview (stat cards + readiness)
+                                |   +-- MembersTable (sortable, 5 columns)
+                                |
+                                +-- Mobile (<1024px):
+                                |   +-- Header (logo, crew name, countdown)
+                                |   +-- Tab Grid (3x2, Lucide icons)
+                                |
+                                +-- Content Tabs:
+                                     +-- Training (calendar, availability)
+                                     +-- Readiness (skills, journey trail)
+                                     +-- Itinerary (day cards, print)
+                                     +-- Gear (catalog, pack weight, AI chat)
+                                     +-- Reports (8 types, Excel export)
+                                     +-- Docs (file upload, adventure docs)
+                                     |
+                                     +-- AdminPanel (modal)
+                                     +-- GlobalAdmin (modal, 4 tabs)
+
+Code Splitting: React.lazy for 16 components, 62% main bundle reduction
+Styling: Tailwind CSS v4 with tl-* component classes, clsx conditionals
+Icons: Lucide React (MIT) for UI, clay PNGs for decorative
 ```
 
 ## React Contexts
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│  ThemeContext                                             │
-│  ├── isDark (boolean)                                    │
-│  ├── mode ("dark" | "light")                             │
-│  └── toggleTheme()  — adds/removes `dark` on <html>      │
-├──────────────────────────────────────────────────────────┤
-│  ToastContext                                            │
-│  ├── addToast(message, type)                             │
-│  └── removeToast(id)                                     │
-├──────────────────────────────────────────────────────────┤
-│  AuthContext                                             │
-│  ├── user (includes is_global_admin flag)                │
-│  ├── memberships, approvedTroops, adventureMemberships   │
-│  ├── login(), signup(), logout()                         │
-│  ├── updateProfile()                                     │
-│  └── refresh()                                           │
-├──────────────────────────────────────────────────────────┤
-│  AdventureContext                                        │
-│  ├── adventure (includes adventure_type for theming)     │
-│  ├── members, skills, itinerary                          │
-│  ├── trekDate, trekDates (4-field object)                │
-│  ├── achievements { badges, milestones }                 │
-│  ├── gearCatalog (full catalog with options)             │
-│  ├── memberGearMap (per-user gear selections)            │
-│  ├── trekkingMembers, supportMembers                     │
-│  ├── updateMemberLocally(userId, patch)                  │
-│  └── refreshAll/Members/Skills/Achievements/MemberGear() │
-├──────────────────────────────────────────────────────────┤
-│  AdventureThemeContext   (NEW — Phase 6)                  │
-│  ├── def: AdventureThemeDef (id, name, gradients, patch) │
-│  ├── heroGradient  (mode-resolved CSS background)        │
-│  └── sidebarGradient (mode-resolved CSS background)      │
-│  Themes: philmont | sea-base | northern-tier | bechtel   │
-│  Textures: topo | waves | aurora | rock (SVG data URLs)  │
-└──────────────────────────────────────────────────────────┘
++----------------------------------------------------------+
+|  ThemeContext                                             |
+|  +-- isDark, mode ("dark" | "light")                     |
+|  +-- toggleTheme() -- adds/removes dark class on <html>  |
++----------------------------------------------------------+
+|  ToastContext                                            |
+|  +-- addToast(message, type)                             |
+|  +-- removeToast(id)                                     |
++----------------------------------------------------------+
+|  AuthContext                                             |
+|  +-- user (includes is_global_admin flag)                |
+|  +-- memberships, approvedTroops, adventureMemberships   |
+|  +-- login(), signup(), logout(), googleAuth()           |
+|  +-- updateProfile(), refresh()                          |
++----------------------------------------------------------+
+|  AdventureContext                                        |
+|  +-- adventure, members, skills, itinerary               |
+|  +-- trekDates (depart/arrive/return/home)               |
+|  +-- achievements { badges, milestones }                 |
+|  +-- gearCatalog, memberGearMap                          |
+|  +-- trekkingMembers, supportMembers                     |
+|  +-- refreshAll/Members/Skills/Achievements/MemberGear() |
++----------------------------------------------------------+
 ```
 
-## Server API Routes
+## Server API Routes (161 total)
 
 ```
-Auth:
-  GET  /auth/google                              → OAuth initiate
-  GET  /auth/google/callback                     → OAuth callback
-  GET  /auth/me                                  → User + memberships + is_global_admin
-  POST /auth/logout                              → End session
-  PUT  /auth/profile                             → Update profile
+Auth (10 routes):
+  POST /auth/signup, /auth/login, /auth/logout
+  GET  /auth/google, /auth/google/callback, /auth/me
+  PUT  /auth/profile
+  POST /auth/forgot-password, /auth/reset-password, /auth/verify-email
 
-Troops:
-  GET  /api/troops                               → List troops
-  POST /api/troops                               → Create troop
-  PUT  /api/troops/:id                           → Update troop
-  GET  /api/troops/:id/members                   → List members
-  POST /api/troops/:id/join                      → Request to join
-  PUT  /api/troops/:id/members/:uid/approve|deny → Approve/deny
+Troops (12 routes):
+  GET/POST /api/troops, PUT /api/troops/:id
+  GET  /api/troops/:id/members, /api/troops/:id/invite-code
+  POST /api/troops/:id/join, /api/troops/:id/join-by-code
+  PUT  /api/troops/:id/members/:uid/approve|deny
+  POST /api/troops/:id/leave
+  PUT  /api/troops/:id/settings
 
-Adventures:
-  GET  /api/troops/:id/adventures                → List adventures
-  POST /api/troops/:id/adventures                → Create adventure
-  PUT  /api/adventures/:id                       → Update adventure
-  DELETE /api/adventures/:id                     → Delete adventure
+Adventures (6 routes):
+  GET/POST /api/troops/:id/adventures
+  PUT/DELETE /api/adventures/:id
+  GET  /api/adventures/:id/join-info
 
-Adventure Members:
-  GET  /api/adventures/:id/members               → List members
-  POST /api/adventures/:id/members               → Add member + auto-link
-  DELETE /api/adventures/:id/members/:uid         → Remove member
-  PUT  /api/adventures/:id/members/:uid/role      → Set admin/member
-  PUT  /api/adventures/:id/members/:uid/user-type → Set adult/scout
-  PUT  /api/adventures/:id/members/:uid/participation → Set trekking/support
-  PUT  /api/adventures/:id/members/:uid/link      → Link adult→scout
-  PUT  /api/adventures/:id/members/:uid/dates     → Update availability
-  PUT  /api/adventures/:id/members/:uid/skills    → Update skills
-  POST /api/adventures/:id/manual-members         → Add manual member
-  DELETE /api/adventures/:id/manual-members/:mid  → Remove manual member
+Adventure Members (14 routes):
+  GET/POST /api/adventures/:id/members
+  DELETE /api/adventures/:id/members/:uid
+  PUT  role, user-type, participation, link, dates, skills, medical, admin-tasks
+  POST /api/adventures/:id/manual-members
+  DELETE /api/adventures/:id/manual-members/:mid
 
-Link Requests:
-  POST /api/adventures/:id/link-requests          → Request link to scout
-  GET  /api/adventures/:id/link-requests          → List requests
-  PUT  /api/adventures/:id/link-requests/:rid/approve|deny
+Crews (8 routes):
+  GET/POST /api/adventures/:id/crews
+  PUT/DELETE /api/adventures/:id/crews/:cid
+  GET/POST/DELETE /api/adventures/:id/crews/:cid/members
 
-Gear Catalog (v5-v6):
-  GET  /api/gear-catalog                          → Full catalog with options
-  GET  /api/gear-catalog/categories               → Category list
-  GET  /api/gear-catalog/:id                      → Single item + options
-  POST /api/gear-catalog                          → Create item (global admin)
-  PUT  /api/gear-catalog/:id                      → Update item (global admin)
-  DELETE /api/gear-catalog/:id                    → Archive item (global admin)
-  POST /api/gear-catalog/:id/options              → Add product option
-  PUT  /api/gear-catalog/options/:id              → Update product option
-  DELETE /api/gear-catalog/options/:id            → Delete product option
+Training Events (6 routes):
+  GET/POST /api/adventures/:id/training-events
+  PUT/DELETE /api/adventures/:id/training-events/:eid
+  POST /api/adventures/:id/training-events/:eid/rsvp
 
-Member Gear (adventure-scoped):
-  GET  /api/adventures/:id/gear                   → All members' gear
-  GET  /api/adventures/:id/members/:uid/gear      → Member's gear items
-  PUT  /api/adventures/:id/members/:uid/gear-item/:gid → Set status/option
-  DELETE /api/adventures/:id/members/:uid/gear-item/:gid → Remove item
-  POST /api/adventures/:id/members/:uid/gear-bulk → Bulk set selections
-  GET  /api/adventures/:id/members/:uid/pack-weight → Pack weight calc
+Gear (20+ routes):
+  Catalog CRUD, member gear status, pack weight, troop overrides,
+  troop custom gear, bulk operations
 
-Troop Gear:
-  GET  /api/troops/:id/gear-overrides             → Hidden items list
-  PUT  /api/troops/:id/gear-overrides/:gid        → Toggle hidden
-  GET  /api/troops/:id/custom-gear                → Custom items
-  POST /api/troops/:id/custom-gear                → Add custom item
-  DELETE /api/troops/:id/custom-gear/:id          → Remove custom item
-
-Skills & Achievements:
-  GET  /api/adventures/:id/skills                 → List skills
-  POST /api/adventures/:id/skills                 → Add skill
-  DELETE /api/adventures/:id/skills/:sid           → Remove skill
-  GET  /api/adventures/:id/achievements           → Get badges & milestones
-  POST /api/adventures/:id/check-milestones       → Auto-award badges
-
-Invitations:
-  POST /api/adventures/:id/invitations            → Send invite email
-  GET  /api/adventures/:id/invitations            → List invitations
-  GET  /api/invitations/:token                    → Accept invitation
-
-Global Admin (requires ADMIN_EMAIL match):
-  GET  /api/admin/troops                          → All troops overview
-  GET  /api/admin/users                           → All users
-  GET  /api/admin/settings                        → Platform settings
-  PUT  /api/admin/settings                        → Update setting
-  GET  /api/admin/affiliate-stats                 → Click analytics
-
-Affiliate:
-  POST /api/affiliate/click                       → Track click (any auth user)
-
-AI Gear:
-  POST /api/gear/ai/weight-lookup                 → AI weight estimate
-  POST /api/gear/ai/chat                          → AI gear advisor
-  GET  /api/gear/ai/usage                         → Usage stats
-
-Content:
-  GET  /api/itineraries                           → List itineraries
-  GET  /api/itineraries/:id                       → Enriched itinerary
-
-Health:
-  GET  /api/health                                → Status, version, uptime (no auth)
+Skills, Achievements, Invitations, Link Requests, Documents,
+Global Admin, Affiliate, AI Gear, Content, Health: ~85 routes
 ```
 
-## File Structure
+## Database Layer
 
 ```
-crew614/
-├── server/
-│   ├── index.js          Express app, 89 API routes, helmet, middleware
-│   ├── db.js             SQLite schema v7, migrations, 76-item seed, all DB functions
-│   ├── auth.js           Passport.js Google OAuth + local strategy
-│   ├── email.js          Nodemailer templates (9 email types, XSS-escaped)
-│   └── package.json
-│
-├── client/
-│   ├── src/
-│   │   ├── main.jsx              Entry point (providers wrap)
-│   │   ├── App.jsx               Auth gates, routing, MainView, isGlobalAdmin
-│   │   ├── api.js                Fetch wrapper, all API methods
-│   │   │
-│   │   ├── contexts/
-│   │   │   ├── AuthContext.jsx    User auth state
-│   │   │   ├── ThemeContext.jsx   Dark/light theme
-│   │   │   ├── AdventureContext.jsx  Adventure + gear data
-│   │   │   └── ToastContext.jsx   Toast notifications
-│   │   │
-│   │   ├── components/
-│   │   │   ├── LoginPage.jsx     Google OAuth login
-│   │   │   ├── ProfileSetup.jsx  User type + parent emails
-│   │   │   ├── Lobby.jsx         Troop join/pending screen
-│   │   │   ├── AdventurePicker.jsx  Adventure list/create
-│   │   │   ├── Header.jsx        Nav, countdown, profile
-│   │   │   ├── MemberBar.jsx     Crew + parent display + self-link
-│   │   │   ├── Calendar.jsx      Availability + trek blocking
-│   │   │   ├── Results.jsx       Best date windows
-│   │   │   ├── Skills.jsx        Readiness + journey trail
-│   │   │   ├── Itinerary.jsx     Route cards + details
-│   │   │   ├── GearList.jsx      Gear catalog, 3-state status, affiliate links
-│   │   │   ├── PackWeightWidget.jsx  Pack weight calculator
-│   │   │   ├── GearAIChat.jsx    AI gear advisor chat
-│   │   │   ├── GlobalAdmin.jsx   4-tab global admin panel
-│   │   │   ├── AdminPanel.jsx    Adventure/member/troop admin
-│   │   │   ├── PrintCheatSheet.jsx  Printable itinerary
-│   │   │   ├── ProgressWidgets.jsx  Readiness widgets
-│   │   │   ├── ConfirmModal.jsx  Generic confirmation
-│   │   │   └── Logo.jsx          SVG logo component
-│   │   │
-│   │   ├── hooks/
-│   │   │   └── useCountdown.js   Phase-aware countdown
-│   │   │
-│   │   └── utils/
-│   │       ├── theme.js          Color tokens, badge helpers
-│   │       ├── readiness.js      Shared readiness calculation (single source of truth)
-│   │       ├── dates.js          Date math utilities
-│   │       └── constants.js      Day names, etc.
-│   │
-│   ├── index.html
-│   └── vite.config.js
-│
-├── docs/
-│   ├── architecture/       Overview, data flow, infrastructure
-│   ├── security/           Threat model, auth, data protection, dependency audit
-│   └── operations/         Backup, DR, incident response, runbook
-│
-├── .github/
-│   └── SECURITY.md         GitHub security policy (links to root)
-│
-├── backups/                VPS: /opt/app/backups/ (rolling 10)
-├── backup.sh               Rolling backup script
-├── Dockerfile              Multi-stage build, non-root user
-├── docker-compose.yml      Service config, volume, Traefik labels
-├── ARCHITECTURE.md         This file
-├── SECURITY.md             Vulnerability disclosure policy
-└── README.md               Project overview
-```
+PostgreSQL accessed via `pg` Pool (async):
+  - $1, $2, $3 numbered placeholders (not ? like SQLite)
+  - INSERT ... ON CONFLICT DO UPDATE for upserts
+  - RETURNING id for insert ID retrieval
+  - BEGIN/COMMIT/ROLLBACK for transactions
+  - 170 exported async functions in db.js
+  - connect-pg-simple for session store (auto-creates sessions table)
 
-## Schema Migration History
+Key patterns:
+  const { rows } = await pool.query('SELECT ...', [param1, param2]);
+  const { rows: [row] } = await pool.query('... RETURNING id', [...]);
 
-```
-v1 → Initial: users, troops, troop_members, adventures, adventure_members,
-     adventure_skills, itineraries, invitations, platform_settings
-v2 → Added: adventure_achievements, 4 trek date fields on adventures,
-     participation + linked_to + is_manual on adventure_members
-v3 → Fixed: user_id nullable on adventure_members (manual members)
-v4 → Added: parent_email_2 on users, link_requests table,
-     auto-link on member join/invitation, link request workflow
-v5 → Added: gear_catalog, gear_product_options, member_gear_items,
-     troop_gear_overrides, troop_custom_gear tables.
-     76-item Philmont gear catalog seeded inline.
-v6 → Added: affiliate_url on gear_product_options,
-     affiliate_clicks table for tracking.
-     Removed: gear_retailers and gear_item_retailers tables.
-     Added: global admin query functions (troops, users, settings, affiliate stats).
-v7 → Added: council (TEXT, required), location (TEXT), is_public (INTEGER, default 1)
-     on troops table. BSA troop numbers only unique within council.
-     GET /api/troops filters: public troops + troops user is a member of.
-     12 performance indexes via standalone ensureIndexes() function.
-```
-
-## Gamification System
-
-```
-Trail Badges (individual, auto-awarded):
-  🎒 gear_ready        → All gear items owned/packed
-  🏥 trail_medic       → All medical items completed
-  📋 admin_pro         → All admin tasks completed
-  🥾 training_complete → All training skills done
-  ⭐ fully_prepared    → All of the above
-
-Journey Progress Trail (crew-wide):
-  ┌─────────┬────────────┬──────────────┬─────────────┬──────────┐
-  │ 0%      │ 25%        │ 50%          │ 75%         │ 100%     │
-  │Trailhead│ Base Camp  │ Timber Ridge │ Eagle Point │ Summit   │
-  │         │ Trustworthy│ Prepared     │ Brave       │ Cheerful │
-  └─────────┴────────────┴──────────────┴─────────────┴──────────┘
-
-Readiness Calculation (utils/readiness.js — single source of truth):
-  Crew readiness = average of 4 category %'s (trekking members only):
-    training % = (training skills done across all) / (total × member count)
-    gear %     = (gear items owned/packed from memberGearMap) / (catalog × count)
-    medical %  = (medical items done across all) / (total × member count)
-    admin %    = (admin tasks done across all) / (total × member count)
-    overall %  = (training + gear + medical + admin) / 4
-
-  Used by: Header, Skills, MemberBar, GearList (all reference same utility)
-  Gear data source: memberGearMap (AdventureContext), NOT m.gear (legacy)
-
-Smart Countdown Phases:
-  pre          → "Departure in X days"
-  travel_there → "Arriving in X days"
-  on_trek      → "Day X of Trek" (green banner)
-  travel_back  → "Home in X days"
-  complete     → "Welcome home!" (gold banner)
-```
-
-## Gear System (v5-v6)
-
-```
-76 seeded items across 14 categories:
-  Pack & Carry, Shelter, Sleep System, Clothing - Hiking,
-  Clothing - Camp & Sleep, Clothing - Rain & Wind, Footwear,
-  Cooking & Food, Water, Navigation & Light, Health & Hygiene,
-  Tools & Repair, Sun & Insect Protection, Documents & Misc
-
-Member Gear Status Flow:
-  (unchecked) → needed → owned → packed → (remove)
-
-Pack Weight Calculation:
-  Base weight (sum of owned/packed gear weights)
-  + Food estimate (1.75 lbs/day × 12 days = 21 lbs)
-  + Water (4.4 lbs / 2 liters)
-  = Total pack weight
-
-Affiliate Links:
-  - affiliate_url stored on gear_product_options
-  - Clicks tracked in affiliate_clicks table
-  - Analytics in Global Admin → Affiliate tab
-  - Amazon Associates: tag in URL, earn on full session
-  - REI: Impact network, ~5%, 15-day cookie
+Transactions:
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // ... operations ...
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
 ```
 
 ## Security
 
 ```
 Request Pipeline:
-  express.json (1MB limit) → helmet (security headers) → rate limiters →
-  session (SQLite store) → passport → express.static → route handlers
+  express.json (10KB limit) -> helmet -> rate limiters ->
+  session (PostgreSQL store) -> passport -> CSRF check -> route handlers
 
 Security Headers (Helmet.js):
-  Content-Security-Policy    style-src 'unsafe-inline' (React CSS-in-JS)
+  Content-Security-Policy    scriptSrc: ["'self'"] (no unsafe-inline)
   X-Frame-Options            SAMEORIGIN
   X-Content-Type-Options     nosniff
   Strict-Transport-Security  max-age=15552000; includeSubDomains
   Referrer-Policy            no-referrer
 
+CSRF Protection:
+  Double-submit cookie pattern
+  Session token -> XSRF-TOKEN cookie -> X-CSRF-Token header
+  Exempts: /api/vote, /api/public-settings, GET requests
+
 Rate Limiting (express-rate-limit):
-  authLimiter    20 req / 15 min  (login, signup)
+  authLimiter    20 req / 15 min  (login, signup, password reset)
   apiLimiter    100 req / 1 min   (all /api/ routes)
 
-Error Handling:
-  safeError()    500 errors → "Something went wrong" in production
-                 400/403/404/409 → intentional messages preserved
+Input Validation:
+  Zod schemas    14 schemas on auth, troop, training, admin, vote, readiness
+  parseId()      Safe parseInt (null not NaN)
+  express.json   10KB body limit
+  esc()          HTML-escape in email templates
+  Parameterized  100% prepared statements, zero concatenation
+
+Audit Logging:
+  pino structured JSON logger
+  Request metadata, user actions, security events
 
 Docker Security:
   Non-root user  appuser (uid 1001)
   Alpine image   Minimal attack surface
   Log rotation   json-file, 10MB max, 3 files
 
-Input Validation:
-  parseId()          Safe parseInt (null not NaN)
-  express.json       1MB body limit
-  esc()              HTML-escape in email templates
-  Parameterized SQL  100% prepared statements, zero concatenation
-
 Session Management:
-  httpOnly: true   No JavaScript access
-  secure: true     HTTPS only (production)
-  sameSite: "lax"  CSRF mitigation
-  Hourly GC        Expired sessions cleaned up
-
-Data Integrity:
-  db.transaction()   deleteAdventure (8 tables), removeAdventureMember (4 tables)
-  12 indexes         ensureIndexes() runs every startup
-  WAL mode           Crash resilience, concurrent reads
+  httpOnly: true      No JavaScript access
+  secure: true        HTTPS only (production)
+  sameSite: "lax"     CSRF mitigation
+  Session fixation    req.session.regenerate() after login
+  PostgreSQL store    connect-pg-simple
 ```
 
-## Email Templates (9 types)
+## Email Templates (12 types)
 
 ```
-sendInvitationEmail       → Invite someone to join adventure
-sendDateChangedEmail      → Notify when trek dates change
-sendBadgeEarnedEmail      → Congratulate badge achievement
-sendMemberApprovedEmail   → Notify member approved to troop
-sendMemberDeniedEmail     → Notify member denied from troop
-sendJoinRequestEmail      → Notify admins of join request
-sendParentNotificationEmail → Notify parent of scout activity
-sendVerificationEmail     → Email verification link
-sendLinkRequestEmail      → Notify admins of parent-link request
+sendVerificationEmail         -> Email verification link (signup)
+sendPasswordResetEmail        -> Password reset token
+sendJoinRequestEmail          -> Notify admins of join request
+sendMemberApprovedEmail       -> Notify member approved to troop
+sendMemberDeniedEmail         -> Notify member denied from troop
+sendInvitationEmail           -> Invite someone to join adventure
+sendParentNotificationEmail   -> Notify parent of scout activity
+sendDateChangedEmail          -> Notify when trek dates change
+sendItineraryChangedEmail     -> Notify when itinerary changes
+sendTrainingScheduledEmail    -> Notify of scheduled training event
+sendBadgeEarnedEmail          -> Congratulate badge achievement
+sendLinkRequestEmail          -> Notify admins of parent-link request
+```
+
+## Testing
+
+```
+Framework: Playwright (browser automation)
+Suites: 17 test files, 168 total tests
+Personas: 10 pre-configured accounts with saved auth state
+Runtime: ~7 minutes for full suite
+Database: Tests run against production PostgreSQL
+
+See docs/testing/methodology.md for full details.
+```
+
+## File Structure
+
+```
+crew614/
++-- server/
+|   +-- index.js          Express app, 161 API routes, helmet, middleware
+|   +-- db.js             PostgreSQL pool, 170 async functions, schema v25
+|   +-- middleware.js      Auth middleware, CSRF, rate limiting
+|   +-- auth.js           Passport.js Google OAuth + local strategy
+|   +-- email.js          Nodemailer templates (12 email types, XSS-escaped)
+|   +-- gear-ai.js        Claude Haiku gear recommendations
+|   +-- ai-readiness.js   Claude Sonnet readiness coaching
+|   +-- scheduler.js      Cron jobs (gear refresh, session cleanup)
+|   +-- routes/            Route modules (auth, troops, adventures, gear, admin)
+|   +-- package.json
+|
++-- client/
+|   +-- src/
+|   |   +-- main.tsx              Entry point (providers wrap)
+|   |   +-- App.tsx               Auth gates, routing, code splitting
+|   |   +-- app.css               Tailwind v4 config, tl-* classes, theme
+|   |   +-- api.ts                Fetch wrapper, all API methods
+|   |   |
+|   |   +-- contexts/
+|   |   |   +-- AuthContext.tsx    User auth state
+|   |   |   +-- ThemeContext.tsx   Dark/light theme (dark class toggle)
+|   |   |   +-- AdventureContext.tsx  Adventure + gear + members data
+|   |   |   +-- ToastContext.tsx   Toast notifications
+|   |   |
+|   |   +-- components/           42+ TSX components
+|   |   |   +-- desktop/          Sidebar, TopBar, DashboardOverview, MembersTable
+|   |   |   +-- HomeDashboard.tsx Post-login hub with troop cards
+|   |   |   +-- LandingPage.tsx   5-section marketing with auth form
+|   |   |   +-- AdminPanel.tsx    Adventure/member/troop admin
+|   |   |   +-- GlobalAdmin.tsx   4-tab global admin panel
+|   |   |   +-- (38+ more...)
+|   |   |
+|   |   +-- types/                TypeScript type definitions
+|   |   +-- hooks/                useCountdown, useIsDesktop
+|   |   +-- utils/                theme.ts, readiness.ts, dates.ts
+|   |
+|   +-- vite.config.ts
+|
++-- db/
+|   +-- schema.pg.sql        PostgreSQL schema (32 tables)
+|
++-- tests/
+|   +-- *.spec.mjs           17 Playwright test suites
+|   +-- global-setup.mjs     Auth state generation
+|   +-- auth-helpers.mjs     CSRF + persona utilities
+|
++-- docs/
+|   +-- architecture/        Overview, data flow
+|   +-- security/            Threat model, auth, data protection, audit
+|   +-- testing/             Integration test methodology
+|   +-- operations/          Backup, DR, incident response, runbook
+|   +-- diagrams/            6 Mermaid architectural diagrams
+|
++-- Dockerfile              Single-stage build, non-root user
++-- docker-compose.yml      Service config, Traefik labels
++-- ARCHITECTURE.md         This file
++-- SECURITY.md             Vulnerability disclosure policy
++-- README.md               Project overview
+```
+
+## Schema Migration History
+
+```
+v1-v7   -> Initial schema through gear system, affiliate tracking, council scoping
+v8-v10  -> Training events, RSVPs, member assessments
+v11-v14 -> Crews layer, crew_members, adventure documents
+v15-v18 -> Multi-crew support, crew-scoped itineraries and dates
+v19-v22 -> Troop settings, invite codes, logo URLs, approval tokens
+v23-v25 -> PostgreSQL migration, session store, index optimization
 ```
