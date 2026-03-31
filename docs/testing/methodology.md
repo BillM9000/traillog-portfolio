@@ -125,3 +125,89 @@ npx playwright test --global-setup=tests/global-setup.mjs
 | 2026-03-30 | 168 | 0 | Added suites 15-17, all green |
 | 2026-03-29 | 111 | 0 | Fixed original 14 suites |
 | 2026-03-28 | 101 | 47 | Initial baseline before fixes |
+
+## Lighthouse Audits
+
+[Google Lighthouse](https://developer.chrome.com/docs/lighthouse/) runs automated performance, accessibility, and best-practices audits against the production site. Audits are run in both desktop and mobile emulation modes.
+
+### Latest Results (2026-03-31)
+
+| Category | Desktop | Mobile |
+|----------|---------|--------|
+| Performance | 88 | 88 |
+| Accessibility | 95 | 95 |
+| Best Practices | 100 | 100 |
+
+Lighthouse audits are run via the `@lhci/cli` package:
+
+```bash
+# Desktop audit
+npx lhci autorun --collect.url=https://traillog.gracezero.ai \
+  --collect.settings.preset=desktop
+
+# Mobile audit (default Lighthouse emulation)
+npx lhci autorun --collect.url=https://traillog.gracezero.ai
+```
+
+Reports are saved as both HTML and JSON for historical comparison.
+
+## Visual Regression — Inner-Page Screenshots
+
+A dedicated Playwright suite captures full-page screenshots of every tab view across four device profiles, providing a visual baseline for responsive layout verification.
+
+### Device Matrix
+
+| Device | Viewport | Scale | Mobile? |
+|--------|----------|-------|---------|
+| Android (generic) | 412 × 915 | 2.63× | Yes |
+| iPhone 14 | 390 × 844 | 3× | Yes |
+| Pixel 7 | 412 × 915 | 2.63× | Yes |
+| Desktop 1440 | 1440 × 900 | 1× | No |
+
+### Captured Views
+
+Each device captures 6 tab screenshots after authenticating and entering an adventure:
+
+1. **Training** — Calendar view with availability dates
+2. **Readiness** — Skills assessment with progress indicators
+3. **Itinerary** — Day-by-day trek schedule
+4. **Gear** — Categorized gear checklist with status toggles
+5. **Reports** — Report type selection grid
+6. **Docs** — Document library with upload capability
+
+**Total: 24 screenshots** (4 devices × 6 tabs)
+
+### Implementation
+
+The suite uses `browser.newContext()` with per-device viewport and scale settings rather than `test.use()`, since Playwright does not allow worker-scoped options (like `defaultBrowserType`) inside `describe` blocks. Each test:
+
+1. Creates a fresh browser context with device emulation settings
+2. Loads saved authentication state (persona: `adultleader`)
+3. Navigates to the app and enters the adventure
+4. Switches to the target tab (desktop uses sidebar navigation; mobile uses inline pill tabs)
+5. Captures a full-page screenshot
+
+```bash
+# Run screenshot suite
+npx playwright test tests/inner-page-screenshots.spec.mjs --project=chromium
+```
+
+### Accessibility Suite
+
+An axe-core powered suite validates WCAG 2.1 AA compliance:
+
+| Test | What it checks |
+|------|---------------|
+| No critical violations | axe-core scan of full page |
+| Color contrast | WCAG 2.1 AA contrast ratios |
+| Keyboard focusable | All interactive elements reachable via Tab |
+| Lang attribute | Valid `lang` on `<html>` |
+| Heading hierarchy | Logical h1→h2→h3 order |
+| Alt text | All `<img>` elements have alt attributes |
+| Visible focus | Focus indicators on interactive elements |
+| Main content scan | axe-core limited to `#root` region |
+
+```bash
+# Run accessibility suite (8 tests)
+npx playwright test tests/accessibility.spec.mjs --project=chromium
+```
