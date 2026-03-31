@@ -257,14 +257,23 @@ export default function Documents({ adventureId, isAdmin }: DocumentsProps) {
 
       {/* Document list */}
       {docs.length === 0 ? (
-        <div className="bg-tl-card rounded-[14px] border border-tl-border py-10 px-5 text-center">
-          <FileText size={36} color={theme.textDim} className="mb-2 opacity-50" />
-          <div className="text-sm font-semibold text-tl-text-dim font-body">
-            No documents yet
+        <div className="tl-card flex flex-col items-center text-center py-10 px-5">
+          <FileText size={48} strokeWidth={1.2} className="text-tl-text-dimmer mb-3 opacity-40" />
+          <div className="text-[15px] font-bold text-tl-heading font-display mb-1.5">No documents yet</div>
+          <div className="text-[12px] text-tl-text-dim leading-relaxed max-w-[280px] mb-4 font-body">
+            {isAdmin
+              ? "Upload trek documents, training materials, medical forms, or planning files. Keep everything your crew needs in one place."
+              : "Your crew leader hasn't uploaded any documents yet. Check back as your departure approaches."}
           </div>
-          <div className="text-xs text-tl-text-dimmer mt-1 font-body">
-            {isAdmin ? "Upload trek documents, training materials, or planning files." : "Your troop leader hasn't uploaded any documents yet."}
-          </div>
+          {isAdmin && (
+            <button
+              onClick={() => setShowUpload(true)}
+              className="inline-flex items-center gap-1.5 text-[12px] font-bold font-body text-white px-4 py-2 rounded-badge border-none cursor-pointer bg-tl-accent"
+            >
+              <Upload size={14} strokeWidth={2.5} />
+              Upload First Document
+            </button>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-2">

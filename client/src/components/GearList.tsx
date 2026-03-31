@@ -808,9 +808,21 @@ export default function GearList({ troopId, adventureId, members, active, setAct
       ))}
 
       {filtered.length === 0 && (
-        <div className="tl-card text-center text-tl-text-dimmer text-[12px] italic">
-          No gear items match your filters.
-        </div>
+        gearCatalog.length === 0 ? (
+          <div className="tl-card flex flex-col items-center text-center py-10 px-5">
+            <span className="text-5xl mb-3 opacity-40">🎒</span>
+            <div className="text-[14px] font-bold text-tl-heading font-display mb-1.5">No gear catalog yet</div>
+            <div className="text-[12px] text-tl-text-dim leading-relaxed max-w-[280px] font-body">
+              Your troop admin hasn't set up the gear catalog. The catalog lists all recommended gear so you can track what you own and what you still need.
+            </div>
+          </div>
+        ) : (
+          <div className="tl-card flex flex-col items-center text-center py-8 px-5">
+            <span className="text-4xl mb-2.5 opacity-40">🔍</span>
+            <div className="text-[13px] font-bold text-tl-heading font-display mb-1">No gear matches your filters</div>
+            <div className="text-[11px] text-tl-text-dim font-body">Try clearing the category, status, or search filter.</div>
+          </div>
+        )
       )}
     </div>
   );

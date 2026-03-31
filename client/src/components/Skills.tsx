@@ -8,6 +8,7 @@ import { useAdventureTheme } from "../contexts/AdventureThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { JOURNEY_WAYPOINTS } from "../utils/theme";
 import { BadgeRow } from "./BadgeSystem";
+import PriorityAlertCard from "./PriorityAlertCard";
 import { computeCrewReadiness, computeMemberReadiness } from "../utils/readiness";
 import { Activity, Mountain, Footprints, Backpack, RefreshCw, ChevronRight, Target, AlertTriangle, CheckCircle2, Sparkles, Brain, Compass, Route, Lock } from "lucide-react";
 import type { ThemeColors, Skill, ReadinessScore, JourneyWaypoint, TrailBadgeDef, GearCatalogItem, MemberGearItem, Achievement } from "../types";
@@ -509,6 +510,34 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
   return (
     <div>
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      {/* Priority alert — show when overall crew readiness is critical */}
+      {isAdmin && trekkingMembers.length > 0 && (() => {
+        const pcts = trekkingMembers.map(m => computeMemberReadiness(m as any, skills, gearCatalog as any, memberGearMap as any));
+        const criticalCount = pcts.filter(p => p < 30).length;
+        if (readiness.overall < 30) {
+          return (
+            <PriorityAlertCard
+              severity="danger"
+              title={`Crew readiness critical — ${readiness.overall}% overall`}
+              body={`${criticalCount} of ${trekkingMembers.length} trekking member${criticalCount !== 1 ? "s are" : " is"} below 30%.${readiness.medical < 50 ? " Medical forms incomplete." : ""}${readiness.training < 50 ? " Training skills behind." : ""} Departure requires full clearance.`}
+            />
+          );
+        }
+        if (readiness.overall < 50) {
+          const parts: string[] = [];
+          if (readiness.medical < 50) parts.push("medical forms incomplete");
+          if (readiness.training < 50) parts.push("training skills behind");
+          if (criticalCount > 0) parts.push(`${criticalCount} member${criticalCount !== 1 ? "s" : ""} below 30%`);
+          return (
+            <PriorityAlertCard
+              title={`Crew readiness needs attention — ${readiness.overall}% overall`}
+              body={`${parts.length > 0 ? parts.map(p => p[0].toUpperCase() + p.slice(1)).join(". ") + ". " : ""}Your crew needs to reach 70% before the trail.`}
+            />
+          );
+        }
+        return null;
+      })()}
+
       {/* Self-Assessment Prompt — show if no assessment and not loading */}
       {!assessmentLoading && !assessment && !showAssessment && selectedCrewId && (
         <div className="tl-card mb-2.5 text-center" style={{ border: `2px solid ${theme.accent}` }}>
@@ -915,6 +944,18 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
 
           {expandedCats.has(cat.id) && (
             <div className="py-1">
+              {/* Empty state when category has no skills */}
+              {cat.skills!.length === 0 && (
+                <div className="flex flex-col items-center text-center py-5 px-4 rounded-[10px] bg-tl-bg-alt border border-tl-border mb-1">
+                  <span className="text-3xl mb-2 opacity-40">{cat.icon}</span>
+                  <div className="text-[12px] font-bold text-tl-heading font-display mb-1">No {cat.label.toLowerCase()} items yet</div>
+                  <div className="text-[11px] text-tl-text-dim leading-relaxed max-w-[220px]">
+                    {isAdmin
+                      ? `Add ${cat.label.toLowerCase()} items using the form below so crew members can track their progress.`
+                      : `Your crew leader hasn't added any ${cat.label.toLowerCase()} items yet. Check back soon.`}
+                  </div>
+                </div>
+              )}
               {/* Sort: system skills first, then manual */}
               {[...cat.skills!].sort((a, b) => ((b as any).is_system || 0) - ((a as any).is_system || 0)).map((s: any) => {
                 const chk = am && ((am as any)[cat.field!] || []).includes(s.id);

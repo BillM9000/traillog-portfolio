@@ -4,7 +4,8 @@ import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import { formatDateFull, formatDateShort } from "../utils/dates";
-import { CalendarCheck, MapPin, Clock, Trash2, ThumbsUp, ThumbsDown, CheckCircle2, XCircle, Users, Zap, ChevronDown, ChevronUp, Pencil, Download } from "lucide-react";
+import { CalendarCheck, MapPin, Clock, Trash2, ThumbsUp, ThumbsDown, CheckCircle2, XCircle, Users, Zap, ChevronDown, ChevronUp, Pencil, Download, Plus } from "lucide-react";
+import PriorityAlertCard from "./PriorityAlertCard";
 import type { AdventureMember, TrainingEvent, TrainingRSVP, TrainingAttendance, ThemeColors, ThemeMode } from "../types";
 
 interface BestDate {
@@ -312,12 +313,22 @@ export default function TrainingEvents({ adventureId, isAdmin, currentUserId, me
 
       {/* Empty state */}
       {upcoming.length === 0 && pastActive.length === 0 && !showForm && (
-        <div className="tl-card text-center p-6">
-          <CalendarCheck size={28} color={theme.textDimmer} strokeWidth={1.5} />
-          <div className="text-[13px] text-tl-text-dim mt-1.5">
-            {isAdmin ? "No training events yet. Use Best Dates above or create one manually." : "No training events yet. Check back soon!"}
+        isAdmin ? (
+          <PriorityAlertCard
+            title="No training events scheduled"
+            body="Your crew needs group hikes before the trail. Philmont requires conditioning — aim for at least 5 outings with 40+ miles total before departure."
+            ctaLabel="+ Schedule First Event"
+            onCta={() => setShowForm(true)}
+          />
+        ) : (
+          <div className="tl-card flex flex-col items-center text-center py-8 px-5">
+            <CalendarCheck size={44} strokeWidth={1.3} className="text-tl-text-dimmer mb-3 opacity-50" />
+            <div className="text-[14px] font-bold text-tl-heading font-display mb-1.5">No training events yet</div>
+            <div className="text-[12px] text-tl-text-dim leading-relaxed max-w-[260px]">
+              Your crew leader is working on scheduling group hikes. Check back soon — conditioning hikes are key to a successful trek.
+            </div>
           </div>
-        </div>
+        )
       )}
 
       {/* Upcoming events */}
