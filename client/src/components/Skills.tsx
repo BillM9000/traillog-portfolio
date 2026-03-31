@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAdventure } from "../contexts/AdventureContext";
+import { useAdventureTheme } from "../contexts/AdventureThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { TRAIL_BADGES, JOURNEY_WAYPOINTS } from "../utils/theme";
 import { computeCrewReadiness, computeMemberReadiness } from "../utils/readiness";
@@ -315,6 +316,7 @@ function AIBadgeCelebration({ onDismiss }: AIBadgeCelebrationProps): React.React
 export default function Skills({ members, active, skills, analysis, isAdmin, onToggleSkill, onAddSkill, onRemoveSkill, adventureId, updateMemberLocally, achievements }: SkillsProps): React.ReactElement {
   const { theme, mode } = useTheme();
   const { gearCatalog, memberGearMap, selectedCrewId } = useAdventure();
+  const adventureTheme = useAdventureTheme();
   const { user } = useAuth();
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set(["training"]));
   const [newSkillName, setNewSkillName] = useState<string>("");
@@ -812,7 +814,7 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
       {/* Journey Progress Trail */}
       {trekkingMembers.length > 0 && (
         <div className="tl-card mb-2.5 text-center">
-          <div className="text-[11px] font-bold text-tl-heading mb-2 font-display">Journey to Philmont</div>
+          <div className="text-[11px] font-bold text-tl-heading mb-2 font-display">Journey to {adventureTheme.def.name}</div>
           <div className="flex items-center justify-center gap-0 mb-2 px-2.5">
             {JOURNEY_WAYPOINTS.map((wp: JourneyWaypoint, i: number) => {
               const reached = readiness.overall >= wp.pct;

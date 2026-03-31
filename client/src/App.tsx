@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
 import { useTheme } from "./contexts/ThemeContext";
 import { AdventureProvider, useAdventure } from "./contexts/AdventureContext";
+import { AdventureThemeProvider } from "./contexts/AdventureThemeContext";
 import { useToast } from "./contexts/ToastContext";
 import { api } from "./api";
 import { DAYS_FULL } from "./utils/constants";
@@ -302,9 +303,10 @@ export default function App() {
   const currentMembership = memberships.find(m => m.troop_id === troopId);
   const isAdmin = currentMembership?.role === "admin" || isGlobalAdmin;
 
-  // Main app wrapped in AdventureProvider
+  // Main app wrapped in AdventureProvider + AdventureThemeProvider
   return (
     <AdventureProvider adventureId={adventureId} troopId={troopId}>
+      <AdventureThemeBridge>
       <MainView
         user={user}
         troopId={troopId}
@@ -327,7 +329,18 @@ export default function App() {
           <HelpSystem onClose={() => setShowHelp(false)} user={user} isAdmin={isAdmin} isGlobalAdmin={isGlobalAdmin} />
         )}
       </Suspense>
+      </AdventureThemeBridge>
     </AdventureProvider>
+  );
+}
+
+// Reads adventure_type from AdventureContext and bridges it into AdventureThemeContext
+function AdventureThemeBridge({ children }: { children: React.ReactNode }) {
+  const { adventure } = useAdventure();
+  return (
+    <AdventureThemeProvider adventureType={adventure?.adventure_type}>
+      {children}
+    </AdventureThemeProvider>
   );
 }
 

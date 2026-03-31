@@ -3,6 +3,7 @@ import clsx from "clsx";
 import { useCountdown } from "../hooks/useCountdown";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAdventure } from "../contexts/AdventureContext";
+import { useAdventureTheme } from "../contexts/AdventureThemeContext";
 import { useToast } from "../contexts/ToastContext";
 import { api } from "../api";
 import { JOURNEY_WAYPOINTS, TRAIL_BADGES } from "../utils/theme";
@@ -54,8 +55,8 @@ interface CountdownDisplay {
 }
 
 export default function Header({ user, troop, adventure, members, analysis, trekDates, trekDate, saving, isAdmin, approvedTroops, onSwitchTroop, onGoHome, onLogout, onAdminClick, onRefreshAuth, onViewProfile, onHelpClick, achievements }: HeaderProps) {
-  const countdown = useCountdown(trekDates || trekDate);
   const { theme, mode, toggle } = useTheme();
+  const adventureTheme = useAdventureTheme();
   const { addToast } = useToast();
   const [showProfile, setShowProfile] = useState(false);
   const [showTrailGuide, setShowTrailGuide] = useState(false);
@@ -67,6 +68,7 @@ export default function Header({ user, troop, adventure, members, analysis, trek
   const adventureName = adventure?.name || "Loading...";
   const troopName = troop?.name || "";
   const adventureType = ADVENTURE_TYPES.find((t: AdventureTypeT) => t.id === adventure?.adventure_type) || null;
+  const countdown = useCountdown(trekDates || trekDate, adventureType?.dateLabels?.arrive || "Arrival at Base");
 
   // Format date range string (depart home → return home for full trip)
   const dateRangeStr = (() => {
@@ -153,16 +155,16 @@ export default function Header({ user, troop, adventure, members, analysis, trek
 
   const cd = getCountdownDisplay();
 
-  // Texture pattern (cross pattern at 6% opacity)
+  // Texture pattern — sourced from AdventureTheme (6% opacity overlay)
   const textureStyle: React.CSSProperties = {
-    backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
+    backgroundImage: adventureTheme.def.textureSvgUrl,
   };
 
   const badgeDef: Record<string, string> = { gear_ready: "\u{1F392}", trail_medic: "\u{1F3E5}", admin_pro: "\u{1F4CB}", training_complete: "\u{1F97E}", ai_ready: "\u{1F916}", ai_gear: "\u{1F6CD}\uFE0F", fully_prepared: "\u2B50" };
   const titleDef: Record<string, string> = { gear_ready: "Gear Ready", trail_medic: "Trail Medic", admin_pro: "Admin Pro", training_complete: "Training Complete", ai_ready: "AI Ready", ai_gear: "AI Gear Scout", fully_prepared: "Fully Prepared" };
 
   return (<>
-    <div className="rounded-b-[24px] p-5 pb-0 relative" style={{ background: theme.bgHeader }}>
+    <div className="rounded-b-[24px] p-5 pb-0 relative" style={{ background: adventureTheme.heroGradient }}>
       {/* Texture overlay — clipped to rounded corners independently */}
       <div className="absolute inset-0 rounded-b-[24px] overflow-hidden pointer-events-none">
         <div className="absolute inset-0 opacity-[0.06] pointer-events-none" style={textureStyle} />

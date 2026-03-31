@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import type { TrekDates, CountdownResult } from "../types";
 
-export function useCountdown(trekDates: TrekDates | Date | string | null | undefined): CountdownResult {
+export function useCountdown(trekDates: TrekDates | Date | string | null | undefined, arrivalLabel = "Arrival at Base"): CountdownResult {
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export function useCountdown(trekDates: TrekDates | Date | string | null | undef
     if (arrive && today < arrive) {
       const diff = arrive.getTime() - now.getTime();
       const days = Math.floor(diff / 86400000);
-      return { days, hours: Math.floor((diff % 86400000) / 3600000), minutes: Math.floor((diff % 3600000) / 60000), seconds: Math.floor((diff % 60000) / 1000), weeks: Math.floor(days / 7), remDays: days % 7, gone: false, phase: "travel_there", label: "Arrival at Philmont" };
+      return { days, hours: Math.floor((diff % 86400000) / 3600000), minutes: Math.floor((diff % 3600000) / 60000), seconds: Math.floor((diff % 60000) / 1000), weeks: Math.floor(days / 7), remDays: days % 7, gone: false, phase: "travel_there", label: arrivalLabel };
     }
     if (ret && today < ret) {
       const daysIn = arrive ? Math.floor((today.getTime() - arrive.getTime()) / 86400000) + 1 : 0;

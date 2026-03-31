@@ -6,6 +6,7 @@ import {
   Shield,
 } from "lucide-react";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useAdventureTheme } from "../../contexts/AdventureThemeContext";
 import Logo from "../Logo";
 import TroopLogo from "../TroopLogo";
 import type { User } from "../../types";
@@ -60,6 +61,7 @@ export default function Sidebar({
   homeActive,
 }: SidebarProps) {
   const { mode } = useTheme();
+  const adventureTheme = useAdventureTheme();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(STORAGE_KEY) === "true");
 
   useEffect(() => {
@@ -68,15 +70,11 @@ export default function Sidebar({
 
   const width = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_WIDTH;
 
-  const gradient = mode === "light"
-    ? "linear-gradient(180deg, #3A4D2A 0%, #4E6635 55%, #6B8847 100%)"
-    : "linear-gradient(180deg, #1A2412 0%, #2A3620 55%, #3A4D2A 100%)";
-
   return (
     <div
       className="h-screen sticky top-0 flex flex-col z-[100] shrink-0 border-r border-white/[0.08]"
       style={{
-        width, minWidth: width, background: gradient,
+        width, minWidth: width, background: adventureTheme.sidebarGradient,
         transition: "width 0.2s ease, min-width 0.2s ease",
       }}
     >
