@@ -1,6 +1,6 @@
 # TrailLog Architecture
 
-> **Schema Version:** 20 | **Last Updated:** 2026-03-14
+> **Schema Version:** 25 | **Last Updated:** 2026-03-31
 
 ## System Overview
 
@@ -24,9 +24,9 @@
                         │  └─────┬─────┘    └──────────────┘  │
                         │        │                            │
                         │  ┌─────▼─────────────────────────┐  │
-                        │  │  SQLite (WAL mode)            │  │
-                        │  │  Docker volume:               │  │
-                        │  │  crew614_crew614_data         │  │
+                        │  │  PostgreSQL (pg Pool)         │  │
+                        │  │  Host: 172.18.0.1:5432        │  │
+                        │  │  DB: traillog (32 tables)     │  │
                         │  └───────────────────────────────┘  │
                         └─────────────────────────────────────┘
                                        │
@@ -56,8 +56,8 @@ Backup Strategy:
   ┌─────────────────────────────────────────────────────────────┐
   │  /opt/app/backup.sh (rolling, keeps last 10)            │
   │  ├── Daily Cron (3 AM server time)                          │
-  │  ├── SQLite .backup → /opt/app/backups/                 │
-  │  ├── .env snapshot  → /opt/app/backups/                 │
+  │  ├── pg_dump → /opt/crew614/backups/ (gzipped, timestamped) │
+  │  ├── .env snapshot  → /opt/crew614/backups/              │
   │  ├── Rotate: keeps last 10 backups, auto-deletes oldest     │
   │  └── Manual: ssh root@<VPS_IP> /opt/app/backup.sh            │
   ├─────────────────────────────────────────────────────────────┤
@@ -66,7 +66,7 @@ Backup Strategy:
   └─────────────────────────────────────────────────────────────┘
 ```
 
-## Data Model (Schema v20)
+## Data Model (Schema v25, PostgreSQL)
 
 ```
 ┌─────────────────────────┐
@@ -229,47 +229,58 @@ isGlobalAdmin computed server-side in /api/auth/me:
 
 ## Client Architecture
 
+All components migrated to TypeScript (`.tsx`). 16 heavy components are lazy-loaded via
+`React.lazy` + `Suspense`, reducing the main bundle from 599KB → 226KB gzip (62% reduction).
+All Recharts imports are confined to lazy-loaded chart chunks; main bundle stays ~257KB.
+
 ```
-main.jsx
+main.tsx
   └─ ThemeProvider
        └─ ToastProvider
             └─ AuthProvider
-                 └─ App.jsx
+                 └─ App.tsx
                       │
-                      ├── LoginPage          (unauthenticated)
+                      ├── LandingPage        (unauthenticated)
                       ├── ProfileSetup       (no user_type yet)
-                      ├── Lobby              (no approved troop)
+                      ├── HomeDashboard      (troop selector, readiness %, platform stats)
                       ├── AdventurePicker    (no adventure selected)
                       │
                       └── AdventureProvider  (adventure selected)
-                           └─ MainView
-                                ├── Header (logo, breadcrumb, countdown, profile)
-                                ├── MemberBar (crew avatars, badges, link requests)
-                                ├── CTA Banner (highest-priority action)
-                                │
-                                ├── Tab Bar: Training | Best Windows | Readiness | Itinerary | Gear
-                                │
-                                ├── [Calendar] — availability heatmap, trek blocking
-                                ├── [Results] — best date windows analysis
-                                ├── [Skills] — journey trail, readiness checklists
-                                ├── [Itinerary] — day cards, print cheat sheet
-                                ├── [Gear]
-                                │    ├── GearList — catalog browser, 3-state status,
-                                │    │   product options, affiliate buy links,
-                                │    │   category/priority/status filters, search
-                                │    ├── PackWeightWidget — base + food + water calc
-                                │    ├── GearAIChat button — AI gear advisor
-                                │    └── Global/Gear Admin button
-                                │
-                                ├── AdminPanel (modal) — adventure/members/troop settings
-                                ├── GlobalAdmin (modal) — 4 tabs for global admin:
-                                │    ├── Gear Catalog (items + product options + affiliate URLs)
-                                │    ├── Troop Overview (table with counts)
-                                │    ├── Affiliate Analytics (clicks chart + top products)
-                                │    ├── Platform Settings (key-value editor)
-                                │    └── Troop Overrides (hide/show items, custom gear)
-                                │
-                                └── GearAIChat (modal) — AI gear advisor
+                           └─ AdventureThemeProvider (per-adventure visual theme)
+                                └─ MainView
+                                     │
+                                     ├── ── MOBILE (< 1024px) ──────────────────────
+                                     ├── Header      (compact inner-page hero)
+                                     ├── MemberBar   (crew avatars, badges, link requests)
+                                     ├── CTA Banner  (highest-priority action)
+                                     ├── Tab Bar     (3×2 grid: Training | Readiness |
+                                     │               Itinerary | Gear | Reports | Docs)
+                                     │
+                                     ├── ── DESKTOP (≥ 1024px) ─────────────────────
+                                     ├── Sidebar     (220px/64px collapsible, forest gradient)
+                                     ├── TopBar      (48px: section title, countdown, avatar)
+                                     ├── DashboardOverview   (4 stat cards + readiness bars)
+                                     ├── MembersTable        (sortable: Name/Role/Readiness%)
+                                     ├── DesktopBIChartRow   (ReadinessTrendChart + BadgeRow)
+                                     └── MemberDetailPanel   (52px score, 4-category bars, ⚠)
+                                     │
+                                     ├── [Training/Calendar] — two-panel: TrainingEvents + Calendar
+                                     ├── [Readiness/Skills]  — BI header + 50/50 drill-down
+                                     ├── [Itinerary]         — day cards, print cheat sheet
+                                     ├── [Gear]
+                                     │    ├── GearList — catalog browser, 3-state status,
+                                     │    │   product options, affiliate buy links,
+                                     │    │   category/priority/status filters, search
+                                     │    ├── GearCompletionChart (Recharts, lazy-loaded)
+                                     │    ├── PackWeightWidget — base + food + water calc
+                                     │    └── GearAIChat button — AI gear advisor
+                                     ├── [Reports] — Excel export (exceljs, lazy 940KB chunk)
+                                     ├── [Docs]    — file uploads, base64, VPS storage
+                                     │
+                                     ├── AdminPanel (modal) — adventure/members/troop settings
+                                     ├── GlobalAdmin (modal) — Gear Catalog, Troop Overview,
+                                     │    Affiliate Analytics, Platform Settings, Troop Overrides
+                                     └── GearAIChat (modal) — AI gear advisor
 ```
 
 ## React Contexts
@@ -277,9 +288,9 @@ main.jsx
 ```
 ┌──────────────────────────────────────────────────────────┐
 │  ThemeContext                                             │
-│  ├── theme object (dark/light color tokens)              │
+│  ├── isDark (boolean)                                    │
 │  ├── mode ("dark" | "light")                             │
-│  └── toggleTheme()                                       │
+│  └── toggleTheme()  — adds/removes `dark` on <html>      │
 ├──────────────────────────────────────────────────────────┤
 │  ToastContext                                            │
 │  ├── addToast(message, type)                             │
@@ -293,7 +304,8 @@ main.jsx
 │  └── refresh()                                           │
 ├──────────────────────────────────────────────────────────┤
 │  AdventureContext                                        │
-│  ├── adventure, members, skills, itinerary               │
+│  ├── adventure (includes adventure_type for theming)     │
+│  ├── members, skills, itinerary                          │
 │  ├── trekDate, trekDates (4-field object)                │
 │  ├── achievements { badges, milestones }                 │
 │  ├── gearCatalog (full catalog with options)             │
@@ -301,6 +313,13 @@ main.jsx
 │  ├── trekkingMembers, supportMembers                     │
 │  ├── updateMemberLocally(userId, patch)                  │
 │  └── refreshAll/Members/Skills/Achievements/MemberGear() │
+├──────────────────────────────────────────────────────────┤
+│  AdventureThemeContext   (NEW — Phase 6)                  │
+│  ├── def: AdventureThemeDef (id, name, gradients, patch) │
+│  ├── heroGradient  (mode-resolved CSS background)        │
+│  └── sidebarGradient (mode-resolved CSS background)      │
+│  Themes: philmont | sea-base | northern-tier | bechtel   │
+│  Textures: topo | waves | aurora | rock (SVG data URLs)  │
 └──────────────────────────────────────────────────────────┘
 ```
 
