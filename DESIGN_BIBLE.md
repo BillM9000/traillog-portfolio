@@ -1,7 +1,7 @@
 # TrailLog Design Bible
 ## Single source of truth for every visual decision.
 
-> **Status:** Phase 0 — LOCKED
+> **Status:** Phase 6 — Complete
 > **Last updated:** 2026-03-31
 > All phases read from this file. Changes here require a full visual regression pass.
 
@@ -37,6 +37,11 @@ Neutral (info):      #6B5D4D  →  var(--status-neutral)
 - **≥ 70%** → Success green (`#5B7A3A`)
 - **30–69%** → Warning amber (`#D4A017`)
 - **< 30%** → Danger red (`#CC3333`)
+
+> **Deviation — MemberDetailPanel (Phase 6):** The drill-down panel uses a tighter threshold:
+> ≥70% → green, ≥50% → amber, <50% → red. The "⚠ Needs attention" alert fires at <50% (not <30%).
+> Rationale: at <50% a category is genuinely blocking crew readiness; the panel is a coaching tool
+> that should flag issues earlier than the dashboard overview.
 
 ### Countdown Pill Phases
 - **90+ days** → `#5B7A3A` (calm green)
@@ -395,10 +400,10 @@ Key tokens for Phase 4+ implementation:
 |-------|--------|---------|
 | Main JS bundle | 250KB gzipped | 226KB ✅ |
 | Google Fonts | 2 requests max | 1 combined ✅ |
-| Recharts chunk | Desktop only | Phase 6 |
+| Recharts chunk | Desktop only | ✅ lazy-loaded (ReadinessTrend 19KB, GearBar 30KB) |
 | Image assets | 50KB per patch | TBD |
-| Lighthouse Mobile | 85+ | TBD |
-| Lighthouse Desktop | 95+ | TBD |
+| Lighthouse Mobile | 85+ | TBD (Phase 7 audit pending) |
+| Lighthouse Desktop | 95+ | TBD (Phase 7 audit pending) |
 
 ---
 
