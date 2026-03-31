@@ -41,6 +41,10 @@ const Documents = lazy(() => import("./components/Documents"));
 const TrainingEvents = lazy(() => import("./components/TrainingEvents"));
 const ParentDashboard = lazy(() => import("./components/ParentDashboard"));
 
+// Lazy-loaded: desktop-only BI components (never loaded on mobile)
+const DesktopBIChartRow = lazy(() => import("./components/desktop/DesktopBIChartRow"));
+const GearCompletionChart = lazy(() => import("./components/desktop/charts/GearCompletionChart"));
+
 // Lazy-loaded: modals (opened on demand)
 const AdminPanel = lazy(() => import("./components/AdminPanel"));
 const GlobalAdmin = lazy(() => import("./components/GlobalAdmin"));
@@ -368,7 +372,7 @@ type TroopMember = any;
 type Troop = any;
 
 function MainView({ user, troopId, adventureId, memberships, approvedTroops, isAdmin, publicSettings, initialTab, onSwitchTroop, onGoHome, onSelectAdventure, onLogout, onRefresh, onViewProfile, onHelpClick }: MainViewProps) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const isDesktop = useIsDesktop();
   const { addToast } = useToast();
   const { adventure, members, skills, itinerary, trekDate, trekDates, achievements, loading: advLoading, refreshAll, refreshMembers, updateMemberLocally, crews, selectedCrewId, selectedCrew, setSelectedCrewId, refreshCrews, gearCatalog, memberGearMap } = useAdventure();
@@ -743,6 +747,20 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
     </>
   );
 
+  // ── Gear chart data (desktop gear view only) ──
+  const gearChartData = useMemo(() => {
+    if (!isDesktop || view !== "gear") return [];
+    return members
+      .filter(m => m.participation === "trekking")
+      .map(m => {
+        const items = memberGearMap[m.user_id!] || [];
+        const owned = items.filter(g => g.status === "owned" || g.status === "packed").length;
+        const total = gearCatalog.length;
+        const pct = total > 0 ? Math.round((owned / total) * 100) : 0;
+        return { name: m.name?.split(" ")[0] || m.name || "?", pct, owned, total };
+      });
+  }, [isDesktop, view, members, memberGearMap, gearCatalog]);
+
   // ── Desktop layout ──
   if (isDesktop) {
     return (
@@ -778,8 +796,10 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
             onViewProfile={onViewProfile}
           />
           <div className="flex-1 overflow-y-auto py-4 px-6">
-            <div className="max-w-[900px] mx-auto">
-              {(view === "calendar" || view === "skills") && (
+            <div className={clsx("mx-auto", (view === "calendar" || view === "gear") ? "max-w-[1100px]" : "max-w-[900px]")}>
+
+              {/* ── Skills/Readiness view: stat cards + member table ── */}
+              {view === "skills" && (
                 <>
                   <DashboardOverview
                     members={members}
@@ -802,9 +822,93 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
                   />
                   {parentDash}
                   <CTABanner members={members} active={active} setView={setView} theme={theme} />
+                  {viewContent}
                 </>
               )}
-              {viewContent}
+
+              {/* ── Calendar/Training view: stat cards + BI chart row + two-panel ── */}
+              {view === "calendar" && (
+                <>
+                  <DashboardOverview
+                    members={members}
+                    skills={skills}
+                    gearCatalog={gearCatalog}
+                    memberGearMap={memberGearMap}
+                    adventure={adventure}
+                    trekDates={trekDates}
+                  />
+                  {crewPicker}
+                  <Suspense fallback={<LoadingFallback />}>
+                    <DesktopBIChartRow
+                      members={members}
+                      skills={skills}
+                      gearCatalog={gearCatalog}
+                      memberGearMap={memberGearMap}
+                      achievements={achievements as any}
+                      currentUserId={user.id}
+                    />
+                    <div className="flex gap-4 items-start">
+                      <div style={{ flex: "55 55 0%", minWidth: 0 }}>
+                        <TrainingEvents adventureId={adventureId} isAdmin={isAdmin} currentUserId={user.id} members={members} bestDates={analysis.bestDates} />
+                      </div>
+                      <div style={{ flex: "45 45 0%", minWidth: 0 }}>
+                        <Calendar
+                          members={members}
+                          active={selectedCrewId === "all" ? null : active}
+                          months={months}
+                          analysis={analysis}
+                          trekDates={trekDates}
+                          onToggleDate={toggleDate}
+                          onBulkSelect={bulkSelect}
+                          onClearAll={clearAll}
+                          allCrewsMode={selectedCrewId === "all"}
+                        />
+                      </div>
+                    </div>
+                  </Suspense>
+                  {parentDash}
+                  <CTABanner members={members} active={active} setView={setView} theme={theme} />
+                </>
+              )}
+
+              {/* ── Gear view: two-panel with completion chart ── */}
+              {view === "gear" && (
+                <div className="flex gap-4 items-start">
+                  <div style={{ flex: "60 60 0%", minWidth: 0 }}>
+                    {isAdmin && (
+                      <div className="flex gap-1.5 mb-2">
+                        <button onClick={() => setShowGearAdmin(true)}
+                          className="py-1.5 px-3 rounded-btn border border-tl-border-light bg-tl-bg-alt text-tl-text-dim text-[11px] font-semibold cursor-pointer font-body">
+                          {isGlobalAdmin ? "\uD83C\uDF10 Global Admin" : "\u2699\uFE0F Gear Admin"}
+                        </button>
+                        <button onClick={() => setShowAIChat(!showAIChat)}
+                          className={clsx(
+                            "py-1.5 px-3 rounded-btn border border-tl-border-light text-[11px] font-semibold cursor-pointer font-body",
+                            showAIChat ? "bg-tl-accent text-white" : "bg-tl-bg-alt text-tl-text-dim"
+                          )}>
+                          {"\uD83E\uDD16"} AI Advisor
+                        </button>
+                      </div>
+                    )}
+                    <Suspense fallback={<LoadingFallback />}>
+                      <GearList troopId={troopId} adventureId={adventureId} members={members} active={active} setActive={setActive} updateMemberLocally={updateMemberLocally} />
+                    </Suspense>
+                  </div>
+                  <div style={{ flex: "40 40 0%", minWidth: 0 }}>
+                    <div className="bg-tl-surface border border-tl-border rounded-xl p-4 sticky top-4">
+                      <div className="text-[11px] font-bold text-tl-text-dim uppercase tracking-[1.2px] font-body mb-3">
+                        Gear Completion
+                      </div>
+                      <Suspense fallback={<LoadingFallback />}>
+                        <GearCompletionChart data={gearChartData} isDark={isDark} />
+                      </Suspense>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── All other views (itinerary, reports, docs) ── */}
+              {view !== "calendar" && view !== "gear" && view !== "skills" && viewContent}
             </div>
           </div>
         </main>
