@@ -46,6 +46,8 @@ interface HeaderProps {
   onViewProfile?: () => void;
   onHelpClick: () => void;
   achievements: Achievement | null;
+  /** When true, renders a slim 56px bar instead of the full hero (for inner pages on mobile) */
+  compact?: boolean;
 }
 
 interface CountdownDisplay {
@@ -54,7 +56,7 @@ interface CountdownDisplay {
   color: string;
 }
 
-export default function Header({ user, troop, adventure, members, analysis, trekDates, trekDate, saving, isAdmin, approvedTroops, onSwitchTroop, onGoHome, onLogout, onAdminClick, onRefreshAuth, onViewProfile, onHelpClick, achievements }: HeaderProps) {
+export default function Header({ user, troop, adventure, members, analysis, trekDates, trekDate, saving, isAdmin, approvedTroops, onSwitchTroop, onGoHome, onLogout, onAdminClick, onRefreshAuth, onViewProfile, onHelpClick, achievements, compact = false }: HeaderProps) {
   const { theme, mode, toggle } = useTheme();
   const adventureTheme = useAdventureTheme();
   const { addToast } = useToast();
@@ -163,6 +165,124 @@ export default function Header({ user, troop, adventure, members, analysis, trek
   const badgeDef: Record<string, string> = { gear_ready: "\u{1F392}", trail_medic: "\u{1F3E5}", admin_pro: "\u{1F4CB}", training_complete: "\u{1F97E}", ai_ready: "\u{1F916}", ai_gear: "\u{1F6CD}\uFE0F", fully_prepared: "\u2B50" };
   const titleDef: Record<string, string> = { gear_ready: "Gear Ready", trail_medic: "Trail Medic", admin_pro: "Admin Pro", training_complete: "Training Complete", ai_ready: "AI Ready", ai_gear: "AI Gear Scout", fully_prepared: "Fully Prepared" };
 
+  // ── Shared profile dropdown (used in both compact + full modes) ──
+  const profileDropdown = showProfile && (
+    <div className="absolute top-full right-0 mt-2 bg-tl-card rounded-card border border-tl-border p-4 w-[230px] z-[100]" style={{ boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
+      <div className="text-[10px] font-bold text-tl-text-dim uppercase tracking-[1.5px] mb-2 font-body">Profile</div>
+      <input value={editName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
+        className="w-full py-2 px-3 rounded-btn border-[1.5px] border-tl-border-light bg-tl-input text-tl-text text-[13px] font-body outline-none box-border mb-2"
+        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && saveProfile()} />
+      <div className="text-[11px] text-tl-text-dim mb-2.5 font-body">
+        {user.user_type === "adult" ? "Adult Leader" : "Scout"} &bull; {user.email}
+      </div>
+      {approvedTroops.length > 1 && (
+        <select onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onSwitchTroop(parseInt(e.target.value))} value={troop?.id || ""}
+          className="w-full text-xs py-1.5 px-2 rounded-btn border-[1.5px] border-tl-border-light bg-tl-input text-tl-text font-body cursor-pointer mb-2.5">
+          {approvedTroops.map(t => <option key={t.troop_id} value={t.troop_id}>{t.troop_name}</option>)}
+        </select>
+      )}
+      <div className="flex gap-1.5 mb-2">
+        <button onClick={() => { setShowProfile(false); onGoHome(); }}
+          className="flex-1 py-2 rounded-btn border-[1.5px] border-tl-border-light bg-tl-bg-alt text-tl-text text-xs font-semibold cursor-pointer font-body">Home</button>
+        <button onClick={() => { setShowProfile(false); onViewProfile?.(); }}
+          className="flex-1 py-2 rounded-btn border-[1.5px] border-tl-border-light bg-tl-bg-alt text-tl-accent text-xs font-semibold cursor-pointer font-body">Profile</button>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={saveProfile} disabled={savingProfile}
+          className="flex-1 py-2 rounded-btn border-none bg-tl-forest-deep text-xs font-semibold cursor-pointer font-body"
+          style={{ color: theme.name === "dark" ? "#1A1F16" : "#FDFAF5" }}>{savingProfile ? "..." : "Save"}</button>
+        <button onClick={onLogout}
+          className="flex-1 py-2 rounded-btn border-[1.5px] border-tl-border-light bg-tl-bg-alt text-tl-danger text-xs font-semibold cursor-pointer font-body">Sign Out</button>
+      </div>
+    </div>
+  );
+
+  // ── Compact mode — single 56px bar for inner pages ──
+  if (compact) {
+    return (<>
+      <div
+        className="flex items-center gap-2.5 px-4 h-14 relative rounded-b-[16px]"
+        style={{ background: adventureTheme.heroGradient }}
+        aria-label="Adventure header"
+      >
+        {/* Texture overlay */}
+        <div className="absolute inset-0 rounded-b-[16px] overflow-hidden pointer-events-none">
+          <div className="absolute inset-0 opacity-[0.06]" style={textureStyle} />
+        </div>
+
+        {/* Left: small troop logo */}
+        <div className="relative shrink-0 cursor-pointer z-[1]" onClick={() => setShowLogoLightbox(true)} role="button" aria-label="View troop logo">
+          <TroopLogo troopId={troop?.id} name={troopName} size={32} theme={{ bgAlt: "rgba(253,250,245,0.92)" }} />
+        </div>
+
+        {/* Center: crew name + compact countdown */}
+        <div className="flex-1 min-w-0 relative z-[1]">
+          <div className="text-[13px] font-bold text-white truncate font-display leading-tight">
+            {hasMultipleCrews && selectedCrew ? selectedCrew.name : adventureName}
+          </div>
+          {cd && (
+            <div className="text-[10px] text-white/70 font-body truncate leading-tight">
+              {cd.icon} {cd.text}
+            </div>
+          )}
+        </div>
+
+        {/* Right: action buttons */}
+        <div className="flex items-center gap-1 relative z-[1]">
+          {saving && <span className="text-[10px] text-[#B8CC9A] mr-1">saving...</span>}
+          <button onClick={toggle} title={`Switch to ${mode === "dark" ? "light" : "dark"} mode`} aria-label={`Switch to ${mode === "dark" ? "light" : "dark"} mode`}
+            className="w-8 h-8 rounded-[10px] bg-white/10 border-none cursor-pointer flex items-center justify-center">
+            {mode === "dark" ? <Sun size={16} color="#FDFAF5" strokeWidth={2} /> : <Moon size={16} color="#FDFAF5" strokeWidth={2} />}
+          </button>
+          {isAdmin && (
+            <button onClick={onAdminClick} title="Admin Panel" aria-label="Open Admin Panel"
+              className="w-8 h-8 rounded-[10px] bg-white/10 border-none cursor-pointer flex items-center justify-center">
+              <Settings size={16} color="#fff" strokeWidth={2} />
+            </button>
+          )}
+          <div ref={profileRef} className="relative">
+            <div onClick={() => { setEditName(user.name || ""); setShowProfile(!showProfile); }} role="button" aria-label="Profile menu" title="Profile"
+              className="w-8 h-8 rounded-[10px] bg-white/[0.12] flex items-center justify-center cursor-pointer overflow-hidden">
+              {user.avatar_url ? (
+                <img src={user.avatar_url} alt="" className="w-8 h-8 rounded-[10px]" />
+              ) : (
+                <span className="text-[13px] font-[800] text-[#FDFAF5] font-display">
+                  {(user.name || "?")[0].toUpperCase()}
+                </span>
+              )}
+            </div>
+            {profileDropdown}
+          </div>
+        </div>
+      </div>
+
+      {/* Logo lightbox — shared with full hero */}
+      {showLogoLightbox && (
+        <div onClick={() => setShowLogoLightbox(false)}
+          className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-[6px] flex items-center justify-center p-5 cursor-pointer">
+          <div onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            className="relative bg-tl-card rounded-[20px] p-6 text-center max-w-[340px]"
+            style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
+            <button onClick={() => setShowLogoLightbox(false)}
+              className="absolute top-2.5 right-3.5 bg-none border-none text-xl text-tl-text-dim cursor-pointer">{"\u2715"}</button>
+            <div className="mb-4">
+              <TroopLogo troopId={troop?.id} name={troopName} size={200} theme={theme} />
+            </div>
+            <div className="text-base font-[800] text-tl-heading font-display mb-1">{troopName}</div>
+            {troop?.council && (
+              <div className="text-xs text-tl-text-dim font-body">
+                {troop.council}{troop.location ? ` \u00B7 ${troop.location}` : ""}
+              </div>
+            )}
+            {adventure?.name && (
+              <div className="text-[13px] font-bold text-tl-accent font-display mt-2">{adventure.name}</div>
+            )}
+          </div>
+        </div>
+      )}
+    </>);
+  }
+
   return (<>
     <div className="rounded-b-[24px] p-5 pb-0 relative" style={{ background: adventureTheme.heroGradient }}>
       {/* Texture overlay — clipped to rounded corners independently */}
@@ -210,36 +330,7 @@ export default function Header({ user, troop, adventure, members, analysis, trek
                 </span>
               )}
             </div>
-            {showProfile && (
-              <div className="absolute top-full right-0 mt-2 bg-tl-card rounded-card border border-tl-border p-4 w-[230px] z-[100]" style={{ boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
-                <div className="text-[10px] font-bold text-tl-text-dim uppercase tracking-[1.5px] mb-2 font-body">Profile</div>
-                <input value={editName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
-                  className="w-full py-2 px-3 rounded-btn border-[1.5px] border-tl-border-light bg-tl-input text-tl-text text-[13px] font-body outline-none box-border mb-2"
-                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && saveProfile()} />
-                <div className="text-[11px] text-tl-text-dim mb-2.5 font-body">
-                  {user.user_type === "adult" ? "Adult Leader" : "Scout"} &bull; {user.email}
-                </div>
-                {approvedTroops.length > 1 && (
-                  <select onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onSwitchTroop(parseInt(e.target.value))} value={troop?.id || ""}
-                    className="w-full text-xs py-1.5 px-2 rounded-btn border-[1.5px] border-tl-border-light bg-tl-input text-tl-text font-body cursor-pointer mb-2.5">
-                    {approvedTroops.map(t => <option key={t.troop_id} value={t.troop_id}>{t.troop_name}</option>)}
-                  </select>
-                )}
-                <div className="flex gap-1.5 mb-2">
-                  <button onClick={() => { setShowProfile(false); onGoHome(); }}
-                    className="flex-1 py-2 rounded-btn border-[1.5px] border-tl-border-light bg-tl-bg-alt text-tl-text text-xs font-semibold cursor-pointer font-body">Home</button>
-                  <button onClick={() => { setShowProfile(false); onViewProfile?.(); }}
-                    className="flex-1 py-2 rounded-btn border-[1.5px] border-tl-border-light bg-tl-bg-alt text-tl-accent text-xs font-semibold cursor-pointer font-body">Profile</button>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={saveProfile} disabled={savingProfile}
-                    className="flex-1 py-2 rounded-btn border-none bg-tl-forest-deep text-xs font-semibold cursor-pointer font-body"
-                    style={{ color: theme.name === "dark" ? "#1A1F16" : "#FDFAF5" }}>{savingProfile ? "..." : "Save"}</button>
-                  <button onClick={onLogout}
-                    className="flex-1 py-2 rounded-btn border-[1.5px] border-tl-border-light bg-tl-bg-alt text-tl-danger text-xs font-semibold cursor-pointer font-body">Sign Out</button>
-                </div>
-              </div>
-            )}
+            {profileDropdown}
           </div>
         </div>
       </div>

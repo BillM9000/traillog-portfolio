@@ -592,7 +592,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
 
   // ── Shared content blocks (used in both mobile and desktop) ──
   const crewPicker = crews.length > 1 ? (
-    <div className={isDesktop ? "py-3 pb-2" : "pt-9 px-4 pb-2"}>
+    <div className={isDesktop ? "py-3 pb-2" : "pt-3 px-4 pb-2"}>
       <div className="flex gap-1.5 flex-wrap">
         <button onClick={() => setSelectedCrewId("all")} className={clsx(
           "py-1.5 px-3.5 rounded-pill text-xs font-bold font-body cursor-pointer transition-all duration-150",
@@ -818,6 +818,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
     <main className="font-body bg-tl-bg text-tl-text min-h-screen select-none pb-[76px]">
       <AnnouncementBanner settings={publicSettings} />
       <Header
+        compact
         user={user} troop={troop} adventure={adventure} members={members} analysis={analysis}
         trekDate={trekDate} trekDates={trekDates} saving={saving} isAdmin={isAdmin} approvedTroops={approvedTroops as any}
         onSwitchTroop={onSwitchTroop}
@@ -833,22 +834,6 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
       {memberBar}
       {parentDash}
       <CTABanner members={members} active={active} setView={setView} theme={theme} />
-
-      {/* Section tabs — inline scrollable nav above content */}
-      <div className="px-4 pt-1 pb-2 overflow-x-auto">
-        <div className="flex gap-1.5">
-          {tabs.map(([k, l, Icon]) => (
-            <button key={k} onClick={() => { setView(k); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-              className={clsx(
-                "py-[7px] px-3 rounded-tab cursor-pointer text-[11px] font-body flex items-center gap-1 whitespace-nowrap transition-all duration-200 shrink-0",
-                view === k
-                  ? "border-[1.5px] border-tl-accent font-bold bg-tl-pill-active-bg text-tl-pill-active-text shadow-[0_2px_8px_rgba(58,77,42,0.18)]"
-                  : "border border-tl-border-light font-semibold bg-tl-pill-inactive-bg text-tl-pill-inactive-text shadow-none"
-              )}
-            ><Icon size={13} strokeWidth={2.5} />{l}</button>
-          ))}
-        </div>
-      </div>
 
       {viewContent}
       {modals}
