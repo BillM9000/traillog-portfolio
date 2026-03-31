@@ -21,7 +21,7 @@ interface Props {
 
 function readinessColor(pct: number): string {
   if (pct >= 70) return "#5B7A3A";
-  if (pct >= 30) return "#D4A017";
+  if (pct >= 50) return "#D4A017";
   return "#CC3333";
 }
 
@@ -44,11 +44,11 @@ export default function MemberDetailPanel({
     const gear      = gearCatalog.length > 0 ? Math.round((gearDone / gearCatalog.length) * 100) : null;
 
     return [
-      { label: "Training", value: pct(trainingSkills, "skills"),    barColor: "#5B7A3A" },
-      { label: "Gear",     value: gear,                              barColor: "#C47A2A" },
-      { label: "Medical",  value: pct(medicalSkills,  "medical"),   barColor: "#3A5A8A" },
-      { label: "Admin",    value: pct(adminSkills,    "admin_tasks"), barColor: "#7A4A8A" },
-    ].filter((c): c is { label: string; value: number; barColor: string } => c.value !== null);
+      { label: "Training", value: pct(trainingSkills, "skills") },
+      { label: "Gear",     value: gear },
+      { label: "Medical",  value: pct(medicalSkills,  "medical") },
+      { label: "Admin",    value: pct(adminSkills,    "admin_tasks") },
+    ].filter((c): c is { label: string; value: number } => c.value !== null);
   }, [member, skills, gearCatalog, memberGearMap]);
 
   const overall = useMemo(() => {
@@ -113,7 +113,7 @@ export default function MemberDetailPanel({
             <div className="h-1.5 rounded-full bg-tl-progress-bg overflow-hidden">
               <div
                 className="h-full rounded-full transition-[width] duration-300 ease-in-out"
-                style={{ width: `${cat.value}%`, background: cat.barColor }}
+                style={{ width: `${cat.value}%`, background: readinessColor(cat.value) }}
               />
             </div>
           </div>
