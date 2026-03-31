@@ -46,6 +46,7 @@ const GlobalAdmin = lazy(() => import("./components/GlobalAdmin"));
 const GearAIChat = lazy(() => import("./components/GearAIChat"));
 const OnboardingWizard = lazy(() => import("./components/OnboardingWizard"));
 const ApprovalPage = lazy(() => import("./components/ApprovalPage"));
+const DesignBiblePage = lazy(() => import("./components/dev/DesignBiblePage"));
 
 function LoadingFallback() {
   return (
@@ -139,6 +140,15 @@ export default function App() {
 
   // Go home = clear troop and adventure selection
   const goHome = () => { setTroopId(null); setAdventureId(null); };
+
+  // ── Design Bible (dev only, no auth required) ──
+  if (window.location.pathname === "/design-bible") {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <DesignBiblePage />
+      </Suspense>
+    );
+  }
 
   // ── Approval page (standalone, no auth required) ──
   const approvalMatch = window.location.pathname.match(/^\/approve\/(.+)$/);

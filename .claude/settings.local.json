@@ -1,5 +1,6 @@
 {
   "permissions": {
+    "defaultMode": "bypassPermissions",
     "allow": [
       "Bash(gh auth status)",
       "Bash(gh api user --jq '.login')",
@@ -15,7 +16,25 @@
       "Bash(tar czf /tmp/crew614-deploy.tar.gz --exclude=node_modules --exclude=.git --exclude=client/node_modules -C .. crew614/)",
       "Bash(scp /tmp/crew614-deploy.tar.gz root@31.97.134.173:/tmp/)",
       "Bash(ssh root@31.97.134.173 \"cd /opt && tar xzf /tmp/crew614-deploy.tar.gz && cd crew614 && docker compose build --no-cache && docker compose up -d\")",
-      "Bash(ssh root@31.97.134.173 \"docker logs crew614 2>&1 | tail -3\")"
+      "Bash(ssh root@31.97.134.173 \"docker logs crew614 2>&1 | tail -3\")",
+      "Bash(xargs wc:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //F //PID 17512)",
+      "Bash(ls \"C:\\\\GraceZero.ai.local\\\\design_studio\"/*.jsx)",
+      "Bash(npm install:*)",
+      "Bash(npx playwright:*)",
+      "Bash(node -e \":*)",
+      "Bash(find C:Usersbillm -path */.claude/launch.json -not -path */node_modules/*)",
+      "Bash(node mobile-preview.mjs https://traillog.gracezero.ai iphone)",
+      "Bash(node take-screenshots.mjs)",
+      "Bash(node screenshot-landing.mjs)",
+      "Bash(find /c/Users/billm/220claudsession/philmont_app/crew614/server -type f \\\\\\(-name *auth* -o -name *schema* -o -name *permission* -o -name *role* \\\\\\))",
+      "Bash(find /c/Users/billm/220claudsession/philmont_app/crew614 -type f -name schema*)",
+      "Bash(find /c/Users/billm/220claudsession/philmont_app/crew614/client -type f \\\\\\(-name *onboard* -o -name *wizard* -o -name *signup* -o -name *register* \\\\\\))",
+      "Bash(xargs grep:*)",
+      "Bash(cmd /c mklink /D \"C:\\\\Users\\\\billm\\\\220claudsession\\\\philmont_app\\\\crew614\\\\.claude\\\\worktrees\\\\musing-cannon\\\\client\\\\node_modules\" \"C:\\\\Users\\\\billm\\\\220claudsession\\\\philmont_app\\\\crew614\\\\client\\\\node_modules\")"
     ]
   }
 }
