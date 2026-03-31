@@ -11,7 +11,7 @@ import { useIsDesktop } from "./hooks/useIsDesktop";
 import clsx from "clsx";
 import type { User, Membership, Adventure, AdventureMember, Skill, Achievement, ThemeColors, MonthRange, OnboardingState } from "./types";
 
-import { Calendar as CalendarIcon, ClipboardCheck, Map, Backpack, FileText, FolderOpen } from "lucide-react";
+import { Calendar as CalendarIcon, ClipboardCheck, Map, Backpack, FileText, FolderOpen, Home, Settings } from "lucide-react";
 
 // Shared components — always in main bundle
 import Header from "./components/Header";
@@ -790,9 +790,9 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
     );
   }
 
-  // ── Mobile layout (unchanged) ──
+  // ── Mobile layout ──
   return (
-    <main className="font-body bg-tl-bg text-tl-text min-h-screen select-none pb-16">
+    <main className="font-body bg-tl-bg text-tl-text min-h-screen select-none pb-[76px]">
       <AnnouncementBanner settings={publicSettings} />
       <Header
         user={user} troop={troop} adventure={adventure} members={members} analysis={analysis}
@@ -811,13 +811,13 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
       {parentDash}
       <CTABanner members={members} active={active} setView={setView} theme={theme} />
 
-      {/* Tabs — fixed bottom nav (mobile only) */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-tl-bg border-t border-tl-border px-2 py-1.5 safe-area-pb">
-        <div className="grid grid-cols-6 gap-0.5">
+      {/* Section tabs — inline scrollable nav above content */}
+      <div className="px-4 pt-1 pb-2 overflow-x-auto">
+        <div className="flex gap-1.5">
           {tabs.map(([k, l, Icon]) => (
-            <button key={k} onClick={() => setView(k)}
+            <button key={k} onClick={() => { setView(k); window.scrollTo({ top: 0, behavior: "smooth" }); }}
               className={clsx(
-                "py-[7px] px-1 rounded-tab cursor-pointer text-[11px] font-body flex items-center justify-center gap-1 transition-all duration-200",
+                "py-[7px] px-3 rounded-tab cursor-pointer text-[11px] font-body flex items-center gap-1 whitespace-nowrap transition-all duration-200 shrink-0",
                 view === k
                   ? "border-[1.5px] border-tl-accent font-bold bg-tl-pill-active-bg text-tl-pill-active-text shadow-[0_2px_8px_rgba(58,77,42,0.18)]"
                   : "border border-tl-border-light font-semibold bg-tl-pill-inactive-bg text-tl-pill-inactive-text shadow-none"
@@ -829,6 +829,14 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
 
       {viewContent}
       {modals}
+
+      {/* Bottom navigation bar — iOS/Android style */}
+      <BottomNavBar
+        view={view}
+        onGoHome={onGoHome}
+        onSetView={(v: string) => { setView(v); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+        onViewProfile={onViewProfile}
+      />
     </main>
   );
 }
@@ -894,5 +902,57 @@ function CTABanner({ members, active, setView, theme }: CTABannerProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+// Bottom Navigation Bar — mobile only, iOS/Android style
+interface BottomNavBarProps {
+  view: string;
+  onGoHome: () => void;
+  onSetView: (view: string) => void;
+  onViewProfile: () => void;
+}
+
+function BottomNavBar({ view, onGoHome, onSetView, onViewProfile }: BottomNavBarProps) {
+  const items: { key: string; label: string; Icon: LucideIcon; viewKey?: string }[] = [
+    { key: "home", label: "Home", Icon: Home },
+    { key: "training", label: "Training", Icon: CalendarIcon, viewKey: "calendar" },
+    { key: "gear", label: "Gear", Icon: Backpack, viewKey: "gear" },
+    { key: "readiness", label: "Readiness", Icon: ClipboardCheck, viewKey: "skills" },
+    { key: "settings", label: "Settings", Icon: Settings },
+  ];
+
+  const isActive = (key: string) => {
+    if (key === "training") return view === "calendar" || view === "itinerary" || view === "reports" || view === "docs";
+    if (key === "gear") return view === "gear";
+    if (key === "readiness") return view === "skills";
+    return false;
+  };
+
+  const handleClick = (key: string, viewKey?: string) => {
+    if (key === "home") { onGoHome(); return; }
+    if (key === "settings") { onViewProfile(); return; }
+    if (viewKey) onSetView(viewKey);
+  };
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-tl-bg border-t border-tl-border shadow-[0_-1px_6px_rgba(0,0,0,0.06)] safe-area-pb">
+      <div className="flex justify-evenly items-center h-[60px]">
+        {items.map(({ key, label, Icon, viewKey }) => {
+          const active = isActive(key);
+          return (
+            <button key={key} onClick={() => handleClick(key, viewKey)}
+              className={clsx(
+                "flex flex-col items-center justify-center gap-0.5 w-16 h-full bg-transparent border-none cursor-pointer transition-colors duration-150",
+                active ? "text-tl-accent" : "text-tl-text-dim"
+              )}
+            >
+              <Icon size={22} strokeWidth={active ? 2.2 : 1.6} />
+              <span className={clsx("text-[10px] leading-tight", active ? "font-bold" : "font-medium")}>{label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
