@@ -572,6 +572,20 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
     } catch (e) { addToast((e as Error).message || "Failed to send request", "error"); }
   }, [adventureId, addToast]);
 
+  // ── Gear chart data (desktop gear view only) — must be before early returns ──
+  const gearChartData = useMemo(() => {
+    if (!isDesktop || view !== "gear") return [];
+    return members
+      .filter(m => m.participation === "trekking")
+      .map(m => {
+        const items = memberGearMap[m.user_id!] || [];
+        const owned = items.filter(g => g.status === "owned" || g.status === "packed").length;
+        const total = gearCatalog.length;
+        const pct = total > 0 ? Math.round((owned / total) * 100) : 0;
+        return { name: m.name?.split(" ")[0] || m.name || "?", pct, owned, total };
+      });
+  }, [isDesktop, view, members, memberGearMap, gearCatalog]);
+
   if (advLoading) {
     return (
       <div className="min-h-screen bg-tl-bg flex items-center justify-center">
@@ -747,20 +761,6 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
       </Suspense>
     </>
   );
-
-  // ── Gear chart data (desktop gear view only) ──
-  const gearChartData = useMemo(() => {
-    if (!isDesktop || view !== "gear") return [];
-    return members
-      .filter(m => m.participation === "trekking")
-      .map(m => {
-        const items = memberGearMap[m.user_id!] || [];
-        const owned = items.filter(g => g.status === "owned" || g.status === "packed").length;
-        const total = gearCatalog.length;
-        const pct = total > 0 ? Math.round((owned / total) * 100) : 0;
-        return { name: m.name?.split(" ")[0] || m.name || "?", pct, owned, total };
-      });
-  }, [isDesktop, view, members, memberGearMap, gearCatalog]);
 
   // ── Desktop layout ──
   if (isDesktop) {

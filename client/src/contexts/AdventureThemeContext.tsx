@@ -112,9 +112,16 @@ const ADVENTURE_THEME_DEFS: Record<string, AdventureThemeDef> = {
 // Fallback to Philmont for any unknown type
 const DEFAULT_THEME = ADVENTURE_THEME_DEFS.philmont;
 
+// Static default (light-mode Philmont) — used when no provider is present (e.g. desktop home)
+const DEFAULT_CONTEXT_VALUE: AdventureThemeContextValue = {
+  def: DEFAULT_THEME,
+  heroGradient: DEFAULT_THEME.heroGradientLight,
+  sidebarGradient: DEFAULT_THEME.sidebarGradientLight,
+};
+
 // ─── Context ──────────────────────────────────────────────────────────────────
 
-const AdventureThemeContext = createContext<AdventureThemeContextValue | undefined>(undefined);
+const AdventureThemeContext = createContext<AdventureThemeContextValue>(DEFAULT_CONTEXT_VALUE);
 
 interface AdventureThemeProviderProps {
   adventureType: string | null | undefined;
@@ -139,7 +146,5 @@ export function AdventureThemeProvider({ adventureType, children }: AdventureThe
 }
 
 export function useAdventureTheme(): AdventureThemeContextValue {
-  const ctx = useContext(AdventureThemeContext);
-  if (!ctx) throw new Error("useAdventureTheme must be inside AdventureThemeProvider");
-  return ctx;
+  return useContext(AdventureThemeContext);
 }
