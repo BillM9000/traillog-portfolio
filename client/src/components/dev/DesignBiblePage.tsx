@@ -5,6 +5,8 @@
  * Shows every token so you can SEE them before locking Phase 0.
  */
 
+import { BadgeEarned as RealBadgeEarned, BadgeLocked as RealBadgeLocked, BADGE_CATALOG } from "../BadgeSystem";
+
 export default function DesignBiblePage() {
   return (
     <div style={{ fontFamily: "'DM Sans', Helvetica, sans-serif", background: "#FDFAF5", color: "#2C2416", minHeight: "100vh", padding: "32px 24px" }}>
@@ -237,6 +239,70 @@ export default function DesignBiblePage() {
       {/* ── 10. Empty State ── */}
       <Section title="10. Empty State Example">
         <EmptyStateExample />
+      </Section>
+
+      {/* ── 11. Compact Hero Bar (Phase 2) ── */}
+      <Section title="11. Compact Hero Bar (Phase 2)">
+        <p style={{ fontSize: 13, color: "#6B5D4D", marginBottom: 16 }}>
+          56px bar shown on all inner pages (Training, Readiness, Itinerary, Gear, Reports, Docs) on mobile.
+          Full hero only on future adventure home screen. Desktop unchanged.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 420 }}>
+          <CompactHeroMockup label="Light mode — 47 days to departure" dark={false} />
+          <CompactHeroMockup label="Light mode — on trek day 3" dark={false} onTrek />
+          <CompactHeroMockup label="Dark mode" dark />
+        </div>
+        <p style={{ fontSize: 12, color: "#8B7D6B", marginTop: 12 }}>
+          Pill section nav (Training / Readiness / Itinerary / Gear / Reports / Docs) removed — bottom nav is the sole tab switcher on mobile.
+        </p>
+      </Section>
+
+      {/* ── 12. Badge System (Phase 3) ── */}
+      <Section title="12. Badge System (Phase 3)">
+        <p style={{ fontSize: 13, color: "#6B5D4D", marginBottom: 16 }}>
+          7 badges matching backend badge_ids. Earned = colored circle with gold ring + icon + date.
+          Locked = dashed border, desaturated icon, lock overlay. Horizontal scroll on mobile, 4-across grid on desktop.
+        </p>
+
+        <SubSection title="Earned States">
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+            {BADGE_CATALOG.slice(0, 4).map(badge => (
+              <RealBadgeEarned
+                key={badge.id}
+                badge={badge}
+                size={64}
+                earnedAt="2026-03-25T00:00:00Z"
+              />
+            ))}
+          </div>
+        </SubSection>
+
+        <SubSection title="Locked States">
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+            {BADGE_CATALOG.slice(0, 4).map(badge => (
+              <RealBadgeLocked key={badge.id} badge={badge} size={64} />
+            ))}
+          </div>
+        </SubSection>
+
+        <SubSection title="Large (96px modal size)">
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <RealBadgeEarned badge={BADGE_CATALOG[6]} size={96} earnedAt="2026-03-25T00:00:00Z" />
+            <RealBadgeLocked badge={BADGE_CATALOG[0]} size={96} />
+          </div>
+        </SubSection>
+
+        <SubSection title="Full Catalog (4-across desktop grid)">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, auto)", gap: 12, justifyContent: "start" }}>
+            {BADGE_CATALOG.map((badge, i) => i < 3
+              ? <RealBadgeEarned key={badge.id} badge={badge} size={64} earnedAt="2026-03-20T00:00:00Z" />
+              : <RealBadgeLocked key={badge.id} badge={badge} size={64} />
+            )}
+          </div>
+          <p style={{ fontSize: 12, color: "#8B7D6B", marginTop: 8 }}>
+            First 3 shown as earned, remaining 4 as locked — mirrors how BadgeRow sorts (earned first).
+          </p>
+        </SubSection>
       </Section>
 
       {/* ── Footer ── */}
@@ -624,6 +690,63 @@ function EmptyStateExample() {
       }}>
         Import Gear List →
       </button>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Compact Hero Mockup (Phase 2)
+═══════════════════════════════════════════════════════════════ */
+
+function CompactHeroMockup({ label, dark = false, onTrek = false }: { label: string; dark?: boolean; onTrek?: boolean }) {
+  const bg = dark
+    ? "linear-gradient(175deg, #1A2412 0%, #2A3620 55%, #3A4D2A 100%)"
+    : "linear-gradient(175deg, #3A4D2A 0%, #4E6635 55%, #6B8847 100%)";
+  const countdown = onTrek ? "⛺ On trail · Day 3 of Trek" : "⏱ 47 days · Departure Jun 14";
+  return (
+    <div>
+      <div style={{ fontSize: 11, color: "#8B7D6B", marginBottom: 6, fontStyle: "italic" }}>{label}</div>
+      <div style={{
+        background: bg,
+        borderRadius: "0 0 16px 16px",
+        height: 56,
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "0 16px",
+        position: "relative",
+        overflow: "hidden",
+      }}>
+        {/* Texture overlay */}
+        <div style={{
+          position: "absolute", inset: 0, opacity: 0.06, pointerEvents: "none",
+          backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
+        }} />
+        {/* Troop logo placeholder */}
+        <div style={{
+          width: 32, height: 32, borderRadius: 8, background: "rgba(253,250,245,0.92)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 14, fontWeight: 900, color: "#3A4D2A", flexShrink: 0, zIndex: 1,
+        }}>T</div>
+        {/* Crew identity */}
+        <div style={{ flex: 1, minWidth: 0, zIndex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            Crew 614 — Philmont 2026
+          </div>
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)" }}>{countdown}</div>
+        </div>
+        {/* Action buttons */}
+        <div style={{ display: "flex", gap: 4, zIndex: 1 }}>
+          {["🌙", "⚙️", "👤"].map((icon, i) => (
+            <div key={i} style={{
+              width: 32, height: 32, borderRadius: 10,
+              background: "rgba(255,255,255,0.10)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 14,
+            }}>{icon}</div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

@@ -6,7 +6,8 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useAdventure } from "../contexts/AdventureContext";
 import { useAdventureTheme } from "../contexts/AdventureThemeContext";
 import { useAuth } from "../contexts/AuthContext";
-import { TRAIL_BADGES, JOURNEY_WAYPOINTS } from "../utils/theme";
+import { JOURNEY_WAYPOINTS } from "../utils/theme";
+import { BadgeRow } from "./BadgeSystem";
 import { computeCrewReadiness, computeMemberReadiness } from "../utils/readiness";
 import { Activity, Mountain, Footprints, Backpack, RefreshCw, ChevronRight, Target, AlertTriangle, CheckCircle2, Sparkles, Brain, Compass, Route, Lock } from "lucide-react";
 import type { ThemeColors, Skill, ReadinessScore, JourneyWaypoint, TrailBadgeDef, GearCatalogItem, MemberGearItem, Achievement } from "../types";
@@ -324,7 +325,6 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
   const [addCategory, setAddCategory] = useState<string>("training");
   const [confirmDeleteSkill, setConfirmDeleteSkill] = useState<number | null>(null);
-  const [showBadgeLegend, setShowBadgeLegend] = useState<boolean>(false);
 
   // AI Readiness Engine state
   const [showAssessment, setShowAssessment] = useState<boolean>(false);
@@ -856,69 +856,9 @@ export default function Skills({ members, active, skills, analysis, isAdmin, onT
         </div>
       )}
 
-      {/* Trail Badge & Waypoint Legend */}
+      {/* Trail Badges — Phase 3 */}
       <div className="tl-card mb-2.5">
-        <div onClick={() => setShowBadgeLegend(!showBadgeLegend)} className="flex items-center justify-between cursor-pointer">
-          <div className="flex items-center gap-2">
-            <span className="text-[14px]">{"\uD83C\uDFC5"}</span>
-            <span className="text-[13px] font-bold text-tl-heading font-display">Trail Guide</span>
-            <span className="text-[10px] text-tl-text-dimmer">badges & waypoints</span>
-          </div>
-          <span className="text-[10px] text-tl-text-dimmer font-medium">{showBadgeLegend ? "Collapse" : "Expand"}</span>
-        </div>
-
-        {showBadgeLegend && (
-          <div className="mt-2.5">
-            {/* Trail Badges */}
-            <div className="text-[10px] font-bold text-tl-text-dim tracking-[1.2px] uppercase mb-1.5 font-body">
-              Trail Badges &mdash; Earn by completing each category
-            </div>
-            <div className="grid grid-cols-2 gap-1 mb-3">
-              {Object.entries(TRAIL_BADGES).map(([key, badge]: [string, any]) => {
-                const descriptions: Record<string, string> = {
-                  gear_ready: "All gear items owned or packed",
-                  trail_medic: "All medical items completed",
-                  admin_pro: "All admin tasks completed",
-                  training_complete: "All training skills completed",
-                  ai_ready: "Completed AI self-assessment",
-                  ai_gear: "Used AI gear recommendations",
-                  fully_prepared: "All categories complete!",
-                };
-                return (
-                  <div key={key} className="flex items-center gap-2 px-2 py-1.5 rounded-[8px] bg-tl-bg-alt border border-tl-border">
-                    <span className="text-[16px] shrink-0">{badge.icon}</span>
-                    <div>
-                      <div className="text-[11px] font-semibold text-tl-heading">{badge.title}</div>
-                      <div className="text-[9px] text-tl-text-dimmer leading-[1.3]">{descriptions[key]}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Journey Waypoints */}
-            <div className="text-[10px] font-bold text-tl-text-dim tracking-[1.2px] uppercase mb-1.5 font-body">
-              Journey Waypoints &mdash; Crew readiness milestones
-            </div>
-            {JOURNEY_WAYPOINTS.map((wp: JourneyWaypoint, i: number) => (
-              <div key={wp.pct} className="flex items-center gap-2 px-2 py-1 rounded-[6px] mb-0.5" style={{
-                background: readiness.overall >= wp.pct ? theme.accentBg : "transparent",
-                border: readiness.overall >= wp.pct ? `1px solid ${theme.borderAccent}` : "1px solid transparent",
-              }}>
-                <div className="w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-[9px] font-bold" style={{
-                  background: readiness.overall >= wp.pct ? theme.accent : theme.progressBg,
-                  color: readiness.overall >= wp.pct ? "#fff" : theme.textDimmer,
-                }}>
-                  {wp.pct === 100 ? "\u2B50" : readiness.overall >= wp.pct ? "\u2713" : `${wp.pct}`}
-                </div>
-                <div>
-                  <span className="text-[11px] font-semibold" style={{ color: readiness.overall >= wp.pct ? theme.accentLight : theme.textMuted }}>{wp.pct}% &mdash; {wp.name}</span>
-                  <div className="text-[9px] text-tl-text-dimmer italic">{wp.message}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <BadgeRow achievements={achievements as any} userId={user!.id} size={64} />
       </div>
 
       {/* Overall readiness */}
