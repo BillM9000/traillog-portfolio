@@ -157,6 +157,15 @@ export default function Header({ user, troop, adventure, members, analysis, trek
 
   const cd = getCountdownDisplay();
 
+  // Countdown pill background — phase-coded per design bible
+  const countdownPillBg = (): string => {
+    if (!countdown?.days || countdown.onTrek || countdown.gone) return "rgba(0,0,0,0.25)";
+    if (countdown.days >= 90) return "rgba(91,122,58,0.82)";
+    if (countdown.days >= 60) return "rgba(196,122,42,0.88)";
+    if (countdown.days >= 30) return "rgba(212,112,10,0.90)";
+    return "rgba(204,51,51,0.90)";
+  };
+
   // Texture pattern — sourced from AdventureTheme (6% opacity overlay)
   const textureStyle: React.CSSProperties = {
     backgroundImage: adventureTheme.def.textureSvgUrl,
@@ -364,8 +373,8 @@ export default function Header({ user, troop, adventure, members, analysis, trek
 
         {/* Countdown */}
         {cd && (
-          <div className="inline-flex items-center gap-1 text-[13px] font-[800] text-white font-body bg-black/25 backdrop-blur-[4px] py-1 px-3.5 rounded-pill mt-0.5"
-            style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>
+          <div className="inline-flex items-center gap-1 text-[13px] font-[800] text-white font-body backdrop-blur-[4px] py-1 px-3.5 rounded-pill mt-0.5"
+            style={{ background: countdownPillBg(), textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>
             {cd.icon} {cd.text}
           </div>
         )}

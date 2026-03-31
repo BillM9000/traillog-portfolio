@@ -13,9 +13,10 @@ interface DashboardOverviewProps {
   trekDates: TrekDates | null;
 }
 
+// Design bible: ≥70% green, 30–69% amber, <30% red
 function statusColor(value: number, thresholds: [number, number] = [30, 70]): string {
-  if (value <= thresholds[0]) return 'var(--tl-danger)';
-  if (value <= thresholds[1]) return 'var(--tl-urgency)';
+  if (value < thresholds[0]) return 'var(--tl-danger)';
+  if (value < thresholds[1]) return 'var(--tl-urgency)';
   return 'var(--tl-accent)';
 }
 

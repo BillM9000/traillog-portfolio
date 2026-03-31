@@ -21,6 +21,7 @@ interface StatusColorSet {
 const STATUS_COLORS_DARK: Record<string, StatusColorSet> = {
   proposed: { bg: "#3E3510", border: "#FFB300", text: "#FFD54F" },
   scheduled: { bg: "#1B3A1B", border: "#4CAF50", text: "#81C784" },
+  overdue: { bg: "#3A1010", border: "#CC3333", text: "#FF8080" },
   completed: { bg: "#0D2744", border: "#42A5F5", text: "#90CAF9" },
   cancelled: { bg: "#2A2A2A", border: "#757575", text: "#BDBDBD" },
 };
@@ -28,6 +29,7 @@ const STATUS_COLORS_DARK: Record<string, StatusColorSet> = {
 const STATUS_COLORS_LIGHT: Record<string, StatusColorSet> = {
   proposed: { bg: "#FFF8E1", border: "#FFB300", text: "#F57F17" },
   scheduled: { bg: "#E8F5E9", border: "#4CAF50", text: "#2E7D32" },
+  overdue: { bg: "#FFF0F0", border: "#CC3333", text: "#CC3333" },
   completed: { bg: "#E3F2FD", border: "#42A5F5", text: "#1565C0" },
   cancelled: { bg: "#FAFAFA", border: "#BDBDBD", text: "#757575" },
 };
@@ -405,14 +407,16 @@ function EventCard({ event, theme, mode, isAdmin, currentUserId, members, isPast
   }, [event.attendance]);
 
   const statusColors = mode === "dark" ? STATUS_COLORS_DARK : STATUS_COLORS_LIGHT;
+  const datePassed = event.date < new Date().toISOString().slice(0, 10);
   const statusKey = event.status === "completed" ? "completed"
     : event.status === "cancelled" ? "cancelled"
     : event.type === "proposed" ? "proposed"
+    : datePassed ? "overdue"
     : "scheduled";
   const statusInfo = statusColors[statusKey] || statusColors.scheduled;
-  const statusLabel = statusKey === "proposed" ? "Proposed" : statusKey === "scheduled" ? "Scheduled" : statusKey === "completed" ? "Completed" : "Cancelled";
+  const STATUS_LABELS: Record<string, string> = { proposed: "Proposed", scheduled: "Scheduled", overdue: "Overdue", completed: "Completed", cancelled: "Cancelled" };
+  const statusLabel = STATUS_LABELS[statusKey] || "Scheduled";
   const isCompleted = event.status === "completed";
-  const datePassed = event.date < new Date().toISOString().slice(0, 10);
 
   const toggleAttendee = (userId: number) => {
     setAttendees(prev => {

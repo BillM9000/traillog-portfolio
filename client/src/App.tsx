@@ -859,7 +859,7 @@ interface CTABannerProps {
 
 function CTABanner({ members, active, setView, theme }: CTABannerProps) {
   const am = active !== null ? members[active] : null;
-  const { memberGearMap } = useAdventure();
+  const { memberGearMap, skills: allSkills } = useAdventure();
   if (!am) return null;
 
   const items: { emoji: string; title: string; desc: string; tab: string }[] = [];
@@ -872,9 +872,22 @@ function CTABanner({ members, active, setView, theme }: CTABannerProps) {
   if (gearDone === 0) {
     items.push({ emoji: "\u{1F392}", title: "Gear checklist not started", desc: "Browse the catalog and start checking off gear \u2192", tab: "gear" });
   }
-  const skillsDone = (am.skills || []).length;
-  if (skillsDone === 0) {
-    items.push({ emoji: "\u{1F4CB}", title: "Readiness skills incomplete", desc: "Complete your readiness checklist \u2192", tab: "skills" });
+  const totalTraining = allSkills.filter(s => s.category === "training").length;
+  const totalMedical = allSkills.filter(s => s.category === "medical").length;
+  const totalAdmin = allSkills.filter(s => s.category === "admin").length;
+  const doneTraining = (am.skills || []).length;
+  const doneMedical = (am.medical || []).length;
+  const doneAdmin = (am.admin_tasks || []).length;
+  const remTraining = Math.max(0, totalTraining - doneTraining);
+  const remMedical = Math.max(0, totalMedical - doneMedical);
+  const remAdmin = Math.max(0, totalAdmin - doneAdmin);
+  const totalRemaining = remTraining + remMedical + remAdmin;
+  if (totalRemaining > 0) {
+    const parts: string[] = [];
+    if (remTraining > 0) parts.push(`Training: ${remTraining} remaining`);
+    if (remMedical > 0) parts.push(`Medical: ${remMedical} form${remMedical !== 1 ? "s" : ""} needed`);
+    if (remAdmin > 0) parts.push(`Admin: ${remAdmin} task${remAdmin !== 1 ? "s" : ""} to do`);
+    items.push({ emoji: "\u{1F4CB}", title: "Readiness incomplete", desc: `${parts.join(" \u00B7 ")} \u2192`, tab: "skills" });
   }
 
   if (items.length === 0) return null;

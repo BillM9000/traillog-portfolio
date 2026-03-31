@@ -172,7 +172,7 @@ export default function MembersTable({
                 {/* Readiness % */}
                 <td className="font-body text-[13px] py-2 px-3 whitespace-nowrap">
                   <div className="flex items-center gap-2">
-                    <span className="min-w-[28px] text-right">
+                    <span className="min-w-[28px] text-right font-semibold" style={{ color: rColor }}>
                       {row.readiness}%
                     </span>
                     <div
