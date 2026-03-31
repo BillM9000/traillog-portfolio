@@ -4,7 +4,7 @@
 
 TrailLog is a web-based platform that helps Scout troops prepare for high-adventure treks at Philmont Scout Ranch. It brings together troop leaders, parents, and scouts into a shared workspace where they can coordinate training schedules, track gear readiness, manage medical and administrative requirements, and monitor overall crew preparedness for their expedition.
 
-The application is hosted at **https://app.example.com** and serves multiple troops simultaneously as a multi-tenant platform.
+The application is hosted at **https://traillog.gracezero.ai** and serves multiple troops simultaneously as a multi-tenant platform.
 
 ## Tenant Model
 
@@ -12,9 +12,9 @@ TrailLog organizes data into a four-level hierarchy:
 
 ```
 Troop (scoped by BSA council)
-  └── Adventure (one per trek)
-        └── Crew (team within an adventure, own itinerary/dates)
-              └── Members (scouts, adults, and support crew)
+  +-- Adventure (one per trek)
+        +-- Crew (team within an adventure, own itinerary/dates)
+              +-- Members (scouts, adults, and support crew)
 ```
 
 **Troops** are the top-level organizational unit. Because BSA troop numbers are only unique within a council (Troop 614 in the Greater St. Louis Area Council is a different troop than Troop 614 in the Sam Houston Area Council), every troop is scoped by its council name. Troops can be public (discoverable in the lobby) or private (invite-only).
@@ -37,58 +37,79 @@ TrailLog uses a two-tier administration model:
 
 TrailLog supports two authentication methods, both session-based:
 
-1. **Google OAuth**: Users click "Sign in with Google," which triggers a server-side redirect through Passport.js. Google returns the user's profile, and the server creates or updates the local user record. No tokens are stored on the client.
+1. **Google OAuth**: Users click "Sign in with Google," which triggers a server-side redirect through Passport.js. Google returns the user's profile, and the server creates or updates the local user record. No tokens are stored on the client. Session fixation is prevented via `req.session.regenerate()` after login.
 
-2. **Email and Password**: Users register with an email address and a password (minimum 8 characters). Passwords are hashed with bcrypt before storage. New accounts receive a verification email with a unique token that must be clicked to activate the account.
+2. **Email and Password**: Users register with an email address and a password (minimum 8 characters). Passwords are hashed with bcrypt before storage. New accounts receive a verification email with a unique token that must be clicked to activate the account. Password reset is supported via time-limited tokens.
 
-Both methods establish a server-side session. Subsequent requests include a session cookie that the server validates on every API call.
+Both methods establish a server-side session stored in PostgreSQL via `connect-pg-simple`. Subsequent requests include a session cookie that the server validates on every API call.
 
 ## Client Architecture
 
 The front end is a single-page application built with:
 
-- **React 18** for the component model and rendering
+- **React 18** with **TypeScript** for the component model and rendering
 - **Vite** for development server and production builds
-- **30+ components** organized by feature (gear list, itinerary, admin panel, training calendar, readiness dashboard, home dashboard, help system, and others)
+- **Tailwind CSS v4** with `@tailwindcss/vite` plugin, custom `tl-*` component classes, and `clsx` for conditional class composition
+- **42+ components** organized by feature, with a dedicated `desktop/` directory for the responsive sidebar layout
+- **React.lazy** code splitting for 16 components (62% main bundle reduction)
 - **4 React Contexts** that provide shared state:
   - **AuthContext** -- current user, login/logout state
-  - **ThemeContext** -- light/dark mode preference
+  - **ThemeContext** -- light/dark mode via `dark` class on `<html>`
   - **AdventureContext** -- active adventure data including members, gear, and achievements
   - **ToastContext** -- transient notification messages
 
 The client communicates with the server exclusively through JSON API calls. There are no WebSocket connections; data freshness is maintained through periodic polling in the AdventureContext.
 
+### Desktop Layout (1024px+)
+
+At desktop widths, the application renders a sidebar + topbar layout:
+- **Sidebar** (220px, collapsible to 64px): Forest gradient background, navigation icons for all content tabs plus admin/profile/help items. Collapse state persisted in localStorage.
+- **TopBar** (48px): Section title, countdown badge, theme toggle, profile avatar.
+- **DashboardOverview**: Stat cards and readiness bars, shown only on Training/Readiness views.
+- **MembersTable**: Sortable table (Name, Role, Readiness%, Training, Gear), shown on Training/Readiness views.
+
+### Mobile Layout (<1024px)
+
+On mobile, the application uses:
+- **Header** (88px): Troop logo, crew name, date range, countdown, member count.
+- **Tab Grid** (3x2): Lucide icons for Training, Readiness, Itinerary, Gear, Reports, Docs.
+
 ## Server Architecture
 
 The back end is a Node.js Express.js monolith that handles:
 
-- 120+ API routes for all application operations (including 35+ crew-scoped routes)
-- Session management via express-session with a SQLite-backed session store
+- 161 API routes across auth, troops, adventures, crews, members, gear, training, and admin modules
+- Session management via express-session with a PostgreSQL-backed session store (`connect-pg-simple`)
 - Google OAuth and local authentication via Passport.js
-- CSRF protection via double-submit cookie pattern
+- CSRF protection via double-submit cookie pattern (session token -> XSRF-TOKEN cookie -> X-CSRF-Token header)
+- Input validation via 14 Zod schemas on auth, troop, training, admin, vote, and readiness routes
 - Email delivery for invitations, notifications, and verification (12 templates)
 - AI readiness engine with Claude API integration and fallback plan generation
 - AI gear recommendations with background caching
+- Audit logging via pino (structured JSON)
+- Rate limiting (auth: 20/15min, API: 100/min)
 - Static file serving for the built React application and standalone vote page
 
 The server runs as a single process. There is no background job queue, no microservice decomposition, and no external cache layer.
 
 ## Database
 
-TrailLog uses **SQLite** as its sole data store, accessed through the **better-sqlite3** driver in synchronous mode. There is no ORM; all database access uses hand-written SQL with prepared statements.
+TrailLog uses **PostgreSQL** as its sole data store, accessed through the `pg` Pool driver in asynchronous mode. There is no ORM; all database access uses hand-written SQL with parameterized queries (`$1, $2, $3` placeholders).
 
-### Why SQLite
+The database runs on the VPS host (not in Docker) and the application container connects via the Docker host network bridge (`172.18.0.1:5432`).
 
-- **Simplicity**: A single file on disk eliminates the need to provision, configure, and maintain a separate database server. The entire data layer deploys as part of the application container.
-- **Single-server fit**: TrailLog runs on one VPS. SQLite is purpose-built for this deployment model, where a single application process owns the database.
-- **WAL mode**: Write-Ahead Logging allows concurrent read access while a write is in progress, which is sufficient for the application's concurrency requirements.
+### Why PostgreSQL
+
+- **Production-grade**: Full ACID compliance, robust concurrent access, and mature tooling for backup/restore.
+- **Connection pooling**: The `pg` Pool manages connections efficiently, supporting async/await patterns throughout the Express route handlers.
+- **Migration from SQLite**: The application originally used SQLite (better-sqlite3) with synchronous access. As the schema grew to 32 tables and 170+ database functions, PostgreSQL provided better concurrency, proper session storage, and simplified backup via `pg_dump`.
 
 ### Why a Monolith
 
-The application serves a well-defined user base (scout troops preparing for treks) with predictable traffic patterns. A monolithic architecture keeps the deployment simple, the codebase navigable, and the operational overhead low. Splitting into microservices would add complexity without a corresponding benefit at this scale.
+The application serves a well-defined user base (scout troops preparing for treks) with predictable traffic patterns. A monolithic architecture keeps the deployment simple, the codebase navigable, and the operational overhead low.
 
 ### Why No ORM
 
-- **Prepared statements**: All queries use parameterized prepared statements, which SQLite compiles once and reuses. This provides both performance and protection against SQL injection.
+- **Parameterized queries**: All queries use `$1, $2, $3` numbered placeholders, which PostgreSQL compiles as prepared statements. This provides both performance and protection against SQL injection.
 - **Explicit SQL**: The queries are readable, auditable, and directly correspond to the schema. There is no hidden query generation or N+1 problem to debug.
-- **Synchronous access**: better-sqlite3's synchronous API pairs naturally with Express route handlers, avoiding the callback or promise overhead that an ORM would introduce on top of an already-synchronous driver.
+- **Async access**: The `pg` Pool's async API pairs naturally with Express route handlers using async/await.

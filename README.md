@@ -17,13 +17,14 @@ TrailLog is a multi-tenant platform for BSA high-adventure crews to coordinate t
 
 | Layer | Technology |
 |-------|-----------|
-| **Frontend** | React 18 + Vite SPA, 29 components, 4 contexts |
-| **Backend** | Express.js, 120+ REST API endpoints |
-| **Database** | SQLite (WAL mode), schema v22, 22 incremental migrations |
+| **Frontend** | React 18 + Vite SPA, TypeScript, Tailwind CSS v4, 42+ components, 4 contexts |
+| **Backend** | Express.js, 161 REST API endpoints, Zod validation |
+| **Database** | PostgreSQL (migrated from SQLite), schema v25, 32 tables |
 | **AI Engine** | Anthropic Claude API (Sonnet + Haiku) |
 | **Auth** | Google OAuth 2.0 + email/password (Passport.js, bcrypt) |
-| **Security** | CSRF, CSP, HSTS, rate limiting, parameterized SQL |
-| **Infrastructure** | Docker multi-stage build, Traefik reverse proxy, Let's Encrypt TLS |
+| **Security** | CSRF, CSP, HSTS, rate limiting, parameterized SQL, audit logging (pino) |
+| **Infrastructure** | Docker + Traefik reverse proxy, Let's Encrypt TLS |
+| **Testing** | Playwright integration suite — 17 suites, 168 tests, 10 personas |
 | **Email** | 12 transactional templates via Gmail SMTP |
 
 ### Data Model
@@ -76,14 +77,43 @@ Both engines use:
 
 | Feature | Description |
 |---------|-------------|
-| **Gear Tracking** | 76-item catalog with 4 sharing types (personal, crew, buddy, provided). 3-state tracking (needed → owned → packed). Dynamic pack weight calculation with food/water estimates. |
-| **Readiness Scoring** | 4-category algorithm (training, gear, medical, admin) computed per-member and per-crew. Single source of truth in `client/src/utils/readiness.js`. |
+| **Desktop Layout** | Responsive sidebar + topbar at 1024px+, collapsible navigation, dashboard overview with stat cards and readiness bars. |
+| **Gear Tracking** | 76-item catalog with 4 sharing types (personal, crew, buddy, provided). 3-state tracking (needed -> owned -> packed). Dynamic pack weight calculation with food/water estimates. |
+| **Readiness Scoring** | 4-category algorithm (training, gear, medical, admin) computed per-member and per-crew. Single source of truth in `client/src/utils/readiness.ts`. |
 | **Training Calendar** | AM/PM/All-Day availability tracking, best-window optimization, scheduled events with RSVP. |
 | **AI Readiness Coach** | Personalized 4-phase training plans based on fitness assessment, itinerary difficulty, and time remaining. |
 | **Crew Layer** | Multi-crew support within adventures. Independent itineraries, dates, and member rosters per crew. |
 | **Parent-Scout Linking** | Three workflows: auto-link (email domain match), request/approve, admin override. |
-| **Reports & Export** | Gear summary, pack weight analysis, Excel export for offline use. |
-| **Security** | CSRF double-submit cookies, CSP headers, rate limiting, parameterized SQL, non-root Docker. |
+| **Reports & Export** | 8 report types, gear summary, pack weight analysis, Excel export (exceljs, lazy-loaded). |
+| **Security** | CSRF double-submit cookies, CSP headers, rate limiting, parameterized SQL, non-root Docker, Zod validation. |
+
+---
+
+## Testing Strategy
+
+TrailLog uses a comprehensive Playwright integration test suite that runs against the production database with 10 pre-configured test personas.
+
+| Suite | Tests | Coverage |
+|-------|-------|----------|
+| Auth & Session | 12 | Login, logout, session persistence, CSRF |
+| Troop Management | 10 | Create, join, invite codes, settings |
+| Adventure CRUD | 8 | Create, update, member management |
+| Training Calendar | 9 | Availability, events, RSVP |
+| Gear System | 11 | Catalog, status tracking, pack weight |
+| Itinerary | 7 | Day cards, print, ICS export |
+| Reports | 8 | Excel export, print views |
+| Admin Panel | 10 | Member roles, settings, removal |
+| Global Admin | 6 | Platform settings, gear catalog |
+| Parent-Scout | 8 | Linking workflows, restrictions |
+| Onboarding | 7 | Wizard flow, profile setup |
+| Security | 9 | CSRF, rate limiting, injection |
+| Multi-Crew | 5 | Crew switching, combined views |
+| Accessibility | 6 | Keyboard nav, ARIA, contrast |
+| **Email Notifications** | **15** | All 12 email-triggering endpoints |
+| **Member Lifecycle** | **21** | Signup -> join -> approve -> roles -> leave |
+| **Data Mutations** | **22** | CRUD, cascading deletes, isolation |
+
+**See full methodology:** [docs/testing/methodology.md](docs/testing/methodology.md)
 
 ---
 
@@ -97,7 +127,7 @@ This project demonstrates competencies across all 5 domains of the [Claude Certi
 
 ## What's in This Repo
 
-This is the **public portfolio version** — architecture documentation, security docs, AI integration code samples, and Mermaid diagrams. The full source code (120+ API routes, 29 React components, 3200-line database layer, 12 email templates) is in a private repository.
+This is the **public portfolio version** — architecture documentation, security docs, AI integration code samples, and Mermaid diagrams. The full source code (161 API routes, 42+ TypeScript React components, 2100-line async database layer, 12 email templates) is in a private repository.
 
 ```
 server/
@@ -111,9 +141,10 @@ client/src/utils/
 docs/
   architecture/     — System overview, data flow
   security/         — Auth, data protection, threat model, dependency audit
+  testing/          — Integration test methodology (Playwright)
   diagrams/         — 6 Mermaid architectural diagrams
 
-Dockerfile          — Multi-stage build, non-root user (uid 1001)
+Dockerfile          — Single-stage build, non-root user (uid 1001)
 docker-compose.yml  — Service config with Traefik TLS automation
 ARCHITECTURE.md     — Comprehensive system design document
 CLAUDE_ARCHITECT_ALIGNMENT.md — Exam domain mapping
@@ -130,10 +161,10 @@ CLAUDE_ARCHITECT_ALIGNMENT.md — Exam domain mapping
 
 ### Full Application (Private Repo)
 
-The complete codebase — including all API routes, React components, database schema, email templates, seed data, and deployment pipeline — is available upon request for interview review.
+The complete codebase — including all API routes, React components, database schema, email templates, seed data, Playwright test suites, and deployment pipeline — is available upon request for interview review.
 
 ---
 
 ## Built With Claude Code
 
-This entire application — frontend, backend, database, security hardening, documentation, and deployment pipeline — was built using [Claude Code](https://claude.com/claude-code) as the primary development tool.
+This entire application — frontend, backend, database, security hardening, testing, documentation, and deployment pipeline — was built using [Claude Code](https://claude.com/claude-code) as the primary development tool.
