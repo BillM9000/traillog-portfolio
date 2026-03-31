@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrailLog Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; background: #0E1409; font-family: 'DM Sans', sans-serif; color: #FDFAF5; }
+.display { font-family: 'DM Serif Display', serif; }
+
+:root {
+  --forest: #5B7A3A; --sage: #B8CC9A; --cream: #FDFAF5; --bark: #2C2416;
+  --dark1: #1A2412; --dark2: #2A3620; --dark3: #1A1F16;
+  --warm: #D4E4B8; --muted: #B0A898;
+}
+
+/* Stage */
+.stage {
+  width: 100vw; height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(175deg, var(--dark1) 0%, #0E1409 50%, var(--dark3) 100%);
+  position: relative; overflow: hidden;
+}
+
+/* Scene system */
+.scene {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center; flex-direction: column;
+  opacity: 0; pointer-events: none; transition: opacity 0.8s ease;
+  padding: 60px 40px 100px;
+}
+.scene.active { opacity: 1; pointer-events: auto; }
+
+/* Progress bar */
+.progress-bar {
+  position: fixed; top: 0; left: 0; height: 3px; z-index: 100;
+  background: linear-gradient(90deg, var(--sage), var(--forest));
+  transition: width 0.3s linear;
+}
+
+/* Dots */
+.scene-dots {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 10px; z-index: 100;
+}
+.scene-dots button {
+  width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--sage);
+  background: transparent; cursor: pointer; transition: all 0.3s; opacity: 0.4;
+}
+.scene-dots button.active { background: var(--sage); opacity: 1; transform: scale(1.2); }
+
+/* Controls */
+.controls {
+  position: fixed; top: 20px; right: 24px; z-index: 100;
+  display: flex; gap: 12px; align-items: center;
+}
+.controls button {
+  background: rgba(184,204,154,0.12); border: 1px solid rgba(184,204,154,0.2);
+  color: var(--sage); font-size: 13px; padding: 6px 14px; border-radius: 8px;
+  cursor: pointer; font-family: 'DM Sans'; font-weight: 600; transition: all 0.2s;
+}
+.controls button:hover { background: rgba(184,204,154,0.25); }
+.controls .timer { color: rgba(184,204,154,0.4); font-size: 11px; font-weight: 500; }
+
+/* Animations */
+@keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes slideDown { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scaleIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes fillWidth { from { width: 0; } }
+@keyframes countUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes glow { 0%, 100% { box-shadow: 0 0 20px rgba(91,122,58,0.3); } 50% { box-shadow: 0 0 40px rgba(91,122,58,0.6); } }
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.anim-up { animation: slideUp 0.7s ease both; }
+.anim-down { animation: slideDown 0.6s ease both; }
+.anim-fade { animation: fadeIn 0.8s ease both; }
+.anim-scale { animation: scaleIn 0.6s ease both; }
+.d1 { animation-delay: 0.15s; } .d2 { animation-delay: 0.3s; } .d3 { animation-delay: 0.5s; }
+.d4 { animation-delay: 0.7s; } .d5 { animation-delay: 0.9s; } .d6 { animation-delay: 1.1s; }
+.d7 { animation-delay: 1.3s; } .d8 { animation-delay: 1.5s; }
+
+/* Shared */
+.label {
+  font-size: 11px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase;
+  color: var(--sage); opacity: 0.7; margin-bottom: 20px;
+}
+.divider {
+  width: 60px; height: 2px; background: var(--forest); border-radius: 1px; margin: 20px auto;
+}
+.big-number {
+  font-size: clamp(64px, 12vw, 120px); font-weight: 900; line-height: 1;
+  background: linear-gradient(135deg, var(--sage), var(--cream));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.stat-grid {
+  display: grid; gap: 16px; margin-top: 32px;
+}
+.stat-card {
+  background: rgba(91,122,58,0.06); border: 1px solid rgba(184,204,154,0.12);
+  border-radius: 16px; padding: 24px; text-align: center;
+}
+.stat-card .num {
+  font-size: 36px; font-weight: 900; color: var(--sage); line-height: 1;
+}
+.stat-card .lbl {
+  font-size: 13px; color: var(--muted); margin-top: 6px; font-weight: 500;
+}
+.feature-row {
+  display: flex; align-items: center; gap: 16px; padding: 14px 20px;
+  border-radius: 12px; background: rgba(91,122,58,0.05);
+  border: 1px solid rgba(184,204,154,0.08);
+}
+.feature-row .icon-circle {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(91,122,58,0.15); display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.feature-row .text { flex: 1; }
+.feature-row .text h4 { font-size: 15px; font-weight: 700; color: var(--cream); }
+.feature-row .text p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+/* ── Scene 1: Intro ── */
+.scene-intro .logo-wrap {
+  margin-bottom: 28px; animation: glow 3s ease-in-out infinite;
+  border-radius: 50%; padding: 4px;
+}
+.scene-intro .logo-ring {
+  width: 120px; height: 120px; border-radius: 50%;
+  border: 3px solid var(--sage); display: flex; align-items: center; justify-content: center;
+  background: rgba(91,122,58,0.08);
+}
+.scene-intro .logo-ring svg { width: 72px; height: 72px; }
+.scene-intro h1 {
+  font-size: clamp(40px, 8vw, 64px); color: var(--cream); letter-spacing: -2px; line-height: 1;
+}
+.scene-intro h1 span { color: var(--sage); }
+.scene-intro .tagline {
+  font-size: clamp(15px, 2.5vw, 20px); color: var(--warm); margin-top: 16px;
+  max-width: 520px; text-align: center; line-height: 1.5;
+}
+.scene-intro .sub {
+  font-size: 12px; color: rgba(184,204,154,0.35); margin-top: 28px;
+  letter-spacing: 2.5px; text-transform: uppercase; font-weight: 600;
+}
+
+/* ── Scene 2: Platform at a glance ── */
+.scene-platform .stat-grid { grid-template-columns: repeat(4, 1fr); max-width: 700px; }
+
+/* ── Scene 3: Training & AI ── */
+.scene-training { max-width: 800px; width: 100%; margin: 0 auto; }
+.scene-training .split {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 32px;
+}
+.training-card {
+  background: rgba(26,36,18,0.4); border: 1px solid rgba(184,204,154,0.1);
+  border-radius: 16px; padding: 28px; position: relative; overflow: hidden;
+}
+.training-card h3 { font-size: 18px; font-weight: 700; color: var(--cream); margin-bottom: 10px; }
+.training-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+.training-card .badge-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.training-card .badge {
+  display: inline-block; padding: 4px 12px; border-radius: 8px;
+  font-size: 11px; font-weight: 700; background: rgba(91,122,58,0.15); color: var(--sage);
+}
+.ai-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(184,204,154,0.08), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* ── Scene 4: Gear ── */
+.scene-gear .gear-visual {
+  display: flex; align-items: center; gap: 48px; margin-top: 24px;
+}
+.gear-ring {
+  width: 180px; height: 180px; border-radius: 50%; position: relative;
+  border: 4px solid rgba(184,204,154,0.15); display: flex; align-items: center;
+  justify-content: center; flex-direction: column; flex-shrink: 0;
+}
+.gear-ring::after {
+  content: ''; position: absolute; inset: -4px; border-radius: 50%;
+  border: 4px solid transparent; border-top-color: var(--forest); border-right-color: var(--forest);
+  transform: rotate(-45deg);
+}
+.gear-ring .num { font-size: 48px; font-weight: 900; color: var(--sage); line-height: 1; }
+.gear-ring .lbl { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.gear-cats {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1;
+}
+.gear-cat {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  border-radius: 10px; background: rgba(91,122,58,0.05);
+  border: 1px solid rgba(184,204,154,0.08);
+}
+.gear-cat .dot {
+  width: 8px; height: 8px; border-radius: 2px; background: var(--forest); flex-shrink: 0;
+}
+.gear-cat span { font-size: 13px; color: var(--cream); font-weight: 500; }
+.gear-cat .ct { font-size: 12px; color: var(--sage); font-weight: 700; margin-left: auto; }
+
+/* ── Scene 5: Itinerary ── */
+.scene-itin .itin-hero {
+  display: flex; align-items: baseline; gap: 16px; margin-top: 8px;
+}
+.scene-itin .itin-hero .big { font-size: clamp(56px, 10vw, 96px); font-weight: 900; color: var(--sage); line-height: 1; }
+.scene-itin .itin-hero .unit { font-size: 24px; color: var(--muted); font-weight: 500; }
+.itin-trail {
+  display: flex; align-items: center; gap: 0; margin-top: 40px; max-width: 700px; width: 100%;
+}
+.itin-trail .day-dot {
+  width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0;
+  position: relative; z-index: 2;
+}
+.itin-trail .day-dot.staffed { background: var(--forest); color: var(--cream); }
+.itin-trail .day-dot.trail { background: rgba(91,122,58,0.15); color: var(--sage); border: 2px solid rgba(184,204,154,0.2); }
+.itin-trail .connector {
+  flex: 1; height: 2px; background: rgba(184,204,154,0.15); min-width: 8px;
+}
+.itin-stats-row {
+  display: flex; gap: 32px; margin-top: 32px;
+}
+.itin-stats-row .item { text-align: center; }
+.itin-stats-row .item .num { font-size: 28px; font-weight: 900; color: var(--sage); }
+.itin-stats-row .item .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ── Scene 6: Reports + Roles ── */
+.scene-reports .reports-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 32px;
+  max-width: 700px;
+}
+.report-card {
+  padding: 20px 16px; border-radius: 14px; text-align: center;
+  background: rgba(26,36,18,0.4); border: 1px solid rgba(184,204,154,0.1);
+}
+.report-card .icon { font-size: 28px; margin-bottom: 8px; }
+.report-card h4 { font-size: 12px; font-weight: 700; color: var(--cream); }
+.report-card p { font-size: 10px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+
+.roles-row {
+  display: flex; gap: 16px; margin-top: 28px;
+}
+.role-pill {
+  padding: 8px 20px; border-radius: 20px; font-size: 12px; font-weight: 700;
+  border: 1px solid rgba(184,204,154,0.15);
+}
+.role-pill.admin { background: rgba(91,122,58,0.2); color: var(--sage); }
+.role-pill.adult { background: rgba(184,204,154,0.08); color: var(--warm); }
+.role-pill.scout { background: rgba(44,36,22,0.4); color: var(--muted); }
+.role-pill.parent { background: rgba(91,122,58,0.1); color: var(--sage); }
+
+/* ── Scene 7: CTA ── */
+.scene-cta h2 {
+  font-size: clamp(32px, 6vw, 48px); color: var(--cream); max-width: 560px;
+  text-align: center; line-height: 1.2;
+}
+.scene-cta h2 span { color: var(--sage); }
+.scene-cta .cta-btn {
+  margin-top: 28px; padding: 16px 48px; border-radius: 14px; border: none;
+  background: var(--forest); color: var(--cream); font-size: 17px; font-weight: 700;
+  font-family: 'DM Sans'; cursor: pointer; text-decoration: none;
+  box-shadow: 0 4px 24px rgba(58,77,42,0.5); transition: transform 0.2s, box-shadow 0.2s;
+  display: inline-block;
+}
+.scene-cta .cta-btn:hover { transform: scale(1.05); box-shadow: 0 6px 32px rgba(58,77,42,0.7); }
+.scene-cta .url-hint { font-size: 13px; color: rgba(184,204,154,0.4); margin-top: 16px; }
+.scene-cta .free-badge { margin-top: 14px; font-size: 13px; color: var(--sage); font-weight: 600; }
+.scene-cta .feature-pills {
+  display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 24px;
+  max-width: 600px;
+}
+.scene-cta .pill {
+  padding: 6px 16px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  background: rgba(91,122,58,0.1); border: 1px solid rgba(184,204,154,0.12);
+  color: var(--sage);
+}
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .scene { padding: 60px 20px 100px; }
+  .scene-platform .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .scene-training .split { grid-template-columns: 1fr; }
+  .scene-gear .gear-visual { flex-direction: column; gap: 24px; }
+  .gear-cats { width: 100%; }
+  .itin-trail { flex-wrap: wrap; justify-content: center; gap: 4px; }
+  .itin-stats-row { flex-wrap: wrap; justify-content: center; }
+  .scene-reports .reports-grid { grid-template-columns: repeat(2, 1fr); }
+  .roles-row { flex-wrap: wrap; justify-content: center; }
+}
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="progress-bar" id="progress"></div>
+
+  <div class="controls">
+    <span class="timer" id="timer">1 / 7</span>
+    <button id="prevBtn" title="Previous">&larr;</button>
+    <button id="playBtn" title="Pause">&#10074;&#10074;</button>
+    <button id="nextBtn" title="Next">&rarr;</button>
+  </div>
+
+  <div class="scene-dots" id="dots"></div>
+
+  <!-- ── Scene 1: Intro ── -->
+  <div class="scene scene-intro active" data-duration="5000">
+    <div class="logo-wrap anim-scale">
+      <div class="logo-ring">
+        <!-- Real TrailLog favicon.svg -->
+        <svg width="72" height="72" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="24" cy="24" r="24" fill="#1A2412" />
+          <circle cx="24" cy="24" r="22" stroke="#B8CC9A" stroke-width="1.5" opacity="0.5" />
+          <path d="M10 34 L19 16 L24 24 L29 14 L38 34 Z" fill="#B8CC9A" opacity="0.9" />
+          <path d="M14 34 L21 20 L24 25 L27 18 L34 34 Z" fill="#FDFAF5" opacity="0.95" />
+          <path d="M12 38 Q18 32 22 33 Q26 34 30 28 Q34 22 38 18" stroke="#5B7A3A" stroke-width="2" fill="none" stroke-linecap="round" />
+          <circle cx="22" cy="33" r="2" fill="#FDFAF5" stroke="#5B7A3A" stroke-width="1" />
+          <circle cx="30" cy="28" r="2" fill="#FDFAF5" stroke="#5B7A3A" stroke-width="1" />
+          <circle cx="24" cy="4" r="1.8" fill="#D4E4B8" />
+        </svg>
+      </div>
+    </div>
+    <h1 class="display anim-up d1">Trail<span>Log</span></h1>
+    <p class="tagline anim-up d2">The AI-powered training coordinator for Scouting America high adventure crews</p>
+    <div class="divider anim-fade d3"></div>
+    <p class="sub anim-fade d4">See what's inside &darr;</p>
+  </div>
+
+  <!-- ── Scene 2: Platform at a glance ── -->
+  <div class="scene scene-platform" data-duration="5500">
+    <p class="label anim-down d1">The Platform</p>
+    <h2 class="display anim-up d1" style="font-size:clamp(28px,5vw,40px); text-align:center; max-width:600px;">
+      Everything your crew needs,<br><span style="color:var(--sage)">one place.</span>
+    </h2>
+    <div class="stat-grid anim-up d2">
+      <div class="stat-card">
+        <div class="num" style="font-size:42px;">6</div>
+        <div class="lbl">Core Views</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" style="font-size:42px;">76</div>
+        <div class="lbl">Gear Items Tracked</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" style="font-size:42px;">8</div>
+        <div class="lbl">Report Types</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" style="font-size:42px;">161</div>
+        <div class="lbl">API Endpoints</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:12px; margin-top:24px; flex-wrap:wrap; justify-content:center;">
+      <span class="anim-fade d3" style="padding:6px 16px; border-radius:20px; font-size:11px; font-weight:600; background:rgba(91,122,58,0.1); border:1px solid rgba(184,204,154,0.12); color:var(--sage);">Training</span>
+      <span class="anim-fade d3" style="padding:6px 16px; border-radius:20px; font-size:11px; font-weight:600; background:rgba(91,122,58,0.1); border:1px solid rgba(184,204,154,0.12); color:var(--sage);">Readiness</span>
+      <span class="anim-fade d4" style="padding:6px 16px; border-radius:20px; font-size:11px; font-weight:600; background:rgba(91,122,58,0.1); border:1px solid rgba(184,204,154,0.12); color:var(--sage);">Itinerary</span>
+      <span class="anim-fade d4" style="padding:6px 16px; border-radius:20px; font-size:11px; font-weight:600; background:rgba(91,122,58,0.1); border:1px solid rgba(184,204,154,0.12); color:var(--sage);">Gear</span>
+      <span class="anim-fade d5" style="padding:6px 16px; border-radius:20px; font-size:11px; font-weight:600; background:rgba(91,122,58,0.1); border:1px solid rgba(184,204,154,0.12); color:var(--sage);">Reports</span>
+      <span class="anim-fade d5" style="padding:6px 16px; border-radius:20px; font-size:11px; font-weight:600; background:rgba(91,122,58,0.1); border:1px solid rgba(184,204,154,0.12); color:var(--sage);">Docs</span>
+    </div>
+  </div>
+
+  <!-- ── Scene 3: Training & AI Coach ── -->
+  <div class="scene" data-duration="6000" style="align-items:center;">
+    <div class="scene-training" style="display:flex; flex-direction:column; align-items:center;">
+      <p class="label anim-down d1">Training & AI</p>
+      <h2 class="display anim-up d1" style="font-size:clamp(26px,4.5vw,36px); text-align:center; max-width:600px;">
+        Availability calendar + <span style="color:var(--sage)">AI Readiness Coach</span>
+      </h2>
+      <div class="split" style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:32px; width:100%;">
+        <div class="training-card anim-up d2">
+          <h3>Training Calendar</h3>
+          <p>Crew members tap dates they're available. A heat map reveals the best overlap so you can schedule group hikes when everyone can make it.</p>
+          <div class="badge-row">
+            <span class="badge">Heat Map</span>
+            <span class="badge">Multi-Crew</span>
+            <span class="badge">Drag to Select</span>
+          </div>
+        </div>
+        <div class="training-card ai-shimmer anim-up d3">
+          <h3>AI Readiness Coach</h3>
+          <p>Take a 30-second self-assessment and get a personalized multi-phase training plan based on your fitness level, experience, and departure date.</p>
+          <div class="badge-row">
+            <span class="badge">Powered by Claude</span>
+            <span class="badge">Personalized</span>
+            <span class="badge">4-Phase Plan</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; gap:24px; margin-top:24px;">
+        <div class="feature-row anim-fade d4" style="flex:1;">
+          <div class="icon-circle">%</div>
+          <div class="text">
+            <h4>Readiness Scores</h4>
+            <p>Training, Gear, Medical, Admin</p>
+          </div>
+        </div>
+        <div class="feature-row anim-fade d5" style="flex:1;">
+          <div class="icon-circle">&#9733;</div>
+          <div class="text">
+            <h4>Journey to Philmont</h4>
+            <p>Gamified progress milestones</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Scene 4: Gear ── -->
+  <div class="scene scene-gear" data-duration="5500" style="align-items:center;">
+    <div style="display:flex; flex-direction:column; align-items:center; max-width:800px; width:100%;">
+      <p class="label anim-down d1">Gear Management</p>
+      <h2 class="display anim-up d1" style="font-size:clamp(26px,4.5vw,36px); text-align:center;">
+        <span style="color:var(--sage)">76 items.</span> Every ounce tracked.
+      </h2>
+      <div class="gear-visual anim-up d2">
+        <div class="gear-ring">
+          <div class="num">76</div>
+          <div class="lbl">items in catalog</div>
+        </div>
+        <div class="gear-cats">
+          <div class="gear-cat anim-fade d2"><div class="dot"></div><span>Clothing</span><div class="ct">14</div></div>
+          <div class="gear-cat anim-fade d2"><div class="dot" style="background:var(--sage)"></div><span>Hygiene & LNT</span><div class="ct">10</div></div>
+          <div class="gear-cat anim-fade d3"><div class="dot"></div><span>Food & Cooking</span><div class="ct">6</div></div>
+          <div class="gear-cat anim-fade d3"><div class="dot" style="background:var(--sage)"></div><span>Fire & Light</span><div class="ct">5</div></div>
+          <div class="gear-cat anim-fade d4"><div class="dot"></div><span>Pack & Carry</span><div class="ct">5</div></div>
+          <div class="gear-cat anim-fade d4"><div class="dot" style="background:var(--sage)"></div><span>Shelter</span><div class="ct">5</div></div>
+          <div class="gear-cat anim-fade d5"><div class="dot"></div><span>First Aid & Safety</span><div class="ct">5</div></div>
+          <div class="gear-cat anim-fade d5"><div class="dot" style="background:var(--sage)"></div><span>+ 7 more categories</span><div class="ct">26</div></div>
+        </div>
+      </div>
+      <div style="display:flex; gap:16px; margin-top:24px; flex-wrap:wrap; justify-content:center;">
+        <div class="feature-row anim-fade d5">
+          <div class="icon-circle">&#10003;</div>
+          <div class="text">
+            <h4>Need / Own / Packed</h4>
+            <p>Three-state gear tracking</p>
+          </div>
+        </div>
+        <div class="feature-row anim-fade d6">
+          <div class="icon-circle">&#9878;</div>
+          <div class="text">
+            <h4>Weight Calculator</h4>
+            <p>Real-time pack weight totals</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Scene 5: Itinerary ── -->
+  <div class="scene scene-itin" data-duration="5500" style="align-items:center;">
+    <div style="display:flex; flex-direction:column; align-items:center; max-width:800px; width:100%;">
+      <p class="label anim-down d1">Itinerary</p>
+      <div class="itin-hero anim-up d1">
+        <span class="big">55</span>
+        <span class="unit">miles</span>
+        <span style="color:rgba(184,204,154,0.3); margin:0 8px;">&middot;</span>
+        <span class="big">12</span>
+        <span class="unit">days</span>
+      </div>
+      <p class="anim-fade d2" style="font-size:15px; color:var(--muted); margin-top:12px; text-align:center;">
+        Itinerary 12-3 &middot; Challenging &middot; Philmont Scout Ranch
+      </p>
+
+      <div class="itin-trail anim-up d3">
+        <div class="day-dot staffed" title="Day 1: Camping HQ">1</div><div class="connector"></div>
+        <div class="day-dot trail" title="Day 2: Olympia">2</div><div class="connector"></div>
+        <div class="day-dot staffed" title="Day 3: ABREU">3</div><div class="connector"></div>
+        <div class="day-dot trail" title="Day 4: Lookout Meadow">4</div><div class="connector"></div>
+        <div class="day-dot staffed" title="Day 5: Apache Springs">5</div><div class="connector"></div>
+        <div class="day-dot trail" title="Day 6: Wild Horse">6</div><div class="connector"></div>
+        <div class="day-dot trail" title="Day 7">7</div><div class="connector"></div>
+        <div class="day-dot staffed" title="Day 8">8</div><div class="connector"></div>
+        <div class="day-dot trail" title="Day 9">9</div><div class="connector"></div>
+        <div class="day-dot staffed" title="Day 10">10</div><div class="connector"></div>
+        <div class="day-dot trail" title="Day 11">11</div><div class="connector"></div>
+        <div class="day-dot staffed" title="Day 12: Return">12</div>
+      </div>
+      <div style="display:flex; gap:16px; margin-top:12px; font-size:11px; color:var(--muted);" class="anim-fade d4">
+        <span style="display:flex; align-items:center; gap:6px;"><span style="width:12px;height:12px;border-radius:50%;background:var(--forest);display:inline-block;"></span> Staffed Camp</span>
+        <span style="display:flex; align-items:center; gap:6px;"><span style="width:12px;height:12px;border-radius:50%;background:rgba(91,122,58,0.15);border:2px solid rgba(184,204,154,0.2);display:inline-block;"></span> Trail Camp</span>
+      </div>
+
+      <div class="itin-stats-row anim-up d4">
+        <div class="item"><div class="num">23,210'</div><div class="lbl">Total Gain</div></div>
+        <div class="item"><div class="num">23,020'</div><div class="lbl">Total Loss</div></div>
+        <div class="item"><div class="num">5</div><div class="lbl">Staffed Camps</div></div>
+        <div class="item"><div class="num">0</div><div class="lbl">Dry Camps</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Scene 6: Reports & Roles ── -->
+  <div class="scene scene-reports" data-duration="5500" style="align-items:center;">
+    <div style="display:flex; flex-direction:column; align-items:center;">
+      <p class="label anim-down d1">Reports & Collaboration</p>
+      <h2 class="display anim-up d1" style="font-size:clamp(26px,4.5vw,36px); text-align:center; max-width:600px;">
+        <span style="color:var(--sage)">8 report types.</span> Excel + Print.
+      </h2>
+      <div class="reports-grid">
+        <div class="report-card anim-up d2"><div class="icon">&#128203;</div><h4>Crew Roster</h4><p>Names, emails, roles</p></div>
+        <div class="report-card anim-up d2"><div class="icon">&#9881;</div><h4>Gear Matrix</h4><p>Every member, every item</p></div>
+        <div class="report-card anim-up d3"><div class="icon">&#9878;</div><h4>Pack Weight</h4><p>Personal + food + water</p></div>
+        <div class="report-card anim-up d3"><div class="icon">&#128197;</div><h4>Training RSVP</h4><p>Attendance grid</p></div>
+        <div class="report-card anim-up d4"><div class="icon">&#128200;</div><h4>Readiness</h4><p>Scores by category</p></div>
+        <div class="report-card anim-up d4"><div class="icon">&#10003;</div><h4>Gear Checklist</h4><p>Personal packing list</p></div>
+        <div class="report-card anim-up d5"><div class="icon">&#128722;</div><h4>Still-Need List</h4><p>Shopping list</p></div>
+        <div class="report-card anim-up d5"><div class="icon">&#127956;</div><h4>Itinerary Sheet</h4><p>Day-by-day cheat sheet</p></div>
+      </div>
+      <div class="roles-row anim-fade d6">
+        <div class="role-pill admin">Troop Admin</div>
+        <div class="role-pill adult">Adult Leader</div>
+        <div class="role-pill scout">Scout</div>
+        <div class="role-pill parent">Parent View</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Scene 7: CTA ── -->
+  <div class="scene scene-cta" data-duration="6000">
+    <div class="logo-wrap anim-scale" style="margin-bottom:16px;">
+      <div class="logo-ring" style="width:80px; height:80px;">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="24" cy="24" r="24" fill="#1A2412" />
+          <circle cx="24" cy="24" r="22" stroke="#B8CC9A" stroke-width="1.5" opacity="0.5" />
+          <path d="M10 34 L19 16 L24 24 L29 14 L38 34 Z" fill="#B8CC9A" opacity="0.9" />
+          <path d="M14 34 L21 20 L24 25 L27 18 L34 34 Z" fill="#FDFAF5" opacity="0.95" />
+          <path d="M12 38 Q18 32 22 33 Q26 34 30 28 Q34 22 38 18" stroke="#5B7A3A" stroke-width="2" fill="none" stroke-linecap="round" />
+          <circle cx="22" cy="33" r="2" fill="#FDFAF5" stroke="#5B7A3A" stroke-width="1" />
+          <circle cx="30" cy="28" r="2" fill="#FDFAF5" stroke="#5B7A3A" stroke-width="1" />
+          <circle cx="24" cy="4" r="1.8" fill="#D4E4B8" />
+        </svg>
+      </div>
+    </div>
+    <h2 class="display anim-up d1">Ready to get your<br><span>crew trail-ready?</span></h2>
+    <div class="free-badge anim-fade d3">Free to start &mdash; no credit card required</div>
+    <a href="https://traillog.gracezero.ai" class="cta-btn anim-up d4">Get Started</a>
+    <div class="url-hint anim-fade d5">traillog.gracezero.ai</div>
+    <div class="feature-pills anim-fade d6">
+      <span class="pill">Google OAuth</span>
+      <span class="pill">Mobile + Desktop</span>
+      <span class="pill">Dark Mode</span>
+      <span class="pill">Excel Export</span>
+      <span class="pill">AI-Powered</span>
+      <span class="pill">Secure</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const scenes = document.querySelectorAll('.scene');
+const dotsContainer = document.getElementById('dots');
+const progress = document.getElementById('progress');
+const timer = document.getElementById('timer');
+const playBtn = document.getElementById('playBtn');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+
+let current = 0, playing = true, interval = null, elapsed = 0;
+const TICK = 50;
+
+scenes.forEach((_, i) => {
+  const dot = document.createElement('button');
+  dot.addEventListener('click', () => goTo(i));
+  dotsContainer.appendChild(dot);
+});
+
+function getDuration() { return parseInt(scenes[current].dataset.duration) || 5000; }
+
+function goTo(index) {
+  scenes[current].classList.remove('active');
+  dotsContainer.children[current].classList.remove('active');
+  current = index;
+  scenes[current].classList.add('active');
+  dotsContainer.children[current].classList.add('active');
+  timer.textContent = `${current + 1} / ${scenes.length}`;
+  elapsed = 0;
+  updateProgress();
+}
+
+function next() { goTo((current + 1) % scenes.length); }
+function prev() { goTo((current - 1 + scenes.length) % scenes.length); }
+
+function updateProgress() {
+  progress.style.width = (elapsed / getDuration()) * 100 + '%';
+}
+
+function tick() {
+  elapsed += TICK;
+  updateProgress();
+  if (elapsed >= getDuration()) next();
+}
+
+function startAutoplay() {
+  if (interval) clearInterval(interval);
+  interval = setInterval(tick, TICK);
+}
+function stopAutoplay() { clearInterval(interval); interval = null; }
+
+playBtn.addEventListener('click', () => {
+  playing = !playing;
+  playBtn.innerHTML = playing ? '&#10074;&#10074;' : '&#9654;';
+  if (playing) startAutoplay(); else stopAutoplay();
+});
+prevBtn.addEventListener('click', () => { elapsed = 0; prev(); });
+nextBtn.addEventListener('click', () => { elapsed = 0; next(); });
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); elapsed = 0; next(); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); elapsed = 0; prev(); }
+  if (e.key === 'p' || e.key === 'k') { playBtn.click(); }
+});
+
+goTo(0);
+startAutoplay();
+</script>
+</body>
+</html>

@@ -419,6 +419,11 @@
   width: 100%;
 }
 
+/* Safe area inset for iPhone notch/home indicator */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* Focus rings for keyboard accessibility (outside @utility for nesting support) */
 .lp-input:focus-visible,
 .lp-focus-ring:focus-visible {

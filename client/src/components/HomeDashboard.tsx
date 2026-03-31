@@ -671,9 +671,12 @@ export default function HomeDashboard({ user, memberships, onRefresh, onLogout, 
           )}
           {(dashboard?.public_troops || []).length > 0 && !showCreate && (
             <button onClick={() => setShowBrowse(!showBrowse)}
-              className="flex-1 py-3 rounded-btn border-[1.5px] border-tl-border-light bg-transparent text-tl-text-muted text-[13px] font-semibold cursor-pointer font-body">{showBrowse ? "Hide" : "Browse"} Troops</button>
+              className="flex-1 py-3 rounded-btn border-[1.5px] border-tl-border-light bg-transparent text-tl-text-muted text-[13px] font-semibold cursor-pointer font-body">{showBrowse ? "Hide Troops" : "Find Your Troop"}</button>
           )}
         </div>
+        {!showCreate && !showBrowse && (dashboard?.public_troops || []).length > 0 && user.user_type === "adult" && (
+          <p className="text-[10px] text-tl-text-dim text-center mt-1 mb-0">Check if your troop is already registered before creating a new one</p>
+        )}
 
         {/* ── Browse Public Troops ── */}
         {showBrowse && (dashboard?.public_troops || []).length > 0 && (

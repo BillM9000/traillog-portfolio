@@ -360,7 +360,7 @@ function FAQItem({ question, answer }: FAQItemProps): React.ReactElement {
       </button>
       {open && (
         <div className="px-5 pb-4">
-          <p className="text-[13px] leading-[1.6] m-0" style={{ color: "#B0A898" }}>{answer}</p>
+          <p className="text-[13px] leading-[1.6] m-0" style={{ color: "#9a8e80" }}>{answer}</p>
         </div>
       )}
     </div>
@@ -408,18 +408,73 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
   const isMobile = useIsMobile();
   const authRef = useRef<HTMLDivElement>(null);
   const featuresRef = useRef<HTMLElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
+  const [showStickyHeader, setShowStickyHeader] = useState<boolean>(false);
 
   const scrollToAuth = (): void => {
     authRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
+  // Sticky header: show when hero scrolls out of view (mobile only)
+  useEffect(() => {
+    if (!isMobile) {
+      setShowStickyHeader(false);
+      return;
+    }
+    const hero = heroRef.current;
+    if (!hero) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setShowStickyHeader(!entry.isIntersecting);
+      },
+      { threshold: 0 }
+    );
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, [isMobile]);
+
   return (
-    <div className="font-body overflow-x-hidden">
+    <main className="font-body overflow-x-hidden">
+
+      {/* ── STICKY MOBILE HEADER ───────────────────────── */}
+      {isMobile && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0,
+          zIndex: 50,
+          height: 48,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 16px",
+          background: "rgba(26,36,18,0.92)",
+          backdropFilter: "blur(8px)",
+          borderBottom: "1px solid rgba(184,204,154,0.12)",
+          opacity: showStickyHeader ? 1 : 0,
+          transform: showStickyHeader ? "translateY(0)" : "translateY(-100%)",
+          transition: "opacity 0.25s ease, transform 0.25s ease",
+          pointerEvents: showStickyHeader ? "auto" : "none",
+        }}>
+          <div className="flex items-center gap-2">
+            <Logo size={20} />
+            <span className="font-display font-bold text-[15px]" style={{ color: "#FDFAF5" }}>
+              Trail<span style={{ color: "#B8CC9A" }}>Log</span>
+            </span>
+          </div>
+          <button
+            onClick={scrollToAuth}
+            className="px-4 py-1.5 rounded-[8px] border-none text-[13px] font-semibold cursor-pointer font-body"
+            style={{ background: "#5B7A3A", color: "#FDFAF5" }}
+          >
+            Sign In
+          </button>
+        </div>
+      )}
 
       {/* ── HERO ────────────────────────────────────────── */}
-      <section className="relative flex items-center justify-center flex-col" style={{
+      <section ref={heroRef} className="relative flex items-center justify-center flex-col" style={{
         background: "linear-gradient(175deg, #1A2412 0%, #2A3620 40%, #1A1F16 100%)",
-        padding: isMobile ? "48px 20px 40px" : "60px 40px 48px",
+        padding: isMobile ? "32px 20px 24px" : "60px 40px 48px",
       }}>
         {/* Texture overlay */}
         <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{
@@ -429,41 +484,48 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
         <div className="max-w-[1100px] w-full relative z-[1] flex" style={{
           flexDirection: isMobile ? "column" : "row",
           alignItems: isMobile ? "stretch" : "center",
-          gap: isMobile ? 32 : 60,
+          gap: isMobile ? 20 : 60,
           padding: isMobile ? 0 : "60px 0",
         }}>
           {/* Left — Branding */}
           <div style={{ flex: isMobile ? "unset" : "1 1 55%", textAlign: isMobile ? "center" : "left" }}>
-            <Logo size={isMobile ? 72 : 96} />
-            <h1 className="font-display font-black m-0 mt-4 tracking-[-1px] leading-[1.1]" style={{
-              fontSize: isMobile ? 36 : 48, color: "#FDFAF5",
+            <Logo size={isMobile ? 40 : 96} />
+            <h1 className="font-display font-black m-0 tracking-[-1px] leading-[1.1]" style={{
+              fontSize: isMobile ? 28 : 48, color: "#FDFAF5",
+              marginTop: isMobile ? 8 : 16,
             }}>
               Trail<span style={{ color: "#B8CC9A" }}>Log</span>
             </h1>
-            <p className="font-medium leading-[1.5]" style={{
-              fontSize: isMobile ? 16 : 20, color: "#D4E4B8", marginTop: 12,
+            <p className="font-medium" style={{
+              fontSize: isMobile ? 14 : 20, color: "#D4E4B8",
+              marginTop: isMobile ? 6 : 12,
+              lineHeight: isMobile ? 1.35 : 1.5,
               maxWidth: 480,
               marginLeft: isMobile ? "auto" : 0, marginRight: isMobile ? "auto" : 0,
             }}>
-              The AI-powered readiness coordinator for Scouting America high adventure crews. Track training, gear, and admin prep from first meeting to summit day.
+              The AI-powered readiness coordinator for Scouting America high adventure crews.{!isMobile && " Track training, gear, and admin prep from first meeting to summit day."}
             </p>
-            <p className="italic" style={{
-              fontSize: 12, color: "#8A9A7A", marginTop: 6, lineHeight: 1.4, maxWidth: 480,
-              marginLeft: isMobile ? "auto" : 0, marginRight: isMobile ? "auto" : 0,
-            }}>
-              An independent tool by GraceZero.ai &mdash; not affiliated with or endorsed by Scouting America or any national scouting organization.
-            </p>
-            <div className="flex flex-wrap mt-4" style={{
-              gap: 20,
-              justifyContent: isMobile ? "center" : "flex-start",
-            }}>
-              {["AI-Powered", "Mobile Friendly", "Built for Crews"].map((label: string) => (
-                <span key={label} className="text-[11px] font-semibold tracking-[1px] uppercase flex items-center gap-1.5" style={{ color: "#B8CC9A" }}>
-                  <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: "#B8CC9A" }} />
-                  {label}
-                </span>
-              ))}
-            </div>
+            {/* Disclaimer — desktop only (on mobile it appears below auth card) */}
+            {!isMobile && (
+              <p className="italic" style={{
+                fontSize: 12, color: "#8A9A7A", marginTop: 6, lineHeight: 1.4, maxWidth: 480,
+              }}>
+                An independent tool by GraceZero.ai &mdash; not affiliated with or endorsed by Scouting America or any national scouting organization.
+              </p>
+            )}
+            {!isMobile && (
+              <div className="flex flex-wrap mt-4" style={{
+                gap: 20,
+                justifyContent: "flex-start",
+              }}>
+                {["AI-Powered", "Mobile Friendly", "Built for Crews"].map((label: string) => (
+                  <span key={label} className="text-[11px] font-semibold tracking-[1px] uppercase flex items-center gap-1.5" style={{ color: "#B8CC9A" }}>
+                    <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: "#B8CC9A" }} />
+                    {label}
+                  </span>
+                ))}
+              </div>
+            )}
             {!isMobile && (
               <div className="mt-8">
                 <button onClick={scrollToAuth} className="hidden" />
@@ -471,10 +533,20 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
             )}
           </div>
 
-          {/* Right — Auth Form */}
+          {/* Right / Below — Auth Form */}
           <div style={{ flex: isMobile ? "unset" : "0 0 360px", maxWidth: 400, width: "100%", margin: isMobile ? "0 auto" : 0 }}>
             <AuthForm ref={authRef} onLogin={onLogin} onSignup={onSignup} registrationEnabled={registrationEnabled} />
           </div>
+
+          {/* Disclaimer — mobile only (below auth card) */}
+          {isMobile && (
+            <p className="italic text-center" style={{
+              fontSize: 11, color: "#8A9A7A", marginTop: 4, lineHeight: 1.4,
+              maxWidth: 480, marginLeft: "auto", marginRight: "auto",
+            }}>
+              An independent tool by GraceZero.ai &mdash; not affiliated with or endorsed by Scouting America or any national scouting organization.
+            </p>
+          )}
         </div>
 
         {/* Scroll indicator */}
@@ -538,7 +610,7 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
           }}>
             Up and Running in Minutes
           </h2>
-          <p className="text-[14px] text-center m-0 mb-11" style={{ color: "#B0A898" }}>
+          <p className="text-[14px] text-center m-0 mb-11" style={{ color: "#9a8e80" }}>
             No downloads. No setup fees. Just sign in and go.
           </p>
           <div className="flex relative" style={{
@@ -571,7 +643,7 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
                     {s.title}
                   </h3>
                   <p className="text-[13px] leading-[1.5] m-0 max-w-[240px]" style={{
-                    color: "#B0A898",
+                    color: "#9a8e80",
                     marginLeft: isMobile ? 0 : "auto", marginRight: isMobile ? 0 : "auto",
                   }}>
                     {s.desc}
@@ -594,7 +666,7 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
           <p className="text-[14px] text-center m-0 mb-2 max-w-[560px] mx-auto leading-[1.6]" style={{ color: "#6B5D4D" }}>
             No subscription. No monthly fees. Pay per adventure &mdash; your whole crew is covered.
           </p>
-          <p className="text-[12px] text-center m-0 mb-10 italic" style={{ color: "#8A7A6A" }}>
+          <p className="text-[12px] text-center m-0 mb-10 italic" style={{ color: "#6b5d4f" }}>
             One price covers your entire crew &mdash; unlimited members, one flat cost.
           </p>
 
@@ -606,12 +678,12 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
               background: "#F3F0E8", borderBottom: "2px solid #DDD6C8",
             }}>
               <div style={{ padding: isMobile ? "16px 12px" : "20px 24px" }}>
-                <div className="text-[11px] font-bold uppercase tracking-[1px]" style={{ color: "#8A7A6A" }}>Features</div>
+                <div className="text-[11px] font-bold uppercase tracking-[1px]" style={{ color: "#6b5d4f" }}>Features</div>
               </div>
               <div className="text-center" style={{ padding: isMobile ? "12px 8px" : "16px 12px", borderLeft: "1px solid #DDD6C8" }}>
-                <div className="text-[11px] font-bold uppercase tracking-[1px] mb-1" style={{ color: "#5B7A3A" }}>Free</div>
+                <div className="text-[11px] font-bold uppercase tracking-[1px] mb-1" style={{ color: "#3a5225" }}>Free</div>
                 <div className="font-display font-black" style={{ fontSize: isMobile ? 20 : 24, color: "#2C2416" }}>$0</div>
-                <div className="text-[10px]" style={{ color: "#8A7A6A" }}>1st adventure</div>
+                <div className="text-[10px]" style={{ color: "#6b5d4f" }}>1st adventure</div>
               </div>
               <div className="text-center" style={{
                 padding: isMobile ? "12px 8px" : "16px 12px",
@@ -620,7 +692,7 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
               }}>
                 <div className="text-[11px] font-bold uppercase tracking-[1px] mb-1" style={{ color: "#B8CC9A" }}>Pro</div>
                 <div className="font-display font-black" style={{ fontSize: isMobile ? 20 : 24, color: "#FDFAF5" }}>$29</div>
-                <div className="text-[10px]" style={{ color: "#B0A898" }}>per adventure</div>
+                <div className="text-[10px]" style={{ color: "#9a8e80" }}>per adventure</div>
               </div>
             </div>
 
@@ -679,7 +751,7 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
               <div />
               <div className="text-center" style={{ padding: "16px 8px", borderLeft: "1px solid #DDD6C8" }}>
                 <button onClick={scrollToAuth} className="w-full py-2 rounded-[8px] text-[12px] font-bold cursor-pointer font-body lp-focus-ring" style={{
-                  border: "2px solid #5B7A3A", background: "transparent", color: "#5B7A3A",
+                  border: "2px solid #5B7A3A", background: "transparent", color: "#3a5225",
                 }}>
                   Start Free
                 </button>
@@ -744,7 +816,7 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
           <p className="text-[14px] text-center m-0 mb-9" style={{ color: "#6B5D4D" }}>
             Philmont is fully loaded. More adventure bases on the way.
           </p>
-          <div className="grid" style={{
+          <div data-section="adventure-bases" className="grid" style={{
             gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
             gap: 16,
           }}>
@@ -758,9 +830,9 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
                 <h3 className="font-display text-[14px] font-bold m-0 mb-1" style={{ color: "#2C2416" }}>
                   {a.name}
                 </h3>
-                <p className="text-[11px] m-0" style={{ color: "#8A7A6A" }}>{a.location}</p>
+                <p className="text-[11px] m-0" style={{ color: "#6b5d4f" }}>{a.location}</p>
                 <div className="mt-2.5 text-[10px] font-bold tracking-[1px] uppercase font-body rounded-[8px] px-2.5 py-1 inline-block" style={{
-                  color: a.enabled ? "#5B7A3A" : "#8A7A6A",
+                  color: a.enabled ? "#3a5225" : "#5a4d40",
                   background: a.enabled ? "rgba(91,122,58,0.1)" : "rgba(0,0,0,0.04)",
                 }}>
                   {a.enabled ? "Available Now" : "Coming Soon"}
@@ -782,7 +854,7 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
           }}>
             Frequently Asked Questions
           </h2>
-          <p className="text-[14px] text-center m-0 mb-9" style={{ color: "#B0A898" }}>
+          <p className="text-[14px] text-center m-0 mb-9" style={{ color: "#9a8e80" }}>
             Everything you need to know before getting started.
           </p>
           <div className="flex flex-col gap-3">
@@ -828,7 +900,7 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
               bill.mccoy@gracezero.ai
             </a>
           </div>
-          <p className="text-[11px] mt-4" style={{ color: "#8A7A6A" }}>
+          <p className="text-[11px] mt-4" style={{ color: "#6b5d4f" }}>
             We typically respond within 24 hours.
           </p>
         </div>
@@ -849,7 +921,7 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
           }}>
             Ready to Get Your Crew Organized?
           </h2>
-          <p className="text-[14px] mb-7 max-w-[400px] mx-auto" style={{ color: "#B0A898" }}>
+          <p className="text-[14px] mb-7 max-w-[400px] mx-auto" style={{ color: "#9a8e80" }}>
             Your crew's adventure starts here.
           </p>
           <button onClick={scrollToAuth} className="px-10 py-3.5 rounded-[12px] border-none text-[16px] font-bold cursor-pointer font-body lp-focus-ring" style={{
@@ -864,19 +936,19 @@ export default function LandingPage({ onLogin, onSignup, registrationEnabled = t
             <div className="text-[9px] font-semibold tracking-[2.5px] uppercase mb-3 font-body" style={{ color: "rgba(184,204,154,0.4)" }}>
               by GraceZero.ai
             </div>
-            <div className="text-[11px]" style={{ color: "#5A6A4A" }}>
-              <a href="/privacy" className="no-underline" style={{ color: "#5A6A4A" }}>Privacy Policy</a>
+            <div className="text-[11px]" style={{ color: "#7a6e62" }}>
+              <a href="/privacy" className="no-underline" style={{ color: "#7a6e62" }}>Privacy Policy</a>
               <span className="mx-2">&middot;</span>
-              <a href="/terms" className="no-underline" style={{ color: "#5A6A4A" }}>Terms of Service</a>
+              <a href="/terms" className="no-underline" style={{ color: "#7a6e62" }}>Terms of Service</a>
               <span className="mx-2">&middot;</span>
-              <a href="mailto:bill.mccoy@gracezero.ai" className="no-underline" style={{ color: "#5A6A4A" }}>Contact</a>
+              <a href="mailto:bill.mccoy@gracezero.ai" className="no-underline" style={{ color: "#7a6e62" }}>Contact</a>
             </div>
-            <p className="text-[10px] mt-2.5" style={{ color: "#4A5A3A" }}>
+            <p className="text-[10px] mt-2.5" style={{ color: "#7a6e62" }}>
               Not affiliated with or endorsed by any national scouting organization.
             </p>
           </div>
         </div>
       </section>
-    </div>
+    </main>
   );
 }

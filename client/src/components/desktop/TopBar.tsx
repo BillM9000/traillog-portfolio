@@ -67,7 +67,7 @@ export default function TopBar({ user, sectionTitle, adventureName, trekDates, t
   }
 
   return (
-    <div className="h-12 flex items-center justify-between px-6 border-b border-tl-border bg-tl-bg shrink-0">
+    <div className="h-12 flex items-center justify-between px-6 border-b border-tl-border bg-tl-bg shrink-0 sticky top-0 z-10">
       {/* Left: section title */}
       <div className="flex items-center gap-3">
         <h1 className="font-display text-lg font-bold text-tl-heading m-0">

@@ -23,6 +23,7 @@ services:
       - SMTP_PASS=${SMTP_PASS}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - DATABASE_URL=postgresql://traillog:traillog2026@172.18.0.1:5432/traillog
+      - AUTH_RATE_LIMIT=200
     volumes:
       - app-data:/app/data
     labels:

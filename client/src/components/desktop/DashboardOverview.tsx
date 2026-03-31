@@ -13,6 +13,12 @@ interface DashboardOverviewProps {
   trekDates: TrekDates | null;
 }
 
+function statusColor(value: number, thresholds: [number, number] = [30, 70]): string {
+  if (value <= thresholds[0]) return 'var(--tl-danger)';
+  if (value <= thresholds[1]) return 'var(--tl-urgency)';
+  return 'var(--tl-accent)';
+}
+
 export default function DashboardOverview({
   members,
   skills,
@@ -61,11 +67,15 @@ export default function DashboardOverview({
     return trainingSkills.length * trekking.length;
   }, [members, skills]);
 
+  const trainingPct = totalTrainingItems > 0
+    ? Math.round((completedTrainingCount / totalTrainingItems) * 100)
+    : 0;
+
   const statCards = [
-    { icon: Users, label: "Members", value: `${trekkingCount} / ${members.length}` },
-    { icon: ClipboardCheck, label: "Readiness", value: `${readiness.overall}%` },
-    { icon: Backpack, label: "Gear", value: `${avgGearPct}%` },
-    { icon: CalendarCheck, label: "Training", value: `${completedTrainingCount} / ${totalTrainingItems}` },
+    { icon: Users, label: "Members", value: `${trekkingCount} / ${members.length}`, color: 'var(--tl-accent)' },
+    { icon: ClipboardCheck, label: "Readiness", value: `${readiness.overall}%`, color: statusColor(readiness.overall) },
+    { icon: Backpack, label: "Gear", value: `${avgGearPct}%`, color: statusColor(avgGearPct) },
+    { icon: CalendarCheck, label: "Training", value: `${completedTrainingCount} / ${totalTrainingItems}`, color: statusColor(trainingPct) },
   ];
 
   const readinessBreakdown = [
@@ -85,12 +95,12 @@ export default function DashboardOverview({
             className="tl-card flex flex-col gap-1 !mb-0"
           >
             <div className="flex items-center gap-1.5">
-              <card.icon size={16} className="text-tl-accent" strokeWidth={1.8} />
+              <card.icon size={16} style={{ color: card.color }} strokeWidth={1.8} />
               <span className="font-body text-[11px] font-semibold uppercase tracking-wide text-tl-text-dim">
                 {card.label}
               </span>
             </div>
-            <span className="font-body text-xl font-bold text-tl-text leading-tight">
+            <span className="font-body text-xl font-bold leading-tight" style={{ color: card.color }}>
               {card.value}
             </span>
           </div>

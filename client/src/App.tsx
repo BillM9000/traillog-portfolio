@@ -743,7 +743,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
           onLogout={onLogout}
           onGlobalAdminClick={() => setShowGearAdmin(true)}
         />
-        <div className="flex-1 flex flex-col min-w-0">
+        <main className="flex-1 flex flex-col min-w-0">
           <AnnouncementBanner settings={publicSettings} />
           <TopBar
             user={user}
@@ -784,7 +784,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
               {viewContent}
             </div>
           </div>
-        </div>
+        </main>
         {modals}
       </div>
     );
@@ -792,7 +792,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
 
   // ── Mobile layout (unchanged) ──
   return (
-    <div className="font-body bg-tl-bg text-tl-text min-h-screen select-none">
+    <main className="font-body bg-tl-bg text-tl-text min-h-screen select-none pb-16">
       <AnnouncementBanner settings={publicSettings} />
       <Header
         user={user} troop={troop} adventure={adventure} members={members} analysis={analysis}
@@ -811,9 +811,9 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
       {parentDash}
       <CTABanner members={members} active={active} setView={setView} theme={theme} />
 
-      {/* Tabs — 3x2 Grid (mobile only) */}
-      <div className="px-4 mb-4">
-        <div className="grid grid-cols-3 gap-1.5">
+      {/* Tabs — fixed bottom nav (mobile only) */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-tl-bg border-t border-tl-border px-2 py-1.5 safe-area-pb">
+        <div className="grid grid-cols-6 gap-0.5">
           {tabs.map(([k, l, Icon]) => (
             <button key={k} onClick={() => setView(k)}
               className={clsx(
@@ -829,7 +829,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
 
       {viewContent}
       {modals}
-    </div>
+    </main>
   );
 }
 
