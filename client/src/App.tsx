@@ -44,6 +44,7 @@ const ParentDashboard = lazy(() => import("./components/ParentDashboard"));
 // Lazy-loaded: desktop-only BI components (never loaded on mobile)
 const DesktopBIChartRow = lazy(() => import("./components/desktop/DesktopBIChartRow"));
 const GearCompletionChart = lazy(() => import("./components/desktop/charts/GearCompletionChart"));
+const MemberDetailPanel = lazy(() => import("./components/desktop/MemberDetailPanel"));
 
 // Lazy-loaded: modals (opened on demand)
 const AdminPanel = lazy(() => import("./components/AdminPanel"));
@@ -796,38 +797,10 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
             onViewProfile={onViewProfile}
           />
           <div className="flex-1 overflow-y-auto py-4 px-6">
-            <div className={clsx("mx-auto", (view === "calendar" || view === "gear") ? "max-w-[1100px]" : "max-w-[900px]")}>
+            <div className={clsx("mx-auto", (view === "calendar" || view === "gear" || view === "skills") ? "max-w-[1100px]" : "max-w-[900px]")}>
 
-              {/* ── Skills/Readiness view: stat cards + member table ── */}
+              {/* ── Skills/Readiness view: stat cards + BI chart row + 50/50 member table + detail panel ── */}
               {view === "skills" && (
-                <>
-                  <DashboardOverview
-                    members={members}
-                    skills={skills}
-                    gearCatalog={gearCatalog}
-                    memberGearMap={memberGearMap}
-                    adventure={adventure}
-                    trekDates={trekDates}
-                  />
-                  {crewPicker}
-                  <MembersTable
-                    members={members}
-                    skills={skills}
-                    gearCatalog={gearCatalog}
-                    memberGearMap={memberGearMap}
-                    active={selectedCrewId === "all" ? null : active}
-                    setActive={setActive}
-                    isAdmin={isAdmin}
-                    currentUserId={user.id}
-                  />
-                  {parentDash}
-                  <CTABanner members={members} active={active} setView={setView} theme={theme} />
-                  {viewContent}
-                </>
-              )}
-
-              {/* ── Calendar/Training view: stat cards + BI chart row + two-panel ── */}
-              {view === "calendar" && (
                 <>
                   <DashboardOverview
                     members={members}
@@ -847,6 +820,53 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
                       achievements={achievements as any}
                       currentUserId={user.id}
                     />
+                  </Suspense>
+                  {members.length > 0 && (
+                    <div className="flex gap-4 items-start mb-4">
+                      <div style={{ flex: "50 50 0%", minWidth: 0 }}>
+                        <MembersTable
+                          members={members}
+                          skills={skills}
+                          gearCatalog={gearCatalog}
+                          memberGearMap={memberGearMap}
+                          active={selectedCrewId === "all" ? null : active}
+                          setActive={setActive}
+                          isAdmin={isAdmin}
+                          currentUserId={user.id}
+                        />
+                      </div>
+                      <div style={{ flex: "50 50 0%", minWidth: 0 }}>
+                        <Suspense fallback={<LoadingFallback />}>
+                          <MemberDetailPanel
+                            member={members[active ?? 0]}
+                            skills={skills}
+                            gearCatalog={gearCatalog}
+                            memberGearMap={memberGearMap}
+                            achievements={achievements as any}
+                          />
+                        </Suspense>
+                      </div>
+                    </div>
+                  )}
+                  {parentDash}
+                  <CTABanner members={members} active={active} setView={setView} theme={theme} />
+                  {viewContent}
+                </>
+              )}
+
+              {/* ── Calendar/Training view: stat cards + readiness bars + two-panel ── */}
+              {view === "calendar" && (
+                <>
+                  <DashboardOverview
+                    members={members}
+                    skills={skills}
+                    gearCatalog={gearCatalog}
+                    memberGearMap={memberGearMap}
+                    adventure={adventure}
+                    trekDates={trekDates}
+                  />
+                  {crewPicker}
+                  <Suspense fallback={<LoadingFallback />}>
                     <div className="flex gap-4 items-start">
                       <div style={{ flex: "55 55 0%", minWidth: 0 }}>
                         <TrainingEvents adventureId={adventureId} isAdmin={isAdmin} currentUserId={user.id} members={members} bestDates={analysis.bestDates} />
