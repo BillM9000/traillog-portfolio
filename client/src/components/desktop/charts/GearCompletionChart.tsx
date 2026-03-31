@@ -82,8 +82,8 @@ export default function GearCompletionChart({ data, isDark }: GearCompletionChar
           tickLine={false}
         />
         <Tooltip content={<CustomTooltip />} cursor={{ fill: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)" }} />
-        <ReferenceLine x={70} stroke="#C47A2A" strokeDasharray="4 3" strokeWidth={1.5} label={{ value: "70%", position: "top", fontSize: 9, fill: "#C47A2A", fontFamily: "'DM Sans', sans-serif" }} />
-        <Bar dataKey="pct" radius={[0, 4, 4, 0]} maxBarSize={18}>
+        <ReferenceLine x={70} stroke="#C47A2A" strokeDasharray="4 3" strokeWidth={1.5} label={{ value: "70% target", position: "insideTopRight", fontSize: 9, fill: "#C47A2A", fontFamily: "'DM Sans', sans-serif" }} />
+        <Bar dataKey="pct" radius={[0, 4, 4, 0]} maxBarSize={18} minPointSize={3}>
           {data.map((entry, index) => (
             <Cell key={index} fill={barColor(entry.pct)} fillOpacity={0.88} />
           ))}

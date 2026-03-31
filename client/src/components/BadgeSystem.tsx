@@ -335,8 +335,11 @@ export function BadgeRow({ achievements, userId, size = 64, grid = false }: Badg
         <div className="text-[11px] font-bold text-tl-text-dim uppercase tracking-[1.2px] font-body">
           Trail Badges
         </div>
-        <div className="text-[11px] font-bold font-body" style={{ color: earnedCount > 0 ? "#C4A035" : undefined }}>
-          <span className="text-tl-text-dim font-body">{earnedCount}/{BADGE_CATALOG.length} earned</span>
+        <div className="flex items-baseline gap-0.5 font-body">
+          <span className="text-[14px] font-bold" style={{ color: earnedCount > 0 ? "#C4A035" : "var(--tl-text-dim)" }}>
+            {earnedCount}
+          </span>
+          <span className="text-[12px] text-tl-text-dim">/ {BADGE_CATALOG.length} earned</span>
         </div>
       </div>
 

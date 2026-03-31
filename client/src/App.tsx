@@ -894,7 +894,7 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
                       <GearList troopId={troopId} adventureId={adventureId} members={members} active={active} setActive={setActive} updateMemberLocally={updateMemberLocally} />
                     </Suspense>
                   </div>
-                  <div style={{ flex: "40 40 0%", minWidth: 0 }}>
+                  <div style={{ flex: "40 40 0%", minWidth: 0, alignSelf: "flex-start" }}>
                     <div className="bg-tl-surface border border-tl-border rounded-xl p-4 sticky top-4">
                       <div className="text-[11px] font-bold text-tl-text-dim uppercase tracking-[1.2px] font-body mb-3">
                         Gear Completion
@@ -902,6 +902,9 @@ function MainView({ user, troopId, adventureId, memberships, approvedTroops, isA
                       <Suspense fallback={<LoadingFallback />}>
                         <GearCompletionChart data={gearChartData} isDark={isDark} />
                       </Suspense>
+                      <p className="text-[11px] text-tl-text-dim font-body mt-3 leading-relaxed">
+                        Target: all members ≥ 70% before departure.
+                      </p>
                     </div>
                   </div>
                 </div>
