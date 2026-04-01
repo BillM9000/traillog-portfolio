@@ -77,6 +77,9 @@ async function findAdventure(page, troopId) {
 }
 
 test.describe('Suite 17 — Data Mutations & Cascading Effects', () => {
+  // Run serially — tests share sysadmin/troopcreator sessions; parallel execution
+  // causes CSRF/session interference and 403 races on adventure member endpoints.
+  test.describe.configure({ mode: 'serial' });
 
   // ═══════════════════════════════════════════
   // 17.1–17.5: MEMBER DATA UPDATES
@@ -666,7 +669,7 @@ test.describe('Suite 17 — Data Mutations & Cascading Effects', () => {
   // 17.21–17.22: CROSS-PERSONA DATA ISOLATION
   // ═══════════════════════════════════════════
   test.describe('Data isolation — adultleader (non-admin)', () => {
-    test.use({ storageState: AUTH_FILES.adultleader });
+    test.use({ storageState: AUTH_FILES['adultleader-data'] });
 
     test('17.21 Non-admin cannot add members to adventure', async ({ page }) => {
       await page.goto(BASE_URL, { waitUntil: 'networkidle' });

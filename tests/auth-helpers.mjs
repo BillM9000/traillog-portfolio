@@ -12,36 +12,44 @@ export const BASE_URL = 'https://traillog.gracezero.ai';
 
 /** Paths to saved auth state files, keyed by persona name.
  *
- * Base keys are shared by lightweight/serial tests.
- * Per-spec keys give each heavy parallel spec its own connect.sid so
- * that concurrent specs never contend on the same PostgreSQL session row.
+ * Every spec file that uses sysadmin, troopcreator, or adultleader gets
+ * its own per-spec key so concurrent specs never share a connect.sid.
  */
 export const AUTH_FILES = {
-  // ── base personas ──────────────────────────────────────────────────────────
-  sysadmin:       path.join(AUTH_DIR, 'sysadmin.json'),
-  troopcreator:   path.join(AUTH_DIR, 'troopcreator.json'),
+  // ── base personas (sole-user emails) ───────────────────────────────────────
   troopjoiner:    path.join(AUTH_DIR, 'troopjoiner.json'),
-  adultleader:    path.join(AUTH_DIR, 'adultleader.json'),
   parenttrek:     path.join(AUTH_DIR, 'parenttrek.json'),
   parentsupport:  path.join(AUTH_DIR, 'parentsupport.json'),
   'scout-alpha':  path.join(AUTH_DIR, 'scout-alpha.json'),
-  'scout-bravo':  path.join(AUTH_DIR, 'scout-bravo.json'),
   invited:        path.join(AUTH_DIR, 'invited.json'),
   codejoiner:     path.join(AUTH_DIR, 'codejoiner.json'),
 
-  // ── per-spec isolated sessions ─────────────────────────────────────────────
+  // ── sysadmin per-spec ──────────────────────────────────────────────────────
   'sysadmin-data':       path.join(AUTH_DIR, 'sysadmin-data.json'),
   'sysadmin-email':      path.join(AUTH_DIR, 'sysadmin-email.json'),
   'sysadmin-lifecycle':  path.join(AUTH_DIR, 'sysadmin-lifecycle.json'),
+  'sysadmin-admin':      path.join(AUTH_DIR, 'sysadmin-admin.json'),
 
-  'troopcreator-troop':  path.join(AUTH_DIR, 'troopcreator-troop.json'),
-  'troopcreator-shared': path.join(AUTH_DIR, 'troopcreator-shared.json'),
-  'troopcreator-visual': path.join(AUTH_DIR, 'troopcreator-visual.json'),
+  // ── troopcreator per-spec ──────────────────────────────────────────────────
+  'troopcreator-troop':      path.join(AUTH_DIR, 'troopcreator-troop.json'),
+  'troopcreator-shared':     path.join(AUTH_DIR, 'troopcreator-shared.json'),
+  'troopcreator-visual':     path.join(AUTH_DIR, 'troopcreator-visual.json'),
+  'troopcreator-admin':      path.join(AUTH_DIR, 'troopcreator-admin.json'),
+  'troopcreator-approval':   path.join(AUTH_DIR, 'troopcreator-approval.json'),
+  'troopcreator-onboarding': path.join(AUTH_DIR, 'troopcreator-onboarding.json'),
+  'troopcreator-security':   path.join(AUTH_DIR, 'troopcreator-security.json'),
 
-  'adultleader-gear':      path.join(AUTH_DIR, 'adultleader-gear.json'),
-  'adultleader-itin':      path.join(AUTH_DIR, 'adultleader-itin.json'),
-  'adultleader-train':     path.join(AUTH_DIR, 'adultleader-train.json'),
-  'adultleader-lifecycle': path.join(AUTH_DIR, 'adultleader-lifecycle.json'),
+  // ── adultleader per-spec ───────────────────────────────────────────────────
+  'adultleader-gear':        path.join(AUTH_DIR, 'adultleader-gear.json'),
+  'adultleader-itin':        path.join(AUTH_DIR, 'adultleader-itin.json'),
+  'adultleader-train':       path.join(AUTH_DIR, 'adultleader-train.json'),
+  'adultleader-lifecycle':   path.join(AUTH_DIR, 'adultleader-lifecycle.json'),
+  'adultleader-admin':       path.join(AUTH_DIR, 'adultleader-admin.json'),
+  'adultleader-data':        path.join(AUTH_DIR, 'adultleader-data.json'),
+  'adultleader-adventure':   path.join(AUTH_DIR, 'adultleader-adventure.json'),
+  'adultleader-troop':       path.join(AUTH_DIR, 'adultleader-troop.json'),
+  'adultleader-screenshots': path.join(AUTH_DIR, 'adultleader-screenshots.json'),
+  'adultleader-security':    path.join(AUTH_DIR, 'adultleader-security.json'),
 };
 
 /**

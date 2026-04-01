@@ -20,41 +20,52 @@ const CHROME_PATH = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 
 /** Test personas — name to email mapping.
  *
- * Base personas (10): shared by lightweight/serial tests.
- * Per-spec personas (10): same email as base, but each gets its own
- * connect.sid so that heavy parallel specs never contend on the same
- * PostgreSQL session row.  Total = 20 = exactly the 20-req/15-min
- * auth rate-limit budget.
+ * Every spec file gets its own connect.sid so that parallel specs never
+ * contend on the same PostgreSQL session row.  Base personas are kept
+ * only for specs that are sole users of that email (troopjoiner, parents,
+ * scout-alpha, invited, codejoiner).  The 3 high-contention emails
+ * (sysadmin, troopcreator, adultleader) are fully split into per-spec
+ * variants — the old base keys are removed.
+ *
+ * Total: 29 sessions.  Auth rate limit is 20/15 min (per-IP), so
+ * global-setup retries on 429 with a 60 s backoff, and caches auth
+ * files for 30 min to minimise fresh-login volume.
  */
 const PERSONAS = {
-  // ── base personas ──────────────────────────────────────────────────────────
-  sysadmin:       'sysadmin@traillog.test',
-  troopcreator:   'troopcreator@traillog.test',
+  // ── base personas (sole-user emails — no contention) ───────────────────────
   troopjoiner:    'troopjoiner@traillog.test',
-  adultleader:    'adultleader@traillog.test',
   parenttrek:     'parenttrek@traillog.test',
   parentsupport:  'parentsupport@traillog.test',
   'scout-alpha':  'scout.alpha@traillog.test',
-  'scout-bravo':  'scout.bravo@traillog.test',
   invited:        'invited@traillog.test',
   codejoiner:     'codejoiner@traillog.test',
 
-  // ── per-spec isolated sessions (same credentials, separate session rows) ───
-  // sysadmin variants
-  'sysadmin-data':      'sysadmin@traillog.test',      // data-mutations.spec
-  'sysadmin-email':     'sysadmin@traillog.test',      // email-notifications.spec
-  'sysadmin-lifecycle': 'sysadmin@traillog.test',      // member-lifecycle.spec sysadmin sections
+  // ── sysadmin per-spec sessions ─────────────────────────────────────────────
+  'sysadmin-data':        'sysadmin@traillog.test',      // data-mutations.spec
+  'sysadmin-email':       'sysadmin@traillog.test',      // email-notifications.spec
+  'sysadmin-lifecycle':   'sysadmin@traillog.test',      // member-lifecycle.spec
+  'sysadmin-admin':       'sysadmin@traillog.test',      // admin-panel.spec
 
-  // troopcreator variants
-  'troopcreator-troop':   'troopcreator@traillog.test', // troop.spec
-  'troopcreator-shared':  'troopcreator@traillog.test', // reports + multi-crew + adventure + member-lifecycle tc section
-  'troopcreator-visual':  'troopcreator@traillog.test', // visual.spec (many screenshot contexts)
+  // ── troopcreator per-spec sessions ─────────────────────────────────────────
+  'troopcreator-troop':      'troopcreator@traillog.test', // troop.spec
+  'troopcreator-shared':     'troopcreator@traillog.test', // reports + multi-crew + adventure + member-lifecycle
+  'troopcreator-visual':     'troopcreator@traillog.test', // visual.spec
+  'troopcreator-admin':      'troopcreator@traillog.test', // admin-panel.spec
+  'troopcreator-approval':   'troopcreator@traillog.test', // approval.spec
+  'troopcreator-onboarding': 'troopcreator@traillog.test', // onboarding.spec
+  'troopcreator-security':   'troopcreator@traillog.test', // security.spec
 
-  // adultleader variants
-  'adultleader-gear':      'adultleader@traillog.test', // gear.spec
-  'adultleader-itin':      'adultleader@traillog.test', // itinerary.spec
-  'adultleader-train':     'adultleader@traillog.test', // training.spec
-  'adultleader-lifecycle': 'adultleader@traillog.test', // member-lifecycle.spec adultleader sections
+  // ── adultleader per-spec sessions ──────────────────────────────────────────
+  'adultleader-gear':        'adultleader@traillog.test', // gear.spec
+  'adultleader-itin':        'adultleader@traillog.test', // itinerary.spec
+  'adultleader-train':       'adultleader@traillog.test', // training.spec
+  'adultleader-lifecycle':   'adultleader@traillog.test', // member-lifecycle.spec
+  'adultleader-admin':       'adultleader@traillog.test', // admin-panel.spec
+  'adultleader-data':        'adultleader@traillog.test', // data-mutations.spec
+  'adultleader-adventure':   'adultleader@traillog.test', // adventure.spec
+  'adultleader-troop':       'adultleader@traillog.test', // troop.spec
+  'adultleader-screenshots': 'adultleader@traillog.test', // inner-page-screenshots.spec
+  'adultleader-security':    'adultleader@traillog.test', // security.spec
 };
 
 /** Auth file paths keyed by persona name. */
@@ -106,7 +117,24 @@ async function authenticatePersona(browser, name, email) {
     data: { email, password: PASSWORD },
   });
 
-  if (!response.ok()) {
+  if (response.status() === 429) {
+    // Rate-limited — wait 60 s and retry once
+    console.log(`  [setup] rate-limited on ${name}, waiting 60 s...`);
+    await new Promise((r) => setTimeout(r, 60_000));
+    const retry = await page.request.post(`${BASE_URL}/api/auth/login`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
+      data: { email, password: PASSWORD },
+    });
+    if (!retry.ok()) {
+      const body = await retry.text();
+      throw new Error(
+        `Login retry failed for "${name}" (${email}): ${retry.status()} — ${body}`,
+      );
+    }
+  } else if (!response.ok()) {
     const body = await response.text();
     throw new Error(
       `Login failed for "${name}" (${email}): ${response.status()} — ${body}`,
@@ -141,7 +169,7 @@ export default async function globalSetup() {
     const authFile = AUTH_FILES[name];
     if (fs.existsSync(authFile)) {
       const age = Date.now() - fs.statSync(authFile).mtimeMs;
-      if (age < 10 * 60 * 1000) {
+      if (age < 30 * 60 * 1000) {
         console.log(`  [setup] reusing recent auth: ${name}`);
         continue;
       }
