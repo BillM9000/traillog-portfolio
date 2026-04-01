@@ -19,7 +19,9 @@
 import { test, expect } from '@playwright/test';
 import { AUTH_FILES, BASE_URL, getCSRFToken } from './auth-helpers.mjs';
 
-const TIMESTAMP = Date.now();
+// Include random suffix to prevent collisions when multiple Playwright
+// projects evaluate this module at the same millisecond.
+const TIMESTAMP = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
 /** Fetch CSRF token from an authenticated page context */
 async function fetchCSRF(page) {
@@ -179,7 +181,7 @@ test.describe('Suite 16 — Member Lifecycle', () => {
   // 16.6–16.9: ADMIN MEMBER MANAGEMENT
   // ═══════════════════════════════════════════
   test.describe('Admin member management — sysadmin', () => {
-    test.use({ storageState: AUTH_FILES.sysadmin });
+    test.use({ storageState: AUTH_FILES['sysadmin-lifecycle'] });
 
     test('16.6 Admin can list all troop members (approved + pending)', async ({ page }) => {
       await page.goto(BASE_URL, { waitUntil: 'networkidle' });
@@ -271,7 +273,7 @@ test.describe('Suite 16 — Member Lifecycle', () => {
   // 16.10–16.13: ROLE MANAGEMENT
   // ═══════════════════════════════════════════
   test.describe('Role management — sysadmin', () => {
-    test.use({ storageState: AUTH_FILES.sysadmin });
+    test.use({ storageState: AUTH_FILES['sysadmin-lifecycle'] });
 
     test('16.10 Admin can promote member to adventure admin', async ({ page }) => {
       await page.goto(BASE_URL, { waitUntil: 'networkidle' });
@@ -411,7 +413,7 @@ test.describe('Suite 16 — Member Lifecycle', () => {
   // 16.14–16.16: LEAVE TROOP & MEMBER DATA
   // ═══════════════════════════════════════════
   test.describe('Member self-service — adultleader', () => {
-    test.use({ storageState: AUTH_FILES.adultleader });
+    test.use({ storageState: AUTH_FILES['adultleader-lifecycle'] });
 
     test('16.14 Member can update own availability dates', async ({ page }) => {
       await page.goto(BASE_URL, { waitUntil: 'networkidle' });
@@ -541,7 +543,7 @@ test.describe('Suite 16 — Member Lifecycle', () => {
   // 16.19–16.20: NON-ADMIN RESTRICTIONS
   // ═══════════════════════════════════════════
   test.describe('Non-admin restrictions — adultleader', () => {
-    test.use({ storageState: AUTH_FILES.adultleader });
+    test.use({ storageState: AUTH_FILES['adultleader-lifecycle'] });
 
     test('16.19 Non-admin cannot approve members', async ({ page }) => {
       await page.goto(BASE_URL, { waitUntil: 'networkidle' });
@@ -596,7 +598,7 @@ test.describe('Suite 16 — Member Lifecycle', () => {
   // 16.21: LEAVE TROOP (sole admin protection)
   // ═══════════════════════════════════════════
   test.describe('Leave troop — troopcreator', () => {
-    test.use({ storageState: AUTH_FILES.troopcreator });
+    test.use({ storageState: AUTH_FILES['troopcreator-shared'] });
 
     test('16.21 Leave non-existent troop returns error', async ({ page }) => {
       await page.goto(BASE_URL, { waitUntil: 'networkidle' });

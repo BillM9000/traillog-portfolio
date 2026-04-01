@@ -161,7 +161,7 @@ test.describe('Suite 15 — Email Notifications', () => {
   });
 
   test.describe('Approval & admin emails — sysadmin', () => {
-    test.use({ storageState: AUTH_FILES.sysadmin });
+    test.use({ storageState: AUTH_FILES['sysadmin-email'] });
 
     test('15.5 Approve member triggers welcome email (200)', async ({ page }) => {
       await page.goto(BASE_URL, { waitUntil: 'networkidle' });

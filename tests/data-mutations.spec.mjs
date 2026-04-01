@@ -82,7 +82,7 @@ test.describe('Suite 17 — Data Mutations & Cascading Effects', () => {
   // 17.1–17.5: MEMBER DATA UPDATES
   // ═══════════════════════════════════════════
   test.describe('Member data updates — sysadmin', () => {
-    test.use({ storageState: AUTH_FILES.sysadmin });
+    test.use({ storageState: AUTH_FILES['sysadmin-data'] });
 
     test('17.1 Update adventure member dates', async ({ page }) => {
       await page.goto(BASE_URL, { waitUntil: 'networkidle' });
@@ -199,7 +199,7 @@ test.describe('Suite 17 — Data Mutations & Cascading Effects', () => {
   // 17.6–17.8: CASCADING ADD/REMOVE
   // ═══════════════════════════════════════════
   test.describe('Cascading member operations — sysadmin', () => {
-    test.use({ storageState: AUTH_FILES.sysadmin });
+    test.use({ storageState: AUTH_FILES['sysadmin-data'] });
 
     test('17.6 Add manual member, verify in members list, then remove', async ({ page }) => {
       test.slow();
@@ -287,7 +287,7 @@ test.describe('Suite 17 — Data Mutations & Cascading Effects', () => {
   // 17.8–17.10: TRAINING EVENT CRUD
   // ═══════════════════════════════════════════
   test.describe('Training event CRUD — sysadmin', () => {
-    test.use({ storageState: AUTH_FILES.sysadmin });
+    test.use({ storageState: AUTH_FILES['sysadmin-data'] });
 
     test('17.8 Create, list, and delete training event', async ({ page }) => {
       test.slow();
@@ -395,7 +395,7 @@ test.describe('Suite 17 — Data Mutations & Cascading Effects', () => {
   // 17.11–17.13: TROOP & ADVENTURE SETTINGS
   // ═══════════════════════════════════════════
   test.describe('Troop settings — troopcreator', () => {
-    test.use({ storageState: AUTH_FILES.troopcreator });
+    test.use({ storageState: AUTH_FILES['troopcreator-shared'] });
 
     test('17.11 Duplicate troop creation blocked (409)', async ({ page }) => {
       await page.goto(BASE_URL, { waitUntil: 'networkidle' });
@@ -439,7 +439,9 @@ test.describe('Suite 17 — Data Mutations & Cascading Effects', () => {
       const csrf = await getCSRFToken(page.context());
       const troop = await findTestTroop(page);
 
-      // Get current code
+      // Get current code so we can restore it after the test.
+      // This prevents test 17.13 from permanently changing the invite code
+      // that other specs (e.g. member-lifecycle 16.3) rely on.
       const codeRes = await page.request.get(
         `${BASE_URL}/api/troops/${troop.id}/invite-code`,
         { failOnStatusCode: false }
@@ -455,11 +457,22 @@ test.describe('Suite 17 — Data Mutations & Cascading Effects', () => {
             failOnStatusCode: false,
           }
         );
-        // If endpoint exists, verify new code differs
+        // If endpoint exists, verify new code differs, then restore original
         if (regenRes.ok()) {
           const { invite_code: newCode } = await regenRes.json();
           expect(newCode).toBeTruthy();
-          // Note: could be same by chance but extremely unlikely
+
+          // Restore original code so dependent tests continue to work
+          if (oldCode) {
+            await page.request.put(
+              `${BASE_URL}/api/troops/${troop.id}`,
+              {
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+                data: { invite_code: oldCode },
+                failOnStatusCode: false,
+              }
+            );
+          }
         }
       }
       // Endpoint may not exist — test passes either way
@@ -470,7 +483,7 @@ test.describe('Suite 17 — Data Mutations & Cascading Effects', () => {
   // 17.14–17.16: ADVENTURE SKILLS CRUD
   // ═══════════════════════════════════════════
   test.describe('Adventure skills CRUD — sysadmin', () => {
-    test.use({ storageState: AUTH_FILES.sysadmin });
+    test.use({ storageState: AUTH_FILES['sysadmin-data'] });
 
     test('17.14 Create, list, and delete adventure skill', async ({ page }) => {
       test.slow();
@@ -531,7 +544,7 @@ test.describe('Suite 17 — Data Mutations & Cascading Effects', () => {
   // 17.16–17.18: GEAR DATA MUTATIONS
   // ═══════════════════════════════════════════
   test.describe('Gear mutations — sysadmin', () => {
-    test.use({ storageState: AUTH_FILES.sysadmin });
+    test.use({ storageState: AUTH_FILES['sysadmin-data'] });
 
     test('17.16 Gear catalog is accessible', async ({ page }) => {
       await page.goto(BASE_URL, { waitUntil: 'networkidle' });
@@ -612,7 +625,7 @@ test.describe('Suite 17 — Data Mutations & Cascading Effects', () => {
   // 17.19–17.20: ICS EXPORT & MISC
   // ═══════════════════════════════════════════
   test.describe('Export & misc — sysadmin', () => {
-    test.use({ storageState: AUTH_FILES.sysadmin });
+    test.use({ storageState: AUTH_FILES['sysadmin-data'] });
 
     test('17.19 Training events ICS export works', async ({ page }) => {
       await page.goto(BASE_URL, { waitUntil: 'networkidle' });
