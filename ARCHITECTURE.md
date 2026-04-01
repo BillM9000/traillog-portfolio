@@ -1,6 +1,6 @@
 # TrailLog Architecture
 
-> **Schema Version:** 20 | **Last Updated:** 2026-03-14
+> **Schema Version:** 25 | **Last Updated:** 2026-03-31
 
 ## System Overview
 
@@ -66,7 +66,7 @@ Backup Strategy:
   └─────────────────────────────────────────────────────────────┘
 ```
 
-## Data Model (Schema v20)
+## Data Model (Schema v25)
 
 ```
 ┌─────────────────────────┐
@@ -412,56 +412,66 @@ Health:
 ```
 crew614/
 ├── server/
-│   ├── index.js          Express app, 89 API routes, helmet, middleware
-│   ├── db.js             PostgreSQL schema, migrations, 76-item seed, all DB functions (async)
+│   ├── index.js          Express app, middleware, 16 direct routes
+│   ├── routes/           7 route modules (156 routes)
+│   │   ├── auth.js       OAuth, login, signup, password reset (11 routes)
+│   │   ├── troops.js     Troop CRUD, members, invitations (32 routes)
+│   │   ├── adventures.js Adventure lifecycle, members, skills (39 routes)
+│   │   ├── crews.js      Crew management, availability (29 routes)
+│   │   ├── gear.js       Gear catalog, member gear, pack weight (22 routes)
+│   │   ├── training.js   Training events, calendar, reminders (11 routes)
+│   │   └── admin.js      Global admin, platform settings (12 routes)
+│   ├── db.js             PostgreSQL functions (170 async), 76-item seed
 │   ├── auth.js           Passport.js Google OAuth + local strategy
-│   ├── email.js          Nodemailer templates (9 email types, XSS-escaped)
+│   ├── email.js          Nodemailer templates (13 email types, XSS-escaped)
 │   └── package.json
 │
-├── client/
+├── client/                TypeScript + Tailwind CSS v4
 │   ├── src/
-│   │   ├── main.jsx              Entry point (providers wrap)
-│   │   ├── App.jsx               Auth gates, routing, MainView, isGlobalAdmin
-│   │   ├── api.js                Fetch wrapper, all API methods
+│   │   ├── main.tsx              Entry point (providers wrap)
+│   │   ├── App.tsx               Auth gates, routing, MainView, isGlobalAdmin
+│   │   ├── api.ts                Fetch wrapper, all API methods
+│   │   ├── app.css               Tailwind v4 config, CSS custom properties, tl-* classes
 │   │   │
 │   │   ├── contexts/
-│   │   │   ├── AuthContext.jsx    User auth state
-│   │   │   ├── ThemeContext.jsx   Dark/light theme
-│   │   │   ├── AdventureContext.jsx  Adventure + gear data
-│   │   │   └── ToastContext.jsx   Toast notifications
+│   │   │   ├── AuthContext.tsx    User auth state
+│   │   │   ├── ThemeContext.tsx   Dark/light theme (dark class on <html>)
+│   │   │   ├── AdventureContext.tsx  Adventure + gear data
+│   │   │   └── ToastContext.tsx   Toast notifications
 │   │   │
-│   │   ├── components/
-│   │   │   ├── LoginPage.jsx     Google OAuth login
-│   │   │   ├── ProfileSetup.jsx  User type + parent emails
-│   │   │   ├── Lobby.jsx         Troop join/pending screen
-│   │   │   ├── AdventurePicker.jsx  Adventure list/create
-│   │   │   ├── Header.jsx        Nav, countdown, profile
-│   │   │   ├── MemberBar.jsx     Crew + parent display + self-link
-│   │   │   ├── Calendar.jsx      Availability + trek blocking
-│   │   │   ├── Results.jsx       Best date windows
-│   │   │   ├── Skills.jsx        Readiness + journey trail
-│   │   │   ├── Itinerary.jsx     Route cards + details
-│   │   │   ├── GearList.jsx      Gear catalog, 3-state status, affiliate links
-│   │   │   ├── PackWeightWidget.jsx  Pack weight calculator
-│   │   │   ├── GearAIChat.jsx    AI gear advisor chat
-│   │   │   ├── GlobalAdmin.jsx   4-tab global admin panel
-│   │   │   ├── AdminPanel.jsx    Adventure/member/troop admin
-│   │   │   ├── PrintCheatSheet.jsx  Printable itinerary
-│   │   │   ├── ProgressWidgets.jsx  Readiness widgets
-│   │   │   ├── ConfirmModal.jsx  Generic confirmation
-│   │   │   └── Logo.jsx          SVG logo component
+│   │   ├── components/           44 TypeScript React components
+│   │   │   ├── LoginPage.tsx ... Logo.tsx (core components)
+│   │   │   ├── HomeDashboard.tsx  Post-login hub with troop cards
+│   │   │   ├── LandingPage.tsx    5-section marketing page
+│   │   │   ├── ApprovalPage.tsx   HMAC-signed approve/deny
+│   │   │   ├── ParentDashboard.tsx Scout progress cards
+│   │   │   ├── Documents.tsx      File uploads tab
+│   │   │   └── Reports.tsx        Excel export + print
+│   │   │
+│   │   ├── desktop/              Desktop BI layout (1024px+)
+│   │   │   ├── Sidebar.tsx       220px collapsible nav
+│   │   │   ├── TopBar.tsx        48px header bar
+│   │   │   ├── DashboardOverview.tsx  Stat cards + readiness bars
+│   │   │   ├── MembersTable.tsx  Sortable members table
+│   │   │   ├── MemberDetailPanel.tsx  Drill-down panel
+│   │   │   └── charts/          Recharts (lazy-loaded)
 │   │   │
 │   │   ├── hooks/
-│   │   │   └── useCountdown.js   Phase-aware countdown
+│   │   │   ├── useCountdown.ts   Phase-aware countdown
+│   │   │   └── useIsDesktop.ts   1024px breakpoint hook
 │   │   │
-│   │   └── utils/
-│   │       ├── theme.js          Color tokens, badge helpers
-│   │       ├── readiness.js      Shared readiness calculation (single source of truth)
-│   │       ├── dates.js          Date math utilities
-│   │       └── constants.js      Day names, etc.
+│   │   ├── utils/
+│   │   │   ├── theme.ts          Color tokens, badge helpers
+│   │   │   ├── readiness.ts      Shared readiness calculation (single source of truth)
+│   │   │   ├── dates.ts          Date math utilities
+│   │   │   └── constants.ts      Day names, etc.
+│   │   │
+│   │   └── types/                TypeScript type definitions
 │   │
 │   ├── index.html
-│   └── vite.config.js
+│   └── vite.config.ts
+│
+├── tests/                  16 Playwright E2E specs (193 tests, 29 auth sessions)
 │
 ├── docs/
 │   ├── architecture/       Overview, data flow, infrastructure
@@ -501,6 +511,13 @@ v7 → Added: council (TEXT, required), location (TEXT), is_public (INTEGER, def
      on troops table. BSA troop numbers only unique within council.
      GET /api/troops filters: public troops + troops user is a member of.
      12 performance indexes via standalone ensureIndexes() function.
+v8-v10 → Training events, calendar export (.ics), event recurrence
+v11 → Configurable attendance milestones (admin UI, per-adventure)
+v12-v14 → Multi-crew availability views, crew layer (crews table, crew_members)
+v15-v17 → Parent dashboard, photo/file uploads (documents table), approval tokens
+v18 → PostgreSQL migration: async pool, $1/$2/$3 params, ON CONFLICT upserts
+v19-v22 → Onboarding wizard, member assessments, training reminders
+v23-v25 → Desktop BI layout support, readiness history, badge system enhancements
 ```
 
 ## Gamification System
@@ -573,7 +590,7 @@ Request Pipeline:
   session (PostgreSQL store) → passport → express.static → route handlers
 
 Security Headers (Helmet.js):
-  Content-Security-Policy    style-src 'unsafe-inline' (React CSS-in-JS)
+  Content-Security-Policy    style-src 'unsafe-inline' (Tailwind runtime styles)
   X-Frame-Options            SAMEORIGIN
   X-Content-Type-Options     nosniff
   Strict-Transport-Security  max-age=15552000; includeSubDomains
@@ -610,7 +627,7 @@ Data Integrity:
   PostgreSQL         MVCC concurrency, ACID compliance
 ```
 
-## Email Templates (9 types)
+## Email Templates (13 types)
 
 ```
 sendInvitationEmail       → Invite someone to join adventure
@@ -622,4 +639,8 @@ sendJoinRequestEmail      → Notify admins of join request
 sendParentNotificationEmail → Notify parent of scout activity
 sendVerificationEmail     → Email verification link
 sendLinkRequestEmail      → Notify admins of parent-link request
+sendPasswordResetEmail    → Password reset token link
+sendItineraryChangedEmail → Notify when itinerary changes
+sendTrainingScheduledEmail → Notify when training event created
+sendTrainingReminderEmail → 24hr reminder before training event
 ```

@@ -49,7 +49,10 @@ The front end is a single-page application built with:
 
 - **React 18** for the component model and rendering
 - **Vite** for development server and production builds
-- **30+ components** organized by feature (gear list, itinerary, admin panel, training calendar, readiness dashboard, home dashboard, help system, and others)
+- **TypeScript** throughout (all 42+ client files migrated from JS/JSX)
+- **Tailwind CSS v4** for utility-first styling with CSS custom properties and dark mode via `dark` class
+- **44 components** organized by feature (gear list, itinerary, admin panel, training calendar, readiness dashboard, desktop BI layout, and others)
+- **React.lazy code splitting** for 16 components, reducing main bundle from 599KB to 226KB gzip
 - **4 React Contexts** that provide shared state:
   - **AuthContext** -- current user, login/logout state
   - **ThemeContext** -- light/dark mode toggle (adds/removes `dark` class on `<html>`; theme colors defined as CSS custom properties in Tailwind CSS)
@@ -62,11 +65,11 @@ The client communicates with the server exclusively through JSON API calls. Ther
 
 The back end is a Node.js Express.js monolith that handles:
 
-- 120+ API routes for all application operations (including 35+ crew-scoped routes)
+- 172 API routes across 8 modules (including 29 crew-scoped routes)
 - Session management via express-session with a PostgreSQL-backed session store (connect-pg-simple)
 - Google OAuth and local authentication via Passport.js
 - CSRF protection via double-submit cookie pattern
-- Email delivery for invitations, notifications, and verification (12 templates)
+- Email delivery for invitations, notifications, and verification (13 templates)
 - AI readiness engine with Claude API integration and fallback plan generation
 - AI gear recommendations with background caching
 - Static file serving for the built React application and standalone vote page
