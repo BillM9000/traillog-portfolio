@@ -1,7 +1,7 @@
 # TrailLog Branding Bible
 
 > Single source of truth for visual identity, typography, color palette, and tone.
-> Last verified against codebase: 2026-03-18
+> Last verified against codebase: 2026-03-31
 
 ---
 
@@ -22,7 +22,7 @@
 
 ## Logo
 
-**Compass-Mountain Mark** (`client/src/components/Logo.jsx`)
+**Compass-Mountain Mark** (`client/src/components/Logo.tsx`)
 - Outer compass ring: `#B8CC9A` (50% opacity)
 - Inner ring: `#D4E4B8` (30% opacity)
 - Mountain peaks: `#B8CC9A` back, `#FDFAF5` front

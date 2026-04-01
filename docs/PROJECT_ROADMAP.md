@@ -1,5 +1,5 @@
 # TrailLog Project Roadmap
-> Last updated: 2026-03-18
+> Last updated: 2026-03-31
 > Organized by project phase. Work top-down.
 
 ---
@@ -30,6 +30,11 @@
 | A2 | Multi-crew availability views — All Crews picker, combined heat map, crew-grouped members | Sprint 4 |
 | A4 | Parent dashboard — scout progress cards with readiness breakdown, gear/training status | Sprint 4 |
 | A3 | Photo/file uploads — Docs tab, base64 upload, VPS file storage, admin CRUD | Sprint 4 |
+| D6 | Vite code splitting — React.lazy for 16 components, 62% bundle reduction (599→226KB) | Sprint 4 |
+| D8 | TypeScript migration — all 42 client JS/JSX → TS/TSX, `src/types/` barrel | Sprint 4 |
+| D5 | Schema cleanup — canonical schema.pg.sql, FK constraints, SCHEMA.md | Sprint 4 |
+| P6 | Desktop BI layout — Sidebar + TopBar + DashboardOverview + MembersTable + charts at 1024px+ | Phase 6 |
+| T8 | E2E tests — Playwright, 16 specs, 193 tests, 29 isolated auth sessions, visual regression | Phase 7 |
 
 ---
 
@@ -63,11 +68,8 @@
 
 | # | Item | Effort | Notes |
 |---|------|--------|-------|
-| D5 | Schema cleanup — canonical schema.sql, FK constraints, index analysis, ERD diagram | Medium | TODO |
-| D6 | Vite code splitting — route-split tabs to reduce 575KB main bundle | Medium | TODO |
-| D4 | API consolidation — 120+ routes → ~45 RESTful endpoints | Large | Breaking change, needs test coverage first |
+| D4 | API consolidation — 172 routes → ~60 RESTful endpoints | Large | Breaking change, needs test coverage first |
 | D7 | Service layer extraction — Route → Service → Repository pattern | Large | Architecture overhaul |
-| D8 | TypeScript migration — incremental, file-by-file | Large | Long-term quality investment |
 
 ---
 
@@ -82,7 +84,7 @@
 | T3 | Mobile responsiveness — calendar, training events, edit form on phone screens | Medium | Deferred to desktop/mobile split |
 | T6 | Unit tests — overlap algorithm, pack weight, readiness scoring (Vitest, target 200+) | Large | Do after CI/CD is set up |
 | T7 | Integration tests — Supertest for state-changing routes (target 80-120) | Large | Do after CI/CD is set up |
-| T8 | E2E tests — Playwright, convert 15-phase Chrome automation (target 20-40) | Large | Do after CI/CD is set up |
+| T8 | E2E tests — 16 Playwright specs, 193 tests, 29 sessions (expand to 250+) | Medium | Foundation complete, expand coverage |
 | T9 | CI/CD pipeline — GitHub Actions (lint → test → build → deploy). Guide at `reference_cicd.md` | Medium | Blocked until test suites exist |
 
 ---
