@@ -13,8 +13,47 @@ This isn't a demo — it's a production system with the operational rigor to mat
 - **Automated daily backups** with rolling retention, size anomaly detection, and freshness verification
 - **Four-layer monitoring**: external uptime (UptimeRobot), application errors (Sentry), query performance (pg_stat_statements), infrastructure health (custom cron)
 - **Security hardening**: CSRF double-submit cookies, Helmet CSP, Zod input validation on 14 route groups, bcrypt password hashing, session regeneration on login, parameterized SQL (zero string concatenation), non-root Docker container
-- **193 Playwright E2E tests** covering auth flows, CRUD operations, security boundaries, visual regression, and cross-device screenshots across 4 viewport sizes
+- **170+ Playwright E2E tests** covering auth flows, CRUD operations, security boundaries, visual regression, and cross-device screenshots across 4 viewport sizes
 - **Zero-downtime deploys** via Docker with Traefik reverse proxy and automatic Let's Encrypt TLS
+
+---
+
+## Quality Assurance
+
+TrailLog uses a multi-layer testing strategy built for AI-era application development, where code changes are frequent, cross-platform, and often generated at speed.
+
+**Testing Principles**
+
+- **Always Both Platforms** — Every test runs on mobile and desktop, every time. No exceptions. Responsive layouts and shared state create invisible cross-platform dependencies that single-platform testing misses.
+- **Fail-Fast Sequential** — Tests run in dependency order and stop on first failure. Fix the root cause, restart from test 1. This catches cascading regressions that parallel testing hides. Based on the smoke test pattern from [Continuous Delivery](https://continuousdelivery.com/) (Humble & Farley).
+- **Session Regression** — Each development session produces a regression test covering every change from that session's changelog. The test becomes a permanent part of the suite, ensuring future changes don't break prior work.
+- **Human-in-the-Loop** — AI proposes changes and generates tests, but a human reviews every plan before implementation, approves every deploy, and visually inspects screenshot evidence before signing off. The developer decides what to build, what to test, and what ships. AI accelerates execution — it doesn't replace judgment.
+
+**Test Pyramid**
+
+| Layer | Tool | Tests | What It Validates |
+|-------|------|-------|-------------------|
+| Server Unit | [Vitest](https://vitest.dev/) | Fast | Database functions, validation, business logic |
+| E2E Features | [Playwright](https://playwright.dev/) | 132+ across 16 specs | Auth, CRUD, navigation, security, email (29 personas) |
+| Full App Smoke | [Playwright serial mode](https://playwright.dev/docs/test-parallel#serial-mode) | 40 (mobile + desktop) | End-to-end app flow — auth, home, all views, interactions |
+| Session Regression | [Playwright serial mode](https://playwright.dev/docs/test-parallel#serial-mode) | Per-session | Every changelog item verified on both platforms |
+| Visual Screenshots | [Playwright device emulation](https://playwright.dev/docs/emulation#devices) | 28 (4 devices x 7 views) | iPhone 14, Pixel 7, Galaxy S24, Desktop 1440 |
+| Visual Regression | [Playwright screenshot comparison](https://playwright.dev/docs/test-snapshots) | 11 | Pixel-diff comparison (5% tolerance) against baselines |
+
+**AI-Assisted Testing**
+
+Beyond traditional assertions, [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with the [Chrome MCP extension](https://chromewebstore.google.com/detail/claude-in-chrome/diahigjngdnkdgajdbhbkmdpnihlnbhe) provides visual reasoning — examining screenshots to identify layout issues, misaligned elements, and UX problems that code-level assertions can't catch. The AI compares mobile vs desktop behavior, flags inconsistencies, and compresses the fix-and-verify feedback cycle from hours to minutes. The developer reviews AI-generated test results and screenshots before any code is committed.
+
+**Toolchain**
+
+| Tool | Purpose | Reference |
+|------|---------|-----------|
+| [Playwright](https://playwright.dev/) | Browser automation and E2E testing across Chromium, Firefox, WebKit | [Getting Started](https://playwright.dev/docs/intro) |
+| [Vitest](https://vitest.dev/) | Fast unit test runner for Node.js, compatible with Jest API | [Getting Started](https://vitest.dev/guide/) |
+| [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | AI coding agent — plans, implements, tests, and deploys with human approval | [Documentation](https://docs.anthropic.com/en/docs/claude-code) |
+| [Chrome MCP](https://chromewebstore.google.com/detail/claude-in-chrome/diahigjngdnkdgajdbhbkmdpnihlnbhe) | Connects Claude Code to a live Chrome browser for visual verification | [Chrome Web Store](https://chromewebstore.google.com/detail/claude-in-chrome/diahigjngdnkdgajdbhbkmdpnihlnbhe) |
+| [Sentry](https://sentry.io/) | Runtime error tracking and performance monitoring (client + server) | [Docs](https://docs.sentry.io/) |
+| [UptimeRobot](https://uptimerobot.com/) | External uptime monitoring — pings health endpoint every 5 minutes | [How It Works](https://uptimerobot.com/about) |
 
 ---
 
