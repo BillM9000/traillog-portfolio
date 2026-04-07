@@ -2,7 +2,7 @@
 
 TrailLog is a multi-tenant SaaS platform for BSA high-adventure crew preparation — training, gear, readiness, and logistics across Philmont, Sea Base, Northern Tier, and Summit Bechtel. Built solo using Claude Code as the primary development tool. Portfolio project by Bill McCoy.
 
-**Live:** [traillog.gracezero.ai](https://traillog.gracezero.ai) · Built by [GraceZero Ai](https://gracezero.ai)
+**Live:** [traillog.ai](https://traillog.ai) · Built by [GraceZero Ai](https://gracezero.ai)
 
 ---
 
@@ -12,8 +12,8 @@ This isn't a demo — it's a production system with the operational rigor to mat
 
 - **Automated daily backups** with rolling retention, size anomaly detection, and freshness verification
 - **Four-layer monitoring**: external uptime (UptimeRobot), application errors (Sentry), query performance (pg_stat_statements), infrastructure health (custom cron)
-- **Security hardening**: CSRF double-submit cookies, Helmet CSP, Zod input validation on 14 route groups, bcrypt password hashing, session regeneration on login, parameterized SQL (zero string concatenation), non-root Docker container
-- **170+ Playwright E2E tests** covering auth flows, CRUD operations, security boundaries, visual regression, and cross-device screenshots across 4 viewport sizes
+- **Security hardening**: CSRF double-submit cookies, Helmet CSP, Zod input validation on 16 route groups, bcrypt password hashing, session regeneration on login, parameterized SQL (zero string concatenation), non-root Docker container
+- **215+ Playwright E2E tests** across 20 specs covering auth flows, CRUD operations, security boundaries, visual regression, and cross-device screenshots across 4 viewport sizes
 - **Zero-downtime deploys** via Docker with Traefik reverse proxy and automatic Let's Encrypt TLS
 
 ---
@@ -34,7 +34,7 @@ TrailLog uses a multi-layer testing strategy built for AI-era application develo
 | Layer | Tool | Tests | What It Validates |
 |-------|------|-------|-------------------|
 | Server Unit | [Vitest](https://vitest.dev/) | Fast | Database functions, validation, business logic |
-| E2E Features | [Playwright](https://playwright.dev/) | 132+ across 16 specs | Auth, CRUD, navigation, security, email (29 personas) |
+| E2E Features | [Playwright](https://playwright.dev/) | 215+ across 20 specs | Auth, CRUD, navigation, security, email (29 personas) |
 | Full App Smoke | [Playwright serial mode](https://playwright.dev/docs/test-parallel#serial-mode) | 40 (mobile + desktop) | End-to-end app flow — auth, home, all views, interactions |
 | Session Regression | [Playwright serial mode](https://playwright.dev/docs/test-parallel#serial-mode) | Per-session | Every changelog item verified on both platforms |
 | Visual Screenshots | [Playwright device emulation](https://playwright.dev/docs/emulation#devices) | 28 (4 devices x 7 views) | iPhone 14, Pixel 7, Galaxy S24, Desktop 1440 |
@@ -64,7 +64,7 @@ Beyond traditional assertions, [Claude Code](https://docs.anthropic.com/en/docs/
 - **AI Training Plans** — Claude AI generates personalized multi-phase training plans based on a self-assessment (fitness, hiking experience, altitude exposure), tailored to trek difficulty and timeline.
 - **Training Calendar** — Drag-to-select availability with crew overlap heat map. Algorithm scores consecutive-day windows by attendance, duration, and weekend bonus to find the best training dates.
 - **48 Selectable Itineraries** — Philmont routes loaded with day-by-day camps, mileage, elevation, and program highlights. Admins pick the itinerary for their crew. Printable pocket cheat sheets for the trail.
-- **Gear Catalog** — 76-item Philmont-specific catalog with 3-state tracking (needed → owned → packed), pack weight calculator, category/priority filters, and affiliate product links.
+- **Gear Catalog** — 68-item Philmont-specific catalog with 3-state tracking (needed → owned → packed), pack weight calculator, category/priority filters, and affiliate product links.
 - **Readiness Dashboard** — Individual and crew readiness across 4 categories (training, gear, medical, admin). Desktop BI layout with trend charts, sortable members table, and drill-down panels.
 - **Gamification** — Auto-awarded trail badges with email notifications. Journey waypoint progress trail tracks crew-wide readiness from Trailhead to Summit.
 - **Parent-Scout Linking** — Support adults linked to scouts via email match, request/approve, or admin override. Parent dashboard shows linked scout progress.
@@ -93,13 +93,13 @@ Beyond traditional assertions, [Claude Code](https://docs.anthropic.com/en/docs/
 |-------|-----------|---------|
 | Frontend | React 18, Vite 6, TypeScript | Component UI, type-safe, fast HMR dev |
 | Styling | Tailwind CSS v4, clsx | Utility-first CSS with dark mode |
-| Backend | Express.js 4 | REST API (156 routes across 7 modules) |
+| Backend | Express.js 4 | REST API (157 routes across 7 modules) |
 | Database | PostgreSQL (pg / node-postgres) | Async pool, 32 tables, schema v25 |
 | Auth | Passport.js, bcrypt | Google OAuth + email/password |
 | Security | Helmet.js, express-rate-limit, CSRF | Headers, rate limiting, double-submit cookie |
 | Email | Nodemailer | Gmail SMTP (13 transactional templates) |
 | Charts | Recharts (lazy-loaded) | Readiness trends, gear completion |
-| Testing | Playwright (16 specs, 193 tests) | E2E, visual regression, security |
+| Testing | Playwright (20 specs, 215+ tests) | E2E, visual regression, security |
 | Monitoring | Sentry, UptimeRobot, pg_stat_statements | Error tracking, uptime, query performance |
 | Deployment | Docker, Traefik | Containerized with auto-HTTPS |
 
@@ -107,8 +107,8 @@ Beyond traditional assertions, [Claude Code](https://docs.anthropic.com/en/docs/
 
 - **Frontend migrated from JavaScript to TypeScript** (March 2026) — all client files converted from JS/JSX to TS/TSX with centralized type definitions.
 - **Tailwind CSS v4** replaced inline styles — CSS custom properties, component classes, dark class toggle for dark mode.
-- **React.lazy code splitting** for 23 components reduced the main bundle from 599KB to 226KB gzip. All Recharts imports are isolated to lazy-loaded chart chunks.
-- **PostgreSQL** replaced SQLite (March 2026) — 181 async database functions, parameterized queries, connection pooling via pg.Pool.
+- **React.lazy code splitting** for 27 components reduced the main bundle from 599KB to 226KB gzip. All Recharts imports are isolated to lazy-loaded chart chunks.
+- **PostgreSQL** replaced SQLite (March 2026) — 182 async database functions, parameterized queries, connection pooling via pg.Pool.
 - **29 isolated Playwright auth sessions** enable fully parallel E2E testing with zero session contention.
 - **Sentry error tracking** on both Express and React — unhandled exceptions captured with full stack traces, request context, and environment tags.
 - **Infrastructure monitoring** via custom cron scripts: disk, database size, backup verification, container health, memory leaks, session table bloat, error rate spikes, and brute force detection.
