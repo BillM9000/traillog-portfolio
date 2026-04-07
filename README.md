@@ -123,16 +123,13 @@ This project was built using [Claude Code](https://claude.ai/code) as the primar
 
 ## Documentation
 
-- [Architecture Overview](ARCHITECTURE.md) — System design, data model, API routes, gamification
 - [Security Policy](SECURITY.md) — Vulnerability reporting and disclosure
-- [System Overview](docs/architecture/overview.md) — Tenant model, auth, client/server architecture
-- [Data Flow](docs/architecture/data-flow.md) — Request lifecycle, middleware chain, gear flow
 
 ---
 
 ## This Repository
 
-This is the public portfolio version of TrailLog. It includes architecture documentation, screenshots, and system design details to showcase the project's scope and engineering quality. The full source code is maintained in a private repository. Code samples and live demos are available upon request for interviews.
+This is the public portfolio version of TrailLog. It includes screenshots and system design summaries to showcase the project's scope and engineering quality. The full source code and architecture documentation are maintained in a private repository. Code samples and live demos are available upon request for interviews.
 
 ---
 
