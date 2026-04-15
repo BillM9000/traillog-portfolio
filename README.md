@@ -42,7 +42,7 @@ TrailLog uses a multi-layer testing strategy built for AI-era application develo
 
 **AI-Assisted Testing**
 
-Beyond traditional assertions, [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with the [Chrome MCP extension](https://chromewebstore.google.com/detail/claude-in-chrome/diahigjngdnkdgajdbhbkmdpnihlnbhe) provides visual reasoning — examining screenshots to identify layout issues, misaligned elements, and UX problems that code-level assertions can't catch. The AI compares mobile vs desktop behavior, flags inconsistencies, and compresses the fix-and-verify feedback cycle from hours to minutes. The developer reviews AI-generated test results and screenshots before any code is committed.
+Beyond traditional assertions, [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with the [Chrome MCP extension](https://chromewebstore.google.com/detail/claude-in-chrome/diahigjngdnkdgajdbhbkmdpniglnbhe) provides visual reasoning — examining screenshots to identify layout issues, misaligned elements, and UX problems that code-level assertions can't catch. The AI compares mobile vs desktop behavior, flags inconsistencies, and compresses the fix-and-verify feedback cycle from hours to minutes. The developer reviews AI-generated test results and screenshots before any code is committed.
 
 **Toolchain**
 
@@ -51,7 +51,7 @@ Beyond traditional assertions, [Claude Code](https://docs.anthropic.com/en/docs/
 | [Playwright](https://playwright.dev/) | Browser automation and E2E testing across Chromium, Firefox, WebKit | [Getting Started](https://playwright.dev/docs/intro) |
 | [Vitest](https://vitest.dev/) | Fast unit test runner for Node.js, compatible with Jest API | [Getting Started](https://vitest.dev/guide/) |
 | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | AI coding agent — plans, implements, tests, and deploys with human approval | [Documentation](https://docs.anthropic.com/en/docs/claude-code) |
-| [Chrome MCP](https://chromewebstore.google.com/detail/claude-in-chrome/diahigjngdnkdgajdbhbkmdpnihlnbhe) | Connects Claude Code to a live Chrome browser for visual verification | [Chrome Web Store](https://chromewebstore.google.com/detail/claude-in-chrome/diahigjngdnkdgajdbhbkmdpnihlnbhe) |
+| [Chrome MCP](https://chromewebstore.google.com/detail/claude-in-chrome/diahigjngdnkdgajdbhbkmdpniglnbhe) | Connects Claude Code to a live Chrome browser for visual verification | [Chrome Web Store](https://chromewebstore.google.com/detail/claude-in-chrome/diahigjngdnkdgajdbhbkmdpniglnbhe) |
 | [Sentry](https://sentry.io/) | Runtime error tracking and performance monitoring (client + server) | [Docs](https://docs.sentry.io/) |
 | [UptimeRobot](https://uptimerobot.com/) | External uptime monitoring — pings health endpoint every 5 minutes | [How It Works](https://uptimerobot.com/about) |
 
@@ -59,7 +59,7 @@ Beyond traditional assertions, [Claude Code](https://docs.anthropic.com/en/docs/
 
 ## Features
 
-- **Multi-Tenant SaaS** — Troops scoped by BSA council. Public discovery or private invite-only. First adventure free, $39/adventure after that.
+- **Multi-Tenant SaaS** — Troops scoped by BSA council. Public discovery or private invite-only. 90-day free trial for crew leaders (full access, no credit card). After trial: $49/year (Small Troop, up to 25 users) or $99/year (Large Troop, up to 50 users). Scouts and crew members are always free.
 - **Multi-Crew / Sister Crew Support** — Adventures can have multiple crews with their own rosters and itineraries. "All Crews" view combines availability heat maps across sister crews so troop leaders can coordinate joint training.
 - **AI Training Plans** — Claude AI generates personalized multi-phase training plans based on a self-assessment (fitness, hiking experience, altitude exposure), tailored to trek difficulty and timeline.
 - **Training Calendar** — Drag-to-select availability with crew overlap heat map. Algorithm scores consecutive-day windows by attendance, duration, and weekend bonus to find the best training dates.
@@ -93,7 +93,7 @@ Beyond traditional assertions, [Claude Code](https://docs.anthropic.com/en/docs/
 |-------|-----------|---------|
 | Frontend | React 18, Vite 6, TypeScript | Component UI, type-safe, fast HMR dev |
 | Styling | Tailwind CSS v4, clsx | Utility-first CSS with dark mode |
-| Backend | Express.js 4 | REST API (157 routes across 7 modules) |
+| Backend | Express.js 4 | REST API (144 routes across 7 modules) |
 | Database | PostgreSQL (pg / node-postgres) | Async pool, 32 tables, schema v25 |
 | Auth | Passport.js, bcrypt | Google OAuth + email/password |
 | Security | Helmet.js, express-rate-limit, CSRF | Headers, rate limiting, double-submit cookie |
@@ -113,23 +113,28 @@ Beyond traditional assertions, [Claude Code](https://docs.anthropic.com/en/docs/
 - **Sentry error tracking** on both Express and React — unhandled exceptions captured with full stack traces, request context, and environment tags.
 - **Infrastructure monitoring** via custom cron scripts: disk, database size, backup verification, container health, memory leaks, session table bloat, error rate spikes, and brute force detection.
 
+For a deeper look at system design, data model, API patterns, and key engineering decisions, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ---
 
 ## Built With Claude Code
 
-This project was built using [Claude Code](https://claude.ai/code) as the primary development tool. The human contributions were product design, system architecture, UX decisions, and technical judgment — Claude Code handled implementation across the full stack, from database schema to React components to Playwright test suites. This represents a deliberate approach to AI-assisted development as a professional skill, not a shortcut. Every architectural decision, security boundary, and design trade-off was directed by a human engineer; Claude Code translated those decisions into working code at a pace that would be impossible solo.
+This project was built using [Claude Code](https://claude.ai/code) as the primary development tool. The human contributions were product design, system architecture, UX decisions, and technical judgment — Claude Code handled implementation across the full stack, from database schema to React components to Playwright test suites. This represents a deliberate approach to AI-assisted development as a professional skill, not a shortcut.
+
+Every architectural decision, security boundary, and design trade-off was directed by a human engineer with Claude Code translating those decisions into working code. The workflow deliberately preserves human oversight at every meaningful gate: plan review before implementation, visual inspection before commit, manual approval before deploy. This is the engineering model that makes AI-assisted development scale safely — not prompting and hoping, but directing, reviewing, and owning the output.
 
 ---
 
 ## Documentation
 
+- [Architecture](ARCHITECTURE.md) — System design, data model, API patterns, infrastructure, and key engineering decisions
 - [Security Policy](SECURITY.md) — Vulnerability reporting and disclosure
 
 ---
 
 ## This Repository
 
-This is the public portfolio version of TrailLog. It includes screenshots and system design summaries to showcase the project's scope and engineering quality. The full source code and architecture documentation are maintained in a private repository. Code samples and live demos are available upon request for interviews.
+This is the public portfolio version of TrailLog. It includes screenshots and system design documentation to showcase the project's scope and engineering quality. The full source code is maintained in a private repository. Code samples and live demos are available upon request for interviews.
 
 ---
 
