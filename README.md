@@ -59,7 +59,7 @@ Beyond traditional assertions, [Claude Code](https://docs.anthropic.com/en/docs/
 
 ## Features
 
-- **Multi-Tenant SaaS** — Troops scoped by BSA council. Public discovery or private invite-only. 90-day free trial for crew leaders (full access, no credit card). After trial: $49/year (Small Troop, up to 25 users) or $99/year (Large Troop, up to 50 users). Scouts and crew members are always free.
+- **Multi-Tenant SaaS** — Troops scoped by BSA council. Public discovery or private invite-only. 90-day free trial for crew leaders (full access, no credit card required). After trial: $3.99 per user per year — one price, every feature, no tiers. Scouts and crew members are always free.
 - **Multi-Crew / Sister Crew Support** — Adventures can have multiple crews with their own rosters and itineraries. "All Crews" view combines availability heat maps across sister crews so troop leaders can coordinate joint training.
 - **AI Training Plans** — Claude AI generates personalized multi-phase training plans based on a self-assessment (fitness, hiking experience, altitude exposure), tailored to trek difficulty and timeline.
 - **Training Calendar** — Drag-to-select availability with crew overlap heat map. Algorithm scores consecutive-day windows by attendance, duration, and weekend bonus to find the best training dates.
