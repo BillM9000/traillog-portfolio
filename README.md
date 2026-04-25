@@ -84,14 +84,23 @@ Beyond traditional assertions, [Claude Code](https://docs.anthropic.com/en/docs/
 
 ## Screenshots
 
-### Readiness View — Desktop BI with Member Drill-Down
-![Readiness view with trend chart, member list, and 84% readiness drill-down panel](docs/screenshots/readme/readiness-drilldown.png)
+### Home Dashboard — Crew Roster, Readiness Ring, Journey Progress
+![Home dashboard with crew roster, readiness ring, journey waypoint progress, and quick actions](docs/screenshots/readme/home-desktop.png)
 
-### Gear View — Desktop BI with Completion Chart
-![Gear catalog with category bars, 3-state tracking, and pack weight sidebar](docs/screenshots/readme/gear-desktop.png)
+### Gear View — BI Layout with Catalog, Member Table, and Completion Chart
+![Gear catalog with 68-item catalog, category filters, pack weight tracker, member readiness table, and completion chart](docs/screenshots/readme/gear-desktop.png)
+
+### Readiness View — AI Coach Entry Point and Skills Checklist
+![Readiness view with AI Readiness Coach card, 7-badge display, and skill checklist by category](docs/screenshots/readme/readiness-desktop.png)
+
+### Training V5 — Phase Progression and Availability Calendar
+![Training tab with current phase card, 4-phase progression strip, and crew availability calendar](docs/screenshots/readme/training-desktop.png)
+
+### Training V5 — Full Mobile View
+![Training mobile: crew section, phase progression, training log, crew phase distribution, and availability calendar](docs/screenshots/readme/training-mobile.png)
 
 ### Mobile Landing Page
-![5-section responsive landing page on mobile — hero, features, FAQ, footer](docs/screenshots/readme/landing-mobile.png)
+![Responsive landing page on mobile — hero, features, pricing, FAQ, footer](docs/screenshots/readme/landing-mobile.png)
 
 ---
 
