@@ -1,6 +1,6 @@
-# TrailLog
+# TrailLog.ai
 
-TrailLog is a multi-tenant SaaS platform for BSA (Boy Scouts of America) high-adventure crew preparation — training, gear, readiness, and logistics across Philmont, Sea Base, Northern Tier, and Summit Bechtel. Built solo using Claude Code as the primary development tool. Portfolio project by Bill McCoy.
+TrailLog.ai is a multi-tenant SaaS platform for BSA (Boy Scouts of America) high-adventure crew preparation — training, gear, readiness, and logistics across Philmont, Sea Base, Northern Tier, and Summit Bechtel. Built solo using Claude Code as the primary development tool. Portfolio project by Bill McCoy.
 
 **Live:** [traillog.ai](https://traillog.ai) · Built by [GraceZero Ai](https://gracezero.ai)
 
