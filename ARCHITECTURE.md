@@ -10,7 +10,7 @@ This document covers the architecture of TrailLog as it exists in the private so
 +------------------------------------------------------------------+
 |                        CLIENT (browser)                          |
 |  React 18 + Vite 6 + TypeScript                                  |
-|  Tailwind CSS 4 · React Router 7 · Recharts (lazy) · Sentry      |
+|  Tailwind CSS 4 · React Router 7 · Recharts · Sentry             |
 +-------------------------------+----------------------------------+
                                 | HTTPS (automatic certificates via Traefik)
 +-------------------------------v----------------------------------+
@@ -31,7 +31,7 @@ This document covers the architecture of TrailLog as it exists in the private so
 +------------------------------------------------------------------+
 ```
 
-Two environments run on the same host: production and QA, each in its own container with its own database. QA sits behind a Google sign-in gate and takes full test runs before a production deploy.
+Two environments run on the same host: production and QA, each in its own container with its own database. QA sits behind a Google sign-in gate and is used for test runs before a production deploy.
 
 ---
 
@@ -95,7 +95,7 @@ Each major view renders either a mobile or a desktop component tree. Shared hook
 
 ### Components and code splitting
 
-115 TypeScript components (counted). 36 of them (counted) load through a lazy loader that wraps React.lazy with one extra behaviour: when a content-hashed chunk is missing after a deploy because the browser cached the old index page, it reloads the page once before surfacing an error. Chart components load in their own chunks.
+115 TypeScript components (counted). 36 of them (counted) load through a lazy loader that wraps React.lazy with one extra behaviour: when a content-hashed chunk is missing after a deploy because the browser cached the old index page, it reloads the page once before surfacing an error.
 
 ### State
 
