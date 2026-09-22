@@ -14,7 +14,7 @@ running at traillog.ai receives security updates. There are no LTS or legacy bra
 
 If you discover a security vulnerability in TrailLog, please report it responsibly.
 
-**Email:** security@gracezero.ai
+**Email:** mccoy@gracezero.com
 **Subject line:** TrailLog Security
 
 ### What to Include
@@ -40,23 +40,23 @@ If you discover a security vulnerability in TrailLog, please report it responsib
 
 The following areas are in scope for security reports:
 
-- **Authentication** — OAuth flow, email/password login, session management
-- **Authorization** — Middleware enforcement, role-based access, troop/adventure scoping
-- **Data exposure** — Unintended disclosure of user PII, credentials, or tokens
-- **Injection** — SQL injection, XSS, command injection, template injection
-- **Session management** — Fixation, hijacking, cookie security
-- **API security** — Broken access controls, mass assignment, IDOR
+- **Authentication**: OAuth flow, email/password login, session management
+- **Authorization**: middleware enforcement, role-based access, troop and adventure scoping, parent-to-scout links
+- **Data exposure**: unintended disclosure of member data (scouts are minors), parent contact data, credentials or tokens
+- **Injection**: SQL injection, XSS, command injection, template injection
+- **Session management**: fixation, hijacking, cookie security
+- **API security**: broken access controls, mass assignment, insecure direct object references
 
 ## Out of Scope
 
 The following are out of scope and will not be treated as valid security reports:
 
-- **Social engineering** — Phishing attacks against users or administrators
-- **Denial of service** — The application already implements rate limiting (20 req/15min on auth, 100 req/min on API)
-- **Third-party dependencies** — Vulnerabilities in upstream packages should be reported to the respective maintainers. If you believe a dependency vulnerability specifically impacts TrailLog, include that analysis in your report.
-- **Non-security bugs** — Functional bugs, UI issues, and feature requests should be filed as regular GitHub issues
-- **Self-XSS** — Vulnerabilities that require the victim to paste code into their own browser console
-- **Missing security headers on non-production environments** — Development and staging configurations intentionally differ from production
+- **Social engineering**: phishing attacks against users or administrators
+- **Denial of service**: the application already rate-limits authentication (20 requests per 15 minutes) and the API (300 requests per minute)
+- **Third-party dependencies**: vulnerabilities in upstream packages should be reported to the respective maintainers. If you believe a dependency vulnerability specifically impacts TrailLog, include that analysis in your report.
+- **Non-security bugs**: functional bugs, UI issues and feature requests should be filed as regular GitHub issues
+- **Self-XSS**: vulnerabilities that require the victim to paste code into their own browser console
+- **Missing security headers on non-production environments**: development and QA configurations intentionally differ from production
 
 ## Safe Harbor
 

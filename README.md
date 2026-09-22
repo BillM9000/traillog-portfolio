@@ -1,162 +1,155 @@
-# TrailLog.ai
+# TrailLog
 
-TrailLog.ai is a multi-tenant SaaS platform for BSA (Boy Scouts of America) high-adventure crew preparation — training, gear, readiness, and logistics across Philmont, Sea Base, Northern Tier, and Summit Bechtel. Built solo using Claude Code as the primary development tool. Portfolio project by Bill McCoy.
+TrailLog is a multi-tenant SaaS platform for Scouting America high-adventure crew preparation: training, gear, readiness and logistics from the first crew meeting to the trailhead. Philmont is fully supported today, with other bases on the roadmap. Built by one engineer using Claude Code as the primary development tool.
 
-**Live:** [traillog.ai](https://traillog.ai) · Built by [GraceZero Ai](https://gracezero.ai)
+**Live:** [traillog.ai](https://traillog.ai) · Built by [GraceZero](https://gracezero.com)
 
----
+Every statement in this document was checked against the private source on 2026-09-22. Counts marked as counted were generated from the code on that date; other counts are rounded.
 
-## AI Architecture — Dual-Model Claude Orchestration
-
-TrailLog's AI layer uses two Claude models with distinct roles, coordinated through a centralized model config (`server/config/models.js`). The routing decision maps directly to the cost/quality trade-off:
-
-| Task | Model | Rationale |
-|------|-------|-----------|
-| Gear recommendations (weekly batch refresh, 68 items) | `claude-haiku-4-5` | High-volume, structured output, cost-optimized |
-| AI readiness plan generation (on-demand, per member) | `claude-sonnet-4-6` | Complex reasoning, activity-aware, output quality matters |
-| Real-time gear advisor chat | `claude-sonnet-4-6` | Conversational reasoning requires stronger model |
-
-**Deterministic fallback:** When the API key is absent or the API returns an error, the readiness planner drops to a rule-based fallback (`generateFallbackPlan`) that produces the same JSON schema — same UI, no degraded experience, no exceptions surfaced to users. The AI upgrade is invisible to users when it's unavailable.
-
-**Activity-aware coaching:** The readiness planner dispatches across four system prompts — Philmont backpacking, Northern Tier paddling, summit climbing, and general high-adventure — so the AI coach gives Philmont-specific advice to Philmont crews and paddling-specific advice to Northern Tier crews, not generic outdoor content.
-
-**Token tracking:** Tokens consumed per API call are stored with each recommendation and plan for cost audit.
+**Scouts are minors.** Parent contact fields live on the user record, a parent is linked to a scout only through a request that a troop admin approves, and the screenshots below use seeded test personas with every real name, troop and crew identifier covered.
 
 ---
 
-## Operations & Production Readiness
+## AI architecture: two models, one configuration
 
-This isn't a demo — it's a production system with the operational rigor to match:
+TrailLog's AI features use two Claude models with distinct roles. One configuration module is the single source of truth for model selection, using alias strings rather than date-pinned versions so an upgrade is a one-line change.
 
-- **Automated daily backups** with rolling retention, size anomaly detection, and freshness verification
-- **Four-layer monitoring**: external uptime (UptimeRobot), application errors (Sentry), query performance (pg_stat_statements), infrastructure health (custom cron every 15 min — 10 checks: disk, DB size, backup freshness, container health, memory, session bloat, error rate, brute-force detection)
-- **Security hardening**: CSRF double-submit cookies, Helmet CSP, HSTS via Traefik, Zod input validation on 16 write endpoints, bcrypt password hashing, session regeneration on login, parameterized SQL with zero string concatenation, non-root Docker container
-- **~270 Playwright E2E tests** across 27 specs covering auth flows, CRUD operations, security boundaries, visual regression, and cross-device screenshots across 4 viewport sizes; plus **69 server integration tests** (Vitest against real PostgreSQL)
-- **Zero-downtime deploys** via Docker with Traefik reverse proxy and automatic Let's Encrypt TLS
+| Task | Model | Why |
+|------|-------|-----|
+| Gear recommendations (cached, refreshed on a seven-day cycle by a daily scheduler) | Claude Haiku 4.5 | High volume, structured output, cost matters |
+| Readiness plan generation (on demand, per member) | Claude Sonnet 4.6 | Reasoning over a self-assessment, itinerary and dates |
+| Trail Advisor gear chat | Claude Sonnet 4.6 | Conversational reasoning |
+
+**Deterministic fallback.** When the API key is absent or the call fails, the readiness planner drops to a rule-based generator that produces the same JSON shape. The UI does not change and no error reaches the user.
+
+**Activity-aware coaching.** A dispatcher selects an activity-specific system prompt, so a paddling crew gets paddling advice rather than backpacking advice.
+
+**Token tracking.** Tokens consumed per call are stored with each recommendation and plan.
 
 ---
 
-## Quality Assurance
+## Operations
 
-TrailLog uses a multi-layer testing strategy built for AI-era application development, where code changes are frequent, cross-platform, and often generated at speed.
+- **Backups.** Nightly database dumps with a rolling retention of ten, from the shared host's backup template. A monitor check alerts when the newest backup is older than 25 hours.
+- **Monitoring.** External uptime pings of the health endpoint every five minutes (the endpoint returns 503 when the database is unreachable, so the probe catches database failures, not only process crashes); Sentry on the server and in the browser with 20 percent trace sampling; a host monitor every 15 minutes with ten checks, including disk above 85 percent, backup age, container memory above 256 MB and container restarts.
+- **Security.** CSRF double-submit cookie mirrored from a per-session token; Helmet content security policy with scripts restricted to the app's own origin; Zod validation (18 schemas, counted) on the 16 write endpoints that accept user-shaped bodies; bcrypt password hashing; session regeneration on login; typed, parameterized SQL only (427 pgtyped queries, counted); per-IP rate limits of 20 per 15 minutes on authentication and 300 per minute on the API; a non-root container.
+- **Deploys.** A seven-step script: build the client, package, upload, rebuild the container, record the deploy manifest, list images, verify the health endpoint. The script prints the rollback command (retag the previous image) at the end. A QA environment behind a Google sign-in gate is used for test runs before production.
 
-**Testing Principles**
+---
 
-- **Always Both Platforms** — Every test runs on mobile and desktop, every time. No exceptions. Responsive layouts and shared state create invisible cross-platform dependencies that single-platform testing misses.
-- **Fail-Fast Sequential** — Tests run in dependency order and stop on first failure. Fix the root cause, restart from test 1. This catches cascading regressions that parallel testing hides.
-- **Session Regression** — Each development session produces a regression test covering every change from that session's changelog. The test becomes a permanent part of the suite, ensuring future changes don't break prior work.
-- **Human-in-the-Loop** — AI proposes changes and generates tests, but a human reviews every plan before implementation, approves every deploy, and visually inspects screenshot evidence before signing off. The developer decides what to build, what to test, and what ships. AI accelerates execution — it doesn't replace judgment.
+## Quality assurance
 
-**Test Pyramid**
+**Principles**
 
-| Layer | Tool | Tests | What It Validates |
-|-------|------|-------|-------------------|
-| Server Integration | [Vitest](https://vitest.dev/) | 69 (real PostgreSQL) | Database functions, API routes, auth flows, validation |
-| E2E Features | [Playwright](https://playwright.dev/) | ~270 across 27 specs | Auth, CRUD, navigation, security, email (29 personas) |
-| Full App Smoke | [Playwright serial mode](https://playwright.dev/docs/test-parallel#serial-mode) | 40 (mobile + desktop) | End-to-end app flow — auth, home, all views, interactions |
-| Session Regression | [Playwright serial mode](https://playwright.dev/docs/test-parallel#serial-mode) | Per-session | Every changelog item verified on both platforms |
-| Visual Screenshots | [Playwright device emulation](https://playwright.dev/docs/emulation#devices) | 28 (4 devices × 7 views) | iPhone 14, Pixel 7, Galaxy S24, Desktop 1440 |
-| Visual Regression | [Playwright screenshot comparison](https://playwright.dev/docs/test-snapshots) | 11 | Pixel-diff comparison (5% tolerance) against baselines |
+- **Both platforms, every time.** Tests run on mobile and desktop profiles because responsive layouts and shared state create cross-platform dependencies that one profile misses.
+- **Human in the loop.** A person reviews every plan before implementation, approves every deploy, and inspects screenshot evidence before signing off.
 
-**AI-Assisted Testing**
+**Test suites (counted on 2026-09-22)**
 
-Beyond traditional assertions, [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with the [Chrome MCP extension](https://chromewebstore.google.com/detail/claude-in-chrome/diahigjngdnkdgajdbhbkmdpniglnbhe) provides visual reasoning — examining screenshots to identify layout issues, misaligned elements, and UX problems that code-level assertions can't catch. The AI compares mobile vs desktop behavior, flags inconsistencies, and compresses the fix-and-verify feedback cycle from hours to minutes.
+| Layer | Tool | Size | What it covers |
+|-------|------|------|----------------|
+| Server integration | Vitest against a real PostgreSQL | 7 files, 64 cases | Auth, gear, prep events, troops, readiness, public routes, cross-troop access attempts |
+| End to end | Playwright | 29 spec files, 266 cases | Auth, CRUD, navigation, security boundaries, email flows, device screenshots, visual regression against baselines |
+
+Seeded test personas provide the authenticated sessions the Playwright suites use.
+
+**AI-assisted review.** Claude Code with a browser extension reads screenshots to spot layout and consistency problems that assertions miss, on both mobile and desktop.
 
 ---
 
 ## Features
 
-- **Multi-Tenant SaaS** — Troops scoped by BSA council. Public discovery or private invite-only. Phase 1 is free for all users, supported by affiliate gear links with full transparent disclosure (no hidden monetization). Multi-tier model planned for Phase 2.
-- **Multi-Crew / Sister Crew Support** — Adventures can have multiple crews with their own rosters and itineraries. "All Crews" view combines availability heat maps across sister crews so troop leaders can coordinate joint training.
-- **AI Readiness Plans** — Claude Sonnet generates personalized multi-phase training plans based on a self-assessment (fitness, hiking experience, altitude exposure, prior high-adventure experience, biggest anxiety), tailored to trek activity type and timeline. Activity-aware: Philmont coaches don't give paddling advice. Deterministic fallback ensures no broken experience when the API is unavailable.
-- **AI Gear Recommendations** — Claude Haiku runs a weekly background refresh across the full 68-item gear catalog, generating top-3 product recommendations per item with weight, price range, and rationale. Results are cached in the database (7-day TTL) and served from there — the UX feels instant.
-- **Training Calendar & Phases** — Crew-wide availability heat map. Four-phase training progression (Base Building → Trail Ready → Peak Prep → Shakedown) with per-member drill tracking. Multi-date polls for scheduling group training events. Personal training log with post-hike prompts.
-- **Itinerary & Day Planning** — 48 selectable Philmont itineraries with day-by-day camps, mileage, elevation, and program highlights. Custom day planner for non-preset high-adventure trips. Prep Events with RSVP and attendance tracking. Travel Legs with driver signup. Printable Trek Packet.
-- **Gear Catalog** — 68-item Philmont-specific catalog with 3-state tracking (needed → owned → packed), pack weight calculator, category/priority filters, and affiliate product links.
-- **Readiness Dashboard** — Individual and crew readiness across 4 categories (training, gear, medical, admin). Desktop BI layout with trend charts, sortable members table, and drill-down panels.
-- **Gamification** — Auto-awarded trail badges (7 types) with email notifications. Journey waypoint progress trail tracks crew-wide readiness from Trailhead to Summit.
-- **Parent-Scout Linking** — Support adults linked to scouts via email match, request/approve, or admin override. Parent dashboard shows linked scout progress.
-- **Reports & Excel Export** — Crew rosters, gear matrices, pack weight summaries, training RSVPs, and readiness reports. Export to Excel or print.
-- **Mobile-First Responsive** — Works on any device, no app download. Compact header on mobile, full desktop BI layout at 1024px+ with collapsible sidebar and separate navigation chrome.
-- **13 Transactional Emails** — Invitations, approvals, date changes, badge awards, training reminders, password reset, email verification, and more.
+- **Multi-tenant troops** scoped by council, with a troop directory and invitations.
+- **Multiple crews per adventure.** Sister crews keep their own rosters and itineraries; an all-crews view combines availability so leaders can plan joint training.
+- **AI readiness plans.** A personalised multi-phase plan from a short self-assessment, tailored to the trek and its dates, with the deterministic fallback described above.
+- **AI gear recommendations.** Top product picks per catalog item with weight, price range and rationale, cached and refreshed on a schedule so the page loads instantly.
+- **Training calendar and phases.** Crew availability heat map, four training phases (Base Building, Trail Ready, Peak Prep, Shakedown) with drill tracking, multi-date polls for group events, and a personal training log.
+- **Itineraries and day planning.** The 48 Philmont itineraries (counted) with length in days, mileage, difficulty rating and highlights; a custom day planner for other trips; prep events with RSVP and attendance; travel legs with driver sign-up; a printable trek packet.
+- **Gear catalog.** Three-state tracking (need, own, packed), pack weight calculator, category and priority filters, and affiliate product links with click tracking.
+- **Readiness dashboard.** Individual and crew readiness across training, gear, medical and admin, with a desktop analytics layout and a sortable member table.
+- **Badges and journey.** Auto-awarded trail badges and a journey trail that tracks crew-wide readiness from trailhead to summit.
+- **Parent and scout linking.** A parent is linked to a scout by a request that a troop admin approves.
+- **Reports and Excel export.** Roster, gear and readiness reports, exported to Excel or printed.
+- **Mobile first.** Works on any device with no app download. Separate mobile and desktop component trees for the views that need them.
+- **Transactional email.** 14 transactional sender functions (counted).
+- **Dark mode**, toggled by a class on the document root.
 
 ---
 
 ## Screenshots
 
-### Home Dashboard — Crew Roster, Readiness Ring, Journey Progress
-![Home dashboard with crew roster, readiness ring, journey waypoint progress, and quick actions](docs/screenshots/readme/home-desktop.png)
+Seeded test data. Names, troop, council and crew identifiers are covered.
 
-### Gear View — BI Layout with Catalog, Member Table, and Completion Chart
-![Gear catalog with 68-item catalog, category filters, pack weight tracker, member readiness table, and completion chart](docs/screenshots/readme/gear-desktop.png)
+### Home dashboard
+![Home dashboard: crew roster, readiness ring, journey progress and quick actions](docs/screenshots/readme/home-desktop.png)
 
-### Readiness View — AI Coach Entry Point and Skills Checklist
-![Readiness view with AI Readiness Coach card, 7-badge display, and skill checklist by category](docs/screenshots/readme/readiness-desktop.png)
+### Gear view
+![Gear view: catalog with category filters, pack weight tracker, member readiness table and completion chart](docs/screenshots/readme/gear-desktop.png)
 
-### Training V5 — Phase Progression and Availability Calendar
-![Training tab with current phase card, 4-phase progression strip, and crew availability calendar](docs/screenshots/readme/training-desktop.png)
+### Readiness view
+![Readiness view: AI Readiness Coach card, badge display and skill checklist by category](docs/screenshots/readme/readiness-desktop.png)
 
-### Training V5 — Full Mobile View
-![Training mobile: crew section, phase progression, training log, crew phase distribution, and availability calendar](docs/screenshots/readme/training-mobile.png)
+### Training
+![Training tab: current phase card, four-phase progression strip and crew availability calendar](docs/screenshots/readme/training-desktop.png)
 
-### Mobile Landing Page
-![Responsive landing page on mobile — hero, features, pricing, FAQ, footer](docs/screenshots/readme/landing-mobile.png)
+### Training on a phone
+![Training on a phone: crew section, phase progression, training log, phase distribution and availability calendar](docs/screenshots/readme/training-mobile.png)
+
+### Landing page on a phone
+![Landing page on a phone: illustration, sign-in, three feature cards and the how-it-works steps](docs/screenshots/readme/landing-mobile.png)
 
 ---
 
-## Tech Stack
+## Tech stack
 
 | Layer | Technology | Details |
 |-------|-----------|---------|
-| Frontend | React 18, Vite 6, TypeScript | 111 components, 32 code-split via `lazyWithRetry` |
-| Styling | Tailwind CSS v4, clsx | CSS custom properties, dark mode via `dark` class toggle |
-| Backend | Express.js 4 | 13 route modules, 228 async database functions |
-| Database | PostgreSQL (node-postgres) | 50 schema tables (v2), async pool, parameterized queries only |
-| Auth | Passport.js, bcrypt | Google OAuth + email/password, 4 RBAC roles |
-| AI | Anthropic Claude API | Haiku (gear batch) + Sonnet (readiness + chat), deterministic fallback |
-| Security | Helmet.js, express-rate-limit, CSRF | Double-submit cookie, CSP no unsafe-inline, HSTS, 16 Zod schemas |
-| Email | Nodemailer | Gmail SMTP, 13 transactional templates |
-| Charts | Recharts (lazy-loaded) | Readiness trends, gear completion, isolated to lazy chunks |
-| Testing | Playwright + Vitest | 27 specs / ~270 E2E tests + 69 server integration tests |
-| Monitoring | Sentry, UptimeRobot, custom cron | Error tracking, uptime, 10-check infra monitor every 15 min |
-| Deployment | Docker, Traefik | Containerized, auto-HTTPS, zero-downtime redeploys |
+| Frontend | React 18, Vite 6, TypeScript, React Router 7 | 115 components (counted), 36 of them code-split through a retrying lazy loader (counted) |
+| Styling | Tailwind CSS 4 | CSS custom properties, component classes, dark mode by class toggle |
+| Backend | Express 4 on Node 22, TypeScript | 13 route modules, 185 handlers (counted) |
+| Database access | pgtyped | 427 typed SQL queries generated from .sql files (counted) |
+| Database | PostgreSQL 16 | 50 tables in the schema (counted), connection pool, parameterized queries only |
+| Auth | Passport | Google OAuth and email/password with bcrypt, sessions in PostgreSQL |
+| AI | Anthropic Claude API | Haiku for cached batch work, Sonnet for reasoning features, deterministic fallback |
+| Security | Helmet, express-rate-limit, CSRF double-submit, Zod | See Operations |
+| Email | Nodemailer | 14 transactional senders (counted) |
+| Charts | Recharts | Readiness trend and gear completion charts |
+| Testing | Playwright, Vitest | 29 spec files and 266 cases; 7 files and 64 cases against PostgreSQL |
+| Monitoring | Sentry, UptimeRobot, host monitor script | Errors, uptime, ten infrastructure checks every 15 minutes |
+| Deployment | Docker, Traefik | Scripted deploy with health verification, automatic TLS |
 
-### Architecture Highlights
+### Architecture highlights
 
-- **Dual-model AI routing** — `server/config/models.js` is the single source of truth for model selection. Alias strings (no date-pinned versions) so model upgrades happen in one place. Haiku handles high-volume batch work; Sonnet handles reasoning-heavy user-facing features.
-- **Frontend migrated from JavaScript to TypeScript** (March 2026) — all client files converted from JS/JSX to TS/TSX with centralized type definitions.
-- **Tailwind CSS v4** replaced inline styles — CSS custom properties, component classes (`tl-card`, `tl-btn`, `tl-badge`), dark class toggle for dark mode.
-- **React.lazy code splitting** for 32 components (via `lazyWithRetry` with automatic reload on stale chunks) reduced the main bundle from 599KB to 226KB gzip.
-- **PostgreSQL** replaced SQLite (March 2026) — 228 async database functions, parameterized queries throughout, connection pooling via `pg.Pool`.
-- **29 isolated Playwright auth sessions** enable fully parallel E2E testing with zero session contention.
-- **Sentry error tracking** on both Express and React — unhandled exceptions captured with full stack traces, request context, and environment tags.
-- **Infrastructure monitoring** via custom cron scripts: disk, database size, backup verification, container health, memory leaks, session table bloat, error rate spikes, and brute force detection.
+- **One model configuration module** selects the model per feature with alias strings, so an upgrade happens in one place.
+- **TypeScript on both sides.** The client and the server are TypeScript, and the server's SQL is typed at build time by pgtyped from .sql files.
+- **Tailwind CSS 4** replaced inline styles with custom properties and component classes.
+- **Code splitting with a retrying lazy loader.** When a content-hashed chunk is missing after a deploy, the loader reloads the page once instead of showing a blank screen.
+- **Sentry on both Express and React** with request context and environment tags.
+- **Host monitoring** by a cron script with ten checks, including disk, backup freshness, container memory and restarts.
 
-For a deeper look at system design, data model, API patterns, and key engineering decisions, see [ARCHITECTURE.md](ARCHITECTURE.md).
+For system design, data model, API patterns and the reasoning behind the main decisions, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
-## Built With Claude Code
+## Built with Claude Code
 
-This project was built using [Claude Code](https://claude.ai/code) as the primary development tool. The human contributions were product design, system architecture, UX decisions, and technical judgment — Claude Code handled implementation across the full stack, from database schema to React components to Playwright test suites. This represents a deliberate approach to AI-assisted development as a professional skill, not a shortcut.
-
-Every architectural decision, security boundary, and design trade-off was directed by a human engineer with Claude Code translating those decisions into working code. The workflow deliberately preserves human oversight at every meaningful gate: plan review before implementation, visual inspection before commit, manual approval before deploy. This is the engineering model that makes AI-assisted development scale safely — not prompting and hoping, but directing, reviewing, and owning the output.
+This project was built with Claude Code as the primary development tool. The human contributions were product design, system architecture, UX decisions and technical judgement; Claude Code produced the implementation across the stack, from schema to React components to test suites, under review. The workflow keeps a person at every gate: plan review before implementation, visual inspection before commit, manual approval before deploy. Co-authorship trailers on most commits record what was built with the assistant.
 
 ---
 
 ## Documentation
 
-- [Architecture](ARCHITECTURE.md) — System design, data model, API patterns, infrastructure, and key engineering decisions
-- [Security Policy](SECURITY.md) — Vulnerability reporting and disclosure
+- [Architecture](ARCHITECTURE.md): system design, data model, API patterns, infrastructure and key decisions
+- [Security policy](SECURITY.md): vulnerability reporting
 
 ---
 
-## This Repository
+## This repository
 
-This is the public portfolio version of TrailLog. It includes screenshots and system design documentation to showcase the project's scope and engineering quality. The full source code is maintained in a private repository. Code samples and live demos are available upon request for interviews.
+The public portfolio version of TrailLog: screenshots and system design documentation. The source code is maintained in a private repository.
 
 ---
 
 ## License
 
-MIT
+MIT for the documentation in this repository.
