@@ -14,7 +14,7 @@ running at traillog.ai receives security updates. There are no LTS or legacy bra
 
 If you discover a security vulnerability in TrailLog, please report it responsibly.
 
-**Email:** mccoy@gracezero.com
+**Email:** bill.mccoy@gracezero.com
 **Subject line:** TrailLog Security
 
 ### What to Include
